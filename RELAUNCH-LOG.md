@@ -41,10 +41,23 @@ Kanonisches Projekt-Changelog für den Greenfield-Relaunch von **riegel-immobili
 | D12 | **Supabase = JA**, aber nur als Support-Layer (Leads, Bookings, Saved Searches, Preisdaten-Cache). Immobiliendaten bleiben kanonisch in OnOffice. | Durable Lead-Capture (kein verlorener Lead bei OnOffice-Ausfall), DSGVO-Kontrolle, EU-Region Frankfurt. |
 | D13 | **Markenschrift = Neuzeit Grotesk beibehalten** (Original der Live-Seite) | Alex: „das Besondere" behalten. Self-Host via Webfont-Lizenz (Monotype/MyFonts) empfohlen statt Adobe-Fonts-Embed (DSGVO/CWV). Optionale Display-Serif (Fraunces) für Headlines noch offen. Siehe [design-system.md](./docs/design-system.md) §3. |
 | D14 | **Immobilien-Portal = #1-Priorität** (Airbnb/Zillow-Style Suche/Filter) | Expliziter Kundenfokus (Sissy via Alex): Karte+Liste-Split, Instant-Facetten-Filter, „alles durchsuchbar", teilbare/SEO-fähige URL-States. Eigener Portal-UX/Architektur-Deep-Dive als nächste Ultracode-Phase. |
+| D15 | **Type-System: AKIRA Expanded (Headlines, sparsam) + Neuzeit Grotesk (Adobe, Body) + Inter (Fallback)** | Akira lizenziert von Alex (self-hosted). Neuzeit Grotesk = Markenschrift via Adobe-Fonts-Web-Projekt (Projekt-ID `atg2aop`, lädt domain-unabhängig). Inter self-hosted als „normaler" Fallback. Externer Adobe-Embed → vor Cutover Consent-Gate. |
+| D16 | **Portal als Mock-first gebaut, OnOffice via Adapter** | Greenfield-Portal läuft sofort sichtbar auf typisierten Mock-Fixtures; `mapOnOfficeEstate()`-Adapter ist die einzige Stelle, die später live umschaltet. MapLibre (dark) statt Leaflet/Mapbox; `georangesearch` ist radius-basiert (nicht bbox). |
+| D17 | **Dark-first für die gesamte Seite** | Near-Black-Basis `#0B0B0D`, `color-scheme: dark`, `theme-color`. Kein Light-Theme (optionaler A11y-Toggle bleibt offene Designentscheidung). |
 
 ---
 
 ## Verlauf
+
+### 2026-06-25 (Abend) – Live-App + Portal-MVP deployed
+- Next.js-16-App scaffolded + auf **riegel.vercel.app** deployed (Push-to-`main` = Production), dark-first.
+- **Startseite** (4 Blocks: Hero / Leistungen / Aktuelle Angebote / Über+Kontakt) mit Akira-Headline (+ Outline-Gimmick) und von der Live-Seite gezogenen Platzhalter-Assets (Architektur-Hero, Sissy-Portrait).
+- **transitions-dev** appliziert: Menu-Dropdown, Icon-Swap (Hamburger↔X), Modal, Card-Tilt, Tooltip — alle mit `prefers-reduced-motion`-Guard; Motion-Tokens installiert.
+- **Portal `/immobilien`**: Airbnb/Zillow-Split — scrollbare Liste + sticky **MapLibre**-Dark-Karte (CARTO dark-matter, Gold-Preis-Pins) mit Hover/Active-Sync Liste↔Karte; URL-Filter (typ, preis, zimmer, fläche, ort, objektart, provisionsfrei, sort) + entfernbare Chips + Ergebniszähler; mobiler Liste/Karte-Umschalter.
+- **Detailseite**: Fakten, Beschreibung, Ausstattung, Lage, **Energieausweis (§87 GEG)** + **Provision (§656c)**, RealEstateListing-JSON-LD, Besichtigungs-Modal.
+- Alles auf **Mock-Daten** (10 Fixtures, kanonisches Estate-Modell) → OnOffice-Swap nur über den Adapter.
+- **Type-System final** (D15), **dark-first** verankert (D17).
+- **Für Live-Daten offen:** `ONOFFICE_TOKEN`/`SECRET`; dann `Get Field Configuration` (energy/courtage/kaltmiete-Feldnamen), Bild-CDN-Host für `remotePatterns`, Klärung Provisions-Texte/courtage_frei je Objekt.
 
 ### 2026-06-25 (später) – Live-Stack-Audit + Korrekturen + Portal-Fokus
 - Black-Box-Audit der Live-Seite (öffentliche HTTPS-Requests) → mehrere Briefing-Annahmen korrigiert (Details: [current-state.md](./docs/current-state.md)).
