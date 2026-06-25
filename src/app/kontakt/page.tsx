@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
+import { ContactForm } from "@/components/contact-form";
 import { site, whatsappHref } from "@/lib/site";
 
 export const metadata = { title: "Kontakt" };
@@ -15,6 +16,9 @@ export default function KontaktPage() {
       </PageIntro>
       <section className="py-20">
         <Container>
+          <div className="mb-10">
+            <ContactForm />
+          </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-surface p-6">
               <div className="text-xs uppercase tracking-widest text-faint">
@@ -73,8 +77,8 @@ export default function KontaktPage() {
             </Link>
           </div>
           <p className="mt-8 text-sm text-faint">
-            Ein komfortables Kontaktformular mit direkter Übergabe an unser CRM
-            ist in Vorbereitung.
+            Direkte Übergabe der Anfragen an unser OnOffice-CRM folgt mit der
+            Live-Anbindung.
           </p>
         </Container>
       </section>
