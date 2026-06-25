@@ -332,3 +332,39 @@
 @media (prefers-reduced-motion: reduce) {
   .t-tt { transition: none !important; }
 }
+
+/* ── Portal-Karten-Pins (MapLibre HTML-Marker) ── */
+.riegel-pin {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-accent);
+  background: rgba(11, 11, 13, 0.92);
+  border: 1px solid var(--color-accent);
+  border-radius: 9999px;
+  padding: 5px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 200ms,
+    color 200ms;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.riegel-pin:hover {
+  transform: scale(1.06);
+}
+.riegel-pin.is-active {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  transform: scale(1.12);
+  z-index: 5;
+}
+.riegel-pin:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .riegel-pin { transition: none !important; }
+}

@@ -1,28 +1,39 @@
-import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
-import { PropertyCard } from "@/components/property-card";
-import { mockEstates } from "@/lib/mock-estates";
+import { FilterBar } from "@/components/portal/filter-bar";
+import { ActiveChips } from "@/components/portal/active-chips";
+import { PortalView } from "@/components/portal/portal-view";
+import { mockEstates, ESTATE_ORTE } from "@/lib/mock-estates";
+import { filterEstates, parseFilters, type SearchParamsObj } from "@/lib/portal-filter";
 
-export const metadata = { title: "Immobilien" };
+export const metadata = {
+  title: "Immobilien",
+  description:
+    "Alle Immobilienangebote von Riegel Immobilien — filtern nach Typ, Preis, Ort, Zimmern und Fläche, mit interaktiver Karte. Keine Weiterleitung.",
+};
 
-export default function ImmobilienPage() {
+export default async function ImmobilienPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParamsObj>;
+}) {
+  const sp = await searchParams;
+  const filters = parseFilters(sp);
+  const results = filterEstates(mockEstates, filters);
+
   return (
-    <>
-      <PageIntro eyebrow="Portal" title="Immobilienangebote">
-        Filtern Sie nach Typ, Preis, Ort, Zimmern und Fläche — mit Karte und
-        teilbarer Suche, ganz ohne Weiterleitung. Das vollständige
-        Such-Erlebnis (Karte + Liste, Live-Filter) ist in Vorbereitung; unten
-        sehen Sie eine Vorschau mit Beispiel-Objekten.
-      </PageIntro>
-      <section className="py-16 sm:py-20">
-        <Container>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {mockEstates.map((e) => (
-              <PropertyCard key={e.slug} estate={e} />
-            ))}
-          </div>
+    <div>
+      <h1 className="sr-only">Immobilienangebote in Speyer, Ludwigshafen &amp; der Vorderpfalz</h1>
+      <div className="border-b border-border bg-bg pt-6">
+        <Container className="pb-5">
+          <FilterBar filters={filters} orte={ESTATE_ORTE} />
+          <ActiveChips filters={filters} resultCount={results.length} />
         </Container>
-      </section>
-    </>
+      </div>
+      <PortalView estates={results} />
+      <p className="px-5 pb-10 text-xs text-faint sm:px-8">
+        Vorschau mit Beispiel-Objekten · Live-Anbindung an OnOffice in
+        Vorbereitung · Karten-Tiles © OpenStreetMap, © CARTO.
+      </p>
+    </div>
   );
 }

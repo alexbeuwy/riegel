@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { inter, akira, akiraOutline } from "@/fonts";
 import { site } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
@@ -25,6 +25,12 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+// Dark-first: Browser-Chrome + native Controls dunkel, kein White-Flash.
+export const viewport: Viewport = {
+  themeColor: "#0b0b0d",
+  colorScheme: "dark",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -35,11 +41,11 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-bg text-fg">
         {/*
-          Markenschrift Neuzeit Grotesk (Adobe Fonts, lizenziert von Alex).
-          React-19-Hoisting via `precedence`.
-          TODO vor Cutover: (1) hinter Consent-Tool laden (externer Embed, TDDDG),
-          (2) Vercel-Domain im Adobe-Fonts-Web-Projekt whitelisten, sonst lädt der
-          Font nur auf riegel-immobilien.de — Fallback ist self-hosted Inter.
+          Markenschrift Neuzeit Grotesk (Adobe Fonts Web-Projekt, ID atg2aop).
+          Der dynamische Kit lädt per Projekt-ID auf JEDER Domain — keine
+          Domain-Freigabe nötig. React-19-Hoisting via `precedence`.
+          TODO vor Cutover: hinter Consent-Tool laden (externer Embed, TDDDG).
+          Fallback bis Kit geladen / falls geblockt: self-hosted Inter.
         */}
         <link
           rel="stylesheet"
