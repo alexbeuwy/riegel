@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
-import { HeroBackdrop } from "@/components/hero-backdrop";
 import { Magnetic } from "@/components/magnetic";
 import { PropertyCard } from "@/components/property-card";
 import { mockEstates } from "@/lib/mock-estates";
@@ -64,18 +63,19 @@ const services = [
 export default function HomePage() {
   return (
     <>
-      {/* ───────── Block 1 · Hero (WebGL-Mesh-Shader) ───────── */}
-      <section className="relative flex min-h-[92svh] items-center overflow-hidden">
-        <HeroBackdrop />
-        {/* Marken-Wave (blau) als wiederkehrendes Motiv */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/wave-2.svg"
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none absolute right-0 top-0 hidden h-full w-auto opacity-20 mix-blend-screen lg:block"
+      {/* ───────── Block 1 · Hero (Bild) ───────── */}
+      <section className="relative flex min-h-[92svh] items-end overflow-hidden">
+        <Image
+          src="/images/hero.jpg"
+          alt="Hochwertige Immobilie in der Region Speyer / Ludwigshafen"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
-        <Container className="relative z-10 py-32">
+        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/40 to-transparent" />
+        <Container className="relative z-10 pb-24 pt-32">
           <div className="max-w-3xl">
             <div className="reveal" style={{ animationDelay: "0ms" }}>
               <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
