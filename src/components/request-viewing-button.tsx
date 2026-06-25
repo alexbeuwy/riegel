@@ -29,12 +29,19 @@ export function RequestViewingButton({ title }: { title: string }) {
           direkter Übergabe an OnOffice ist in Vorbereitung.
         </p>
         <div className="mt-5 flex flex-col gap-3">
+          <Link
+            href="/termin"
+            onClick={() => setOpen(false)}
+            className="rounded-full bg-accent px-5 py-2.5 text-center text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+          >
+            Termin online buchen
+          </Link>
           {wa && (
             <a
               href={wa}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-accent px-5 py-2.5 text-center text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+              className="rounded-full border border-border px-5 py-2.5 text-center text-sm text-fg transition-colors hover:border-accent hover:text-accent"
             >
               Per WhatsApp anfragen
             </a>

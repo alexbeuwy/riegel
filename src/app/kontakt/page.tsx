@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { site, whatsappHref } from "@/lib/site";
@@ -56,6 +57,20 @@ export default function KontaktPage() {
                 )}
               </div>
             </div>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <Link
+              href="/termin"
+              className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            >
+              Termin online vereinbaren
+            </Link>
+            <Link
+              href="/rechner"
+              className="rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+            >
+              Immobilie bewerten
+            </Link>
           </div>
           <p className="mt-8 text-sm text-faint">
             Ein komfortables Kontaktformular mit direkter Übergabe an unser CRM
