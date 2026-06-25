@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { FavoritesProvider } from "@/components/favorites";
+import { SavedSearchesProvider } from "@/components/saved-searches";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -76,10 +77,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
         <FavoritesProvider>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-          <WhatsappFab />
+          <SavedSearchesProvider>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+            <WhatsappFab />
+          </SavedSearchesProvider>
         </FavoritesProvider>
       </body>
     </html>
