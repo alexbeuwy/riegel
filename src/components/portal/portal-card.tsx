@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Estate } from "@/lib/mock-estates";
@@ -37,6 +38,8 @@ export function PortalCard({
   onHover: (id: string | null) => void;
   registerRef: (el: HTMLElement | null) => void;
 }) {
+  const [idx, setIdx] = useState(0);
+  const imgs = estate.images.length ? estate.images : ["/images/prop-1.jpg"];
   return (
     <article
       ref={registerRef}
@@ -49,7 +52,7 @@ export function PortalCard({
       <Link href={`/immobilien/${estate.slug}`} className="group block">
         <div className="relative aspect-[16/10] overflow-hidden">
           <Image
-            src={estate.images[0]}
+            src={imgs[idx]}
             alt={`${estate.title}, ${estate.city}`}
             fill
             sizes="(max-width: 1024px) 100vw, 40vw"
@@ -63,6 +66,42 @@ export function PortalCard({
             {STATUS_LABEL[estate.status] && <Badge>{STATUS_LABEL[estate.status]}</Badge>}
           </div>
           <FavoriteButton id={estate.id} className="absolute right-3 top-3" />
+          {imgs.length > 1 && (
+            <>
+              <button
+                type="button"
+                aria-label="Vorheriges Bild"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIdx((i) => (i - 1 + imgs.length) % imgs.length);
+                }}
+                className="absolute left-2 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg opacity-0 backdrop-blur transition-opacity group-hover:flex group-hover:opacity-100"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                aria-label="Nächstes Bild"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIdx((i) => (i + 1) % imgs.length);
+                }}
+                className="absolute right-2 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg opacity-0 backdrop-blur transition-opacity group-hover:flex group-hover:opacity-100"
+              >
+                ›
+              </button>
+              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+                {imgs.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${i === idx ? "w-4 bg-accent" : "w-1.5 bg-fg/50"}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <div className="space-y-2 p-5">
           <div className="text-xl font-semibold text-fg">{formatPrice(estate)}</div>
