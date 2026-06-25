@@ -1,8 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/container";
 import { RequestViewingButton } from "@/components/request-viewing-button";
+import { EstateGallery } from "@/components/portal/estate-gallery";
+import { PropertyCard } from "@/components/property-card";
 import { mockEstates, type EnergyCertificate, type Estate } from "@/lib/mock-estates";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 import { site } from "@/lib/site";
@@ -79,6 +80,10 @@ export default async function EstateDetailPage({
     { label: "Objekttyp", value: estate.objectType ?? categoryLabel(estate.category) },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  const similar = mockEstates
+    .filter((e) => e.id !== estate.id && (e.category === estate.category || e.city === estate.city))
+    .slice(0, 3);
+
   return (
     <article className="pb-24 pt-24">
       <script
@@ -93,25 +98,9 @@ export default async function EstateDetailPage({
           / {estate.city} / <span className="text-muted">{estate.title}</span>
         </nav>
 
-        <div className="relative mt-5 aspect-[16/9] overflow-hidden rounded-2xl border border-border">
-          <Image
-            src={estate.images[0]}
-            alt={`${estate.title}, ${estate.city}`}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
+        <div className="mt-5">
+          <EstateGallery images={estate.images} title={estate.title} />
         </div>
-        {estate.images.length > 1 && (
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {estate.images.slice(1, 4).map((src, i) => (
-              <div key={i} className="relative aspect-[16/10] overflow-hidden rounded-lg border border-border">
-                <Image src={src} alt={`${estate.title} – Ansicht ${i + 2}`} fill sizes="33vw" className="object-cover" />
-              </div>
-            ))}
-          </div>
-        )}
 
         <div className="mt-10 grid gap-12 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-8">
@@ -208,6 +197,17 @@ export default async function EstateDetailPage({
             </p>
           </aside>
         </div>
+
+        {similar.length > 0 && (
+          <section className="mt-16">
+            <h2 className="mb-6 text-xl font-semibold">Ähnliche Objekte</h2>
+            <div className="grid gap-6 md:grid-cols-3">
+              {similar.map((e) => (
+                <PropertyCard key={e.id} estate={e} />
+              ))}
+            </div>
+          </section>
+        )}
       </Container>
     </article>
   );
