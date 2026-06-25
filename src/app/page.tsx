@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
+import { HeroBackdrop } from "@/components/hero-backdrop";
+import { Magnetic } from "@/components/magnetic";
 import { PropertyCard } from "@/components/property-card";
 import { mockEstates } from "@/lib/mock-estates";
 import { site } from "@/lib/site";
@@ -62,41 +64,44 @@ const services = [
 export default function HomePage() {
   return (
     <>
-      {/* ───────── Block 1 · Hero ───────── */}
-      <section className="relative flex min-h-[92svh] items-end overflow-hidden">
-        <Image
-          src="/images/hero.jpg"
-          alt="Hochwertige Immobilie in der Region Speyer / Ludwigshafen"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-bg/80 to-transparent" />
+      {/* ───────── Block 1 · Hero (WebGL-Mesh-Shader) ───────── */}
+      <section className="relative flex min-h-[92svh] items-center overflow-hidden">
+        <HeroBackdrop />
         {/* Marken-Wave (blau) als wiederkehrendes Motiv */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/wave-2.svg"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute right-0 top-0 hidden h-full w-auto opacity-25 mix-blend-screen lg:block"
+          className="pointer-events-none absolute right-0 top-0 hidden h-full w-auto opacity-20 mix-blend-screen lg:block"
         />
-
-        <Container className="relative z-10 pb-20 pt-32">
-          <div className="max-w-3xl space-y-7">
-            <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
-            <h1 className="akira text-[2.6rem] leading-[0.95] sm:text-7xl lg:text-[6.5rem]">
-              Immobilien
-              <br />
-              mit <span className="akira-outline">Niveau</span>
+        <Container className="relative z-10 py-32">
+          <div className="max-w-3xl">
+            <div className="reveal" style={{ animationDelay: "0ms" }}>
+              <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
+            </div>
+            <h1 className="mt-6 akira text-[2.6rem] leading-[0.95] sm:text-7xl lg:text-[6.5rem]">
+              <span className="reveal block" style={{ animationDelay: "80ms" }}>
+                Immobilien
+              </span>
+              <span className="reveal block" style={{ animationDelay: "180ms" }}>
+                mit <span className="akira-outline text-accent">Niveau</span>
+              </span>
             </h1>
-            <p className="max-w-xl text-lg text-muted">
+            <p
+              className="reveal mt-7 max-w-xl text-lg text-muted"
+              style={{ animationDelay: "320ms" }}
+            >
               Verkauf, Bewertung und Beratung mit regionaler Expertise —
               diskret, persönlich und auf höchstem Niveau.
             </p>
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <PrimaryCta href="/immobilien">Immobilien entdecken</PrimaryCta>
+            <div
+              className="reveal mt-9 flex flex-wrap items-center gap-4"
+              style={{ animationDelay: "440ms" }}
+            >
+              <Magnetic>
+                <PrimaryCta href="/immobilien">Immobilien entdecken</PrimaryCta>
+              </Magnetic>
               <GhostCta href="/rechner">Immobilie bewerten</GhostCta>
             </div>
           </div>
