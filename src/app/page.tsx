@@ -6,6 +6,8 @@ import { Magnetic } from "@/components/magnetic";
 import { PropertyCard } from "@/components/property-card";
 import { mockEstates } from "@/lib/mock-estates";
 import { site } from "@/lib/site";
+import { Faq } from "@/components/faq";
+import { faqs } from "@/lib/faq";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -63,6 +65,20 @@ const services = [
 export default function HomePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqs.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          }),
+        }}
+      />
       {/* ───────── Block 1 · Hero (Bild) ───────── */}
       <section className="relative flex min-h-[92svh] items-end overflow-hidden">
         <Image
@@ -168,6 +184,21 @@ export default function HomePage() {
           <p className="mt-8 text-sm text-faint">
             Vorschau mit Beispiel-Objekten · Live-Anbindung an OnOffice in Vorbereitung.
           </p>
+        </Container>
+      </section>
+
+      {/* ───────── Block · FAQ ───────── */}
+      <section className="border-t border-border py-24 sm:py-32">
+        <Container>
+          <Reveal className="max-w-2xl space-y-4">
+            <Eyebrow>Häufige Fragen</Eyebrow>
+            <h2 className="text-3xl font-semibold sm:text-4xl">
+              Antworten, bevor Sie fragen
+            </h2>
+          </Reveal>
+          <div className="mt-12 max-w-3xl">
+            <Faq />
+          </div>
         </Container>
       </section>
 
