@@ -74,6 +74,14 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg/80 to-transparent" />
+        {/* Marken-Wave (blau) als wiederkehrendes Motiv */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/wave-2.svg"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-0 hidden h-full w-auto opacity-25 mix-blend-screen lg:block"
+        />
 
         <Container className="relative z-10 pb-20 pt-32">
           <div className="max-w-3xl space-y-7">

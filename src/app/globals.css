@@ -13,10 +13,10 @@
   --color-fg: #f4f3f0; /* warmes Off-White, 17,7:1 */
   --color-muted: #a8a6a0; /* 8,1:1 */
   --color-faint: #7c7a75; /* 4,6:1 (AA Body) */
-  --color-accent: #c9a227; /* Champagner-Gold, 8,1:1 */
-  --color-accent-hover: #d9be6a;
-  --color-accent-strong: #e6d08a; /* Focus-Ring / Display */
-  --color-on-accent: #0b0b0d;
+  --color-accent: #015cff; /* RIEGEL-Blau (Marken-Akzent) */
+  --color-accent-hover: #357dff;
+  --color-accent-strong: #6aa1ff; /* hellere Tönung: Focus-Ring + Akzent-Text auf Dark */
+  --color-on-accent: #ffffff; /* weißer Text auf Blau-Button (5,3:1 ✅) */
 
   /* Body/UI: Neuzeit Grotesk (Adobe, läuft auf Domain) → Inter (self-hosted Fallback) */
   --font-sans: "neuzeit-grotesk", var(--font-inter), ui-sans-serif, system-ui, sans-serif;

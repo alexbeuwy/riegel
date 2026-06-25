@@ -5,13 +5,9 @@ import { site } from "@/lib/site";
 
 function Wordmark() {
   return (
-    <Link href="/" className="group flex flex-col leading-none" aria-label={`${site.name} – Startseite`}>
-      <span className="text-lg font-semibold tracking-[0.22em] text-fg transition-colors group-hover:text-accent">
-        RIEGEL
-      </span>
-      <span className="text-[0.58rem] font-medium tracking-[0.42em] text-muted">
-        IMMOBILIEN
-      </span>
+    <Link href="/" className="flex items-center" aria-label={`${site.name} – Startseite`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-riegel-white.svg" alt={site.name} className="h-6 w-auto sm:h-7" />
     </Link>
   );
 }

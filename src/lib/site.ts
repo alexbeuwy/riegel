@@ -30,10 +30,25 @@ export const site = {
     linkedin: "", // TODO: LinkedIn-URL von Sissy (Wunsch #7)
   },
 
-  // TODO: echte Kontaktdaten von Sissy bestätigen (Wunsch #6/#7)
-  whatsapp: "", // z. B. "4915123456789" (nur Ziffern, intl. ohne +)
-  phone: "", // z. B. "+49 6232 000000"
-  email: "", // z. B. "info@riegel-immobilien.de"
+  // Echte Daten von der Live-Seite übernommen:
+  whatsapp: "", // TODO: WhatsApp-Nummer von Sissy (nur Ziffern, intl.)
+  phone: "06232 100 10 10", // Speyer (Hauptnummer)
+  email: "info@riegel-immobilien.de",
+
+  locations: [
+    {
+      city: "Speyer",
+      street: "Wormser Straße 13",
+      zip: "67346",
+      phone: "06232 100 10 10",
+    },
+    {
+      city: "Ludwigshafen",
+      street: "Kaiser-Wilhelm-Straße 16",
+      zip: "67059",
+      phone: "0621 5200 8800",
+    },
+  ],
 
   legalNav: [
     { href: "/impressum", label: "Impressum" },
