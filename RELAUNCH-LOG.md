@@ -49,6 +49,16 @@ Kanonisches Projekt-Changelog für den Greenfield-Relaunch von **riegel-immobili
 
 ## Verlauf
 
+### 2026-06-25 (Nacht) – Feature-Sprint (M2/M3/M4/M6/M8) + Deploy-Fix
+- **Deploy gefixt:** Vercel-Projekt hatte Framework=„Other" (Import bei leerem Repo) + Deployment-Protection (SSO) an → beides per API korrigiert, Node ≥20.9 gepinnt → **riegel.vercel.app live**.
+- **Branding final:** Accent **RIEGEL-Blau `#015CFF`**, echtes weißes Logo, Wave-Motiv; WOW-Hero (Bild + animierte Headline + Magnetic-CTA).
+- **M2 Bewertungsrechner** (`/rechner`): Wizard → Multi-Quellen-Analyse (Shader-Backdrop, Progress) → höher tendierende Bewertung mit Count-up + Disclaimer.
+- **M3 (localStorage):** Merkliste/Favoriten (Herz + Header-Badge), Suchaufträge + „Mein Bereich" (`/merkliste`). Echte Accounts/Server-Sync **blockiert**: Supabase-Free-Limit (2 aktive Projekte/Org), Org-Anlage per API nicht möglich → wartet auf 1 Dashboard-Aktion.
+- **M4 Portal:** Skeleton-Loading, In-Card-Bildergalerie, „Mehr Filter"-Modal (Baujahr/Energieklasse).
+- **M6:** SEO (sitemap.xml, robots.txt, RealEstateAgent-JSON-LD) + Über-uns/Team-Seite mit echten Fotos.
+- **M8:** Impressum/Datenschutz/Widerruf ausformuliert (Entwurf, anwaltlich zu prüfen).
+- **Erkenntnis:** Unbeaufsichtigtes Dauerbauen via Cron geht nicht (Container schläft bei Idle) → Fortschritt in aktiven Turns, Commit für Commit.
+
 ### 2026-06-25 (Abend) – Live-App + Portal-MVP deployed
 - Next.js-16-App scaffolded + auf **riegel.vercel.app** deployed (Push-to-`main` = Production), dark-first.
 - **Startseite** (4 Blocks: Hero / Leistungen / Aktuelle Angebote / Über+Kontakt) mit Akira-Headline (+ Outline-Gimmick) und von der Live-Seite gezogenen Platzhalter-Assets (Architektur-Hero, Sissy-Portrait).
