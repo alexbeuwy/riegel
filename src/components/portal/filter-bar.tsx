@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEUR } from "@/lib/format";
+import { MoreFilters } from "@/components/portal/more-filters";
 import type { FilterState } from "@/lib/portal-filter";
 
 const KAUF_PREISE = [100000, 200000, 300000, 400000, 500000, 750000, 1000000, 1500000, 2000000];
@@ -148,6 +149,8 @@ export function FilterBar({
       >
         Provisionsfrei
       </button>
+
+      <MoreFilters filters={filters} />
 
       <div className="ml-auto">
         <Select

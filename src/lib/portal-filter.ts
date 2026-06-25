@@ -13,6 +13,8 @@ export interface FilterState {
   ort?: string;
   typObj?: ObjectCategory;
   provisionsfrei?: boolean;
+  energieklasseMax?: string;
+  baujahrMin?: number;
   sort: SortKey;
 }
 
@@ -26,6 +28,7 @@ const int = (v: string | string[] | undefined) => {
 
 const SORTS: SortKey[] = ["neu", "preis_asc", "preis_desc", "flaeche", "zimmer"];
 const CATS: ObjectCategory[] = ["wohnung", "haus", "grundstueck", "gewerbe"];
+export const ENERGIEKLASSEN = ["A+", "A", "B", "C", "D", "E", "F", "G", "H"];
 
 export function parseFilters(sp: SearchParamsObj): FilterState {
   const typ: MarketingType = one(sp.typ) === "miete" ? "miete" : "kauf";
@@ -43,6 +46,11 @@ export function parseFilters(sp: SearchParamsObj): FilterState {
     ort: one(sp.ort) || undefined,
     typObj,
     provisionsfrei: one(sp.provisionsfrei) === "1" || undefined,
+    energieklasseMax: (() => {
+      const v = one(sp.energieklasse_max);
+      return v && ENERGIEKLASSEN.includes(v) ? v : undefined;
+    })(),
+    baujahrMin: int(sp.baujahr_min),
     sort,
   };
 }
@@ -73,6 +81,14 @@ export function filterEstates(estates: Estate[], f: FilterState): Estate[] {
   if (f.ort) r = r.filter((e) => e.city.toLowerCase() === f.ort!.toLowerCase());
   if (f.typObj) r = r.filter((e) => e.category === f.typObj);
   if (f.provisionsfrei) r = r.filter((e) => e.provision.free);
+  if (f.energieklasseMax) {
+    const max = ENERGIEKLASSEN.indexOf(f.energieklasseMax);
+    r = r.filter(
+      (e) => e.energy.energyClass != null && ENERGIEKLASSEN.indexOf(e.energy.energyClass) <= max,
+    );
+  }
+  if (f.baujahrMin != null)
+    r = r.filter((e) => e.energy.year != null && e.energy.year >= f.baujahrMin!);
   return sortEstates(r, f.sort);
 }
 
@@ -87,5 +103,7 @@ export function activeChips(f: FilterState): { param: string; label: string }[] 
   if (f.ort) chips.push({ param: "ort", label: f.ort });
   if (f.typObj) chips.push({ param: "typ_obj", label: categoryLabel(f.typObj) });
   if (f.provisionsfrei) chips.push({ param: "provisionsfrei", label: "Provisionsfrei" });
+  if (f.energieklasseMax) chips.push({ param: "energieklasse_max", label: `bis Klasse ${f.energieklasseMax}` });
+  if (f.baujahrMin != null) chips.push({ param: "baujahr_min", label: `ab Baujahr ${f.baujahrMin}` });
   return chips;
 }
