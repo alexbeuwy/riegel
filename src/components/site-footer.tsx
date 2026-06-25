@@ -20,10 +20,25 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-border bg-surface">
       <Container className="grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="text-base font-semibold tracking-[0.2em] text-fg">RIEGEL</div>
           <p className="max-w-xs text-sm text-muted">{site.tagline}</p>
-          <p className="text-sm text-faint">{site.regions.join(" · ")}</p>
+          <div className="space-y-3 text-sm text-faint">
+            {site.locations.map((l) => (
+              <div key={l.city}>
+                <div className="text-muted">{l.city}</div>
+                <div>
+                  {l.street}, {l.zip} {l.city}
+                </div>
+                <a href={`tel:${l.phone.replace(/\s/g, "")}`} className="hover:text-fg">
+                  {l.phone}
+                </a>
+              </div>
+            ))}
+            <a href={`mailto:${site.email}`} className="block hover:text-fg">
+              {site.email}
+            </a>
+          </div>
         </div>
 
         <nav aria-label="Footer-Navigation" className="space-y-3">
