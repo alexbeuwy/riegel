@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Estate } from "@/lib/mock-estates";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
+import { FavoriteButton } from "@/components/favorites";
 
 const STATUS_LABEL: Partial<Record<Estate["status"], string>> = {
   reserviert: "Reserviert",
@@ -61,6 +62,7 @@ export function PortalCard({
             {estate.priceReduced && <Badge>Preis reduziert</Badge>}
             {STATUS_LABEL[estate.status] && <Badge>{STATUS_LABEL[estate.status]}</Badge>}
           </div>
+          <FavoriteButton id={estate.id} className="absolute right-3 top-3" />
         </div>
         <div className="space-y-2 p-5">
           <div className="text-xl font-semibold text-fg">{formatPrice(estate)}</div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { MobileMenu } from "@/components/mobile-menu";
+import { FavoritesLink } from "@/components/favorites";
 import { site } from "@/lib/site";
 
 function Wordmark() {
@@ -29,6 +30,7 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <FavoritesLink />
           <Link
             href="/rechner"
             className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
@@ -37,8 +39,11 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        {/* Mobile-Navigation: Icon-Swap (Hamburger ↔ X) + Dropdown */}
-        <MobileMenu />
+        {/* Mobile: Merkliste + Icon-Swap-Menü */}
+        <div className="flex items-center gap-1 md:hidden">
+          <FavoritesLink />
+          <MobileMenu />
+        </div>
       </Container>
     </header>
   );

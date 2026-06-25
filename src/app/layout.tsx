@@ -4,6 +4,7 @@ import { site } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
+import { FavoritesProvider } from "@/components/favorites";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -52,10 +53,12 @@ export default function RootLayout({
           href="https://use.typekit.net/atg2aop.css"
           precedence="default"
         />
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
-        <WhatsappFab />
+        <FavoritesProvider>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+          <WhatsappFab />
+        </FavoritesProvider>
       </body>
     </html>
   );
