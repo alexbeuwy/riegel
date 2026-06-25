@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/container";
+import { RequestViewingButton } from "@/components/request-viewing-button";
 import { mockEstates } from "@/lib/mock-estates";
 
 export function generateStaticParams() {
@@ -83,12 +84,7 @@ export default async function EstateDetailPage({
           <aside className="h-fit space-y-5 rounded-2xl border border-border bg-surface p-6">
             <div className="text-sm text-faint">Kaufpreis</div>
             <div className="text-3xl font-semibold text-accent">{estate.price}</div>
-            <Link
-              href="/kontakt"
-              className="block rounded-full bg-accent px-6 py-3 text-center text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
-            >
-              Besichtigung anfragen
-            </Link>
+            <RequestViewingButton title={estate.title} />
             <p className="text-xs text-faint">
               Unverbindliche Anfrage · Antwort i. d. R. innerhalb eines
               Werktages.

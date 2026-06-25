@@ -48,16 +48,21 @@ export function SiteFooter() {
           <div className="text-xs uppercase tracking-widest text-faint">Folgen</div>
           <div className="flex gap-3">
             {socialLinks.map(({ key, href, label, Icon }) => (
-              <a
-                key={key}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted transition-colors hover:border-accent hover:text-accent"
-              >
-                <Icon />
-              </a>
+              <span key={key} className="t-tt-wrap">
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  aria-describedby={`tt-${key}`}
+                  className="t-tt-trigger flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted transition-colors hover:border-accent hover:text-accent"
+                >
+                  <Icon />
+                </a>
+                <span className="t-tt" id={`tt-${key}`} role="tooltip">
+                  {label}
+                </span>
+              </span>
             ))}
           </div>
         </div>
