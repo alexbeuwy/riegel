@@ -1,0 +1,76 @@
+import Link from "next/link";
+import { Container } from "@/components/container";
+import { site } from "@/lib/site";
+import {
+  InstagramIcon,
+  FacebookIcon,
+  YoutubeIcon,
+  LinkedinIcon,
+} from "@/components/social-icons";
+
+const socialLinks = [
+  { key: "instagram", href: site.socials.instagram, label: "Instagram", Icon: InstagramIcon },
+  { key: "facebook", href: site.socials.facebook, label: "Facebook", Icon: FacebookIcon },
+  { key: "youtube", href: site.socials.youtube, label: "YouTube", Icon: YoutubeIcon },
+  { key: "linkedin", href: site.socials.linkedin, label: "LinkedIn", Icon: LinkedinIcon },
+].filter((s) => s.href);
+
+export function SiteFooter() {
+  const year = 2026;
+  return (
+    <footer className="mt-auto border-t border-border bg-surface">
+      <Container className="grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-3">
+          <div className="text-base font-semibold tracking-[0.2em] text-fg">RIEGEL</div>
+          <p className="max-w-xs text-sm text-muted">{site.tagline}</p>
+          <p className="text-sm text-faint">{site.regions.join(" · ")}</p>
+        </div>
+
+        <nav aria-label="Footer-Navigation" className="space-y-3">
+          <div className="text-xs uppercase tracking-widest text-faint">Navigation</div>
+          {site.nav.map((item) => (
+            <Link key={item.href} href={item.href} className="block text-sm text-muted hover:text-fg">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <nav aria-label="Rechtliches" className="space-y-3">
+          <div className="text-xs uppercase tracking-widest text-faint">Rechtliches</div>
+          {site.legalNav.map((item) => (
+            <Link key={item.href} href={item.href} className="block text-sm text-muted hover:text-fg">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="space-y-4">
+          <div className="text-xs uppercase tracking-widest text-faint">Folgen</div>
+          <div className="flex gap-3">
+            {socialLinks.map(({ key, href, label, Icon }) => (
+              <a
+                key={key}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                <Icon />
+              </a>
+            ))}
+          </div>
+        </div>
+      </Container>
+
+      <div className="border-t border-border">
+        <Container className="flex flex-col items-center justify-between gap-2 py-6 text-xs text-faint sm:flex-row">
+          <span>© {year} {site.legalName}. Alle Rechte vorbehalten.</span>
+          <Link href="/widerruf" className="hover:text-fg">
+            Widerrufsbelehrung
+          </Link>
+        </Container>
+      </div>
+    </footer>
+  );
+}
