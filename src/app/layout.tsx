@@ -32,6 +32,24 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+const orgJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "RealEstateAgent",
+  name: site.name,
+  url: site.url,
+  email: site.email,
+  telephone: site.phone,
+  areaServed: site.regions,
+  address: site.locations.map((l) => ({
+    "@type": "PostalAddress",
+    streetAddress: l.street,
+    postalCode: l.zip,
+    addressLocality: l.city,
+    addressCountry: "DE",
+  })),
+  sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube].filter(Boolean),
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -52,6 +70,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://use.typekit.net/atg2aop.css"
           precedence="default"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
         <FavoritesProvider>
           <SiteHeader />
