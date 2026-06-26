@@ -3,6 +3,7 @@ import { inter, akira, akiraOutline } from "@/fonts";
 import { site } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { CtaBand } from "@/components/cta-band";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { FavoritesProvider } from "@/components/favorites";
 import { SavedSearchesProvider } from "@/components/saved-searches";
@@ -80,6 +81,7 @@ export default function RootLayout({
           <SavedSearchesProvider>
             <SiteHeader />
             <main className="flex-1">{children}</main>
+            <CtaBand />
             <SiteFooter />
             <WhatsappFab />
           </SavedSearchesProvider>
