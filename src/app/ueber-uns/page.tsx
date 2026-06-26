@@ -42,6 +42,7 @@ const familie = [
 
 // Das übrige Team — vorübergehend als Platzhalter (18 Expert:innen gesamt).
 // Profile/Fotos folgen; Rollenbereiche real abgebildet.
+// 14 Platzhalter + 4 Familie = 18 Expert:innen. Namen/Porträts folgen.
 const teamRollen = [
   "Immobilienberatung Speyer",
   "Immobilienberatung Ludwigshafen",
@@ -55,6 +56,8 @@ const teamRollen = [
   "Vertragswesen",
   "Drohnen- & Videoproduktion",
   "Kundenbetreuung",
+  "Social Media & Content",
+  "Assistenz der Geschäftsleitung",
 ];
 
 const werte: { icon: IconName; title: string; text: string }[] = [

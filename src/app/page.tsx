@@ -51,7 +51,7 @@ function GhostCta({ href, children }: { href: string; children: React.ReactNode 
 const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
   { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
   { value: "Ø ~4 Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
-  { value: "Top 21", label: "ImmoAward 2025 · Makler des Jahres (national)", icon: "star" },
+  { value: "Top 21", label: "von über 25.000 Maklern bundesweit · ImmoAward 2025", icon: "star" },
   { value: "2", label: "Standorte — Speyer & Ludwigshafen", icon: "pin" },
 ];
 
@@ -107,11 +107,11 @@ export default function HomePage() {
               Verkauf, Bewertung und Beratung in Speyer, Ludwigshafen und der
               Vorderpfalz — diskret, persönlich und datenbasiert.
             </p>
-            <div className="reveal mt-9" style={{ animationDelay: "480ms" }}>
+            <div className="reveal relative z-20 mt-9" style={{ animationDelay: "480ms" }}>
               <HeroAddressSearch />
             </div>
             <div
-              className="reveal mt-5 flex flex-wrap items-center gap-4"
+              className="reveal relative z-10 mt-5 flex flex-wrap items-center gap-4"
               style={{ animationDelay: "560ms" }}
             >
               <Magnetic>
