@@ -12,6 +12,8 @@ import { BentoGrid, BentoTile } from "@/components/bento";
 import { Icon } from "@/components/icon";
 import { HeroAddressSearch } from "@/components/hero-address-search";
 import { ShaderCta } from "@/components/shader-cta";
+import { AwardHighlight } from "@/components/award-highlight";
+import { ReelsGrid } from "@/components/reels-grid";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -259,6 +261,12 @@ export default function HomePage() {
           </p>
         </Container>
       </section>
+
+      {/* ───────── Block · ImmoAward 2025 ───────── */}
+      <AwardHighlight />
+
+      {/* ───────── Block · Instagram-Reels ───────── */}
+      <ReelsGrid />
 
       {/* ───────── Block · Shader-CTA (Sofort-Bewertung) ───────── */}
       <ShaderCta />
