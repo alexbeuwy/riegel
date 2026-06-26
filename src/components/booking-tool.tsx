@@ -141,7 +141,7 @@ export function BookingTool() {
                 key={t.label}
                 type="button"
                 onClick={() => setType(t.label)}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
+                className={`press inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${
                   type === t.label ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
                 }`}
               >
@@ -163,7 +163,7 @@ export function BookingTool() {
                 key={d.iso}
                 type="button"
                 onClick={() => setDate(d.iso)}
-                className={`rounded-lg border px-2 py-2 text-sm capitalize transition-colors ${
+                className={`press rounded-lg border px-2 py-2 text-sm capitalize ${
                   date === d.iso ? "border-accent bg-surface-2 text-fg" : "border-border text-muted hover:text-fg"
                 }`}
               >
@@ -184,7 +184,7 @@ export function BookingTool() {
                 key={t}
                 type="button"
                 onClick={() => setTime(t)}
-                className={`rounded-lg border px-4 py-2 text-sm transition-colors ${
+                className={`press rounded-lg border px-4 py-2 text-sm ${
                   time === t ? "border-accent bg-surface-2 text-fg" : "border-border text-muted hover:text-fg"
                 }`}
               >

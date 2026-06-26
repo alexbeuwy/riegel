@@ -245,7 +245,7 @@ export function Calculator() {
                   key={o.key}
                   type="button"
                   onClick={() => set("objektart", o.key)}
-                  className={`flex flex-col items-center gap-3 rounded-xl border p-5 transition-colors ${
+                  className={`press flex flex-col items-center gap-3 rounded-xl border p-5 ${
                     f.objektart === o.key ? "border-accent bg-surface-2" : "border-border hover:border-accent/50"
                   }`}
                 >
@@ -297,7 +297,12 @@ export function Calculator() {
             {f.address && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-accent">
-                  <Icon name="check" size={16} /> Adresse bestätigt
+                  <span className="t-success-check" data-state="in" aria-hidden>
+                    <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m5 12 4 4 10-10" />
+                    </svg>
+                  </span>{" "}
+                  Adresse bestätigt
                 </div>
                 <div className="relative h-52 overflow-hidden rounded-xl border border-border">
                   <LocationMap lat={f.address.lat} lng={f.address.lng} />

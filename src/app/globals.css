@@ -548,6 +548,24 @@
   .t-tabs-pill, .t-tab { transition: none !important; }
 }
 
+/* ── Taktiles Klick-Feedback (überall auf Auswahl-Buttons/Kacheln) ──
+   Deckt Transform UND Farben ab, damit es eine vorhandene
+   `transition-colors` nicht überschreibt. */
+.press {
+  transition:
+    transform 130ms var(--ease-smooth-out),
+    border-color 200ms var(--ease-smooth-out),
+    background-color 200ms var(--ease-smooth-out),
+    color 200ms var(--ease-smooth-out);
+}
+.press:active {
+  transform: scale(0.975);
+}
+@media (prefers-reduced-motion: reduce) {
+  .press { transition: none !important; }
+  .press:active { transform: none !important; }
+}
+
 /* ── 11 Avatar/Chip group hover ── */
 .t-avatar {
   transform-origin: center;
