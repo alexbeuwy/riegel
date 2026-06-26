@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { ContactForm } from "@/components/contact-form";
+import { Icon } from "@/components/icon";
 import { site, whatsappHref } from "@/lib/site";
 
 export const metadata = { title: "Kontakt" };
@@ -21,18 +22,20 @@ export default function KontaktPage() {
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-surface p-6">
-              <div className="text-xs uppercase tracking-widest text-faint">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-faint">
+                <Icon name="phone" size={16} className="text-accent" />
                 Telefon
               </div>
-              <div className="mt-2 text-lg text-fg">
+              <div className="mt-3 text-lg text-fg">
                 {site.phone || "wird in Kürze ergänzt"}
               </div>
             </div>
             <div className="rounded-xl border border-border bg-surface p-6">
-              <div className="text-xs uppercase tracking-widest text-faint">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-faint">
+                <Icon name="mail" size={16} className="text-accent" />
                 E-Mail
               </div>
-              <div className="mt-2 text-lg text-fg">
+              <div className="mt-3 text-lg text-fg">
                 {site.email ? (
                   <a href={`mailto:${site.email}`} className="hover:text-accent">
                     {site.email}
@@ -43,10 +46,11 @@ export default function KontaktPage() {
               </div>
             </div>
             <div className="rounded-xl border border-border bg-surface p-6">
-              <div className="text-xs uppercase tracking-widest text-faint">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-faint">
+                <Icon name="whatsapp" size={16} className="text-accent" />
                 WhatsApp
               </div>
-              <div className="mt-2 text-lg text-fg">
+              <div className="mt-3 text-lg text-fg">
                 {wa ? (
                   <a
                     href={wa}

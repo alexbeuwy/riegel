@@ -8,6 +8,8 @@ import { mockEstates } from "@/lib/mock-estates";
 import { site } from "@/lib/site";
 import { Faq } from "@/components/faq";
 import { faqs } from "@/lib/faq";
+import { BentoGrid, BentoTile } from "@/components/bento";
+import { Icon } from "@/components/icon";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -42,24 +44,11 @@ function GhostCta({ href, children }: { href: string; children: React.ReactNode 
   );
 }
 
-const services = [
-  {
-    title: "Verkauf",
-    text: "Diskrete, professionelle Vermarktung Ihrer Immobilie — von der Bewertung bis zum Notartermin.",
-    icon: <path d="M3 10.5 12 4l9 6.5M5 9.5V20h14V9.5M9.5 20v-5h5v5" />,
-  },
-  {
-    title: "Bewertung",
-    text: "Fundierte Markteinschätzung Ihrer Immobilie — datenbasiert, regional, kostenfrei.",
-    icon: <path d="M4 19V5m0 14h16M8 16l3-4 3 2 4-6" />,
-  },
-  {
-    title: "Beratung",
-    text: "Persönliche Begleitung bei Kauf, Verkauf und Finanzierung — auf Augenhöhe.",
-    icon: (
-      <path d="M7.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm9 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20c0-2.5 2-4.5 4.5-4.5S12 17.5 12 20m1 0c0-2.5 2-4.5 4.5-4.5S22 17.5 22 20" />
-    ),
-  },
+const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
+  { value: "2", label: "Standorte — Speyer & Ludwigshafen", icon: "pin" },
+  { value: "100 %", label: "Persönlich betreut, von der Inhaberin", icon: "users" },
+  { value: "< 1 Tag", label: "Reaktionszeit auf Ihre Anfrage", icon: "clock" },
+  { value: "kostenfrei", label: "Erstbewertung Ihrer Immobilie", icon: "euro" },
 ];
 
 export default function HomePage() {
@@ -124,7 +113,7 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* ───────── Block 2 · Leistungen ───────── */}
+      {/* ───────── Block 2 · Leistungen (Bento) ───────── */}
       <section className="py-24 sm:py-32">
         <Container>
           <Reveal className="max-w-2xl space-y-4">
@@ -134,27 +123,99 @@ export default function HomePage() {
             </h2>
           </Reveal>
 
-          <div className="mt-14 grid gap-6 md:grid-cols-3">
-            {services.map((s, i) => (
-              <Reveal key={s.title} delay={i * 90}>
-                <div className="h-full rounded-xl border border-border bg-surface p-7 transition-colors duration-500 hover:border-accent/50">
-                  <svg
-                    viewBox="0 0 24 24"
-                    width={28}
-                    height={28}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.25}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-accent"
-                    aria-hidden
-                  >
-                    {s.icon}
-                  </svg>
-                  <h3 className="mt-5 text-xl font-semibold text-fg">{s.title}</h3>
-                  <p className="mt-3 text-muted">{s.text}</p>
-                </div>
+          <Reveal className="mt-14">
+            <BentoGrid>
+              <BentoTile
+                icon="key"
+                eyebrow="Kernleistung"
+                title="Verkauf & Vermarktung"
+                cols="2"
+                rows="2"
+                href="/verkaufen"
+                cta="Mehr zum Verkaufsprozess"
+              >
+                <p>
+                  Diskrete, professionelle Vermarktung Ihrer Immobilie — von der
+                  Bewertung über Exposé, Fotografie und Besichtigungen bis zum
+                  Notartermin.
+                </p>
+                <ul className="mt-5 space-y-2.5">
+                  {[
+                    "Marktgerechte, datenbasierte Preisermittlung",
+                    "Hochwertiges Exposé & professionelle Fotos",
+                    "Qualifizierte Interessenten, diskrete Abwicklung",
+                    "Begleitung bis zur Schlüsselübergabe",
+                  ].map((t) => (
+                    <li key={t} className="flex items-start gap-2.5 text-fg/90">
+                      <span className="mt-0.5 text-accent">
+                        <Icon name="check" size={17} />
+                      </span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </BentoTile>
+
+              <BentoTile
+                icon="calculator"
+                eyebrow="In 60 Sekunden"
+                title="Online-Bewertung"
+                cols="2"
+                href="/rechner"
+                cta="Immorechner starten"
+              >
+                Fundierte Markteinschätzung — datenbasiert, regional und kostenfrei.
+                Ohne Anmeldung, direkt mit Ergebnis.
+              </BentoTile>
+
+              <BentoTile icon="handshake" eyebrow="Persönlich" title="Beratung">
+                Begleitung bei Kauf, Verkauf und Finanzierung — auf Augenhöhe.
+              </BentoTile>
+
+              <BentoTile icon="home" eyebrow="Für Eigentümer" title="Vermietung">
+                Bonitätsgeprüfte Mieter, rechtssichere Verträge, weniger Aufwand.
+              </BentoTile>
+
+              <BentoTile
+                icon="search"
+                eyebrow="Suchen & Filtern"
+                title="Immobilienportal"
+                cols="2"
+                accent
+                href="/immobilien"
+                cta="Zum Portal"
+              >
+                Alle Objekte durchsuchen, filtern und auf der Karte entdecken —
+                Zillow-Style, mit teilbaren Suchen.
+              </BentoTile>
+
+              <BentoTile
+                icon="calendar"
+                eyebrow="Online"
+                title="Termin buchen"
+                cols="2"
+                href="/termin"
+                cta="Wunschtermin wählen"
+              >
+                Beratungs- oder Besichtigungstermin in wenigen Klicks — inkl.
+                Kalendereintrag zum Download.
+              </BentoTile>
+            </BentoGrid>
+          </Reveal>
+        </Container>
+      </section>
+
+      {/* ───────── Block · Kennzahlen ───────── */}
+      <section className="border-y border-border bg-surface/40 py-16">
+        <Container>
+          <div className="grid grid-cols-2 gap-y-10 sm:gap-6 lg:grid-cols-4">
+            {stats.map((s, i) => (
+              <Reveal key={s.label} delay={i * 80} className="flex flex-col items-start">
+                <span className="mb-3 text-accent">
+                  <Icon name={s.icon} size={24} />
+                </span>
+                <span className="akira text-3xl text-fg sm:text-4xl">{s.value}</span>
+                <span className="mt-2 max-w-[12rem] text-sm text-muted">{s.label}</span>
               </Reveal>
             ))}
           </div>
@@ -162,7 +223,7 @@ export default function HomePage() {
       </section>
 
       {/* ───────── Block 3 · Aktuelle Angebote ───────── */}
-      <section className="border-t border-border bg-surface/40 py-24 sm:py-32">
+      <section className="py-24 sm:py-32">
         <Container>
           <Reveal className="flex flex-wrap items-end justify-between gap-6">
             <div className="max-w-2xl space-y-4">

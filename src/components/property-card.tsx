@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Estate } from "@/lib/mock-estates";
 import { TiltCard } from "@/components/tilt-card";
+import { Icon } from "@/components/icon";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 
 export function PropertyCard({ estate }: { estate: Estate }) {
@@ -32,19 +33,34 @@ export function PropertyCard({ estate }: { estate: Estate }) {
         </div>
         <div className="space-y-2 p-5">
           <div className="text-lg font-semibold text-fg">{formatPrice(estate)}</div>
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
-            {roomsLabel(estate.rooms) && <span>{roomsLabel(estate.rooms)}</span>}
-            {formatArea(estate.livingArea) && <span>{formatArea(estate.livingArea)}</span>}
-            <span>{categoryLabel(estate.category)}</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+            {roomsLabel(estate.rooms) && (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="bed" size={16} className="text-faint" />
+                {roomsLabel(estate.rooms)}
+              </span>
+            )}
+            {formatArea(estate.livingArea) && (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="ruler" size={16} className="text-faint" />
+                {formatArea(estate.livingArea)}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="building" size={16} className="text-faint" />
+              {categoryLabel(estate.category)}
+            </span>
           </div>
           <h3 className="line-clamp-1 text-base text-muted">{estate.title}</h3>
           <div className="flex items-center justify-between pt-1">
-            <span className="text-sm text-faint">
+            <span className="inline-flex items-center gap-1.5 text-sm text-faint">
+              <Icon name="pin" size={16} />
               {estate.city}
               {estate.district ? ` · ${estate.district}` : ""}
             </span>
-            <span className="text-sm text-muted transition-colors group-hover:text-fg">
-              Ansehen →
+            <span className="inline-flex items-center gap-1 text-sm text-muted transition-colors group-hover:text-accent">
+              Ansehen
+              <Icon name="arrowRight" size={16} className="transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
         </div>
