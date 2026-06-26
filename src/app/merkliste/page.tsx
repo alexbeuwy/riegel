@@ -6,6 +6,7 @@ import { PageIntro } from "@/components/page-intro";
 import { PortalCard } from "@/components/portal/portal-card";
 import { useFavorites } from "@/components/favorites";
 import { useSavedSearches } from "@/components/saved-searches";
+import { Icon } from "@/components/icon";
 import { mockEstates } from "@/lib/mock-estates";
 
 export default function MeinBereichPage() {
@@ -25,11 +26,17 @@ export default function MeinBereichPage() {
         <Container className="space-y-16">
           {/* Merkliste */}
           <div>
-            <h2 className="mb-6 text-xl font-semibold">Gemerkte Immobilien</h2>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold">
+              <Icon name="heart" size={20} className="text-accent" />
+              Gemerkte Immobilien
+            </h2>
             {!ready ? (
               <div className="h-32" />
             ) : estates.length === 0 ? (
               <div className="rounded-2xl border border-border bg-surface p-10 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface-2 text-accent">
+                  <Icon name="heart" size={26} />
+                </div>
                 <p className="mx-auto max-w-md text-muted">
                   Noch nichts gemerkt — tippen Sie bei einer Immobilie auf das
                   Herz.
@@ -59,7 +66,10 @@ export default function MeinBereichPage() {
 
           {/* Suchaufträge */}
           <div>
-            <h2 className="mb-6 text-xl font-semibold">Suchaufträge</h2>
+            <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold">
+              <Icon name="search" size={20} className="text-accent" />
+              Suchaufträge
+            </h2>
             {!sReady ? (
               <div className="h-20" />
             ) : searches.length === 0 ? (
