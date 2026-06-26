@@ -4,6 +4,7 @@ import { Container } from "@/components/container";
 import { RequestViewingButton } from "@/components/request-viewing-button";
 import { EstateGallery } from "@/components/portal/estate-gallery";
 import { PropertyCard } from "@/components/property-card";
+import { Icon, type IconName } from "@/components/icon";
 import { mockEstates, type EnergyCertificate, type Estate } from "@/lib/mock-estates";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 import { site } from "@/lib/site";
@@ -74,11 +75,11 @@ export default async function EstateDetailPage({
   if (!estate) notFound();
 
   const facts = [
-    roomsLabel(estate.rooms) && { label: "Zimmer", value: roomsLabel(estate.rooms) },
-    formatArea(estate.livingArea) && { label: "Wohnfläche", value: formatArea(estate.livingArea) },
-    estate.plotArea && { label: "Grundstück", value: `${estate.plotArea} m²` },
-    { label: "Objekttyp", value: estate.objectType ?? categoryLabel(estate.category) },
-  ].filter(Boolean) as { label: string; value: string }[];
+    roomsLabel(estate.rooms) && { label: "Zimmer", value: roomsLabel(estate.rooms), icon: "bed" as IconName },
+    formatArea(estate.livingArea) && { label: "Wohnfläche", value: formatArea(estate.livingArea), icon: "ruler" as IconName },
+    estate.plotArea && { label: "Grundstück", value: `${estate.plotArea} m²`, icon: "tree" as IconName },
+    { label: "Objekttyp", value: estate.objectType ?? categoryLabel(estate.category), icon: "building" as IconName },
+  ].filter(Boolean) as { label: string; value: string; icon: IconName }[];
 
   const similar = mockEstates
     .filter((e) => e.id !== estate.id && (e.category === estate.category || e.city === estate.city))
@@ -115,8 +116,11 @@ export default async function EstateDetailPage({
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {facts.map((f) => (
                 <div key={f.label} className="rounded-xl border border-border bg-surface p-4">
-                  <dt className="text-xs uppercase tracking-widest text-faint">{f.label}</dt>
-                  <dd className="mt-1 text-lg text-fg">{f.value}</dd>
+                  <dt className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-faint">
+                    <Icon name={f.icon} size={15} className="text-accent" />
+                    {f.label}
+                  </dt>
+                  <dd className="mt-1.5 text-lg text-fg">{f.value}</dd>
                 </div>
               ))}
             </dl>
@@ -133,7 +137,8 @@ export default async function EstateDetailPage({
                 <h2 className="text-xl font-semibold">Ausstattung</h2>
                 <ul className="flex flex-wrap gap-2">
                   {estate.features.map((f) => (
-                    <li key={f} className="rounded-full border border-border bg-surface px-3 py-1 text-sm text-muted">
+                    <li key={f} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-sm text-muted">
+                      <Icon name="check" size={14} className="text-accent" />
                       {f}
                     </li>
                   ))}
