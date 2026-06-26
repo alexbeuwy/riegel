@@ -2,6 +2,7 @@ import Image from "next/image";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
+import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
 
 export const metadata = {
@@ -17,10 +18,22 @@ const team = [
   { name: "Christoph", role: "Immobilienberatung", img: "/images/team-christoph.jpg" },
 ];
 
-const werte = [
-  ["Diskretion", "Vertraulichkeit in jeder Phase — vom ersten Gespräch bis zum Notartermin."],
-  ["Marktkenntnis", "Echte Daten und regionale Erfahrung statt Bauchgefühl."],
-  ["Persönlich", "Ein fester Ansprechpartner, der Ihre Region und Ihre Ziele kennt."],
+const werte: { icon: IconName; title: string; text: string }[] = [
+  {
+    icon: "shield",
+    title: "Diskretion",
+    text: "Vertraulichkeit in jeder Phase — vom ersten Gespräch bis zum Notartermin.",
+  },
+  {
+    icon: "chart",
+    title: "Marktkenntnis",
+    text: "Echte Daten und regionale Erfahrung statt Bauchgefühl.",
+  },
+  {
+    icon: "handshake",
+    title: "Persönlich",
+    text: "Ein fester Ansprechpartner, der Ihre Region und Ihre Ziele kennt.",
+  },
 ];
 
 export default function UeberUnsPage() {
@@ -73,10 +86,15 @@ export default function UeberUnsPage() {
             <span className="text-sm uppercase tracking-[0.25em] text-muted">Wofür wir stehen</span>
           </div>
           <div className="mt-10 divide-y divide-border border-y border-border">
-            {werte.map(([t, d]) => (
-              <div key={t} className="grid gap-2 py-6 md:grid-cols-[200px_1fr] md:gap-10">
-                <div className="text-xl font-semibold text-fg">{t}</div>
-                <div className="text-muted">{d}</div>
+            {werte.map((w) => (
+              <div key={w.title} className="grid gap-2 py-6 md:grid-cols-[220px_1fr] md:gap-10">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface-2 text-accent">
+                    <Icon name={w.icon} size={20} />
+                  </span>
+                  <span className="text-xl font-semibold text-fg">{w.title}</span>
+                </div>
+                <div className="text-muted">{w.text}</div>
               </div>
             ))}
           </div>
