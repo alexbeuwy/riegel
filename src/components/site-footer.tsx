@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Container } from "@/components/container";
+import { Icon } from "@/components/icon";
 import { site } from "@/lib/site";
 import {
   InstagramIcon,
@@ -23,19 +24,34 @@ export function SiteFooter() {
         <div className="space-y-4">
           <div className="text-base font-semibold tracking-[0.2em] text-fg">RIEGEL</div>
           <p className="max-w-xs text-sm text-muted">{site.tagline}</p>
-          <div className="space-y-3 text-sm text-faint">
+          <div className="space-y-4 text-sm text-faint">
             {site.locations.map((l) => (
-              <div key={l.city}>
-                <div className="text-muted">{l.city}</div>
+              <div key={l.city} className="flex gap-2.5">
+                <span className="mt-0.5 text-accent">
+                  <Icon name="pin" size={16} />
+                </span>
                 <div>
-                  {l.street}, {l.zip} {l.city}
+                  <div className="text-muted">{l.city}</div>
+                  <div>
+                    {l.street}, {l.zip} {l.city}
+                  </div>
+                  <a
+                    href={`tel:${l.phone.replace(/\s/g, "")}`}
+                    className="inline-flex items-center gap-1.5 hover:text-fg"
+                  >
+                    <Icon name="phone" size={14} />
+                    {l.phone}
+                  </a>
                 </div>
-                <a href={`tel:${l.phone.replace(/\s/g, "")}`} className="hover:text-fg">
-                  {l.phone}
-                </a>
               </div>
             ))}
-            <a href={`mailto:${site.email}`} className="block hover:text-fg">
+            <a
+              href={`mailto:${site.email}`}
+              className="flex items-center gap-2.5 hover:text-fg"
+            >
+              <span className="text-accent">
+                <Icon name="mail" size={16} />
+              </span>
               {site.email}
             </a>
           </div>

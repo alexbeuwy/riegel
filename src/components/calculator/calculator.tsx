@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { HeroBackdrop } from "@/components/hero-backdrop";
+import { Icon } from "@/components/icon";
 import { formatEUR } from "@/lib/format";
 import { searchAddress, type GeoResult } from "@/lib/geocode";
 import {
@@ -296,7 +297,7 @@ export function Calculator() {
             {f.address && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-accent">
-                  <span>✓</span> Adresse bestätigt
+                  <Icon name="check" size={16} /> Adresse bestätigt
                 </div>
                 <div className="relative h-52 overflow-hidden rounded-xl border border-border">
                   <LocationMap lat={f.address.lat} lng={f.address.lng} />
@@ -485,14 +486,17 @@ function Result({ f, result, onReset }: { f: FormState; result: ValuationResult;
         </div>
 
         <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {[
-            { k: "Preis / m²", v: formatEUR(result.pricePerSqm) },
-            { k: "Vergleichsobjekte", v: `${result.comparables}` },
-            { k: "Markttrend", v: `+${result.trendPct} %` },
-            { k: "Mikrolage", v: `${result.mikrolage}/10` },
-            { k: "Konfidenz", v: `${result.confidence} %` },
-          ].map((s) => (
+          {([
+            { k: "Preis / m²", v: formatEUR(result.pricePerSqm), icon: "euro" },
+            { k: "Vergleichsobjekte", v: `${result.comparables}`, icon: "layers" },
+            { k: "Markttrend", v: `+${result.trendPct} %`, icon: "trend" },
+            { k: "Mikrolage", v: `${result.mikrolage}/10`, icon: "compass" },
+            { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
+          ] as const).map((s) => (
             <div key={s.k} className="rounded-xl border border-border bg-surface p-4 text-center">
+              <div className="mb-2 flex justify-center text-accent">
+                <Icon name={s.icon} size={20} />
+              </div>
               <div className="text-xs uppercase tracking-widest text-faint">{s.k}</div>
               <div className="mt-1 text-base text-fg">{s.v}</div>
             </div>
