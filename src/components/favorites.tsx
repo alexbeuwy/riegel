@@ -54,7 +54,11 @@ export function useFavorites() {
 }
 
 const HeartPath = (
-  <path d="M12 21s-7.4-4.55-9.9-9.2C.85 8.7 2.2 5.3 5.4 5.02c2-.18 3.55 1 4.6 2.55C11.05 6 12.6 4.84 14.6 5.02c3.2.28 4.55 3.68 3.3 6.78C19.4 16.45 12 21 12 21z" />
+  <path
+    d="M12 20.3 4.2 12.5a4.6 4.6 0 0 1 0-6.5 4.6 4.6 0 0 1 6.5 0l1.3 1.3 1.3-1.3a4.6 4.6 0 0 1 6.5 0 4.6 4.6 0 0 1 0 6.5L12 20.3Z"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
 );
 
 export function FavoriteButton({ id, className = "" }: { id: string; className?: string }) {

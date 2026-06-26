@@ -70,7 +70,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M4 9h16M8 3v4M16 3v4M8 13h3M8 17h6" />
     </>
   ),
-  heart: <path d="M12 20s-7-4.3-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7-1.3c0 5-7 9.3-7 9.3Z" />,
+  heart: (
+    <path d="M12 20.3 4.2 12.5a4.6 4.6 0 0 1 0-6.5 4.6 4.6 0 0 1 6.5 0l1.3 1.3 1.3-1.3a4.6 4.6 0 0 1 6.5 0 4.6 4.6 0 0 1 0 6.5L12 20.3Z" />
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="6" />
