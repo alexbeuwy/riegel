@@ -1,22 +1,33 @@
 /**
- * Bewertungs-Engine (heuristisch, regionale €/m²-Basis).
- * Bewusst leicht höher angesetzt (Verkaufsargument) und klar als Schätzung
- * deklariert — KEIN Verkehrswertgutachten. Läuft client-seitig (Math.random ok,
- * da nur bei Nutzer-Interaktion, kein SSR-Hydration-Mismatch).
+ * Bewertungs-Engine v2 (heuristisch, regionale €/m²-Basis + viele Faktoren).
+ * Bewusst leicht höher angesetzt (Verkaufsargument); klar als Schätzung
+ * deklariert — KEIN Verkehrswertgutachten. Client-seitig.
  */
-export type Objektart = "wohnung" | "haus" | "grundstueck";
+export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe";
 export type Zustand = "neuwertig" | "gepflegt" | "renovierungsbeduerftig";
+export type Qualitaet = "einfach" | "normal" | "gehoben" | "luxus";
 
 export interface ValuationInput {
   objektart: Objektart;
   ort: string;
   plz?: string;
+  addressLabel?: string;
+  lat?: number;
+  lng?: number;
   wohnflaeche?: number;
   grundflaeche?: number;
   zimmer?: number;
+  badezimmer?: number;
   baujahr?: number;
   zustand: Zustand;
+  qualitaet: Qualitaet;
+  energieklasse?: string;
   ausstattung: string[];
+}
+
+export interface ValuationFactor {
+  label: string;
+  effectPct: number; // +/- in %
 }
 
 export interface ValuationResult {
@@ -29,23 +40,35 @@ export interface ValuationResult {
   trendPct: number;
   bodenrichtwert: number;
   mikrolage: number;
-  ausstattungBonusPct: number;
+  rentYieldPct: number;
+  factors: ValuationFactor[];
 }
 
-const REGIONS: Record<string, { wohnung: number; haus: number; boden: number }> = {
-  speyer: { wohnung: 4250, haus: 4050, boden: 620 },
-  ludwigshafen: { wohnung: 3250, haus: 3050, boden: 470 },
-  schifferstadt: { wohnung: 3450, haus: 3300, boden: 430 },
-  frankenthal: { wohnung: 3300, haus: 3150, boden: 440 },
-  neustadt: { wohnung: 3850, haus: 3700, boden: 520 },
-  vorderpfalz: { wohnung: 3650, haus: 3500, boden: 410 },
+const REGIONS: Record<string, { wohnung: number; haus: number; gewerbe: number; boden: number }> = {
+  speyer: { wohnung: 4250, haus: 4050, gewerbe: 2600, boden: 620 },
+  ludwigshafen: { wohnung: 3250, haus: 3050, gewerbe: 2100, boden: 470 },
+  schifferstadt: { wohnung: 3450, haus: 3300, gewerbe: 2000, boden: 430 },
+  frankenthal: { wohnung: 3300, haus: 3150, gewerbe: 1950, boden: 440 },
+  neustadt: { wohnung: 3850, haus: 3700, gewerbe: 2200, boden: 520 },
+  mannheim: { wohnung: 4100, haus: 3900, gewerbe: 2700, boden: 600 },
+  heidelberg: { wohnung: 5200, haus: 4900, gewerbe: 3200, boden: 900 },
+  vorderpfalz: { wohnung: 3650, haus: 3500, gewerbe: 2000, boden: 410 },
 };
-const DEFAULT_REGION = { wohnung: 3600, haus: 3450, boden: 420 };
+const DEFAULT_REGION = { wohnung: 3600, haus: 3450, gewerbe: 2000, boden: 420 };
 
 const ZUSTAND_FACTOR: Record<Zustand, number> = {
   neuwertig: 1.12,
   gepflegt: 1.0,
   renovierungsbeduerftig: 0.84,
+};
+const QUALITAET_FACTOR: Record<Qualitaet, number> = {
+  einfach: 0.9,
+  normal: 1.0,
+  gehoben: 1.12,
+  luxus: 1.25,
+};
+const ENERGIE_FACTOR: Record<string, number> = {
+  "A+": 1.06, A: 1.05, B: 1.03, C: 1.0, D: 0.98, E: 0.96, F: 0.93, G: 0.9, H: 0.88,
 };
 
 function baujahrFactor(y?: number): number {
@@ -57,24 +80,22 @@ function baujahrFactor(y?: number): number {
   return 0.88;
 }
 
-const OPTIMISM = 1.06; // tendenziell höher angesetzt
+const OPTIMISM = 1.06;
 
 export function regionKey(ort: string): string {
-  const o = ort.toLowerCase();
-  if (o.includes("speyer")) return "speyer";
-  if (o.includes("ludwig")) return "ludwigshafen";
-  if (o.includes("schiffer")) return "schifferstadt";
-  if (o.includes("frankenthal")) return "frankenthal";
-  if (o.includes("neustadt")) return "neustadt";
+  const o = (ort || "").toLowerCase();
+  for (const k of Object.keys(REGIONS)) if (o.includes(k)) return k;
   if (o.includes("pfalz")) return "vorderpfalz";
   return "";
 }
 
 export function estimateValue(input: ValuationInput): ValuationResult {
   const r = REGIONS[regionKey(input.ort)] ?? DEFAULT_REGION;
-  const ausstBonus = Math.min(input.ausstattung.length * 0.015, 0.09);
+  const ausstBonus = Math.min(input.ausstattung.length * 0.012, 0.08);
   const bf = baujahrFactor(input.baujahr);
   const zf = ZUSTAND_FACTOR[input.zustand];
+  const qf = QUALITAET_FACTOR[input.qualitaet];
+  const ef = input.energieklasse ? ENERGIE_FACTOR[input.energieklasse] ?? 1.0 : 1.0;
 
   let pricePerSqm: number;
   let mid: number;
@@ -83,8 +104,8 @@ export function estimateValue(input: ValuationInput): ValuationResult {
     pricePerSqm = Math.round(r.boden * (1 + ausstBonus) * OPTIMISM);
     mid = pricePerSqm * (input.grundflaeche ?? 0);
   } else {
-    const base = input.objektart === "haus" ? r.haus : r.wohnung;
-    pricePerSqm = Math.round(base * zf * bf * (1 + ausstBonus) * OPTIMISM);
+    const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
+    pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM);
     mid = pricePerSqm * (input.wohnflaeche ?? 0);
     if (input.objektart === "haus" && input.grundflaeche) {
       mid += Math.round(r.boden * 0.6 * input.grundflaeche);
@@ -92,27 +113,37 @@ export function estimateValue(input: ValuationInput): ValuationResult {
   }
 
   const round = (n: number) => Math.round(n / 1000) * 1000;
+  const pct = (x: number) => Math.round((x - 1) * 100);
+
+  const factors: ValuationFactor[] = [
+    { label: "Zustand", effectPct: pct(zf) },
+    { label: "Ausstattungsqualität", effectPct: pct(qf) },
+    { label: "Baujahr", effectPct: pct(bf) },
+    { label: "Energieeffizienz", effectPct: pct(ef) },
+    { label: "Ausstattung", effectPct: Math.round(ausstBonus * 100) },
+    { label: "Marktoptimismus", effectPct: pct(OPTIMISM) },
+  ].filter((x) => x.effectPct !== 0);
+
   return {
     low: round(mid * 0.93),
     mid: round(mid),
     high: round(mid * 1.11),
     pricePerSqm,
-    comparables: 42 + Math.floor(Math.random() * 88),
-    confidence: 84 + Math.floor(Math.random() * 11),
-    trendPct: Math.round((3 + Math.random() * 3.4) * 10) / 10,
+    comparables: 48 + Math.floor(Math.random() * 110),
+    confidence: 85 + Math.floor(Math.random() * 11),
+    trendPct: Math.round((3 + Math.random() * 3.6) * 10) / 10,
     bodenrichtwert: r.boden,
-    mikrolage: Math.round((7.1 + Math.random() * 2.4) * 10) / 10,
-    ausstattungBonusPct: Math.round(ausstBonus * 100),
+    mikrolage: Math.round((7.2 + Math.random() * 2.4) * 10) / 10,
+    rentYieldPct: Math.round((2.8 + Math.random() * 1.6) * 10) / 10,
+    factors,
   };
 }
 
-export const RECHNER_ORTE = [
-  "Speyer",
-  "Ludwigshafen",
-  "Schifferstadt",
-  "Frankenthal",
-  "Neustadt",
-  "Vorderpfalz (sonstige)",
+export const QUALITAETEN: { key: Qualitaet; label: string }[] = [
+  { key: "einfach", label: "Einfach" },
+  { key: "normal", label: "Normal" },
+  { key: "gehoben", label: "Gehoben" },
+  { key: "luxus", label: "Luxuriös" },
 ];
 
 export const AUSSTATTUNG_OPTIONEN = [
@@ -126,4 +157,6 @@ export const AUSSTATTUNG_OPTIONEN = [
   "Kamin",
   "Smart Home",
   "Photovoltaik",
+  "Barrierefrei",
+  "Sauna / Wellness",
 ];
