@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEUR } from "@/lib/format";
 import { MoreFilters } from "@/components/portal/more-filters";
+import { Segmented } from "@/components/segmented";
 import type { FilterState } from "@/lib/portal-filter";
 
 const KAUF_PREISE = [100000, 200000, 300000, 400000, 500000, 750000, 1000000, 1500000, 2000000];
@@ -76,24 +77,16 @@ export function FilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {/* Vermarktungsart */}
-      <div className="inline-flex rounded-full border border-border p-1 text-sm">
-        {(["kauf", "miete"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => set("typ", t === "kauf" ? "" : t)}
-            aria-pressed={filters.typ === t}
-            className={`rounded-full px-4 py-1.5 transition-colors duration-300 ${
-              filters.typ === t
-                ? "bg-accent text-on-accent"
-                : "text-muted hover:text-fg"
-            }`}
-          >
-            {t === "kauf" ? "Kaufen" : "Mieten"}
-          </button>
-        ))}
-      </div>
+      {/* Vermarktungsart — gleitendes Pill (tabs sliding) */}
+      <Segmented
+        ariaLabel="Vermarktungsart"
+        value={filters.typ === "miete" ? "miete" : "kauf"}
+        onChange={(v) => set("typ", v === "kauf" ? "" : "miete")}
+        options={[
+          { value: "kauf", label: "Kaufen" },
+          { value: "miete", label: "Mieten" },
+        ]}
+      />
 
       <Select
         label="Objektart"

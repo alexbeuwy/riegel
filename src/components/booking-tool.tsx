@@ -25,7 +25,13 @@ export function BookingTool() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errorNonce, setErrorNonce] = useState(0);
   const [done, setDone] = useState(false);
+
+  const fail = (msg: string) => {
+    setError(msg);
+    setErrorNonce((n) => n + 1);
+  };
 
   useEffect(() => {
     const out: Day[] = [];
@@ -47,9 +53,9 @@ export function BookingTool() {
   }, []);
 
   function submit() {
-    if (!date || !time) return setError("Bitte Datum und Uhrzeit wählen.");
-    if (!name) return setError("Bitte Ihren Namen angeben.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setError("Bitte eine gültige E-Mail angeben.");
+    if (!date || !time) return fail("Bitte Datum und Uhrzeit wählen.");
+    if (!name) return fail("Bitte Ihren Namen angeben.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
     setError(null);
     try {
       const key = "riegel:bookings";
@@ -89,9 +95,15 @@ export function BookingTool() {
     const day = days.find((d) => d.iso === date);
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-accent/30 bg-surface p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent">
-          <Icon name="check" size={26} />
-        </div>
+        <span
+          className="t-success-check mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent"
+          data-state="in"
+          aria-hidden
+        >
+          <svg viewBox="0 0 24 24" width={26} height={26} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12 4 4 10-10" />
+          </svg>
+        </span>
         <h2 className="mt-4 text-2xl font-semibold">Termin angefragt</h2>
         <p className="mx-auto mt-2 max-w-md text-muted">
           {type} am <span className="text-fg">{day?.label ?? date}</span> um{" "}
@@ -188,15 +200,20 @@ export function BookingTool() {
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon (optional)" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none placeholder:text-faint focus:border-accent sm:col-span-2" />
         </div>
 
-        {error && <p className="mt-4 text-sm text-accent">{error}</p>}
-
-        <button
-          type="button"
-          onClick={submit}
-          className="mt-6 w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99]"
-        >
-          Termin anfragen
-        </button>
+        <div className={`t-input-wrap mt-6 ${error ? "is-error" : ""}`}>
+          <p className="t-error-msg mb-3 text-sm text-accent" role="alert">
+            {error ?? " "}
+          </p>
+          <button
+            key={errorNonce}
+            type="button"
+            onClick={submit}
+            className={`t-input ${error ? "is-shaking" : ""} inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99]`}
+          >
+            <Icon name="calendar" size={18} />
+            Termin anfragen
+          </button>
+        </div>
         <p className="mt-3 text-center text-xs text-faint">
           Unverbindlich · {site.locations[0].street}, {site.locations[0].zip} {site.locations[0].city} oder digital.
         </p>

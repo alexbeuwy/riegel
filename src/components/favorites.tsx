@@ -96,11 +96,11 @@ export function FavoritesLink() {
       <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
         {HeartPath}
       </svg>
-      {ready && count > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-on-accent">
+      <span className="t-badge" data-open={ready && count > 0 ? "true" : "false"}>
+        <span className="t-badge-dot flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-on-accent">
           {count}
         </span>
-      )}
+      </span>
     </Link>
   );
 }

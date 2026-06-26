@@ -25,16 +25,24 @@ export function ContactForm() {
     consent: false,
   });
   const [error, setError] = useState<string | null>(null);
+  const [errorNonce, setErrorNonce] = useState(0);
   const [done, setDone] = useState(false);
 
-  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) =>
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => {
+    setError(null);
     setF((s) => ({ ...s, [k]: v }));
+  };
+
+  const fail = (msg: string) => {
+    setError(msg);
+    setErrorNonce((n) => n + 1);
+  };
 
   function submit() {
-    if (!f.name) return setError("Bitte Ihren Namen angeben.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return setError("Bitte eine gültige E-Mail angeben.");
-    if (!f.message) return setError("Bitte eine Nachricht eingeben.");
-    if (!f.consent) return setError("Bitte der Verarbeitung zustimmen.");
+    if (!f.name) return fail("Bitte Ihren Namen angeben.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return fail("Bitte eine gültige E-Mail angeben.");
+    if (!f.message) return fail("Bitte eine Nachricht eingeben.");
+    if (!f.consent) return fail("Bitte der Verarbeitung zustimmen.");
     setError(null);
     try {
       const key = "riegel:contacts";
@@ -48,9 +56,15 @@ export function ContactForm() {
   if (done) {
     return (
       <div className="rounded-2xl border border-accent/30 bg-surface p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent">
-          <Icon name="check" size={26} />
-        </div>
+        <span
+          className="t-success-check mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent"
+          data-state="in"
+          aria-hidden
+        >
+          <svg viewBox="0 0 24 24" width={26} height={26} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12 4 4 10-10" />
+          </svg>
+        </span>
         <h2 className="mt-4 text-xl font-semibold">Danke, {f.name.split(" ")[0] || "schön"}!</h2>
         <p className="mx-auto mt-2 max-w-md text-muted">
           Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel
@@ -107,15 +121,20 @@ export function ContactForm() {
           verarbeitet werden. Jederzeit widerrufbar (siehe Datenschutz).
         </span>
       </label>
-      {error && <p className="mt-4 text-sm text-accent">{error}</p>}
-      <button
-        type="button"
-        onClick={submit}
-        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99] sm:w-auto"
-      >
-        <Icon name="mail" size={18} />
-        Nachricht senden
-      </button>
+      <div className={`t-input-wrap mt-6 ${error ? "is-error" : ""}`}>
+        <p className="t-error-msg mb-3 text-sm text-accent" role="alert">
+          {error ?? " "}
+        </p>
+        <button
+          key={errorNonce}
+          type="button"
+          onClick={submit}
+          className={`t-input ${error ? "is-shaking" : ""} inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99] sm:w-auto`}
+        >
+          <Icon name="mail" size={18} />
+          Nachricht senden
+        </button>
+      </div>
     </div>
   );
 }
