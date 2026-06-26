@@ -10,22 +10,37 @@ import { formatPriceShort } from "@/lib/format";
 // DSGVO: externer Tile-Call → vor Go-Live hinter Consent-Tool.
 const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
+export interface MapBounds {
+  n: number;
+  s: number;
+  e: number;
+  w: number;
+}
+
 export function PortalMap({
   estates,
   hoveredId,
   activeId,
+  inAreaIds,
   onHover,
   onActivate,
+  onBoundsChange,
 }: {
   estates: Estate[];
   hoveredId: string | null;
   activeId: string | null;
+  /** Wenn gesetzt: nur diese IDs gelten als „im Kartenausschnitt" (dimmt den Rest). */
+  inAreaIds?: Set<string> | null;
   onHover: (id: string | null) => void;
   onActivate: (id: string | null) => void;
+  onBoundsChange?: (b: MapBounds) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const elsRef = useRef<Record<string, HTMLElement>>({});
+  // onBoundsChange als Ref, damit der Map-Init-Effect nicht neu läuft.
+  const boundsCbRef = useRef(onBoundsChange);
+  boundsCbRef.current = onBoundsChange;
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -37,6 +52,12 @@ export function PortalMap({
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
+
+    const emitBounds = () => {
+      const b = map.getBounds();
+      boundsCbRef.current?.({ n: b.getNorth(), s: b.getSouth(), e: b.getEast(), w: b.getWest() });
+    };
+    map.on("moveend", emitBounds);
 
     const withGeo = estates.filter((e) => e.geo);
     const bounds = new maplibregl.LngLatBounds();
@@ -61,6 +82,7 @@ export function PortalMap({
     if (withGeo.length > 0) {
       map.fitBounds(bounds, { padding: 70, maxZoom: 13, duration: 0 });
     }
+    map.once("idle", emitBounds);
 
     return () => {
       map.remove();
@@ -68,6 +90,13 @@ export function PortalMap({
       elsRef.current = {};
     };
   }, [estates, onHover, onActivate]);
+
+  // Pins außerhalb des Ausschnitts dimmen (Search-this-area).
+  useEffect(() => {
+    for (const [id, el] of Object.entries(elsRef.current)) {
+      el.classList.toggle("is-dimmed", !!inAreaIds && !inAreaIds.has(id));
+    }
+  }, [inAreaIds]);
 
   // Pins hervorheben (hovered/active aus der Liste)
   useEffect(() => {
