@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
 
 const TIMES = ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00"];
-const TYPES = ["Besichtigung", "Verkaufsberatung", "Bewertungstermin"];
+const TYPES: { label: string; icon: IconName }[] = [
+  { label: "Besichtigung", icon: "home" },
+  { label: "Verkaufsberatung", icon: "handshake" },
+  { label: "Bewertungstermin", icon: "calculator" },
+];
 
 interface Day {
   iso: string;
@@ -13,7 +18,7 @@ interface Day {
 
 export function BookingTool() {
   const [days, setDays] = useState<Day[]>([]);
-  const [type, setType] = useState(TYPES[0]);
+  const [type, setType] = useState(TYPES[0].label);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [name, setName] = useState("");
@@ -84,7 +89,9 @@ export function BookingTool() {
     const day = days.find((d) => d.iso === date);
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-accent/30 bg-surface p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent">✓</div>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent">
+          <Icon name="check" size={26} />
+        </div>
         <h2 className="mt-4 text-2xl font-semibold">Termin angefragt</h2>
         <p className="mx-auto mt-2 max-w-md text-muted">
           {type} am <span className="text-fg">{day?.label ?? date}</span> um{" "}
@@ -95,8 +102,9 @@ export function BookingTool() {
           <button
             type="button"
             onClick={downloadIcs}
-            className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
           >
+            <Icon name="calendar" size={18} />
             Zum Kalender hinzufügen (.ics)
           </button>
           <a href="/" className="rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
@@ -111,25 +119,32 @@ export function BookingTool() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
         <div className="space-y-2">
-          <span className="text-sm text-muted">Anlass</span>
+          <span className="flex items-center gap-2 text-sm text-muted">
+            <Icon name="sparkle" size={16} className="text-accent" />
+            Anlass
+          </span>
           <div className="flex flex-wrap gap-2">
             {TYPES.map((t) => (
               <button
-                key={t}
+                key={t.label}
                 type="button"
-                onClick={() => setType(t)}
-                className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-                  type === t ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
+                onClick={() => setType(t.label)}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
+                  type === t.label ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
                 }`}
               >
-                {t}
+                <Icon name={t.icon} size={16} />
+                {t.label}
               </button>
             ))}
           </div>
         </div>
 
         <div className="mt-6 space-y-2">
-          <span className="text-sm text-muted">Datum</span>
+          <span className="flex items-center gap-2 text-sm text-muted">
+            <Icon name="calendar" size={16} className="text-accent" />
+            Datum
+          </span>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {days.map((d) => (
               <button
@@ -147,7 +162,10 @@ export function BookingTool() {
         </div>
 
         <div className="mt-6 space-y-2">
-          <span className="text-sm text-muted">Uhrzeit</span>
+          <span className="flex items-center gap-2 text-sm text-muted">
+            <Icon name="clock" size={16} className="text-accent" />
+            Uhrzeit
+          </span>
           <div className="flex flex-wrap gap-2">
             {TIMES.map((t) => (
               <button
