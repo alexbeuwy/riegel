@@ -8,14 +8,53 @@ import { site } from "@/lib/site";
 export const metadata = {
   title: "Über uns",
   description:
-    "Riegel Immobilien — inhabergeführt, regional verwurzelt in Speyer und Ludwigshafen. Lernen Sie das Team kennen.",
+    "Riegel Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Expert:innen an zwei Standorten. Lernen Sie die Familie Riegel und das Team kennen.",
 };
 
-// Echte Namen von der Live-Seite; Rollen ggf. mit Sissy final abstimmen.
-const team = [
-  { name: "Sylwia „Sissy“ Riegel", role: "Inhaberin & Geschäftsführung", img: "/images/sissy.jpg" },
-  { name: "Manfred Riegel", role: "Gründer & Senior-Berater", img: "/images/team-manfred.jpg" },
-  { name: "Christoph", role: "Immobilienberatung", img: "/images/team-christoph.jpg" },
+// Familie Riegel — echte Namen & Rollen (Live-Seite). Manfred=Vater, Sylwia=Mutter,
+// Sissy & Christoph = die Riegel-Kinder.
+const familie = [
+  {
+    name: "Manfred Riegel",
+    role: "Gründer · Regionaldirektor BVFI",
+    relation: "Vater",
+    img: "/images/team/manfred.jpg",
+  },
+  {
+    name: "Sylwia Riegel",
+    role: "Geschäftsleitung",
+    relation: "Mutter",
+    img: "/images/team/sylwia.jpg",
+  },
+  {
+    name: "Sissy Riegel",
+    role: "Marketing",
+    relation: "Tochter",
+    img: "/images/team/sissy.jpg",
+  },
+  {
+    name: "Christoph Riegel",
+    role: "Verkauf",
+    relation: "Sohn",
+    img: "/images/team/christoph.jpg",
+  },
+];
+
+// Das übrige Team — vorübergehend als Platzhalter (18 Expert:innen gesamt).
+// Profile/Fotos folgen; Rollenbereiche real abgebildet.
+const teamRollen = [
+  "Immobilienberatung Speyer",
+  "Immobilienberatung Ludwigshafen",
+  "Vertrieb & Akquise",
+  "Backoffice & Organisation",
+  "Marketing & Social Media",
+  "Finanzierungsberatung",
+  "Objektaufbereitung & Fotografie",
+  "Empfang & Kundenservice",
+  "Bewertung & Analyse",
+  "Vertragswesen",
+  "Drohnen- & Videoproduktion",
+  "Kundenbetreuung",
 ];
 
 const werte: { icon: IconName; title: string; text: string }[] = [
@@ -39,17 +78,23 @@ const werte: { icon: IconName; title: string; text: string }[] = [
 export default function UeberUnsPage() {
   return (
     <>
-      <PageIntro eyebrow="Über uns" title="Menschen, die Ihre Region kennen">
+      <PageIntro eyebrow="Über uns" title="Die Familie Riegel — und ein Team, das Ihre Region kennt">
         Riegel Immobilien ist inhabergeführt und seit Jahren in Speyer,
-        Ludwigshafen und der Vorderpfalz verwurzelt. Wir verbinden persönliche
+        Ludwigshafen und der Vorderpfalz verwurzelt. Als Familienunternehmen mit
+        18&nbsp;Expert:innen an zwei Standorten verbinden wir persönliche
         Betreuung mit echter Marktkenntnis.
       </PageIntro>
 
-      {/* Team */}
+      {/* Familie */}
       <section className="py-16 sm:py-20">
         <Container>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {team.map((m, i) => (
+          <Reveal className="mb-10">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Familie Riegel
+            </span>
+          </Reveal>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {familie.map((m, i) => (
               <Reveal key={m.name} delay={i * 90}>
                 <figure className="group">
                   <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-border">
@@ -57,15 +102,101 @@ export default function UeberUnsPage() {
                       src={m.img}
                       alt={m.name}
                       fill
-                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      sizes="(max-width: 1024px) 50vw, 25vw"
                       className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
                     />
+                    <span className="absolute left-3 top-3 rounded-full bg-bg/80 px-2.5 py-1 text-[0.65rem] uppercase tracking-widest text-muted backdrop-blur">
+                      {m.relation}
+                    </span>
                   </div>
                   <figcaption className="mt-4">
                     <div className="text-lg font-semibold text-fg">{m.name}</div>
                     <div className="text-sm text-accent">{m.role}</div>
                   </figcaption>
                 </figure>
+              </Reveal>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      {/* Das Team (Platzhalter) */}
+      <section className="border-t border-border bg-surface/40 py-16 sm:py-20">
+        <Container>
+          <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-xl space-y-3">
+              <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+                Das Team
+              </span>
+              <h2 className="text-2xl font-semibold sm:text-3xl">
+                18 freundliche Expert:innen an zwei Standorten
+              </h2>
+              <p className="text-muted">
+                Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team.
+                Die vollständigen Profile und Fotos folgen in Kürze.
+              </p>
+            </div>
+          </Reveal>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {teamRollen.map((rolle, i) => (
+              <Reveal key={rolle} delay={i * 40}>
+                <div className="flex h-full items-center gap-3 rounded-xl border border-border bg-surface p-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2 text-faint">
+                    <Icon name="users" size={20} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-fg">Team Riegel</div>
+                    <div className="truncate text-xs text-muted">{rolle}</div>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <p className="mt-6 text-xs text-faint">
+            Platzhalter — Namen &amp; Porträts der Kolleg:innen werden ergänzt.
+          </p>
+        </Container>
+      </section>
+
+      {/* Standorte (echte Büro-Fotos) */}
+      <section className="py-16 sm:py-20">
+        <Container>
+          <Reveal className="mb-10 max-w-xl space-y-3">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Standorte
+            </span>
+            <h2 className="text-2xl font-semibold sm:text-3xl">Zweimal in Ihrer Nähe</h2>
+          </Reveal>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {site.locations.map((l, i) => (
+              <Reveal key={l.city} delay={i * 100}>
+                <div className="group overflow-hidden rounded-2xl border border-border bg-surface">
+                  <div className="relative aspect-[16/10] overflow-hidden">
+                    <Image
+                      src={i === 0 ? "/images/standorte/speyer.jpg" : "/images/standorte/ludwigshafen.jpg"}
+                      alt={`Riegel Immobilien Büro ${l.city}`}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
+                    />
+                  </div>
+                  <div className="space-y-2 p-6">
+                    <div className="flex items-center gap-2 text-lg font-semibold text-fg">
+                      <Icon name="pin" size={18} className="text-accent" />
+                      {l.city}
+                    </div>
+                    <div className="text-sm text-muted">
+                      {l.street}, {l.zip} {l.city}
+                    </div>
+                    <a
+                      href={`tel:${l.phone.replace(/\s/g, "")}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent"
+                    >
+                      <Icon name="phone" size={15} />
+                      {l.phone}
+                    </a>
+                  </div>
+                </div>
               </Reveal>
             ))}
           </div>

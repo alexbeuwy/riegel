@@ -114,8 +114,29 @@ export function Calculator() {
   const [step, setStep] = useState(0);
   const [f, setF] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
+  const [errorNonce, setErrorNonce] = useState(0);
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [revealed, setRevealed] = useState(0);
+
+  // Adresse aus der URL übernehmen (Hero-Schnelleinstieg → direkt mit Satellit).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const lat = parseFloat(p.get("lat") || "");
+    const lng = parseFloat(p.get("lng") || "");
+    const label = p.get("address") || "";
+    if (label && Number.isFinite(lat) && Number.isFinite(lng)) {
+      const geo: GeoResult = {
+        label,
+        lat,
+        lng,
+        city: p.get("city") || "",
+        postcode: p.get("plz") || "",
+      };
+      setF((s) => ({ ...s, address: geo, addressQuery: label }));
+      setStep(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Adress-Autocomplete
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
@@ -161,7 +182,11 @@ export function Calculator() {
 
   function next() {
     const err = validateStep(step);
-    if (err) return setError(err);
+    if (err) {
+      setError(err);
+      setErrorNonce((n) => n + 1);
+      return;
+    }
     setError(null);
     if (step < 2) setStep(step + 1);
     else startAnalysis();
@@ -385,20 +410,25 @@ export function Calculator() {
           </div>
         )}
 
-        {error && <p className="mt-5 text-sm text-accent">{error}</p>}
+        <div className={`t-input-wrap mt-5 ${error ? "is-error" : ""}`}>
+          <p className="t-error-msg text-sm text-accent" role="alert">
+            {error ?? " "}
+          </p>
+        </div>
 
-        <div className="mt-8 flex items-center justify-between gap-4">
+        <div className="mt-6 flex items-center justify-between gap-4">
           {step > 0 ? (
-            <button type="button" onClick={() => { setError(null); setStep(step - 1); }} className="text-sm text-muted hover:text-fg">
+            <button type="button" onClick={() => { setError(null); setStep(step - 1); }} className="press text-sm text-muted hover:text-fg">
               Zurück
             </button>
           ) : (
             <span />
           )}
           <button
+            key={errorNonce}
             type="button"
             onClick={next}
-            className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.98]"
+            className={`t-input ${error ? "is-shaking" : ""} rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.98]`}
           >
             {step < 2 ? "Weiter" : "Bewertung berechnen"}
           </button>

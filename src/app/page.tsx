@@ -10,6 +10,7 @@ import { Faq } from "@/components/faq";
 import { faqs } from "@/lib/faq";
 import { BentoGrid, BentoTile } from "@/components/bento";
 import { Icon } from "@/components/icon";
+import { HeroAddressSearch } from "@/components/hero-address-search";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -45,10 +46,10 @@ function GhostCta({ href, children }: { href: string; children: React.ReactNode 
 }
 
 const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
+  { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
+  { value: "Ø ~4 Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
+  { value: "Top 21", label: "ImmoAward 2025 · Makler des Jahres (national)", icon: "star" },
   { value: "2", label: "Standorte — Speyer & Ludwigshafen", icon: "pin" },
-  { value: "100 %", label: "Persönlich betreut, von der Inhaberin", icon: "users" },
-  { value: "< 1 Tag", label: "Reaktionszeit auf Ihre Anfrage", icon: "clock" },
-  { value: "kostenfrei", label: "Erstbewertung Ihrer Immobilie", icon: "euro" },
 ];
 
 export default function HomePage() {
@@ -85,29 +86,35 @@ export default function HomePage() {
             <div className="reveal" style={{ animationDelay: "0ms" }}>
               <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
             </div>
-            <h1 className="mt-6 akira text-[2.6rem] leading-[0.95] sm:text-7xl lg:text-[6.5rem]">
+            <h1 className="mt-6 akira text-[2.1rem] leading-[0.96] sm:text-5xl lg:text-[4.6rem]">
               <span className="reveal block" style={{ animationDelay: "80ms" }}>
-                Immobilien
+                Regionale Expertise.
               </span>
-              <span className="reveal block" style={{ animationDelay: "180ms" }}>
-                mit <span className="akira-outline text-accent">Niveau</span>
+              <span className="reveal block text-accent" style={{ animationDelay: "180ms" }}>
+                Alles andere ist
+              </span>
+              <span className="reveal block akira-outline" style={{ animationDelay: "280ms" }}>
+                Fast Food.
               </span>
             </h1>
             <p
               className="reveal mt-7 max-w-xl text-lg text-muted"
-              style={{ animationDelay: "320ms" }}
+              style={{ animationDelay: "380ms" }}
             >
-              Verkauf, Bewertung und Beratung mit regionaler Expertise —
-              diskret, persönlich und auf höchstem Niveau.
+              Verkauf, Bewertung und Beratung in Speyer, Ludwigshafen und der
+              Vorderpfalz — diskret, persönlich und datenbasiert.
             </p>
+            <div className="reveal mt-9" style={{ animationDelay: "480ms" }}>
+              <HeroAddressSearch />
+            </div>
             <div
-              className="reveal mt-9 flex flex-wrap items-center gap-4"
-              style={{ animationDelay: "440ms" }}
+              className="reveal mt-5 flex flex-wrap items-center gap-4"
+              style={{ animationDelay: "560ms" }}
             >
               <Magnetic>
                 <PrimaryCta href="/immobilien">Immobilien entdecken</PrimaryCta>
               </Magnetic>
-              <GhostCta href="/rechner">Immobilie bewerten</GhostCta>
+              <GhostCta href="/verkaufen">Verkaufen mit Riegel</GhostCta>
             </div>
           </div>
         </Container>
@@ -219,6 +226,10 @@ export default function HomePage() {
               </Reveal>
             ))}
           </div>
+          <p className="mt-10 text-xs text-faint">
+            Ø-Werte als Orientierung, abhängig von Objekt, Preis und Marktlage.
+            ImmoScout24 ImmoAward 2025: Top 21 national, Top 3 im Raum Frankfurt.
+          </p>
         </Container>
       </section>
 
@@ -270,8 +281,8 @@ export default function HomePage() {
             <Reveal>
               <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-xl border border-border">
                 <Image
-                  src="/images/sissy.jpg"
-                  alt="Sylwia „Sissy“ Riegel, Inhaberin Riegel Immobilien"
+                  src="/images/team/sylwia.jpg"
+                  alt="Sylwia Riegel, Geschäftsleitung Riegel Immobilien"
                   fill
                   sizes="(max-width: 1024px) 100vw, 40vw"
                   className="object-cover"
