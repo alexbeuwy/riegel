@@ -33,6 +33,13 @@ export function SiteHeader() {
           ))}
           <FavoritesLink />
           <Link
+            href="/konto"
+            aria-label="Konto / Anmelden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
+          >
+            <Icon name="users" size={20} />
+          </Link>
+          <Link
             href="/rechner"
             className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
           >
@@ -41,8 +48,15 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        {/* Mobile: Merkliste + Icon-Swap-Menü */}
+        {/* Mobile: Konto + Merkliste + Icon-Swap-Menü */}
         <div className="flex items-center gap-1 md:hidden">
+          <Link
+            href="/konto"
+            aria-label="Konto / Anmelden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
+          >
+            <Icon name="users" size={20} />
+          </Link>
           <FavoritesLink />
           <MobileMenu />
         </div>

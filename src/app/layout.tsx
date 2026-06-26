@@ -7,6 +7,7 @@ import { CtaBand } from "@/components/cta-band";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { FavoritesProvider } from "@/components/favorites";
 import { SavedSearchesProvider } from "@/components/saved-searches";
+import { AuthProvider } from "@/components/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -77,15 +78,17 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
-        <FavoritesProvider>
-          <SavedSearchesProvider>
-            <SiteHeader />
-            <main className="flex-1">{children}</main>
-            <CtaBand />
-            <SiteFooter />
-            <WhatsappFab />
-          </SavedSearchesProvider>
-        </FavoritesProvider>
+        <AuthProvider>
+          <FavoritesProvider>
+            <SavedSearchesProvider>
+              <SiteHeader />
+              <main className="flex-1">{children}</main>
+              <CtaBand />
+              <SiteFooter />
+              <WhatsappFab />
+            </SavedSearchesProvider>
+          </FavoritesProvider>
+        </AuthProvider>
       </body>
     </html>
   );
