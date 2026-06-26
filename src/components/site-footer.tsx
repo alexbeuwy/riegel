@@ -59,6 +59,15 @@ export function SiteFooter() {
               {item.label}
             </Link>
           ))}
+          {[
+            { href: "/standorte", label: "Standorte" },
+            { href: "/ratgeber", label: "Ratgeber" },
+            { href: "/termin", label: "Termin" },
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="block text-sm text-muted hover:text-fg">
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <nav aria-label="Rechtliches" className="space-y-3">
