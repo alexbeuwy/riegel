@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Modal } from "@/components/modal";
+import { Icon } from "@/components/icon";
 import { ENERGIEKLASSEN, type FilterState } from "@/lib/portal-filter";
 
 const BAUJAHRE = [1950, 1970, 1990, 2000, 2010, 2015, 2020];
@@ -37,10 +38,11 @@ export function MoreFilters({ filters }: { filters: FilterState }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+        className={`press inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-sm ${
           activeExtra ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
         }`}
       >
+        <Icon name="layers" size={15} />
         Mehr Filter{activeExtra ? ` (${activeExtra})` : ""}
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Mehr Filter">

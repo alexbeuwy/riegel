@@ -24,12 +24,12 @@ function Select({
   options: [string, string][];
 }) {
   return (
-    <span className="relative inline-flex">
+    <span className="relative inline-flex shrink-0">
       <select
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-full border border-border bg-surface py-2 pl-4 pr-9 text-sm text-fg transition-colors hover:border-accent focus-visible:border-accent"
+        className="h-10 appearance-none rounded-full border border-border bg-surface py-2 pl-4 pr-9 text-sm text-fg transition-colors hover:border-accent focus-visible:border-accent"
       >
         {options.map(([v, l]) => (
           <option key={v} value={v} className="bg-surface text-fg">
@@ -76,17 +76,19 @@ export function FilterBar({
     filters.typ === "miete" ? `${p} €` : formatEUR(p);
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="-mx-1 flex items-center gap-2.5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden">
       {/* Vermarktungsart — gleitendes Pill (tabs sliding) */}
-      <Segmented
-        ariaLabel="Vermarktungsart"
-        value={filters.typ === "miete" ? "miete" : "kauf"}
-        onChange={(v) => set("typ", v === "kauf" ? "" : "miete")}
-        options={[
-          { value: "kauf", label: "Kaufen" },
-          { value: "miete", label: "Mieten" },
-        ]}
-      />
+      <div className="shrink-0">
+        <Segmented
+          ariaLabel="Vermarktungsart"
+          value={filters.typ === "miete" ? "miete" : "kauf"}
+          onChange={(v) => set("typ", v === "kauf" ? "" : "miete")}
+          options={[
+            { value: "kauf", label: "Kaufen" },
+            { value: "miete", label: "Mieten" },
+          ]}
+        />
+      </div>
 
       <Select
         label="Objektart"
@@ -134,7 +136,7 @@ export function FilterBar({
         type="button"
         onClick={() => set("provisionsfrei", filters.provisionsfrei ? "" : "1")}
         aria-pressed={!!filters.provisionsfrei}
-        className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+        className={`press h-10 shrink-0 rounded-full border px-4 text-sm ${
           filters.provisionsfrei
             ? "border-accent text-accent"
             : "border-border text-muted hover:text-fg"
@@ -143,9 +145,11 @@ export function FilterBar({
         Provisionsfrei
       </button>
 
-      <MoreFilters filters={filters} />
+      <div className="shrink-0">
+        <MoreFilters filters={filters} />
+      </div>
 
-      <div className="ml-auto">
+      <div className="shrink-0 lg:ml-auto">
         <Select
           label="Sortierung"
           value={filters.sort}
