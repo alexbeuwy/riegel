@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * Scroll-Reveal (fade-up) via IntersectionObserver — kein Scroll-Listener (Performance).
@@ -10,12 +10,14 @@ export function Reveal({
   children,
   delay = 0,
   className = "",
+  as = "div",
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
+  as?: "div" | "li" | "section" | "article";
 }) {
-  const ref = useRef<HTMLDivElement | null>(null);
+  const ref = useRef<HTMLElement | null>(null);
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
@@ -40,17 +42,17 @@ export function Reveal({
     return () => io.disconnect();
   }, []);
 
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+  return createElement(
+    as,
+    {
+      ref,
+      style: { transitionDelay: `${delay}ms` },
+      className: `transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         shown
           ? "opacity-100 translate-y-0 blur-0"
           : "opacity-0 translate-y-6 blur-[2px]"
-      } ${className}`}
-    >
-      {children}
-    </div>
+      } ${className}`,
+    },
+    children,
   );
 }
