@@ -11,6 +11,7 @@ import { faqs } from "@/lib/faq";
 import { BentoGrid, BentoTile } from "@/components/bento";
 import { Icon } from "@/components/icon";
 import { HeroAddressSearch } from "@/components/hero-address-search";
+import { ShaderCta } from "@/components/shader-cta";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -258,6 +259,9 @@ export default function HomePage() {
           </p>
         </Container>
       </section>
+
+      {/* ───────── Block · Shader-CTA (Sofort-Bewertung) ───────── */}
+      <ShaderCta />
 
       {/* ───────── Block · FAQ ───────── */}
       <section className="border-t border-border py-24 sm:py-32">
