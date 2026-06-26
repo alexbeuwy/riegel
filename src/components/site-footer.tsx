@@ -1,20 +1,15 @@
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
+import { FooterSocials, type SocialItem } from "@/components/footer-socials";
 import { site } from "@/lib/site";
-import {
-  InstagramIcon,
-  FacebookIcon,
-  YoutubeIcon,
-  LinkedinIcon,
-} from "@/components/social-icons";
 
 const socialLinks = [
-  { key: "instagram", href: site.socials.instagram, label: "Instagram", Icon: InstagramIcon },
-  { key: "facebook", href: site.socials.facebook, label: "Facebook", Icon: FacebookIcon },
-  { key: "youtube", href: site.socials.youtube, label: "YouTube", Icon: YoutubeIcon },
-  { key: "linkedin", href: site.socials.linkedin, label: "LinkedIn", Icon: LinkedinIcon },
-].filter((s) => s.href);
+  { key: "instagram", href: site.socials.instagram, label: "Instagram" },
+  { key: "facebook", href: site.socials.facebook, label: "Facebook" },
+  { key: "youtube", href: site.socials.youtube, label: "YouTube" },
+  { key: "linkedin", href: site.socials.linkedin, label: "LinkedIn" },
+].filter((s) => Boolean(s.href)) as SocialItem[];
 
 export function SiteFooter() {
   const year = 2026;
@@ -77,25 +72,7 @@ export function SiteFooter() {
 
         <div className="space-y-4">
           <div className="text-xs uppercase tracking-widest text-faint">Folgen</div>
-          <div className="flex gap-3">
-            {socialLinks.map(({ key, href, label, Icon }) => (
-              <span key={key} className="t-tt-wrap">
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  aria-describedby={`tt-${key}`}
-                  className="t-tt-trigger flex h-10 w-10 items-center justify-center rounded-md border border-border text-muted transition-colors hover:border-accent hover:text-accent"
-                >
-                  <Icon />
-                </a>
-                <span className="t-tt" id={`tt-${key}`} role="tooltip">
-                  {label}
-                </span>
-              </span>
-            ))}
-          </div>
+          <FooterSocials links={socialLinks} />
         </div>
       </Container>
 
