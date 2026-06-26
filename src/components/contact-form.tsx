@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/icon";
 
 const ANLIEGEN = [
   "Allgemeine Anfrage",
@@ -47,7 +48,9 @@ export function ContactForm() {
   if (done) {
     return (
       <div className="rounded-2xl border border-accent/30 bg-surface p-8 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent">✓</div>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent">
+          <Icon name="check" size={26} />
+        </div>
         <h2 className="mt-4 text-xl font-semibold">Danke, {f.name.split(" ")[0] || "schön"}!</h2>
         <p className="mx-auto mt-2 max-w-md text-muted">
           Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel
@@ -108,8 +111,9 @@ export function ContactForm() {
       <button
         type="button"
         onClick={submit}
-        className="mt-6 w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99] sm:w-auto"
+        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99] sm:w-auto"
       >
+        <Icon name="mail" size={18} />
         Nachricht senden
       </button>
     </div>
