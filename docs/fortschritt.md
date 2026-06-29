@@ -69,3 +69,20 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 
 - Keine Secrets im Repo (SFTP/Vercel-Token/OnOffice nur außerhalb).
 - Fremde Supabase-Projekte (beuwy/dieudonne/Saadi/Gym) werden nicht angefasst.
+
+## Update — Portal-Trust, Report-Funnel, Pitchdeck v3/v4, Fotos ✅
+
+- **Ansprechpartner-Block** (Avatar + Kontakt + "Ich freue mich auf Ihre Anfrage") auf Objektdetail
+  & Kontaktseite; Objekt-ID/"Online seit"/Vermarktung (ImmoScout-Trust-Muster). `lib/contacts.ts`.
+- **Rechner-Report-Funnel**: CTA "Report als PDF anfordern" → `/api/report` → HTML-Report an Kunde
+  **+ CC an RIEGEL**, Supabase `valuation_requests` protokolliert jede Anfrage. (PDF-Anhang als
+  Ausbaustufe, Blueprint in `bewertungsreport.md`.)
+- **Pitchdeck v3**: Headlines im Copywriting-Stil ("Fast Food"-Closing, "Erben von morgen").
+- **Pitchdeck v4**: Preis tabellarisch (21.800 € − 3.000 € Rabatt = **18.800 €** pauschal,
+  Betrieb 290 €/Mon) + Vision-Slide "Fundament → nächstes Level → Nr. 1" ("Nachahmer können einpacken").
+- **Echte Fotos eingebaut**: Team-Gruppenfoto (Home), Büro-Exterieurs (Über-uns/Kontakt),
+  Innenaufnahmen-Galerie (Über-uns). Hero bleibt Unsplash → ersetzen (s. `foto-assets.md`).
+- **Recherche dokumentiert**: ImmoScout-Features, HomeDay Preisatlas, Bewertungsreport, Insta-Reels,
+  Foto-Assets (siehe jeweilige `docs/*.md`).
+- **Env scharf**: RESEND_API_KEY gesetzt + Schema (inkl. `valuation_requests`) ausgeführt
+  → Report-/Kontakt-/Termin-Mails inkl. CC laufen live.
