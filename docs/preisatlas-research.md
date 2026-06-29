@@ -134,3 +134,32 @@ Beide Varianten: Lead-Capture → Server Action → Supabase `leads` → OnOffic
 - BORIS-D (national): <https://www.bodenrichtwerte-boris.de/>
 - MapLibre: <https://maplibre.org/maplibre-gl-js/docs/>
 - Scraping-Recht: <https://www.rechtzweinull.de/screen-scraping-wann-ist-das-auslesen-und-die-veroeffentlichung-fremder-daten-zulaessig/>
+
+---
+
+## Update — HomeDay Preisatlas: Mechanik, Lead-Zahlen, RIEGEL-Positionierung
+
+**Was es ist:** Kostenloses, anmeldefreies Tool (preisatlas.homeday.de) von HomeDay (Berlin, mehrheitlich
+Purplebricks/Axel Springer). Adresse rein → straßengenaue €/m² (Kauf/Miete), 5-Jahres-Entwicklung,
+Lage-Scores. Datenbasis: Angebotsdaten aus 300+ Portalen, >2.000 Städte. **Der Preisatlas selbst ist
+KEIN E-Mail-Gate** — das Lead-Tool ist die separate „kostenlose Immobilienbewertung".
+
+**Funnel:** Stufe 1 (Reichweite/SEO, friktionsfrei, kein Login) → Stufe 2 (Bewertung: erste Online-Schätzung
+ohne Anmeldung, dann **E-Mail + Telefon** fürs „genaue" Ergebnis = der Lead) → HomeDay vermittelt an
+Partnermakler und nimmt **~35 % der Maklerprovision** bei Abschluss.
+
+**Lead-Zahlen (ehrlich):** HomeDay veröffentlicht **keine** konkreten Lead-/Bewertungszahlen.
+Belastbar nur: ~842k Visits/Monat auf homeday.de (Semrush, Nov 2024; ~37 % organisch); „über 30.000
+Eigentümer" haben den Bewertungs-Service genutzt (kumulierte, undatierte Marketing-Zahl). Conversion
+Lead→Abschluss ist proprietär; jede präzise Zahl wäre Spekulation.
+
+**RIEGEL-Positionierung (eigenes Tool als bessere Alternative):**
+1. **Unabhängigkeit** — keine Lead-Weitergabe an Wettbewerber, kein Provisions-Split (~35 % bleiben im Haus).
+2. **Datenhoheit/DSGVO** — Leads exklusiv bei RIEGEL, kein fremder Makler ruft an.
+3. **Qualität/Transparenz** — aktuelle, nachvollziehbare Methodik statt „Schätzung jetzt, Wahrheit später".
+4. **Volle Wertschöpfung & Kundenbeziehung** im Haus.
+5. **Markenvertrauen** — „Ihre Bewertung gehört Ihnen, kein Verkaufsdruck".
+6. **SEO-Asset im eigenen Besitz** — der Traffic-Hebel arbeitet für RIEGELs Domain, nicht für HomeDay.
+
+**Pitch-Line:** „Eigene Bewertung, eigene Leads, eigene Regeln — statt 35 % Provision an HomeDay und
+Eigentümerdaten an fremde Makler."

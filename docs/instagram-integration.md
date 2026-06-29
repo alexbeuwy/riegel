@@ -60,3 +60,28 @@
 - **Schnell & dauerhaft aktuell:** Behold.so (Option 2) — Feed-ID schicken, Rest mache ich.
 - **Voll Erstanbieter:** Instagram Graph API (Option 1) — wenn ein Business-Account + Meta-App ok ist.
 - **Sofort für den Launch:** ein paar MP4s exportieren (Option 3) — läuft ohne jede Abhängigkeit.
+
+---
+
+## Update — Reels-Lösung (Recherche) & „Kann der Agent sssinstagram bedienen?"
+
+**Kurzantwort:** Für **eigene** RIEGEL-Reels → Original-MP4 selbst hosten (max. Qualität, keine
+Abhängigkeit). Für einen **automatisch live gekoppelten** Instagram-Feed → **Behold.so** (ab 10 $/Mon,
+reels-only Filter, offizielle Graph-API, Token-Refresh + ToS-Compliance inklusive).
+
+**sssinstagram & ähnliche Downloader:**
+- **Technisch** kann ein Agent das bedienen (URL → MP4, kein Login). Ebenso `yt-dlp`/`gallery-dl`.
+- **Rechtlich NICHT** für **fremde** Reels: Re-Upload auf eine Firmenseite ist kommerzielle öffentliche
+  Wiedergabe ohne Lizenz → Verstoß gegen Instagram-ToS **und** deutsches UrhG (+ GEMA/Musik), Abmahnrisiko.
+  Die Tools deklarieren selbst „nur Privatgebrauch". (hiQ v. LinkedIn betrifft nur US-CFAA/Scraping
+  öffentlicher Daten, **nicht** Urheberrecht — legitimiert kein Re-Upload.)
+- Für **eigene** RIEGEL-Reels (RIEGEL = Rechteinhaber) ist das Ziehen des eigenen MP4 unproblematisch —
+  besser aber direkt das Originalvideo aus der Produktion verwenden.
+
+**Optionen im Überblick:** oEmbed/Meta Graph (gratis, aber App Review + Business-Verifizierung nötig) ·
+Behold.so (Empfehlung, ab 10 $) · Elfsight (ab 5 $) · EmbedSocial (Reels ab ~29 $) · SnapWidget (ab ~8 $).
+Alle Managed-Dienste brauchen einen **menschlichen** OAuth-/App-Setup-Schritt; der Agent kann danach nur
+den fertigen Embed-Code integrieren.
+
+**Empfehlung RIEGEL:** Grid ist MP4-ready. Eigene Reels als MP4 von Sissy/Christoph liefern lassen →
+self-hosten. Wenn „immer aktuell" gewünscht: Behold.so-Feed-ID einrichten (Konto-Verbindung durch RIEGEL).
