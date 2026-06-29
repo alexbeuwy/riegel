@@ -53,9 +53,10 @@ export function PortalView({ estates }: { estates: Estate[] }) {
 
   useEffect(() => {
     if (!activeId) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     cardRefs.current[activeId]?.scrollIntoView({
       block: "nearest",
-      behavior: "smooth",
+      behavior: reduce ? "auto" : "smooth",
     });
   }, [activeId]);
 
@@ -65,10 +66,12 @@ export function PortalView({ estates }: { estates: Estate[] }) {
       <div className={`${showMapMobile ? "hidden" : "block"} lg:block`}>
         {searchInArea && bounds ? (
           <div className="flex items-center justify-between gap-3 px-5 pt-6 sm:px-8">
-            <span className="inline-flex items-center gap-1.5 text-sm text-accent">
+            <span className="inline-flex items-center gap-1.5 text-sm text-accent-strong">
               <Icon name="search" size={16} />
-              {listEstates.length} {listEstates.length === 1 ? "Objekt" : "Objekte"} in
-              diesem Kartenausschnitt
+              <span key={listEstates.length} className="t-num-d">
+                {listEstates.length}
+              </span>{" "}
+              {listEstates.length === 1 ? "Objekt" : "Objekte"} in diesem Kartenausschnitt
             </span>
           </div>
         ) : null}
@@ -83,15 +86,36 @@ export function PortalView({ estates }: { estates: Estate[] }) {
             </h2>
             <p className="mx-auto mt-3 max-w-md text-muted">
               {searchInArea
-                ? "Zoomen Sie heraus oder verschieben Sie die Karte — oder schalten Sie die Bereichssuche oben rechts wieder aus."
-                : "Lockern Sie die Filter oder erweitern Sie den Umkreis. Gerne informieren wir Sie auch, sobald passende Objekte verfügbar sind."}
+                ? "Zoomen Sie heraus oder verschieben Sie die Karte — oder schalten Sie die Bereichssuche wieder aus."
+                : "Lockern Sie die Filter oder erweitern Sie den Umkreis."}
             </p>
-            <Link
-              href="/kontakt"
-              className="mt-6 inline-flex rounded-full border border-border px-5 py-2.5 text-sm text-fg hover:border-accent hover:text-accent"
-            >
-              Suche speichern lassen
-            </Link>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              {searchInArea ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchInArea(false)}
+                  className="press inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+                >
+                  <Icon name="search" size={16} />
+                  Bereichssuche ausschalten
+                </button>
+              ) : (
+                <Link
+                  href="/immobilien"
+                  className="press inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+                >
+                  <Icon name="layers" size={16} />
+                  Filter zurücksetzen
+                </Link>
+              )}
+              <Link
+                href="/kontakt"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+              >
+                <Icon name="mail" size={16} />
+                Suchauftrag anlegen
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 xl:grid-cols-2">
@@ -148,7 +172,8 @@ export function PortalView({ estates }: { estates: Estate[] }) {
       <button
         type="button"
         onClick={() => setShowMapMobile((v) => !v)}
-        className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent shadow-2xl lg:hidden"
+        style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+        className="fixed left-5 z-50 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent shadow-2xl lg:hidden"
       >
         <Icon name={showMapMobile ? "layers" : "pin"} size={18} />
         {showMapMobile ? "Liste anzeigen" : "Karte anzeigen"}

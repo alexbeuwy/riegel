@@ -60,7 +60,7 @@ export function Segmented<T extends string>({
   }, [activeIdx]);
 
   return (
-    <div className="t-tabs" role="tablist" aria-label={ariaLabel}>
+    <div className="t-tabs" role="radiogroup" aria-label={ariaLabel}>
       <span ref={pillRef} className="t-tabs-pill" aria-hidden />
       {options.map((o, i) => (
         <button
@@ -69,8 +69,8 @@ export function Segmented<T extends string>({
             btnRefs.current[i] = el;
           }}
           type="button"
-          role="tab"
-          aria-selected={o.value === value}
+          role="radio"
+          aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
           className="t-tab font-medium"
         >

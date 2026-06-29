@@ -38,7 +38,7 @@ export function MoreFilters({ filters }: { filters: FilterState }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`press inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-sm ${
+        className={`press inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm lg:h-10 ${
           activeExtra ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
         }`}
       >

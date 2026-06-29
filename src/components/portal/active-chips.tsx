@@ -30,7 +30,10 @@ export function ActiveChips({
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <span aria-live="polite" className="text-sm font-medium text-fg">
-        {resultCount} {resultCount === 1 ? "Objekt" : "Objekte"}
+        <span key={resultCount} className="t-num-d">
+          {resultCount}
+        </span>{" "}
+        {resultCount === 1 ? "Objekt" : "Objekte"}
       </span>
       {chips.length > 0 && <span className="text-faint">·</span>}
       {chips.map((c) => (

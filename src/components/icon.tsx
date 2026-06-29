@@ -26,6 +26,9 @@ export type IconName =
   | "pin"
   | "arrowRight"
   | "arrowUpRight"
+  | "arrowLeft"
+  | "chevronDown"
+  | "close"
   | "check"
   | "bolt"
   | "bed"
@@ -106,6 +109,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   arrowRight: <path d="M5 12h14M13 6l6 6-6 6" />,
   arrowUpRight: <path d="M7 17 17 7M9 7h8v8" />,
+  arrowLeft: <path d="M19 12H5M11 18l-6-6 6-6" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
   check: <path d="m5 12 4 4 10-10" />,
   bolt: <path d="M13 3 5 13h5l-1 8 8-11h-5l1-7Z" />,
   bed: <path d="M3 18v-6h13a4 4 0 0 1 4 4v2M3 18v-2M21 18v-2M3 12V7M7 10h2a2 2 0 0 1 2 2" />,
