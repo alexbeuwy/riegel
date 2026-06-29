@@ -55,6 +55,23 @@
   .pricebox .amt{ font-family:"Akira",sans-serif; font-weight:800; font-size:30pt; color:var(--fg); margin:3mm 0; }
   .pricebox .amt small{ font-size:11pt; color:var(--muted); }
   .glow{ position:absolute; border-radius:50%; filter:blur(40mm); opacity:.16; }
+  /* Preis-Aufschlüsselung */
+  .ptable{ width:100%; border-collapse:collapse; font-size:10pt; }
+  .ptable th{ text-align:left; font-size:8pt; letter-spacing:.18em; text-transform:uppercase; color:var(--faint); font-weight:600; padding:0 0 3mm; border-bottom:1px solid var(--border); }
+  .ptable th:last-child{ text-align:right; }
+  .ptable td{ padding:2.7mm 0; border-bottom:1px solid var(--border); color:var(--muted); }
+  .ptable td:last-child{ text-align:right; color:var(--fg); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ptable tfoot td{ border-bottom:none; padding-top:3.5mm; color:var(--fg); font-weight:600; }
+  .ptable tfoot td:last-child{ font-family:"Akira",sans-serif; font-weight:800; font-size:12pt; }
+  .totalbox{ height:100%; border:1px solid var(--accent); border-radius:5mm; padding:8mm; background:linear-gradient(160deg,rgba(1,92,255,.12),transparent); display:flex; flex-direction:column; }
+  .totalbox .lbl{ font-size:9pt; color:var(--faint); }
+  .totalbox .lbl s{ color:var(--faint); }
+  .totalbox .rabatt{ margin-top:2mm; font-size:10.5pt; color:var(--accentStrong); font-weight:600; }
+  .totalbox .amt{ font-family:"Akira",sans-serif; font-weight:800; font-size:38pt; color:var(--fg); margin:3mm 0 1mm; line-height:1; }
+  .totalbox .amt small{ font-size:11pt; color:var(--muted); }
+  .totalbox p{ font-size:9pt; color:var(--muted); line-height:1.45; margin-top:3mm; }
+  .totalbox .betrieb{ margin-top:auto; padding-top:5mm; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+  .totalbox .betrieb b{ color:var(--fg); }
   /* KI-Check */
   .kicheck{ background:var(--surface); border:1px solid var(--border); border-radius:5mm; padding:6mm; box-shadow:0 10mm 24mm rgba(0,0,0,.4); }
   .kihead{ font-size:8.5pt; color:var(--faint); letter-spacing:.04em; display:flex; align-items:center; gap:2.6mm; padding-bottom:4mm; border-bottom:1px solid var(--border); margin-bottom:1.5mm; }
@@ -379,24 +396,99 @@
 <section class="slide">
   <div class="glow" style="width:90mm;height:90mm;background:var(--accent);right:-20mm;top:-10mm;"></div>
   <div class="eyebrow">Investition</div>
-  <h2 class="akira title">Eine Investition in <span class="accent">Mandate</span>.<br/>Kein Posten für eine Webseite.</h2>
-  <div class="pricewrap">
-    <div class="pricebox hl">
-      <div class="lbl">Komplettpaket · einmalig</div>
-      <div class="amt">34.800 € <small>zzgl. MwSt.</small></div>
-      <p class="card" style="border:none;background:none;padding:0;">Maßgeschneiderte Plattform inkl. aller Module, OnOffice-Anbindung, GEO-Paket, Rechtstexte, Go-Live &amp; Einweisung.</p>
+  <h2 class="akira" style="font-size:21pt;">Eine Investition in <span class="accent">Mandate</span>.<br/>Kein Posten für eine Webseite.</h2>
+  <div class="row" style="align-items:stretch; gap:10mm; margin-top:7mm;">
+    <div class="col" style="flex:1.45;">
+      <table class="ptable">
+        <thead><tr><th>Leistung</th><th>Preis</th></tr></thead>
+        <tbody>
+          <tr><td>Strategie, Konzept &amp; Projektleitung</td><td>2.400 €</td></tr>
+          <tr><td>Premium-Design &amp; Marken-Feinschliff</td><td>3.200 €</td></tr>
+          <tr><td>Immobilienportal (Karte / Liste / Filter / Favoriten)</td><td>4.800 €</td></tr>
+          <tr><td>Immorechner + Report-Funnel</td><td>2.900 €</td></tr>
+          <tr><td>Kundenkonten + Termin- &amp; Kontakt-Tools</td><td>2.400 €</td></tr>
+          <tr><td>GEO/SEO-Paket (28 Seiten + strukturierte Daten)</td><td>2.600 €</td></tr>
+          <tr><td>OnOffice-Anbindung</td><td>1.900 €</td></tr>
+          <tr><td>Rechtstexte, A11y, Performance, Go-Live</td><td>1.600 €</td></tr>
+        </tbody>
+        <tfoot><tr><td>Summe Einzelleistungen</td><td>21.800 €</td></tr></tfoot>
+      </table>
     </div>
-    <div class="pricebox">
-      <div class="lbl">Betrieb &amp; Pflege · optional</div>
-      <div class="amt">390 € <small>/ Monat</small></div>
-      <p class="card" style="border:none;background:none;padding:0;">Hosting, Updates, Monitoring, OnOffice-Sync, laufende GEO-Inhalte &amp; kleinere Anpassungen.</p>
+    <div class="col" style="flex:1;">
+      <div class="totalbox">
+        <div class="lbl">Paketpreis statt <s>21.800 €</s></div>
+        <div class="rabatt">Relaunch-Rabatt &minus;3.000 €</div>
+        <div class="amt">18.800 € <small>zzgl. MwSt.</small></div>
+        <p>Komplette Plattform inkl. aller Module, OnOffice-Anbindung, GEO-Paket, Rechtstexte, Go-Live &amp; Einweisung — als Pauschale.</p>
+        <div class="betrieb">Betrieb &amp; Pflege optional: <b>290 € / Monat</b><br/>Hosting, Updates, Monitoring, OnOffice-Sync, laufende GEO-Inhalte.</div>
+      </div>
     </div>
   </div>
-  <p class="lead" style="margin-top:9mm; font-size:10.5pt;">Zum Vergleich: Der WordPress-Relaunch 2021 lag bei 12.700 € netto. Diese Plattform ist eine bespoke Software-Lösung mit Portal, Bewertungs-Engine, Konten und KI-Sichtbarkeit — ein Vielfaches an Wert und Wirkung.</p>
   <div class="foot"><span class="wm">RIEGEL</span><span>14</span></div>
 </section>
 
-<!-- 15 CLOSING -->
+<!-- 15 NEXT LEVEL / VISION -->
+<section class="slide">
+  <div class="glow" style="width:110mm;height:110mm;background:var(--accent);right:-30mm;bottom:-35mm;opacity:.15;"></div>
+  <div class="eyebrow">Vision · Marktführerschaft</div>
+  <h2 class="akira" style="font-size:23pt;">Das Fundament steht.<br/>Jetzt kommt das <span class="accent">nächste Level</span>.</h2>
+  <div class="row" style="align-items:center; gap:10mm; margin-top:3mm;">
+    <div class="col" style="flex:1;">
+      <ul class="feat">
+        <li><b>Rebranding &amp; erster Relaunch</b> waren das gelegte Fundament.</li>
+        <li><b>Jetzt:</b> Digitalmarketing der nächsten Stufe — Portal, Bewertung, GEO &amp; KI-Sichtbarkeit.</li>
+        <li>Ziel: <b>die Nummer 1 der Region</b> werden — und langfristig oben bleiben.</li>
+      </ul>
+      <div style="margin-top:7mm; display:inline-block; border:1px solid var(--accent); border-radius:99px; padding:2.4mm 6mm; background:linear-gradient(160deg,rgba(1,92,255,.14),transparent);">
+        <span class="akira accent" style="font-size:12pt;">Nachahmer können einpacken.</span>
+      </div>
+    </div>
+    <div class="col" style="flex:1.25;">
+      <svg viewBox="0 0 640 340" fill="none" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;">
+        <defs>
+          <linearGradient id="nlbar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#015cff" stop-opacity="0.85"/>
+            <stop offset="100%" stop-color="#015cff" stop-opacity="0.18"/>
+          </linearGradient>
+          <linearGradient id="nlline" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stop-color="#6aa1ff"/>
+            <stop offset="100%" stop-color="#015cff"/>
+          </linearGradient>
+          <filter id="nlglow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="6" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- Baseline -->
+        <line x1="20" y1="300" x2="620" y2="300" stroke="#2a2a30" stroke-width="1"/>
+        <!-- Stufe 1: Rebranding (Fundament, erledigt) -->
+        <rect x="40" y="232" width="150" height="68" rx="4" fill="#1c1c21" stroke="#2a2a30"/>
+        <circle cx="65" cy="255" r="9" fill="none" stroke="#6aa1ff" stroke-width="1.6"/>
+        <path d="M61 255 l3 3 6-6" stroke="#6aa1ff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="115" y="325" fill="#a8a6a0" font-size="13" font-family="Helvetica" text-anchor="middle">Rebranding</text>
+        <!-- Stufe 2: Erster Relaunch (Fundament, erledigt) -->
+        <rect x="245" y="180" width="150" height="120" rx="4" fill="#1c1c21" stroke="#2a2a30"/>
+        <circle cx="270" cy="203" r="9" fill="none" stroke="#6aa1ff" stroke-width="1.6"/>
+        <path d="M266 203 l3 3 6-6" stroke="#6aa1ff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="320" y="325" fill="#a8a6a0" font-size="13" font-family="Helvetica" text-anchor="middle">Erster Relaunch</text>
+        <!-- Stufe 3: Digitalmarketing (jetzt, glühend) -->
+        <rect x="450" y="110" width="150" height="190" rx="4" fill="url(#nlbar)" stroke="#015cff" filter="url(#nlglow)"/>
+        <text x="525" y="325" fill="#6aa1ff" font-size="13" font-family="Helvetica" text-anchor="middle">Digitalmarketing · jetzt</text>
+        <!-- Fundament-Trajektorie (Vergangenheit, gestrichelt) -->
+        <path d="M115,232 L320,180" stroke="#7c7a75" stroke-width="2" stroke-dasharray="5 6" fill="none"/>
+        <!-- Zukunfts-Trajektorie (glühend, steigend zum Gipfel) -->
+        <path d="M320,180 L525,110 L600,52" stroke="url(#nlline)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#nlglow)"/>
+        <!-- Gipfel: Nr. 1 -->
+        <path d="M600 30 l5.5 11 12 1.5 -9 8.5 2.4 12 -10.9-6 -10.9 6 2.4-12 -9-8.5 12-1.5z" fill="#015cff" filter="url(#nlglow)"/>
+        <text x="600" y="86" fill="#f4f3f0" font-size="15" font-family="Helvetica" font-weight="bold" text-anchor="middle">NR. 1</text>
+      </svg>
+      <div style="text-align:right; font-size:8pt; color:var(--faint); letter-spacing:.04em; margin-top:1mm;">Fundament gelegt → Marktführerschaft als Ziel</div>
+    </div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>15</span></div>
+</section>
+
+<!-- 16 CLOSING -->
 <section class="slide" style="justify-content:center;">
   <div class="glow" style="width:110mm;height:110mm;background:var(--accent);left:50%;top:50%;transform:translate(-50%,-50%);opacity:.12;"></div>
   <div style="position:relative; text-align:center;">
