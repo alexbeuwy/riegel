@@ -593,6 +593,8 @@
 .reel-marquee:hover .reel-track {
   animation-play-state: paused;
 }
+.reel-track.is-rev { animation-direction: reverse; }
+.reel-track.is-slow { animation-duration: 80s; }
 @keyframes reel-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

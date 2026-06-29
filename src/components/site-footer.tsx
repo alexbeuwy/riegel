@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
 import { FooterSocials, type SocialItem } from "@/components/footer-socials";
+import { GeoTeaser } from "@/components/geo-teaser";
 import { site } from "@/lib/site";
 
 const socialLinks = [
@@ -14,8 +15,9 @@ const socialLinks = [
 export function SiteFooter() {
   const year = 2026;
   return (
-    <footer className="mt-auto border-t border-border bg-surface">
-      <Container className="grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="mt-auto">
+      <GeoTeaser />
+      <Container className="grid gap-10 border-t border-border bg-surface py-16 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

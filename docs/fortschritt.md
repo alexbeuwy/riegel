@@ -102,3 +102,8 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - `EMAIL_FROM` = `RIEGEL Immobilien <noreply@<verifizierte-domain>>`, `EMAIL_TO` = Lead-Postfach.
 - Resend: **kostenlose** Domain-Verifizierung reicht (3.000 Mails/Monat frei) — kein Upgrade nötig.
 - Alternativ ohne Dashboard: Leads direkt im **Supabase Table Editor** (`valuation_requests`, `leads`).
+
+## Notiz — Resend (zurückgestellt)
+- Alex erstellt einen **neuen Resend-Account** und richtet Domain + Versand in Ruhe ein (später).
+- Bis dahin: Mails werden serverseitig „skipped" (kein Crash), Daten landen in Supabase `leads`/`valuation_requests`
+  und lokal. Sobald Account + Domain stehen: `RESEND_API_KEY`, `EMAIL_FROM` (verifizierte Domain), `EMAIL_TO` setzen → Redeploy.
