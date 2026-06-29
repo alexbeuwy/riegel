@@ -17,7 +17,12 @@ export function SiteFooter() {
     <footer className="mt-auto border-t border-border bg-surface">
       <Container className="grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-4">
-          <div className="text-base font-semibold tracking-[0.2em] text-fg">RIEGEL</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-riegel-short-mono.svg"
+            alt={site.name}
+            className="h-6 w-auto opacity-90"
+          />
           <p className="max-w-xs text-sm text-muted">{site.tagline}</p>
           <div className="space-y-4 text-sm text-faint">
             {site.locations.map((l) => (

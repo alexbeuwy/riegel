@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Estate } from "@/lib/mock-estates";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 import { FavoriteButton } from "@/components/favorites";
+import { Icon } from "@/components/icon";
 
 const STATUS_LABEL: Partial<Record<Estate["status"], string>> = {
   reserviert: "Reserviert",
@@ -45,8 +46,16 @@ export function PortalCard({
       ref={registerRef}
       onMouseEnter={() => onHover(estate.id)}
       onMouseLeave={() => onHover(null)}
-      className={`scroll-mt-28 overflow-hidden rounded-xl border bg-surface transition-colors duration-300 ${
-        hovered || active ? "border-accent" : "border-border"
+      onFocus={() => onHover(estate.id)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) onHover(null);
+      }}
+      className={`scroll-mt-28 overflow-hidden rounded-xl border bg-surface transition-[border-color,box-shadow,transform] duration-300 ${
+        active
+          ? "border-accent ring-2 ring-accent/50 -translate-y-0.5"
+          : hovered
+            ? "border-accent ring-1 ring-accent/30 -translate-y-0.5"
+            : "border-border"
       }`}
     >
       <Link href={`/immobilien/${estate.slug}`} className="group block">
@@ -76,9 +85,9 @@ export function PortalCard({
                   e.stopPropagation();
                   setIdx((i) => (i - 1 + imgs.length) % imgs.length);
                 }}
-                className="absolute left-2 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg opacity-0 backdrop-blur transition-opacity group-hover:flex group-hover:opacity-100"
+                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg backdrop-blur transition-opacity hover:bg-bg/90 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
               >
-                ‹
+                <Icon name="arrowLeft" size={18} />
               </button>
               <button
                 type="button"
@@ -88,9 +97,9 @@ export function PortalCard({
                   e.stopPropagation();
                   setIdx((i) => (i + 1) % imgs.length);
                 }}
-                className="absolute right-2 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg opacity-0 backdrop-blur transition-opacity group-hover:flex group-hover:opacity-100"
+                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg backdrop-blur transition-opacity hover:bg-bg/90 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
               >
-                ›
+                <Icon name="arrowRight" size={18} />
               </button>
               <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
                 {imgs.map((_, i) => (
@@ -106,12 +115,26 @@ export function PortalCard({
         <div className="space-y-2 p-5">
           <div className="text-xl font-semibold text-fg">{formatPrice(estate)}</div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-            {roomsLabel(estate.rooms) && <span>{roomsLabel(estate.rooms)}</span>}
-            {formatArea(estate.livingArea) && <span>{formatArea(estate.livingArea)}</span>}
-            <span>{categoryLabel(estate.category)}</span>
+            {roomsLabel(estate.rooms) && (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="bed" size={15} className="text-faint" />
+                {roomsLabel(estate.rooms)}
+              </span>
+            )}
+            {formatArea(estate.livingArea) && (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="ruler" size={15} className="text-faint" />
+                {formatArea(estate.livingArea)}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="building" size={15} className="text-faint" />
+              {categoryLabel(estate.category)}
+            </span>
           </div>
           <h3 className="line-clamp-1 text-base text-muted">{estate.title}</h3>
-          <div className="text-sm text-faint">
+          <div className="inline-flex items-center gap-1.5 text-sm text-faint">
+            <Icon name="pin" size={15} />
             {estate.city}
             {estate.district ? ` · ${estate.district}` : ""}
           </div>

@@ -66,7 +66,9 @@ export function PortalMap({
       el.type = "button";
       el.className = "riegel-pin";
       el.textContent = formatPriceShort(e);
-      el.setAttribute("aria-label", `${e.title} – ${formatPriceShort(e)}`);
+      // Karte ist visuelle Repräsentation der Liste → Pins aus Tab-/SR-Reihenfolge nehmen.
+      el.tabIndex = -1;
+      el.setAttribute("aria-hidden", "true");
       el.addEventListener("mouseenter", () => onHover(e.id));
       el.addEventListener("mouseleave", () => onHover(null));
       el.addEventListener("click", (ev) => {
@@ -105,5 +107,13 @@ export function PortalMap({
     }
   }, [hoveredId, activeId]);
 
-  return <div ref={containerRef} className="h-full w-full" role="application" aria-label="Karte der Immobilien" />;
+  const count = estates.filter((e) => e.geo).length;
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full"
+      role="img"
+      aria-label={`Karte mit ${count} ${count === 1 ? "Objekt" : "Objekten"} — Auswahl und Bedienung über die Liste`}
+    />
+  );
 }
