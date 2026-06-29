@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: "Akira";
+    src: url("file:///root/.claude/uploads/93995920-053c-5324-b000-7153d2fd2ad6/ea919ce0-Akira_Super_Bold.ttf") format("truetype");
+    font-weight: 800; font-display: swap;
+  }
+  :root{
+    --bg:#0b0b0d; --surface:#141417; --surface2:#1c1c21; --border:#2a2a30;
+    --fg:#f4f3f0; --muted:#a8a6a0; --faint:#7c7a75; --accent:#015cff; --accentStrong:#6aa1ff; --on:#fff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  @page{ size:297mm 167mm; margin:0; }
+  html,body{ background:var(--bg); color:var(--fg); font-family:Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  .slide{
+    position:relative; width:297mm; height:167mm; overflow:hidden;
+    background:var(--bg); padding:16mm 18mm; page-break-after:always; display:flex; flex-direction:column;
+  }
+  .slide:last-child{ page-break-after:auto; }
+  .akira{ font-family:"Akira",Helvetica,sans-serif; font-weight:800; letter-spacing:.01em; line-height:.98; text-transform:uppercase; }
+  .eyebrow{ font-size:9pt; letter-spacing:.28em; text-transform:uppercase; color:var(--accentStrong); margin-bottom:7mm; }
+  .foot{ position:absolute; left:18mm; right:18mm; bottom:8mm; display:flex; justify-content:space-between; font-size:8pt; color:var(--faint); letter-spacing:.04em; }
+  .wm{ font-weight:800; letter-spacing:.22em; }
+  h1.title{ font-size:40pt; }
+  h2.title{ font-size:27pt; }
+  p.lead{ font-size:13pt; color:var(--muted); line-height:1.5; max-width:150mm; }
+  .accent{ color:var(--accent); }
+  .accentS{ color:var(--accentStrong); }
+  .row{ display:flex; gap:12mm; flex:1; align-items:center; }
+  .col{ flex:1; }
+  ul.feat{ list-style:none; margin-top:7mm; display:flex; flex-direction:column; gap:3.4mm; }
+  ul.feat li{ position:relative; padding-left:8mm; font-size:11pt; color:var(--muted); line-height:1.4; }
+  ul.feat li b{ color:var(--fg); font-weight:600; }
+  ul.feat li:before{ content:""; position:absolute; left:0; top:1.6mm; width:3.4mm; height:3.4mm; border-radius:50%; background:var(--accent); }
+  .frame{ border:1px solid var(--border); border-radius:5mm; overflow:hidden; background:var(--surface); box-shadow:0 14mm 30mm rgba(0,0,0,.5); }
+  .frame .bar{ height:7mm; background:#101013; display:flex; align-items:center; gap:2mm; padding:0 4mm; border-bottom:1px solid var(--border); }
+  .frame .dot{ width:2.4mm; height:2.4mm; border-radius:50%; background:#3a3a42; }
+  .frame img{ width:100%; display:block; }
+  .shotfull{ width:100%; border-radius:4mm; border:1px solid var(--border); display:block; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:5mm; margin-top:7mm; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:4mm; padding:6mm; }
+  .card h3{ font-size:12pt; color:var(--fg); margin-bottom:2.5mm; display:flex; align-items:center; gap:2.5mm; }
+  .card p{ font-size:9.5pt; color:var(--muted); line-height:1.45; }
+  .chip{ display:inline-block; border:1px solid var(--border); border-radius:99px; padding:1.6mm 4mm; font-size:8.5pt; color:var(--muted); margin:0 1.6mm 1.6mm 0; }
+  .chip b{color:var(--fg);}
+  .stat{ font-size:9.5pt; color:var(--muted); }
+  .stat b{ font-family:"Akira",sans-serif; font-weight:800; font-size:18pt; color:var(--fg); display:block; }
+  .pricewrap{ display:flex; gap:8mm; margin-top:8mm; }
+  .pricebox{ flex:1; border:1px solid var(--border); border-radius:5mm; padding:8mm; background:var(--surface); }
+  .pricebox.hl{ border-color:var(--accent); background:linear-gradient(160deg,rgba(1,92,255,.10),transparent); }
+  .pricebox .lbl{ font-size:9pt; letter-spacing:.2em; text-transform:uppercase; color:var(--faint); }
+  .pricebox .amt{ font-family:"Akira",sans-serif; font-weight:800; font-size:30pt; color:var(--fg); margin:3mm 0; }
+  .pricebox .amt small{ font-size:11pt; color:var(--muted); }
+  .glow{ position:absolute; border-radius:50%; filter:blur(40mm); opacity:.16; }
+</style>
+</head>
+<body>
+
+<!-- 1 COVER -->
+<section class="slide" style="padding:0;">
+  <img src="shots/home.png" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.22;" />
+  <div style="position:absolute; inset:0; background:linear-gradient(90deg,var(--bg) 35%,rgba(11,11,13,.5));"></div>
+  <div class="glow" style="width:120mm;height:120mm;background:var(--accent);left:-30mm;top:-20mm;"></div>
+  <div style="position:relative; padding:18mm; display:flex; flex-direction:column; height:100%; justify-content:center;">
+    <div class="eyebrow">Angebot · Digitaler Relaunch 2026</div>
+    <h1 class="akira" style="font-size:52pt;">Riegel<br><span class="accent">Immobilien</span><br><span style="-webkit-text-stroke:1.2px var(--fg); color:transparent;">Plattform</span></h1>
+    <p class="lead" style="margin-top:9mm; font-size:14pt;">Von der Website zur Plattform: Portal, Sofort-Bewertung, Lead-Engine,<br/>Kundenkonten und KI-Auffindbarkeit — maßgeschneidert für RIEGEL.</p>
+    <div style="position:absolute; left:18mm; bottom:14mm; font-size:9pt; color:var(--muted);">
+      Erstellt von <b style="color:var(--fg)">beuwy</b> · Alexander Pütter · für Riegel Immobilien e.K.
+    </div>
+  </div>
+</section>
+
+<!-- 2 AUSGANGSLAGE -->
+<section class="slide">
+  <div class="eyebrow">Ausgangslage</div>
+  <h2 class="akira title">Eine Website ist eine Visitenkarte.<br/>Der Markt verlangt eine <span class="accent">Plattform</span>.</h2>
+  <div class="grid2" style="margin-top:10mm;">
+    <div class="card"><h3>Keine Selbstvermarktung</h3><p>Kaufinteressenten können nicht filtern, suchen, vergleichen oder sich Objekte merken — sie wandern zu ImmoScout & Co. ab.</p></div>
+    <div class="card"><h3>Keine Lead-Gewinnung</h3><p>Verkäufer finden keinen einfachen Einstieg. Kein Bewertungs-Tool, kein digitaler Funnel, der Anfragen automatisch erzeugt.</p></div>
+    <div class="card"><h3>Schwache Auffindbarkeit</h3><p>Kaum sichtbar bei „Immobilie verkaufen Speyer/Ludwigshafen" — weder bei Google noch in KI-Antworten (ChatGPT, Perplexity).</p></div>
+    <div class="card"><h3>Keine Bindung</h3><p>Keine Konten, keine gespeicherten Suchen, keine Benachrichtigungen. Jeder Besuch beginnt bei null.</p></div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>02</span></div>
+</section>
+
+<!-- 3 LÖSUNG -->
+<section class="slide">
+  <div class="eyebrow">Die Lösung</div>
+  <div class="row">
+    <div class="col">
+      <h2 class="akira title">Kein Template.<br/>Eine eigene, schnelle <span class="accent">Web-App</span>.</h2>
+      <ul class="feat">
+        <li><b>Maßgeschneidert</b> auf Marke, Region und Vermarktungsprozess von RIEGEL.</li>
+        <li><b>Dark-first Premium-Design</b> mit eigener Bildsprache und Animationen.</li>
+        <li><b>Eine Plattform</b> für Portal, Bewertung, Termin, Konten & Inhalte.</li>
+        <li><b>Blitzschnell</b> und für Mobil, Suchmaschinen und KI optimiert.</li>
+      </ul>
+    </div>
+    <div class="col"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/home.png" /></div></div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>03</span></div>
+</section>
+
+<!-- 4 PORTAL -->
+<section class="slide">
+  <div class="eyebrow">Modul 1 · Immobilienportal</div>
+  <div class="row">
+    <div class="col" style="flex:1.3;"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/portal.png" /></div></div>
+    <div class="col">
+      <h2 class="akira" style="font-size:22pt;">Suchen wie bei den Großen — <span class="accent">nur lokal</span>.</h2>
+      <ul class="feat">
+        <li><b>Karte + Liste</b> synchron, Pins mit Preis, „in diesem Bereich suchen".</li>
+        <li><b>Sofort-Filter</b> (Typ, Preis, Zimmer, Fläche, Energie …) — teilbar per Link.</li>
+        <li><b>Favoriten & Merkliste</b>, Detailseiten mit Galerie & Pflichtangaben.</li>
+        <li><b>Anbindung an OnOffice</b>: alle Objekte automatisch & aktuell.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>04</span></div>
+</section>
+
+<!-- 5 RECHNER -->
+<section class="slide">
+  <div class="eyebrow">Modul 2 · Immorechner (Lead-Magnet)</div>
+  <div class="row">
+    <div class="col">
+      <h2 class="akira" style="font-size:22pt;">Adresse rein,<br/><span class="accent">Wert raus</span> — in 60 Sekunden.</h2>
+      <ul class="feat">
+        <li><b>Adress-Autocomplete</b> + Satellitenansicht der Immobilie.</li>
+        <li><b>Sofort-Bewertung</b> mit großer Ergebniszahl — ohne „wohin senden?"-Hürde.</li>
+        <li><b>Viele Faktoren</b>: Lage, Zustand, Energie, Baujahr, Ausstattung.</li>
+        <li>Der natürliche <b>Einstieg in den Verkäufer-Funnel</b>.</li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1.3;"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/rechner.png" /></div></div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>05</span></div>
+</section>
+
+<!-- 6 VERKÄUFER FUNNEL -->
+<section class="slide">
+  <div class="eyebrow">Conversion · Verkäufer gewinnen</div>
+  <div class="row">
+    <div class="col" style="flex:1.3;"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/verkaufen.png" /></div></div>
+    <div class="col">
+      <h2 class="akira" style="font-size:22pt;">Vom Klick zum <span class="accent">Mandat</span>.</h2>
+      <ul class="feat">
+        <li><b>Klarer Funnel:</b> Bewertung → Termin/Kontakt → Mandat.</li>
+        <li><b>Vertrauen:</b> Ø-Vermarktungszeit, ImmoAward 2025 (Top 21 / 25.000+).</li>
+        <li><b>Eigenes Buchungstool</b> (Calendly-Klon) + Kontaktformular mit echter Mail-Zustellung.</li>
+        <li><b>Besichtigungsablauf</b> transparent dargestellt.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>06</span></div>
+</section>
+
+<!-- 7 ACCOUNTS -->
+<section class="slide">
+  <div class="eyebrow">Modul 3 · Konten & Bindung</div>
+  <div class="row">
+    <div class="col">
+      <h2 class="akira" style="font-size:22pt;">Aus Besuchern<br/>werden <span class="accent">Stammkunden</span>.</h2>
+      <ul class="feat">
+        <li><b>Registrierung & Login</b> (sicher, DSGVO-konform, EU-Hosting).</li>
+        <li><b>Favoriten & Suchaufträge</b> — geräteübergreifend synchronisiert.</li>
+        <li><b>Benachrichtigung</b> bei passenden neuen Objekten.</li>
+        <li>Gebrandete, hochwertige <b>E-Mails</b> (RIEGEL-Design).</li>
+      </ul>
+    </div>
+    <div class="col"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/konto.png" /></div></div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>07</span></div>
+</section>
+
+<!-- 8 GEO -->
+<section class="slide">
+  <div class="eyebrow">Sichtbarkeit · SEO + KI (GEO)</div>
+  <div class="row">
+    <div class="col" style="flex:1.3;"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/standort.png" /></div></div>
+    <div class="col">
+      <h2 class="akira" style="font-size:21pt;">Gefunden werden — bei Google <span class="accent">und</span> ChatGPT.</h2>
+      <ul class="feat">
+        <li><b>28 Standort- & Ratgeberseiten</b> für das gesamte RIEGEL-Gebiet.</li>
+        <li>Speyer, Ludwigshafen, Germersheim, Worms, Landau, Neustadt …</li>
+        <li><b>Strukturierte Daten</b> (FAQ/Article/Breadcrumb) + <b>llms.txt</b> für KI.</li>
+        <li>Ziel: „Immobilie verkaufen <b>{Ort}</b>" → RIEGEL.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>08</span></div>
+</section>
+
+<!-- 9 DESIGN -->
+<section class="slide">
+  <div class="eyebrow">Marke & Design</div>
+  <div class="row">
+    <div class="col">
+      <h2 class="akira" style="font-size:22pt;">Ein Auftritt, der <span class="accent">Niveau</span> zeigt.</h2>
+      <ul class="feat">
+        <li><b>Dark-first</b> mit RIEGEL-Blau (#015CFF) und AKIRA-Headlines.</li>
+        <li><b>Eigenes Icon-System</b>, Bento-Layouts, Shader-Akzente.</li>
+        <li><b>Mikro-Animationen</b> überall — wertig, nie verspielt.</li>
+        <li>Konsistent über Web, Mobil und E-Mails.</li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1.3;"><div class="frame"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><img src="shots/detail.png" /></div></div>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>09</span></div>
+</section>
+
+<!-- 10 TECH -->
+<section class="slide">
+  <div class="eyebrow">Technik & Sicherheit</div>
+  <h2 class="akira title">Solide gebaut. <span class="accent">Zukunftssicher</span>.</h2>
+  <div class="grid2" style="margin-top:8mm;">
+    <div class="card"><h3>Moderne Architektur</h3><p>Next.js auf Vercel — extrem schnell, skalierbar, wartungsarm. Kein träges WordPress-Konstrukt.</p></div>
+    <div class="card"><h3>OnOffice-Anbindung</h3><p>Alle ~108 Objekte automatisch & aktuell aus dem CRM — inkl. Bilder, Energieausweis, Provision.</p></div>
+    <div class="card"><h3>Konten & E-Mail</h3><p>Supabase (EU-Hosting) für Konten/Favoriten, Resend für zuverlässige, gebrandete Mails.</p></div>
+    <div class="card"><h3>DSGVO auf Kanzlei-Niveau</h3><p>Ausführliche Datenschutzerklärung, Consent-Banner, self-hosted Fonts, Cookie-arm.</p></div>
+  </div>
+  <div style="margin-top:7mm;">
+    <span class="chip"><b>Next.js</b></span><span class="chip"><b>Vercel</b></span><span class="chip"><b>OnOffice API</b></span><span class="chip"><b>Supabase</b></span><span class="chip"><b>Resend</b></span><span class="chip"><b>MapLibre</b></span><span class="chip"><b>Schema.org / llms.txt</b></span>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>10</span></div>
+</section>
+
+<!-- 11 LEISTUNGSUMFANG -->
+<section class="slide">
+  <div class="eyebrow">Leistungsumfang</div>
+  <h2 class="akira title">Was enthalten ist</h2>
+  <div class="row" style="align-items:flex-start; margin-top:6mm;">
+    <ul class="feat col">
+      <li>Strategie, Konzept & Projektleitung</li>
+      <li>Premium-Design & Marken-Feinschliff (dark-first, Akira, Blau)</li>
+      <li>Immobilienportal (Karte/Liste/Filter/Favoriten)</li>
+      <li>Immorechner mit Satellit & Sofort-Bewertung</li>
+      <li>Eigenes Buchungstool + Kontakt mit Mail-Zustellung</li>
+      <li>Kundenkonten, Favoriten- & Suchauftrag-Sync</li>
+    </ul>
+    <ul class="feat col">
+      <li>OnOffice-Anbindung (alle Objekte automatisch)</li>
+      <li>GEO/SEO-Paket: 28 Inhalts-Seiten + strukturierte Daten</li>
+      <li>Rechtstexte (Impressum, Datenschutz Kanzlei-Niveau, Widerruf)</li>
+      <li>Barrierefreiheit (WCAG) & Performance-Optimierung</li>
+      <li>Gebrandete E-Mail-Templates</li>
+      <li>Hosting-Setup, Deployment & Einweisung</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="wm">RIEGEL</span><span>11</span></div>
+</section>
+
+<!-- 12 ABLAUF -->
+<section class="slide">
+  <div class="eyebrow">Ablauf</div>
+  <h2 class="akira title">In <span class="accent">vier Phasen</span> live</h2>
+  <div class="grid2" style="grid-template-columns:repeat(4,1fr); margin-top:9mm;">
+    <div class="card"><h3>1 · Kickoff</h3><p>Zugänge (OnOffice, Domain), Feinabstimmung, Marken-Assets.</p></div>
+    <div class="card"><h3>2 · Daten & Inhalte</h3><p>OnOffice-Anbindung, Fotos, Texte, GEO-Inhalte.</p></div>
+    <div class="card"><h3>3 · Feinschliff</h3><p>Animationen, A11y, Performance, Rechtstexte, Tests.</p></div>
+    <div class="card"><h3>4 · Go-Live</h3><p>Domain-Umstellung, Einweisung, Monitoring.</p></div>
+  </div>
+  <p class="lead" style="margin-top:10mm;">Großteil der Plattform ist bereits <b style="color:var(--fg)">live als Prototyp</b> umgesetzt — der Relaunch ist greifbar, nicht nur konzeptionell.</p>
+  <div class="foot"><span class="wm">RIEGEL</span><span>12</span></div>
+</section>
+
+<!-- 13 INVESTITION -->
+<section class="slide">
+  <div class="glow" style="width:90mm;height:90mm;background:var(--accent);right:-20mm;top:-10mm;"></div>
+  <div class="eyebrow">Investition</div>
+  <h2 class="akira title">Eine Plattform, kein Webseitchen.</h2>
+  <div class="pricewrap">
+    <div class="pricebox hl">
+      <div class="lbl">Komplettpaket · einmalig</div>
+      <div class="amt">34.800 € <small>zzgl. MwSt.</small></div>
+      <p class="card" style="border:none;background:none;padding:0;">Maßgeschneiderte Plattform inkl. aller Module, OnOffice-Anbindung, GEO-Paket, Rechtstexte, Go-Live & Einweisung.</p>
+    </div>
+    <div class="pricebox">
+      <div class="lbl">Betrieb & Pflege · optional</div>
+      <div class="amt">390 € <small>/ Monat</small></div>
+      <p class="card" style="border:none;background:none;padding:0;">Hosting, Updates, Monitoring, OnOffice-Sync, laufende GEO-Inhalte & kleinere Anpassungen.</p>
+    </div>
+  </div>
+  <p class="lead" style="margin-top:9mm; font-size:10.5pt;">Zum Vergleich: Der WordPress-Relaunch 2021 lag bei 12.700 € netto. Diese Plattform ist eine bespoke Software-Lösung mit Portal, Bewertungs-Engine, Konten und KI-Sichtbarkeit — ein Vielfaches an Wert und Wirkung.</p>
+  <div class="foot"><span class="wm">RIEGEL</span><span>13</span></div>
+</section>
+
+<!-- 14 CLOSING -->
+<section class="slide" style="justify-content:center;">
+  <div class="glow" style="width:110mm;height:110mm;background:var(--accent);left:50%;top:50%;transform:translate(-50%,-50%);opacity:.12;"></div>
+  <div style="position:relative; text-align:center;">
+    <div class="eyebrow" style="text-align:center;">Bereit, wenn Sie es sind</div>
+    <h2 class="akira" style="font-size:34pt;">Machen wir RIEGEL<br/>zur <span class="accent">Nr. 1 der Region</span> — digital.</h2>
+    <p class="lead" style="margin:9mm auto 0; text-align:center;">beuwy · Alexander Pütter · Mendelssohnstraße 52, 67061 Ludwigshafen<br/>info@beuwy.com · 0621 586 898 78 · www.beuwy.com</p>
+    <p style="margin-top:7mm; font-size:8pt; color:var(--faint);">Angebot freibleibend, 30 Tage gültig. Preise zzgl. 19% MwSt.</p>
+  </div>
+</section>
+
+</body>
+</html>
