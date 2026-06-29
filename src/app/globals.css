@@ -615,6 +615,26 @@
   .t-num-d { animation: none !important; }
 }
 
+/* ── 02 Collapse (sanft auf-/zuklappen, z. B. Standort-Schritt im Termin) ── */
+.t-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--duration-slow) var(--ease-smooth-out),
+    opacity var(--duration-normal) var(--ease-smooth-out);
+}
+.t-collapse.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.t-collapse > .t-collapse-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-collapse { transition: opacity var(--duration-normal) linear; }
+}
+
 /* ── Portal-Karten-Pins (MapLibre HTML-Marker) ── */
 .riegel-pin {
   font-family: var(--font-sans);

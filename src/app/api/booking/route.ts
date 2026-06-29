@@ -15,11 +15,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
   const type = esc(b.type).slice(0, 120);
+  const mode = esc(b.mode).slice(0, 60);
+  const location = esc(b.location).slice(0, 160);
+  const duration = esc(b.duration).slice(0, 10);
   const date = esc(b.date).slice(0, 40);
   const time = esc(b.time).slice(0, 20);
   const name = esc(b.name).slice(0, 200);
   const email = esc(b.email).slice(0, 200);
   const phone = esc(b.phone).slice(0, 80);
+  const messageTxt = esc(b.message).slice(0, 2000);
 
   if (!name || !date || !time || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.email))) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
@@ -27,11 +31,14 @@ export async function POST(req: Request) {
 
   const rows = emailRows([
     { label: "Anlass", value: type },
+    { label: "Art", value: mode },
+    { label: "Ort", value: location },
     { label: "Datum", value: date },
-    { label: "Uhrzeit", value: `${time} Uhr` },
+    { label: "Uhrzeit", value: `${time} Uhr${duration ? ` · ${duration} Min.` : ""}` },
     { label: "Name", value: name },
     { label: "E-Mail", value: email },
     { label: "Telefon", value: phone },
+    { label: "Nachricht", value: messageTxt },
   ]);
 
   const internal = await sendMail({

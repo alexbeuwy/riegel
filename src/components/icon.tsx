@@ -38,6 +38,7 @@ export type IconName =
   | "compass"
   | "layers"
   | "clock"
+  | "video"
   | "star"
   | "users"
   | "doc"
@@ -133,6 +134,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
+    </>
+  ),
+  video: (
+    <>
+      <rect x="3" y="6" width="13" height="12" rx="2" />
+      <path d="m16 10 5-3v10l-5-3" />
     </>
   ),
   star: <path d="m12 4 2.4 5 5.6.6-4 4 1 5.4L12 16l-5 3 1-5.4-4-4 5.6-.6L12 4Z" />,
