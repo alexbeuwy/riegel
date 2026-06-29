@@ -36,13 +36,22 @@ export function parseFilters(sp: SearchParamsObj): FilterState {
   const sort = sortRaw && SORTS.includes(sortRaw) ? sortRaw : "neu";
   const typObjRaw = one(sp.typ_obj) as ObjectCategory | undefined;
   const typObj = typObjRaw && CATS.includes(typObjRaw) ? typObjRaw : undefined;
+
+  // Min>Max defensiv tauschen, damit invertierte Spannen kein stilles 0-Ergebnis liefern.
+  let preisMin = int(sp.preis_min);
+  let preisMax = int(sp.preis_max);
+  if (preisMin != null && preisMax != null && preisMin > preisMax) [preisMin, preisMax] = [preisMax, preisMin];
+  let flaecheMin = int(sp.flaeche_min);
+  let flaecheMax = int(sp.flaeche_max);
+  if (flaecheMin != null && flaecheMax != null && flaecheMin > flaecheMax) [flaecheMin, flaecheMax] = [flaecheMax, flaecheMin];
+
   return {
     typ,
-    preisMin: int(sp.preis_min),
-    preisMax: int(sp.preis_max),
+    preisMin,
+    preisMax,
     zimmerMin: int(sp.zimmer_min),
-    flaecheMin: int(sp.flaeche_min),
-    flaecheMax: int(sp.flaeche_max),
+    flaecheMin,
+    flaecheMax,
     ort: one(sp.ort) || undefined,
     typObj,
     provisionsfrei: one(sp.provisionsfrei) === "1" || undefined,
