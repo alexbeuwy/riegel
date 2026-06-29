@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useAuth } from "@/components/auth";
+import { supabase } from "@/lib/supabase";
 
 type FavCtx = {
   ids: string[];
@@ -15,12 +17,15 @@ const Ctx = createContext<FavCtx | null>(null);
 const KEY = "riegel:favorites";
 
 /**
- * Merkliste — vorerst localStorage (anonym). In M3 wird bei Login mit Supabase
- * gemerged. Provider in layout.tsx; Hooks/Buttons sind Client-only.
+ * Merkliste — localStorage als Basis (anonym, sofort). Bei Login (Supabase aktiv)
+ * werden lokale Favoriten mit dem Konto gemerged und write-through synchronisiert.
+ * Fehlt die Tabelle oder die Konfiguration, bleibt alles still auf localStorage.
  */
 export function FavoritesProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [ids, setIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
+  const syncedFor = useRef<string | null>(null);
 
   useEffect(() => {
     try {
@@ -37,8 +42,47 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [ids, ready]);
 
+  // Bei Login: Konto-Favoriten laden, mit lokalen mergen, lokale hochschieben.
+  useEffect(() => {
+    if (!supabase || !user || !ready) return;
+    if (syncedFor.current === user.id) return;
+    syncedFor.current = user.id;
+    (async () => {
+      try {
+        const { data, error } = await supabase!
+          .from("favorites")
+          .select("estate_id")
+          .eq("user_id", user.id);
+        if (error) return; // Tabelle fehlt o. Ä. → lokal bleiben
+        const remote = (data ?? []).map((r) => r.estate_id as string);
+        const localOnly = ids.filter((id) => !remote.includes(id));
+        if (localOnly.length) {
+          await supabase!
+            .from("favorites")
+            .upsert(localOnly.map((estate_id) => ({ user_id: user.id, estate_id })));
+        }
+        setIds(Array.from(new Set([...remote, ...ids])));
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, ready]);
+
+  useEffect(() => {
+    if (!user) syncedFor.current = null;
+  }, [user]);
+
   const toggle = (id: string) =>
-    setIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+    setIds((cur) => {
+      const has = cur.includes(id);
+      if (supabase && user) {
+        if (has) {
+          supabase.from("favorites").delete().eq("user_id", user.id).eq("estate_id", id).then(undefined, () => {});
+        } else {
+          supabase.from("favorites").upsert({ user_id: user.id, estate_id: id }).then(undefined, () => {});
+        }
+      }
+      return has ? cur.filter((x) => x !== id) : [...cur, id];
+    });
 
   return (
     <Ctx.Provider value={{ ids, has: (id) => ids.includes(id), toggle, count: ids.length, ready }}>

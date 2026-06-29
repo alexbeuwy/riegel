@@ -84,12 +84,12 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/40 to-transparent" />
-        <Container className="relative z-10 pb-24 pt-32">
+        <Container className="relative z-10 pb-28 pt-36 sm:pb-32">
           <div className="max-w-3xl">
             <div className="reveal" style={{ animationDelay: "0ms" }}>
               <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
             </div>
-            <h1 className="mt-6 akira text-[2.1rem] leading-[0.96] sm:text-5xl lg:text-[4.6rem]">
+            <h1 className="mt-8 akira text-[2rem] leading-[1.02] sm:text-5xl lg:text-[4.25rem]">
               <span className="reveal block" style={{ animationDelay: "80ms" }}>
                 Regionale Expertise.
               </span>
@@ -101,17 +101,17 @@ export default function HomePage() {
               </span>
             </h1>
             <p
-              className="reveal mt-7 max-w-xl text-lg text-muted"
+              className="reveal mt-8 max-w-xl text-lg text-muted"
               style={{ animationDelay: "380ms" }}
             >
               Verkauf, Bewertung und Beratung in Speyer, Ludwigshafen und der
               Vorderpfalz — diskret, persönlich und datenbasiert.
             </p>
-            <div className="reveal relative z-20 mt-9" style={{ animationDelay: "480ms" }}>
+            <div className="reveal relative z-20 mt-10" style={{ animationDelay: "480ms" }}>
               <HeroAddressSearch />
             </div>
             <div
-              className="reveal relative z-10 mt-5 flex flex-wrap items-center gap-4"
+              className="reveal relative z-10 mt-6 flex flex-wrap items-center gap-4"
               style={{ animationDelay: "560ms" }}
             >
               <Magnetic>

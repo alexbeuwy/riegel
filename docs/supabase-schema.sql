@@ -33,7 +33,8 @@ create table if not exists public.saved_searches (
   label text,
   query text not null,
   notify boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (user_id, query)
 );
 alter table public.saved_searches enable row level security;
 drop policy if exists "own searches" on public.saved_searches;
