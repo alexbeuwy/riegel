@@ -203,6 +203,28 @@ export default function UeberUnsPage() {
               </Reveal>
             ))}
           </div>
+
+          {/* Einblicke — echte Büro-Innenaufnahmen */}
+          <Reveal className="mt-6 grid gap-6 sm:grid-cols-3">
+            {[
+              { src: "/images/office/empfang.jpg", label: "Empfang" },
+              { src: "/images/office/beratung.jpg", label: "Beratung" },
+              { src: "/images/office/bueroraum.jpg", label: "Unser Büro" },
+            ].map((img) => (
+              <div key={img.src} className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-border">
+                <Image
+                  src={img.src}
+                  alt={`Riegel Immobilien — ${img.label}`}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 33vw"
+                  className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+                />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/80 to-transparent p-4">
+                  <span className="text-sm text-fg">{img.label}</span>
+                </div>
+              </div>
+            ))}
+          </Reveal>
         </Container>
       </section>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { ContactForm } from "@/components/contact-form";
@@ -74,6 +75,41 @@ export default function KontaktPage() {
               </div>
             </div>
           </div>
+          {/* Unsere Büros — echte Standortfotos */}
+          <div className="mt-12">
+            <h2 className="text-xl font-semibold">Unsere Büros</h2>
+            <div className="mt-5 grid gap-6 sm:grid-cols-2">
+              {site.locations.map((l, i) => (
+                <div key={l.city} className="group overflow-hidden rounded-2xl border border-border bg-surface">
+                  <div className="relative aspect-[16/10] overflow-hidden">
+                    <Image
+                      src={i === 0 ? "/images/standorte/speyer.jpg" : "/images/standorte/ludwigshafen.jpg"}
+                      alt={`Riegel Immobilien Büro ${l.city}`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 45vw"
+                      className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/85 to-transparent p-4">
+                      <div className="flex items-center gap-2 text-fg">
+                        <Icon name="pin" size={16} className="text-accent" />
+                        <span className="font-semibold">{l.city}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 p-5 text-sm">
+                    <div className="text-muted">
+                      {l.street}<br />
+                      {l.zip} {l.city}
+                    </div>
+                    <a href={`tel:${l.phone.replace(/\s+/g, "")}`} className="press inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-fg transition-colors hover:border-accent hover:text-accent">
+                      <Icon name="phone" size={14} /> {l.phone}
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
               href="/termin"

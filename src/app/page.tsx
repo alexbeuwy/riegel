@@ -291,14 +291,17 @@ export default function HomePage() {
         <Container>
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <Reveal>
-              <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-xl border border-border">
+              <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-xl border border-border">
                 <Image
-                  src="/images/team/sylwia.jpg"
-                  alt="Sylwia Riegel, Geschäftsleitung Riegel Immobilien"
+                  src="/images/team/gruppe.jpg"
+                  alt="Das Team von Riegel Immobilien"
                   fill
-                  sizes="(max-width: 1024px) 100vw, 40vw"
+                  sizes="(max-width: 1024px) 100vw, 45vw"
                   className="object-cover"
                 />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/80 to-transparent p-4">
+                  <span className="text-sm text-fg">Familie &amp; Team Riegel — zwei Standorte, eine Region.</span>
+                </div>
               </div>
             </Reveal>
 
