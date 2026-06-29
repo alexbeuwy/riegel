@@ -2,13 +2,18 @@
 -- Im RIEGEL-Projekt: Supabase Dashboard → SQL Editor → einfügen → Run.
 -- (Auth/E-Mail-Login ist in Supabase standardmäßig aktiv.)
 
--- 1) Profile (spiegelt auth.users)
+-- 1) Profile (spiegelt auth.users) + Suchprofil/Präferenzen
 create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
   email text,
   full_name text,
+  preferences jsonb,            -- Rolle, Objektarten, Regionen, Budget, Zimmer
+  early_access boolean default false,  -- Vorab-Zugang vor Veröffentlichung
   created_at timestamptz default now()
 );
+-- Falls die Tabelle bereits existiert, Spalten nachrüsten:
+alter table public.profiles add column if not exists preferences jsonb;
+alter table public.profiles add column if not exists early_access boolean default false;
 alter table public.profiles enable row level security;
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles

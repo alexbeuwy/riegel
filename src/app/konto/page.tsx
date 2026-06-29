@@ -6,6 +6,7 @@ import { Container } from "@/components/container";
 import { PageIntro } from "@/components/page-intro";
 import { Icon } from "@/components/icon";
 import { useAuth } from "@/components/auth";
+import { ProfileForm } from "@/components/profile-form";
 
 const inputCls =
   "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
@@ -47,10 +48,10 @@ export default function KontoPage() {
 
       <section className="py-14">
         <Container>
-          <div className="mx-auto max-w-md">
+          <div className="mx-auto max-w-2xl">
             {/* Konten noch nicht konfiguriert → freundlicher Hinweis */}
             {!enabled ? (
-              <div className="rounded-2xl border border-border bg-surface p-8 text-center">
+              <div className="mx-auto max-w-md rounded-2xl border border-border bg-surface p-8 text-center">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface-2 text-accent">
                   <Icon name="lock" size={26} />
                 </div>
@@ -69,27 +70,34 @@ export default function KontoPage() {
                 </Link>
               </div>
             ) : !ready ? (
-              <div className="h-40 animate-pulse rounded-2xl border border-border bg-surface" />
+              <div className="mx-auto h-40 max-w-md animate-pulse rounded-2xl border border-border bg-surface" />
             ) : user ? (
-              /* Eingeloggt */
-              <div className="rounded-2xl border border-border bg-surface p-8 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-on-accent">
-                  <Icon name="check" size={26} />
+              /* Eingeloggt: Konto-Kopf + Suchprofil */
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-on-accent">
+                      <Icon name="check" size={22} />
+                    </span>
+                    <div>
+                      <div className="text-sm text-faint">Eingeloggt als</div>
+                      <div className="break-all text-fg">{user.email}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    <Link href="/merkliste" className="press inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-hover">
+                      <Icon name="heart" size={16} /> Merkliste
+                    </Link>
+                    <button onClick={() => signOut()} className="press inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-fg hover:border-accent hover:text-accent">
+                      <Icon name="lock" size={15} /> Abmelden
+                    </button>
+                  </div>
                 </div>
-                <h2 className="text-xl font-semibold">Eingeloggt</h2>
-                <p className="mt-2 break-all text-muted">{user.email}</p>
-                <div className="mt-6 flex flex-col gap-2.5">
-                  <Link href="/merkliste" className="press inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent hover:bg-accent-hover">
-                    <Icon name="heart" size={17} /> Meine Merkliste
-                  </Link>
-                  <button onClick={() => signOut()} className="press inline-flex items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm text-fg hover:border-accent hover:text-accent">
-                    <Icon name="lock" size={16} /> Abmelden
-                  </button>
-                </div>
+                <ProfileForm />
               </div>
             ) : (
               /* Login / Registrierung */
-              <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+              <div className="mx-auto max-w-md rounded-2xl border border-border bg-surface p-6 sm:p-8">
                 <div className="mb-6 grid grid-cols-2 gap-1 rounded-full border border-border p-1 text-sm">
                   {(["login", "register"] as const).map((m) => (
                     <button

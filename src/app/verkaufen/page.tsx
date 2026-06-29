@@ -4,6 +4,7 @@ import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
 import { BentoGrid, BentoTile } from "@/components/bento";
+import { ProcessTimeline } from "@/components/process-timeline";
 
 export const metadata = {
   title: "Immobilie verkaufen",
@@ -60,22 +61,7 @@ export default function VerkaufenPage() {
               So läuft Ihr Verkauf — in fünf klaren Schritten
             </h2>
           </Reveal>
-          <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {steps.map((s, i) => (
-              <Reveal key={s.n} delay={i * 80} as="li">
-                <div className="group relative h-full rounded-2xl border border-border bg-surface p-6 transition-colors duration-500 hover:border-accent/50">
-                  <div className="mb-5 flex items-center justify-between">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface-2 text-accent transition-colors duration-500 group-hover:border-accent/50">
-                      <Icon name={s.icon} size={22} />
-                    </div>
-                    <span className="akira text-xl text-faint">{s.n}</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-fg">{s.title}</h3>
-                  <p className="mt-2 text-sm text-muted">{s.text}</p>
-                </div>
-              </Reveal>
-            ))}
-          </ol>
+          <ProcessTimeline steps={steps.map(({ icon, title, text }) => ({ icon, title, text }))} />
         </Container>
       </section>
 
