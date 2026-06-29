@@ -9,7 +9,8 @@ function Wordmark() {
   return (
     <Link href="/" className="flex items-center" aria-label={`${site.name} – Startseite`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-riegel-white.svg" alt={site.name} className="h-6 w-auto sm:h-7" />
+      {/* Logo-Schrift sitzt unten bündig → 2px hochziehen für optische Mitte mit der Nav */}
+      <img src="/logo-riegel-white.svg" alt={site.name} className="h-6 w-auto -translate-y-[2px] sm:h-7" />
     </Link>
   );
 }

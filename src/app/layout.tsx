@@ -63,17 +63,10 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-bg text-fg">
         {/*
-          Markenschrift Neuzeit Grotesk (Adobe Fonts Web-Projekt, ID atg2aop).
-          Der dynamische Kit lädt per Projekt-ID auf JEDER Domain — keine
-          Domain-Freigabe nötig. React-19-Hoisting via `precedence`.
-          TODO vor Cutover: hinter Consent-Tool laden (externer Embed, TDDDG).
-          Fallback bis Kit geladen / falls geblockt: self-hosted Inter.
+          Schriften vollständig self-hosted (DSGVO): Inter (Body) + Akira (Headlines)
+          via next/font/local. Kein externer Adobe-Typekit-Embed mehr → keine
+          IP-Übermittlung an Adobe, kein Consent für Fonts nötig.
         */}
-        <link
-          rel="stylesheet"
-          href="https://use.typekit.net/atg2aop.css"
-          precedence="default"
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}

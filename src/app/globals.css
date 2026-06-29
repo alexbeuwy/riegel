@@ -19,7 +19,7 @@
   --color-on-accent: #ffffff; /* weißer Text auf Blau-Button (5,3:1 ✅) */
 
   /* Body/UI: Neuzeit Grotesk (Adobe, läuft auf Domain) → Inter (self-hosted Fallback) */
-  --font-sans: "neuzeit-grotesk", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: 4px;
   --radius-md: 8px;
