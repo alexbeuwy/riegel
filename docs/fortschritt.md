@@ -29,6 +29,26 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Header**: kurzes „RIEGEL"-Logo (lesbar), Nav ohne Umbruch, Hero vertikal zentriert.
 - **OnOffice**: Import-Plan für alle ~108 Objekte dokumentiert (`onoffice-integration.md` §8).
 
+## Update — Suchprofil, Verkaufsablauf, Termin-Klon, Pitchdeck ✅
+
+- **Suchprofil nach Login** (`/konto`): Rolle (Eigennutzer/Kapitalanlage/Verkauf), Objektarten,
+  Regionen, Budget, Zimmer, **Vorab-Zugang** (vor Veröffentlichung informiert) → speichert in
+  Supabase `profiles.preferences`/`early_access` (Schema: `supabase-schema.sql`), LS-Fallback.
+- **Verkaufsablauf** als animierte **ProcessTimeline** (Connector füllt sich beim Scrollen,
+  gestaffeltes Reveal, Bild-Slots bereit) statt 5 statischer Boxen.
+- **Termin = Calendly-Klon ausgebaut**: Termin-Modus (Vor Ort/Video-Call/Telefonisch),
+  Standortwahl (sanft via `.t-collapse`), Dauer 30/45/60 als Segmented, Anlass +Finanzierung,
+  Datum als Kalender-Zellen, Uhrzeit Vormittag/Nachmittag, **Live-Summary-Schiene**,
+  Fortschrittsleiste, Absende-Spinner, reichere Bestätigung (t-success-check + .ics + Google-Kalender).
+  Buchungs-API übernimmt Modus/Ort/Dauer/Nachricht in die Mails.
+- **transitions-dev** durchgängig gewired (Segmented-Pill, t-collapse, t-success-check, t-num-d,
+  t-input-shake, press, Progress-Fill) + **make-interfaces-feel-better** (Live-Feedback, Spinner,
+  Smart Defaults, aria-pressed).
+- **Pitchdeck v2** (`docs/pitchdeck/deck.html`, 15 Slides): beuwy-Adresse Max-Bill-Str. 3,
+  kein „Prototyp"-Claim, Icon-Badges in Argument-Boxen, **growsta-Style KI-Sichtbarkeits-Check**
+  („heute: andere / Ziel: RIEGEL"), neue **Wirkung-Slide** (leuchtender Graph, illustrativ),
+  3D-Shader-Wellen als Design-Asset. PDF via Playwright gerendert.
+
 ## Offen / wartet auf Input 🔧
 
 - **Dashboard-Schritte Supabase**: `docs/supabase-schema.sql` ausführen; Auth „Confirm email" + Site-URL
