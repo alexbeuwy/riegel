@@ -216,22 +216,29 @@ export default function HomePage() {
       </section>
 
       {/* ───────── Block · Kennzahlen ───────── */}
-      <section className="border-y border-border bg-surface/40 py-16">
+      <section className="py-16 sm:py-20">
         <Container>
-          <div className="grid grid-cols-2 gap-y-10 sm:gap-6 lg:grid-cols-4">
-            {stats.map((s, i) => (
-              <Reveal key={s.label} delay={i * 80} className="flex flex-col items-start">
-                <span className="mb-3 text-accent">
-                  <Icon name={s.icon} size={24} />
-                </span>
-                <span className="akira text-3xl text-fg sm:text-4xl">{s.value}</span>
-                <span className="mt-2 max-w-[12rem] text-sm text-muted">{s.label}</span>
-              </Reveal>
-            ))}
-          </div>
-          <p className="mt-10 text-xs text-faint">
-            Ø-Werte als Orientierung, abhängig von Objekt, Preis und Marktlage.
-            ImmoScout24 ImmoAward 2025: Top 21 national, Top 3 im Raum Frankfurt.
+          <Reveal>
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border lg:grid-cols-4">
+              {stats.map((s) => (
+                <div
+                  key={s.label}
+                  className="group relative flex flex-col items-start gap-3 bg-surface p-7 transition-colors duration-300 hover:bg-surface-2 sm:p-8"
+                >
+                  {/* Akzent-Hairline oben, erscheint beim Hover */}
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-accent to-transparent transition-transform duration-500 group-hover:scale-x-100" />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/[0.08] text-accent transition-transform duration-300 group-hover:-translate-y-0.5">
+                    <Icon name={s.icon} size={20} />
+                  </span>
+                  <span className="akira text-3xl text-fg sm:text-4xl">{s.value}</span>
+                  <span className="text-sm leading-snug text-muted">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+          <p className="mt-5 text-center text-xs text-faint">
+            Ø-Werte als Orientierung, abhängig von Objekt, Preis und Marktlage. ImmoScout24
+            ImmoAward 2025 — Top 21 Makler des Jahres in Deutschland (von über 25.000).
           </p>
         </Container>
       </section>
