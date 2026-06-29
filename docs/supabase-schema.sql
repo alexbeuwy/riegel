@@ -46,7 +46,43 @@ drop policy if exists "own searches" on public.saved_searches;
 create policy "own searches" on public.saved_searches
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- 4) Profil automatisch bei Registrierung anlegen
+-- 4) Bewertungs-/Report-Anfragen — Nachvollziehbarkeit „wer prüft welches Objekt"
+--    Jede Adress-Recherche + Report-Anfrage aus dem Rechner wird hier protokolliert.
+create table if not exists public.valuation_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  user_id uuid references auth.users on delete set null,
+  address text,
+  city text,
+  postcode text,
+  lat double precision,
+  lng double precision,
+  objektart text,
+  wohnflaeche numeric,
+  grundflaeche numeric,
+  zimmer numeric,
+  baujahr int,
+  zustand text,
+  qualitaet text,
+  value_low bigint,
+  value_mid bigint,
+  value_high bigint,
+  price_per_sqm int,
+  confidence int,
+  report_requested boolean default false,
+  name text,
+  email text,
+  phone text,
+  message text
+);
+alter table public.valuation_requests enable row level security;
+-- Insert für alle erlauben (Logging vom Rechner, auch anonym); Lesen NUR service_role
+-- (keine select-Policy → anon/authenticated können nicht lesen; Auswertung über Dashboard).
+drop policy if exists "insert valuations" on public.valuation_requests;
+create policy "insert valuations" on public.valuation_requests
+  for insert with check (true);
+
+-- 5) Profil automatisch bei Registrierung anlegen
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin

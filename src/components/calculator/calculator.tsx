@@ -17,6 +17,7 @@ import {
   type ValuationResult,
   type Zustand,
 } from "@/lib/valuation";
+import { ReportRequest } from "@/components/calculator/report-request";
 
 const LocationMap = dynamic(
   () => import("@/components/calculator/location-map").then((m) => m.LocationMap),
@@ -560,21 +561,7 @@ function Result({ f, result, onReset }: { f: FormState; result: ValuationResult;
           </div>
         )}
 
-        <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-accent/30 bg-surface p-6 text-center">
-          <p className="mx-auto max-w-md text-sm text-muted">
-            Diese Sofort-Einschätzung tendiert bewusst zur oberen Marktspanne. Für einen
-            belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose, ausführliche
-            Bewertung vor Ort.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <a href="/termin" className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover">
-              Ausführliche Bewertung anfordern
-            </a>
-            <button type="button" onClick={onReset} className="rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
-              Neue Bewertung
-            </button>
-          </div>
-        </div>
+        <ReportRequest f={f} result={result} onReset={onReset} />
 
         <p className="mt-6 text-center text-xs text-faint">
           Unverbindliche, datenbasierte Schätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
