@@ -39,6 +39,8 @@ export type IconName =
   | "layers"
   | "clock"
   | "video"
+  | "volume"
+  | "volumeOff"
   | "star"
   | "users"
   | "doc"
@@ -140,6 +142,18 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="3" y="6" width="13" height="12" rx="2" />
       <path d="m16 10 5-3v10l-5-3" />
+    </>
+  ),
+  volume: (
+    <>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="M15.5 9a3.5 3.5 0 0 1 0 6M18 6.5a7 7 0 0 1 0 11" />
+    </>
+  ),
+  volumeOff: (
+    <>
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="m16 9.5 5 5M21 9.5l-5 5" />
     </>
   ),
   star: <path d="m12 4 2.4 5 5.6.6-4 4 1 5.4L12 16l-5 3 1-5.4-4-4 5.6-.6L12 4Z" />,

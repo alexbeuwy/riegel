@@ -1,105 +1,66 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
 
 /**
- * Instagram-Reels-Showcase als echtes Autoplay-in-View-Grid.
- * - Liegt eine MP4 vor (Feld `video`, z. B. "/reels/xy.mp4"), wird sie
- *   stummgeschaltet, geloopt und nur abgespielt, wenn die Kachel sichtbar ist
- *   (IntersectionObserver → flüssig, kein Akku-/CPU-Fresser).
- * - Ohne MP4 zeigt die Kachel das Poster + Play-Overlay und verlinkt auf den
- *   echten Reel. Riegel exportiert die Reels (Eigentum) nach /public/reels/.
+ * RIEGEL-Video-Reels — echte, selbst gehostete MP4s (Eigentum RIEGEL).
+ * - Autoplay stumm in View (IntersectionObserver, akkuschonend).
+ * - Hover → Ton an (und alle anderen stumm). Verlassen → wieder stumm.
+ * - Kleiner Mute/Unmute-Button unten links (Klick = sichere User-Geste für Ton).
+ * - Respektiert prefers-reduced-motion (kein Autoplay).
  */
 interface Reel {
-  permalink: string;
-  poster: string;
+  src: string;
   caption: string;
-  video?: string; // z. B. "/reels/schifferstadt.mp4"
+  tag: string;
 }
 
+const BASE = "https://beuwy.com/riegel/";
 const REELS: Reel[] = [
-  { permalink: "https://www.instagram.com/p/DYzORWBNKU-/", poster: "/images/standorte/haus.jpg", caption: "Doppelhaushälfte · Schifferstadt" },
-  { permalink: "https://www.instagram.com/p/DYZo1sZtZL8/", poster: "/images/news/wein.jpg", caption: "RIEGEL Wein" },
-  { permalink: "https://www.instagram.com/p/DX_w6Q5tpd_/", poster: "/images/news/auto-gewonnen.jpg", caption: "Gewinnspiel" },
-  { permalink: "https://www.instagram.com/p/DX91v6sOw7j/", poster: "/images/news/sponsor-tsg.jpg", caption: "Sponsoring TSG Hoffenheim" },
-  { permalink: "https://www.instagram.com/riegelimmobilien/", poster: "/images/standorte/buero-1.jpg", caption: "Hinter den Kulissen" },
-  { permalink: "https://www.instagram.com/riegelimmobilien/", poster: "/images/news/event.jpg", caption: "Team & Events" },
-  { permalink: "https://www.instagram.com/riegelimmobilien/", poster: "/images/standorte/buero-2.jpg", caption: "Beratung & Service" },
-  { permalink: "https://www.instagram.com/riegelimmobilien/", poster: "/images/standorte/ludwigshafen.jpg", caption: "Standort Ludwigshafen" },
+  { src: "Doppelhaushaelfte-Schifferstadt.mp4", caption: "Doppelhaushälfte", tag: "Schifferstadt" },
+  { src: "Einfamilienhaus1.mp4", caption: "Einfamilienhaus", tag: "Vorderpfalz" },
+  { src: "Bad-Duerkheim-Wohnung.mp4", caption: "Wohnung", tag: "Bad Dürkheim" },
+  { src: "Carina-Einfamilienhaus.mp4", caption: "Einfamilienhaus", tag: "mit Carina" },
+  { src: "Miete-Sissy-in-Speyer.mp4", caption: "Zur Miete", tag: "Speyer · mit Sissy" },
 ];
 
-function ReelCard({ r }: { r: Reel }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export function ReelsGrid() {
+  const refs = useRef<(HTMLVideoElement | null)[]>([]);
+  const [muted, setMuted] = useState<boolean[]>(() => REELS.map(() => true));
 
+  // Autoplay nur in View.
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
+          const v = e.target as HTMLVideoElement;
           if (e.isIntersecting) v.play().catch(() => {});
           else v.pause();
         }
       },
-      { threshold: 0.4 },
+      { threshold: 0.35 },
     );
-    io.observe(v);
+    refs.current.forEach((v) => v && io.observe(v));
     return () => io.disconnect();
   }, []);
 
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border">
-      <div className="relative aspect-[9/16]">
-        {r.video ? (
-          <video
-            ref={videoRef}
-            poster={r.poster}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <Image
-            src={r.poster}
-            alt={r.caption}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22vw"
-            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-bg/90 via-transparent to-bg/25" />
-        {!r.video && (
-          <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-bg/55 text-fg backdrop-blur transition-transform duration-300 group-hover:scale-110">
-            <svg viewBox="0 0 24 24" width={20} height={20} fill="currentColor" aria-hidden>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-        )}
-        <a
-          href={r.permalink}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Auf Instagram ansehen: ${r.caption}`}
-          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-bg/55 text-fg backdrop-blur transition-colors hover:text-accent"
-        >
-          <Icon name="arrowUpRight" size={16} />
-        </a>
-        <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-3">
-          <Icon name="sparkle" size={15} className="shrink-0 text-accent" />
-          <span className="truncate text-sm text-fg">{r.caption}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+  // Genau ein Video mit Ton; alle anderen stumm.
+  const soundOn = (i: number) => {
+    refs.current.forEach((v, idx) => {
+      if (!v) return;
+      v.muted = idx !== i;
+      if (idx === i) v.play().catch(() => {});
+    });
+    setMuted(REELS.map((_, idx) => idx !== i));
+  };
+  const muteAll = () => {
+    refs.current.forEach((v) => v && (v.muted = true));
+    setMuted(REELS.map(() => true));
+  };
 
-export function ReelsGrid() {
   return (
     <section className="py-20 sm:py-28">
       <Container>
@@ -110,8 +71,8 @@ export function ReelsGrid() {
             </span>
             <h2 className="text-3xl font-semibold sm:text-4xl">So vermarkten wir Immobilien</h2>
             <p className="text-muted">
-              Reels, Reichweite, Wiedererkennung — moderne Vermarktung, die Ihre
-              Immobilie sichtbar macht.
+              Echte Objekt-Reels — Reichweite, Wiedererkennung und Emotion.
+              <span className="text-faint"> Mit der Maus über ein Video fahren für Ton.</span>
             </p>
           </div>
           <a
@@ -125,9 +86,53 @@ export function ReelsGrid() {
           </a>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {REELS.map((r, i) => (
-            <ReelCard key={`${r.permalink}-${i}`} r={r} />
+            <div
+              key={r.src}
+              className="group relative overflow-hidden rounded-2xl border border-border bg-surface"
+              onMouseEnter={() => soundOn(i)}
+              onMouseLeave={muteAll}
+            >
+              <div className="relative aspect-[9/16]">
+                <video
+                  ref={(el) => {
+                    refs.current[i] = el;
+                  }}
+                  src={BASE + r.src}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  preload="metadata"
+                  className="h-full w-full object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/90 via-transparent to-bg/20" />
+
+                {/* Mute/Unmute unten links */}
+                <button
+                  type="button"
+                  aria-label={muted[i] ? "Ton einschalten" : "Ton ausschalten"}
+                  aria-pressed={!muted[i]}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (muted[i]) soundOn(i);
+                    else muteAll();
+                  }}
+                  className="press absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-full bg-bg/60 text-fg backdrop-blur transition-colors hover:text-accent"
+                >
+                  <Icon name={muted[i] ? "volumeOff" : "volume"} size={15} />
+                </button>
+
+                {/* Caption unten rechts */}
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 p-3 pl-12 text-right">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-fg">{r.caption}</div>
+                    <div className="truncate text-xs text-faint">{r.tag}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </Container>
