@@ -155,6 +155,49 @@ images: {
 
 ---
 
+## 8. Voller Import aller ~108 Objekte — kurz: JA, sauber.
+
+**Frage:** Sobald die API-Keys da sind, ziehen wir alle 108 Objekte sauber in unser System?
+**Antwort:** Ja. 108 Datensätze sind trivial — ein paginierter `read estate`-Pull plus
+ein `estatepictures`-Pull. Konkreter Ablauf:
+
+1. **Pull:** `read estate` mit `listlimit` (z. B. 100) + `listoffset` über 2 Seiten → alle aktiven
+   Objekte mit allen benötigten Feldern in einem Lauf.
+2. **Mapping** OnOffice → unser bestehendes `Estate`-Modell (`src/lib/mock-estates.ts`), das Portal,
+   Filter, Karte und Detailseite bereits vollständig bedienen:
+
+   | OnOffice-Feld | Unser `Estate` |
+   |---|---|
+   | `Id` | `id` / `slug` (aus Titel + Id) |
+   | `objekttitel` | `title` |
+   | `vermarktungsart` | `marketingType` (kauf/miete) |
+   | `objektart`/`objekttyp` | `category` / `objectType` |
+   | `kaufpreis` / `kaltmiete` | `price` |
+   | `anzahl_zimmer` | `rooms` |
+   | `wohnflaeche` / `grundstuecksflaeche` | `livingArea` / `plotArea` |
+   | `ort` / `plz` / `regionaler_zusatz` | `city` / `postcode` / `district` |
+   | `breitengrad` / `laengengrad` | `geo {lat,lng}` |
+   | `energietraeger`/`energieausweistyp`/`endenergiebedarf`/`energieeffizienzklasse` | `energy` |
+   | `courtage`/`provisionspflichtig` | `provision` |
+   | `objektbeschreibung`/`lage`/`ausstatt_beschr` | `description`/`locationDescription`/`features` |
+   | `estatepictures`-URLs | `images[]` |
+
+3. **Speichern:** Upsert in eine Supabase-Tabelle `estates` (Single Source für das Portal) — schnelle
+   Filter/Suche, entkoppelt von OnOffice-Rate-Limits. Das Portal liest dann aus Supabase statt aus
+   `mockEstates`. **Die UI ändert sich nicht** (gleiches `Estate`-Modell).
+4. **Aktualität:** Marketplace-Webhooks (§5) → bei Änderung gezielt einzelnes Objekt neu ziehen;
+   zusätzlich nächtlicher Voll-Resync als Sicherheitsnetz.
+5. **Bilder:** OnOffice-CDN-URLs direkt nutzen (`remotePatterns` in `next.config`, §3) — optional später
+   spiegeln. Energieausweis + Provision (Pflichtangaben) kommen aus den Feldern oben → bereits gerendert.
+
+**Was wir dafür brauchen:** `ONOFFICE_TOKEN` + `ONOFFICE_SECRET` (Server-Env, nie ins Bundle) und
+die Bestätigung, dass der **API-Zugang** (onOffice Marketplace/„API") für das Konto aktiv ist
+(Lese-Rechte `estate` + `estatepictures`). Danach: Mapping-Modul + Sync-Job bauen (~0,5–1 Tag),
+`mockEstates` als Datenquelle gegen den Supabase-`estates`-Reader tauschen, fertig. Bei 108 Pins
+lohnt sich dann auch das **Karten-Clustering** (bisher bewusst zurückgestellt).
+
+---
+
 ## Quellen
 - API-Struktur/Envelope: <https://apidoc.onoffice.de/onoffice-api-request/aufbau/>
 - Erste Schritte (HMAC-v2 PHP-Beispiel, Endpoint): <https://apidoc.onoffice.de/erste-schritte/>

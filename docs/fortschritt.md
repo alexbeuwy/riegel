@@ -16,7 +16,27 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Instagram-Reels**: Autoplay-in-View-Grid (MP4-ready) — siehe `instagram-integration.md`.
 - **GEO-Programm**: **28 Artikel** (18 Standorte + 10 Ratgeber) + Article/FAQPage/Breadcrumb-JSON-LD, `/standorte`, `/ratgeber`, Sitemap, dynamische `/llms.txt`. Standorte: Speyer, Ludwigshafen, Germersheim, Frankenthal, Neustadt, Schifferstadt, Haßloch, Mutterstadt, Limburgerhof, Mannheim, Worms, Landau, Bad Dürkheim, Böhl-Iggelheim, Dudenhofen, Römerberg, Otterstadt, Waldsee.
 
+## Update — Konten, E-Mail, Consent, DSGVO, Fonts ✅
+
+- **Konten/Login** (Supabase, env-gated) live: `/konto` Registrierung/Login, Header-Konto-Link.
+  **Favoriten- & Suchauftrag-Sync** (Merge bei Login, Write-through, fehlertolerant).
+- **Resend-Transaktionsmails**: `/api/contact` + `/api/booking` senden echte gebrandete Mails
+  (Benachrichtigung an Riegel + Bestätigung an Absender). Env: `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_TO`.
+- **High-End-Mail-Templates** für Supabase-Auth: `docs/email-templates/` (5 Stück) + README.
+- **Consent-Banner** (TDDDG): externe Karten/Luftbilder (CARTO/Esri) laden erst nach Einwilligung
+  (Click-to-Load). **Fonts self-hosted** (Adobe-Embed entfernt) → ein externer Dienst weniger.
+- **DSGVO** erweitert (Supabase/Geocoding/Esri) — Check in `docs/dsgvo-check.md`.
+- **Header**: kurzes „RIEGEL"-Logo (lesbar), Nav ohne Umbruch, Hero vertikal zentriert.
+- **OnOffice**: Import-Plan für alle ~108 Objekte dokumentiert (`onoffice-integration.md` §8).
+
 ## Offen / wartet auf Input 🔧
+
+- **Dashboard-Schritte Supabase**: `docs/supabase-schema.sql` ausführen; Auth „Confirm email" + Site-URL
+  setzen; für Mails **SMTP = Resend** (siehe `email-templates/README.md`).
+- **`RESEND_API_KEY`** in Vercel setzen, damit Kontakt/Termin-Mails rausgehen.
+- **Reels**: echte MP4s (Behold.so-Feed oder Export) — Grid ist vorbereitet.
+- **OnOffice-Keys** → 108 Objekte importieren (Plan steht).
+- **Consent**: Geocoding (Nominatim) ist aktuell funktional-on-use disclosed; bei Bedarf hart gaten.
 
 - **Echte Reel-Videos**: Quelle wählen (Behold.so / Instagram Graph API / MP4-Export) → siehe `instagram-integration.md`. Grid ist vorbereitet.
 - **Accounts/Login (Supabase)**: RIEGEL-Org angelegt; nach Aufräumen Project-URL + anon-Key liefern → Login/Registrierung + Favoriten-/Suchauftrag-Sync. Läuft bis dahin über localStorage.
