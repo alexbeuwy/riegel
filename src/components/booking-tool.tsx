@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
+import { burstConfetti } from "@/lib/confetti";
 import { site } from "@/lib/site";
 
 type Mode = "vor-ort" | "video" | "telefon";
@@ -125,6 +126,7 @@ export function BookingTool() {
     window.setTimeout(() => {
       setBusy(false);
       setDone(true);
+      burstConfetti();
     }, 650);
   }
 

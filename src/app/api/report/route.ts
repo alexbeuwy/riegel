@@ -162,6 +162,13 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
     }
   }
 
+  // Observability: Zustellfehler in den Vercel-Logs sichtbar machen.
+  if (customer.skipped) {
+    console.warn("[report] Mailversand übersprungen — RESEND_API_KEY fehlt.");
+  } else if (!customer.ok || !internal.ok) {
+    console.error("[report] Resend-Fehler:", { customer: customer.error, internal: internal.error });
+  }
+
   return NextResponse.json({
     ok: true,
     delivered: customer.ok,

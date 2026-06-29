@@ -41,8 +41,15 @@ export default function TerminPage() {
         kurzfristig, persönlich oder digital.
       </PageIntro>
 
-      {/* So läuft eine Besichtigung */}
-      <section className="pt-4">
+      {/* Buchungstool zuerst */}
+      <section className="pt-4 pb-16">
+        <Container>
+          <BookingTool />
+        </Container>
+      </section>
+
+      {/* So läuft eine Besichtigung — darunter */}
+      <section className="border-t border-border py-16 sm:py-20">
         <Container>
           <Reveal className="mb-8 max-w-2xl">
             <h2 className="text-2xl font-semibold sm:text-3xl">So läuft eine Besichtigung ab</h2>
@@ -82,12 +89,6 @@ export default function TerminPage() {
           <p className="mt-4 text-xs text-faint">
             Bild-Platzhalter — echte Impressionen Ihrer Besichtigung folgen.
           </p>
-        </Container>
-      </section>
-
-      <section className="py-14">
-        <Container>
-          <BookingTool />
         </Container>
       </section>
     </>
