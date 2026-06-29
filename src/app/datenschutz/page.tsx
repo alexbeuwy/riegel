@@ -69,12 +69,12 @@ export default function DatenschutzPage() {
 
             <h2>5. Cookies & Einwilligungsverwaltung</h2>
             <p>
-              Technisch notwendige Speicherungen (z. B. Ihre Merkliste und Suchaufträge im
-              lokalen Speicher Ihres Browsers) erfolgen auf Grundlage von § 25 Abs. 2 TDDDG
-              bzw. Art. 6 Abs. 1 lit. f DSGVO. Alle nicht notwendigen externen Dienste werden
-              erst nach Ihrer Einwilligung geladen (§ 25 Abs. 1 TDDDG, Art. 6 Abs. 1 lit. a
-              DSGVO). Ihre Einwilligung ist jederzeit über die Cookie-Einstellungen mit
-              Wirkung für die Zukunft widerrufbar.
+              Technisch notwendige Speicherungen (z. B. Ihre Merkliste und Suchaufträge sowie
+              – bei Anmeldung – Ihre Sitzungsinformationen im lokalen Speicher Ihres Browsers)
+              erfolgen auf Grundlage von § 25 Abs. 2 TDDDG bzw. Art. 6 Abs. 1 lit. f DSGVO.
+              Alle nicht notwendigen externen Dienste werden erst nach Ihrer Einwilligung
+              geladen (§ 25 Abs. 1 TDDDG, Art. 6 Abs. 1 lit. a DSGVO). Ihre Einwilligung ist
+              jederzeit über die Cookie-Einstellungen mit Wirkung für die Zukunft widerrufbar.
             </p>
 
             <h2>6. Kontaktaufnahme</h2>
@@ -89,13 +89,49 @@ export default function DatenschutzPage() {
             <h2>7. Immobilienbewertung (Wertrechner)</h2>
             <p>
               Wenn Sie den Bewertungsrechner nutzen, verarbeiten wir die von Ihnen
-              eingegebenen Objekt- und Kontaktdaten, um Ihnen eine Einschätzung zu erstellen
-              und Sie auf Wunsch zu kontaktieren. Rechtsgrundlage ist Ihre Einwilligung
-              (Art. 6 Abs. 1 lit. a DSGVO), die Sie jederzeit widerrufen können, sowie
-              vorvertragliche Maßnahmen (lit. b).
+              eingegebenen Objekt- und Adressdaten ausschließlich zur Erstellung einer
+              unverbindlichen Sofort-Einschätzung. Die Berechnung erfolgt direkt im Browser;
+              eine Übermittlung Ihrer Kontaktdaten ist hierfür <strong>nicht</strong>
+              {" "}erforderlich. Zur Adressermittlung siehe Ziffer 8. Rechtsgrundlage ist
+              unser berechtigtes Interesse an der Funktion bzw. Ihre Einwilligung
+              (Art. 6 Abs. 1 lit. f/a DSGVO).
             </p>
 
-            <h2>8. Immobiliendaten / CRM (onOffice)</h2>
+            <h2>8. Adresssuche / Geokodierung (OpenStreetMap Nominatim)</h2>
+            <p>
+              Für die Adress-Vervollständigung im Bewertungsrechner und auf der Startseite
+              nutzen wir – nach Ihrer Einwilligung – den Dienst „Nominatim" auf Basis von
+              OpenStreetMap (OpenStreetMap Foundation). Die von Ihnen eingegebene Adresse
+              sowie Ihre IP-Adresse werden an diesen Dienst übermittelt, um Adressvorschläge
+              und Koordinaten zu erhalten. Rechtsgrundlage ist Ihre Einwilligung bzw. unser
+              berechtigtes Interesse (Art. 6 Abs. 1 lit. a/f DSGVO).
+            </p>
+
+            <h2>9. Kartendarstellung (CARTO & Esri)</h2>
+            <p>
+              Im Immobilienportal setzen wir – nach Ihrer Einwilligung – Kartenkacheln auf
+              Basis von OpenStreetMap (Vektor-Stil „dark-matter" via CARTO) ein. Für die
+              Satelliten-/Luftbildansicht im Bewertungsrechner verwenden wir Kacheln von Esri
+              (World Imagery). Dabei wird Ihre IP-Adresse an den jeweiligen Anbieter
+              übermittelt (Art. 6 Abs. 1 lit. a DSGVO).
+            </p>
+
+            <h2>10. Benutzerkonten & Synchronisation (Supabase)</h2>
+            <p>
+              Wenn Sie ein Konto anlegen und sich anmelden, verarbeiten wir Ihre E-Mail-Adresse,
+              ein verschlüsselt gespeichertes Passwort sowie Ihre Favoriten und Suchaufträge,
+              um diese geräteübergreifend bereitzustellen und Sie auf Wunsch über passende
+              Objekte zu benachrichtigen. Hierfür nutzen wir die Infrastruktur der Supabase
+              Inc.; die Daten werden in einem Rechenzentrum innerhalb der EU (Frankfurt)
+              gespeichert. Rechtsgrundlage ist die Durchführung des Nutzungsverhältnisses
+              sowie Ihre Einwilligung (Art. 6 Abs. 1 lit. b und lit. a DSGVO). Zur
+              Sitzungsverwaltung werden technisch notwendige Informationen lokal in Ihrem
+              Browser gespeichert. Sie können Ihr Konto und die zugehörigen Daten jederzeit
+              löschen lassen. Ein Auftragsverarbeitungsvertrag (Art. 28 DSGVO) wird
+              geschlossen.
+            </p>
+
+            <h2>11. Immobiliendaten / CRM (onOffice)</h2>
             <p>
               Zur Darstellung von Objekten und zur Bearbeitung von Anfragen setzen wir die
               CRM-Lösung der onOffice GmbH ein. Übermittelte Anfragedaten werden dort als
@@ -103,7 +139,7 @@ export default function DatenschutzPage() {
               wird geschlossen.
             </p>
 
-            <h2>9. Schriftarten (Adobe Fonts)</h2>
+            <h2>12. Schriftarten (Adobe Fonts)</h2>
             <p>
               Zur einheitlichen Darstellung nutzen wir – nach Ihrer Einwilligung – „Adobe
               Fonts" der Adobe Systems Software Ireland Ltd. Hierbei kann Ihre IP-Adresse an
@@ -111,21 +147,14 @@ export default function DatenschutzPage() {
               Ersatzschrift verwendet.
             </p>
 
-            <h2>10. Kartendarstellung</h2>
-            <p>
-              Für die Kartenansicht im Immobilienportal setzen wir – nach Ihrer Einwilligung
-              – einen Kartendienst auf Basis von OpenStreetMap-Daten (Kartenkacheln via CARTO)
-              ein. Dabei wird Ihre IP-Adresse an den Kartendienst übermittelt.
-            </p>
-
-            <h2>11. Social-Media-Verlinkungen</h2>
+            <h2>13. Social-Media-Verlinkungen</h2>
             <p>
               Wir verlinken auf unsere Profile (Instagram, Facebook, YouTube) ausschließlich
               per einfachem Link. Es findet keine Einbettung statt; ein Datenabfluss erfolgt
               erst, wenn Sie den Link aktiv anklicken und die jeweilige Plattform besuchen.
             </p>
 
-            <h2>12. Speicherdauer</h2>
+            <h2>14. Speicherdauer</h2>
             <p>
               Wir verarbeiten personenbezogene Daten nur so lange, wie es für die genannten
               Zwecke erforderlich ist oder gesetzliche Aufbewahrungsfristen es vorschreiben.
