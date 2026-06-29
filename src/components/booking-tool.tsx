@@ -63,6 +63,11 @@ export function BookingTool() {
       cur.push({ type, date, time, name, email, phone, createdAt: Date.now() });
       localStorage.setItem(key, JSON.stringify(cur));
     } catch {}
+    void fetch("/api/booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, date, time, name, email, phone }),
+    }).catch(() => {});
     setDone(true);
   }
 

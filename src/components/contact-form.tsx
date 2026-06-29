@@ -50,6 +50,12 @@ export function ContactForm() {
       cur.push({ ...f, createdAt: Date.now() });
       localStorage.setItem(key, JSON.stringify(cur));
     } catch {}
+    // Echte Zustellung an Riegel + Bestätigung an den Absender (Resend, serverseitig)
+    void fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, topic: f.topic, message: f.message }),
+    }).catch(() => {});
     setDone(true);
   }
 
