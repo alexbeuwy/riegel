@@ -86,3 +86,19 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   Foto-Assets (siehe jeweilige `docs/*.md`).
 - **Env scharf**: RESEND_API_KEY gesetzt + Schema (inkl. `valuation_requests`) ausgeführt
   → Report-/Kontakt-/Termin-Mails inkl. CC laufen live.
+
+## Update — Video-Reels & internes Lead-Dashboard ✅
+
+- **Video-Reels**: 5 echte RIEGEL-Objekt-MP4s (selbst gehostet auf beuwy.com/riegel/),
+  Autoplay stumm in View, Hover → Ton, Mute-Toggle unten links. (`reels-grid.tsx`)
+- **Internes Dashboard `/intern`** (noindex): Passwort-Gate → zeigt Bewertungs-Reports
+  (`valuation_requests`) + Termin-/Kontakt-Leads (`leads`) in Tabellen. Liest serverseitig
+  über `SUPABASE_SERVICE_ROLE_KEY` (umgeht RLS, Key bleibt secret). `/api/intern` prüft `ADMIN_PASSWORD`.
+- **Leads-Tabelle**: `/api/booking` + `/api/contact` protokollieren jetzt auch in Supabase `leads`.
+
+### Env in Vercel (für Dashboard + Mails scharf)
+- `ADMIN_PASSWORD` — Passwort für `/intern`.
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase → Project Settings → API → service_role (secret!).
+- `EMAIL_FROM` = `RIEGEL Immobilien <noreply@<verifizierte-domain>>`, `EMAIL_TO` = Lead-Postfach.
+- Resend: **kostenlose** Domain-Verifizierung reicht (3.000 Mails/Monat frei) — kein Upgrade nötig.
+- Alternativ ohne Dashboard: Leads direkt im **Supabase Table Editor** (`valuation_requests`, `leads`).

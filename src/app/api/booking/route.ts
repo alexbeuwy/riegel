@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows } from "@/lib/email";
+import { supabase } from "@/lib/supabase";
 
 const esc = (s: unknown) =>
   String(s ?? "")
@@ -60,6 +61,20 @@ export async function POST(req: Request) {
       bodyHtml: rows,
     }),
   });
+
+  if (supabase) {
+    try {
+      await supabase.from("leads").insert({
+        kind: "booking",
+        name,
+        email,
+        phone: phone || null,
+        subject: `${type || "Termin"} · ${mode}`,
+        message: messageTxt || null,
+        detail: { type, mode, location, duration, date, time },
+      });
+    } catch {}
+  }
 
   return NextResponse.json({ ok: true, delivered: internal.ok, skipped: internal.skipped ?? false });
 }

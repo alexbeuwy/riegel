@@ -82,6 +82,24 @@ drop policy if exists "insert valuations" on public.valuation_requests;
 create policy "insert valuations" on public.valuation_requests
   for insert with check (true);
 
+-- 4b) Leads (Termin- & Kontaktanfragen) — zentral fürs interne Dashboard
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  kind text not null,            -- 'booking' | 'contact'
+  name text,
+  email text,
+  phone text,
+  subject text,
+  message text,
+  detail jsonb
+);
+alter table public.leads enable row level security;
+drop policy if exists "insert leads" on public.leads;
+create policy "insert leads" on public.leads
+  for insert with check (true);
+-- Lesen nur service_role (kein anon-select) → Auswertung über /intern oder Supabase-Editor.
+
 -- 5) Profil automatisch bei Registrierung anlegen
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows } from "@/lib/email";
+import { supabase } from "@/lib/supabase";
 
 const esc = (s: unknown) =>
   String(s ?? "")
@@ -55,6 +56,19 @@ export async function POST(req: Request) {
         : "",
     }),
   });
+
+  if (supabase) {
+    try {
+      await supabase.from("leads").insert({
+        kind: "contact",
+        name,
+        email,
+        phone: phone || null,
+        subject: topic || "Kontakt",
+        message: message || null,
+      });
+    } catch {}
+  }
 
   // skipped = kein RESEND_API_KEY → Formular zeigt trotzdem Erfolg (Daten lokal)
   return NextResponse.json({ ok: true, delivered: internal.ok, skipped: internal.skipped ?? false });
