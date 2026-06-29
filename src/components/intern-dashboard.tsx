@@ -164,8 +164,8 @@ export function InternDashboard() {
                   <tr key={l.id} className="border-t border-border align-top">
                     <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(l.created_at)}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">
-                        {l.kind === "booking" ? "Termin" : "Kontakt"}
+                      <span className={`rounded-full border px-2 py-0.5 text-xs ${l.kind === "archiv" ? "border-border text-faint" : "border-accent/40 text-accent"}`}>
+                        {l.kind === "booking" ? "Termin" : l.kind === "archiv" ? "Alt-Kontakt" : "Kontakt"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-fg">{l.name || "–"}</td>
