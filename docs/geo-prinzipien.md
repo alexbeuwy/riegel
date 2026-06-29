@@ -12,3 +12,27 @@ Based on the article's source-selection mechanics and my knowledge of GEO + Germ
 
 - **Zitate binden an einzelne Sätze, nicht an Seiten.** ChatGPT zitiert die Seite, die *den präzisen Anspruch* am besten belegt — nicht die thematisch verwandteste. Folge: Pro Faktenbehauptung (z. B. "durchschnittlicher Quadratmeterpreis in Speyer") **eine starke, eindeutig belegende Seite** statt vieler dünner.
 - **Du kannst dich nicht selbst zitieren lassen für Werturteile.** Fakten/Preise/Specs werden von der eigenen Seite gezogen, **Empfehlungen/Bewertungen** von Dritten. Folge: Eigene Seite = harte Fakten (Marktdaten, Prozess, Gebühren); Reputation ("bester Makler in Ludwigshafen") muss über Dritte kommen (Google-Bewertungen, ProvenExpert, Branchenportal
+
+---
+
+## KI-Zitierbarkeit — Wettbewerbsanalyse & Maßnahmen (Workflow-Recherche)
+
+**Warum Wettbewerber in Google AI Overview / ChatGPT zuerst genannt werden** (Speyer/LU):
+- **Bartz** gewinnt mit **Frage-als-Titel-Seiten** („Welcher Immobilienmakler ist der beste in Speyer?", „… auf Erbimmobilien spezialisiert?") + **FAQ-Schema** + „4,9/5 bei 500+ Google-Bewertungen" + vollständige **Ortsteil-Liste**.
+- **Von Poll**: ProvenExpert 4,64/5 (443 Bew.), exakter Title/H1 „Immobilienmakler Speyer", Entity-Autorität, in vielen Verzeichnissen.
+- **Seiberth/Muhlert**: Nischen-Spezialisierung **Erb- & Scheidungsimmobilien**, lange Ortsbeschreibungen, Klarnamen-Kundenstimmen.
+- **Größter Hebel insgesamt**: **Drittquellen** — ~80 % der KI-Zitate stammen aus neutralen Listicles/Verzeichnissen/Presse, nicht von der eigenen Seite.
+
+**Bereits umgesetzt (Code):**
+- RealEstateAgent-Schema global (layout) + pro Artikel — award, areaServed, beide Standorte, knowsAbout, sameAs, @id.
+- **7 RIEGEL-first FAQ** im Query-Wording („welcher/bester Makler …", Scheidung, Erbe, Bewertung) als erste FAQ je Zielartikel → speist FAQPage-Schema.
+- robots.ts erlaubt KI-Crawler explizit (GPTBot, ClaudeBot, PerplexityBot, Google-Extended …).
+- llms.txt RIEGEL-first: Trust-Block (Award) + „Direkte Antworten" + NAP je Standort.
+- Award-Wortlaut vereinheitlicht: „ImmoAward 2025 — Top 21 in Deutschland (von über 25.000)".
+
+**Off-Page TODO (Alex — größter Hebel, nicht per Code machbar):**
+1. **Google Business Profile** beider Standorte pflegen + aktiv Bewertungen sammeln/beantworten (Schnitt >4,5, viele, aktuell).
+2. In **lokale „Beste Makler Speyer/Ludwigshafen"-Listicles**, Vergleichsportale (ProvenExpert, jacasa, immoverkauf24) + Regionalpresse kommen.
+3. **ImmoScout24-Anbieterprofil** mit Bewertungen ausbauen; in Branchenverzeichnissen (golocal, Trustlocal) eintragen — NAP identisch.
+4. Reale **aggregateRating** (Google/ImmoScout) liefern → dann ins Schema (nicht erfunden!).
+5. Eigene **Frage-als-Titel-Ratgeber** (Scheidung/Erbe Speyer, Ortsteile) weiter ausbauen.

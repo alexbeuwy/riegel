@@ -40,11 +40,23 @@ export const viewport: Viewport = {
 const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "RealEstateAgent",
+  "@id": `${site.url}/#organization`,
   name: site.name,
+  legalName: site.legalName,
   url: site.url,
   email: site.email,
   telephone: site.phone,
-  areaServed: site.regions,
+  description: site.description,
+  // Starkes, maschinenlesbares Entity-Signal für KI-Antworten („wer ist der Makler in …?")
+  award: "ImmoScout24 ImmoAward 2025 — Top 21 Makler des Jahres in Deutschland (von über 25.000)",
+  knowsAbout: [
+    "Immobilienverkauf", "Immobilienbewertung", "Hausverkauf", "Wohnungsverkauf",
+    "Scheidungsimmobilie", "geerbte Immobilie", "Maklerprovision", "Energieausweis",
+  ],
+  areaServed: [
+    "Speyer", "Ludwigshafen", "Vorderpfalz", "Rhein-Neckar", "Schifferstadt",
+    "Frankenthal", "Neustadt an der Weinstraße", "Germersheim", "Haßloch", "Mutterstadt",
+  ],
   address: site.locations.map((l) => ({
     "@type": "PostalAddress",
     streetAddress: l.street,
@@ -52,7 +64,13 @@ const orgJsonLd = {
     addressLocality: l.city,
     addressCountry: "DE",
   })),
-  sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube].filter(Boolean),
+  location: site.locations.map((l) => ({
+    "@type": "Place",
+    name: `Riegel Immobilien ${l.city}`,
+    address: { "@type": "PostalAddress", streetAddress: l.street, postalCode: l.zip, addressLocality: l.city, addressCountry: "DE" },
+    telephone: l.phone,
+  })),
+  sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube, site.socials.linkedin].filter(Boolean),
 };
 
 export default function RootLayout({
