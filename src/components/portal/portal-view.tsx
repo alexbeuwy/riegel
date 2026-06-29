@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Estate } from "@/lib/mock-estates";
 import { PortalCard } from "@/components/portal/portal-card";
 import { Icon } from "@/components/icon";
+import { MapConsentGate, useConsent } from "@/components/consent";
 import type { MapBounds } from "@/components/portal/portal-map";
 
 const PortalMap = dynamic(
@@ -32,6 +33,7 @@ export function PortalView({ estates }: { estates: Estate[] }) {
   const [searchInArea, setSearchInArea] = useState(false);
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
+  const { maps: mapsConsent } = useConsent();
 
   const onHover = useCallback((id: string | null) => setHoveredId(id), []);
   const onActivate = useCallback((id: string | null) => setActiveId(id), []);
@@ -115,27 +117,31 @@ export function PortalView({ estates }: { estates: Estate[] }) {
           showMapMobile ? "block" : "hidden"
         } sticky top-20 h-[calc(100svh-5rem)] lg:block`}
       >
-        {/* Search-as-I-move-Umschalter */}
-        <label className="absolute left-3 top-3 z-10 flex cursor-pointer items-center gap-2 rounded-full border border-border bg-bg/85 px-3.5 py-2 text-sm text-fg shadow-lg backdrop-blur transition-colors hover:border-accent/60">
-          <input
-            type="checkbox"
-            checked={searchInArea}
-            onChange={(ev) => setSearchInArea(ev.target.checked)}
-            className="h-4 w-4 accent-[var(--color-accent)]"
-          />
-          <Icon name="search" size={15} className={searchInArea ? "text-accent" : "text-muted"} />
-          Bei Kartenbewegung suchen
-        </label>
+        {/* Search-as-I-move-Umschalter (nur wenn Karte geladen) */}
+        {mapsConsent && (
+          <label className="absolute left-3 top-3 z-10 flex cursor-pointer items-center gap-2 rounded-full border border-border bg-bg/85 px-3.5 py-2 text-sm text-fg shadow-lg backdrop-blur transition-colors hover:border-accent/60">
+            <input
+              type="checkbox"
+              checked={searchInArea}
+              onChange={(ev) => setSearchInArea(ev.target.checked)}
+              className="h-4 w-4 accent-[var(--color-accent)]"
+            />
+            <Icon name="search" size={15} className={searchInArea ? "text-accent" : "text-muted"} />
+            Bei Kartenbewegung suchen
+          </label>
+        )}
 
-        <PortalMap
-          estates={estates}
-          hoveredId={hoveredId}
-          activeId={activeId}
-          inAreaIds={inAreaIds}
-          onHover={onHover}
-          onActivate={onActivate}
-          onBoundsChange={onBoundsChange}
-        />
+        <MapConsentGate>
+          <PortalMap
+            estates={estates}
+            hoveredId={hoveredId}
+            activeId={activeId}
+            inAreaIds={inAreaIds}
+            onHover={onHover}
+            onActivate={onActivate}
+            onBoundsChange={onBoundsChange}
+          />
+        </MapConsentGate>
       </div>
 
       {/* Mobile-Umschalter Liste/Karte */}

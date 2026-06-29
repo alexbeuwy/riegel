@@ -9,8 +9,8 @@ function Wordmark() {
   return (
     <Link href="/" className="flex items-center" aria-label={`${site.name} – Startseite`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {/* Logo-Schrift sitzt unten bündig → 2px hochziehen für optische Mitte mit der Nav */}
-      <img src="/logo-riegel-white.svg" alt={site.name} className="h-6 w-auto -translate-y-[2px] sm:h-7" />
+      {/* Kurzes "RIEGEL"-Logo (viewBox 1000×200) — größer & gut lesbar */}
+      <img src="/logo-riegel-short-white.svg" alt={site.name} className="h-7 w-auto sm:h-8" />
     </Link>
   );
 }

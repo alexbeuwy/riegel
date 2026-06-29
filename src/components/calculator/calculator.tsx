@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { Icon } from "@/components/icon";
+import { MapConsentGate } from "@/components/consent";
 import { formatEUR } from "@/lib/format";
 import { searchAddress, type GeoResult } from "@/lib/geocode";
 import {
@@ -330,7 +331,9 @@ export function Calculator() {
                   Adresse bestätigt
                 </div>
                 <div className="relative h-52 overflow-hidden rounded-xl border border-border">
-                  <LocationMap lat={f.address.lat} lng={f.address.lng} />
+                  <MapConsentGate>
+                    <LocationMap lat={f.address.lat} lng={f.address.lng} />
+                  </MapConsentGate>
                 </div>
               </div>
             )}
@@ -496,7 +499,9 @@ function Result({ f, result, onReset }: { f: FormState; result: ValuationResult;
       {/* Satelliten-Ansicht + Adresse */}
       {f.address && (
         <div className="relative h-64 w-full sm:h-80">
-          <LocationMap lat={f.address.lat} lng={f.address.lng} zoom={18} />
+          <MapConsentGate>
+            <LocationMap lat={f.address.lat} lng={f.address.lng} zoom={18} />
+          </MapConsentGate>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg via-bg/70 to-transparent p-6">
             <div className="text-xs uppercase tracking-[0.25em] text-accent">Bewertete Immobilie</div>
             <div className="mt-1 text-lg font-semibold text-fg">{f.address.label}</div>
