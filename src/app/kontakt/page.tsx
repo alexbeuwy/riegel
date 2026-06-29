@@ -2,13 +2,16 @@ import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { ContactForm } from "@/components/contact-form";
+import { AnsprechpartnerCard } from "@/components/ansprechpartner-card";
 import { Icon } from "@/components/icon";
+import { contacts } from "@/lib/contacts";
 import { site, whatsappHref } from "@/lib/site";
 
 export const metadata = { title: "Kontakt" };
 
 export default function KontaktPage() {
   const wa = whatsappHref();
+  const contact = contacts.find((c) => c.name === "Sissy Riegel") ?? contacts[0];
   return (
     <>
       <PageIntro eyebrow="Kontakt" title="Sprechen wir über Ihre Immobilie">
@@ -17,8 +20,13 @@ export default function KontaktPage() {
       </PageIntro>
       <section className="py-20">
         <Container>
-          <div className="mb-10">
+          <div className="mb-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
             <ContactForm />
+            <AnsprechpartnerCard
+              contact={contact}
+              heading="Ich freue mich auf Ihre Anfrage"
+              className="lg:sticky lg:top-24"
+            />
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-surface p-6">

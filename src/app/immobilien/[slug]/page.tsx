@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/container";
 import { RequestViewingButton } from "@/components/request-viewing-button";
+import { AnsprechpartnerCard } from "@/components/ansprechpartner-card";
 import { EstateGallery } from "@/components/portal/estate-gallery";
 import { PropertyCard } from "@/components/property-card";
 import { Icon, type IconName } from "@/components/icon";
 import { mockEstates, type EnergyCertificate, type Estate } from "@/lib/mock-estates";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
+import { contactForCity } from "@/lib/contacts";
 import { site } from "@/lib/site";
 
 export function generateStaticParams() {
@@ -84,6 +86,14 @@ export default async function EstateDetailPage({
   const similar = mockEstates
     .filter((e) => e.id !== estate.id && (e.category === estate.category || e.city === estate.city))
     .slice(0, 3);
+
+  const contact = contactForCity(estate.city);
+  const objektId = `RI-${estate.id.toUpperCase().slice(0, 6)}`;
+  const onlineSince = new Date(estate.updatedAt).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <article className="pb-24 pt-24">
@@ -186,20 +196,33 @@ export default async function EstateDetailPage({
             </p>
           </div>
 
-          <aside className="h-fit space-y-5 rounded-2xl border border-border bg-surface p-6 lg:sticky lg:top-24">
-            <div>
-              <div className="text-sm text-faint">{estate.priceLabel}</div>
-              <div className="text-3xl font-semibold text-fg">{formatPrice(estate)}</div>
-              {estate.ancillaryCosts != null && (
-                <div className="mt-1 text-sm text-muted">
-                  zzgl. {estate.ancillaryCosts} € Nebenkosten
-                </div>
-              )}
+          <aside className="h-fit space-y-5 lg:sticky lg:top-24">
+            <div className="space-y-5 rounded-2xl border border-border bg-surface p-6">
+              <div>
+                <div className="text-sm text-faint">{estate.priceLabel}</div>
+                <div className="text-3xl font-semibold text-fg">{formatPrice(estate)}</div>
+                {estate.ancillaryCosts != null && (
+                  <div className="mt-1 text-sm text-muted">
+                    zzgl. {estate.ancillaryCosts} € Nebenkosten
+                  </div>
+                )}
+              </div>
+              <RequestViewingButton title={estate.title} />
+              <p className="text-xs text-faint">
+                Unverbindliche Anfrage · Antwort i. d. R. innerhalb eines Werktages.
+              </p>
+              {/* Objekt-Metadaten wie auf großen Portalen */}
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-xs">
+                <dt className="text-faint">Objekt-ID</dt>
+                <dd className="text-right text-muted">{objektId}</dd>
+                <dt className="text-faint">Online seit</dt>
+                <dd className="text-right text-muted">{onlineSince}</dd>
+                <dt className="text-faint">Vermarktung</dt>
+                <dd className="text-right text-muted">{estate.marketingType === "kauf" ? "Kauf" : "Miete"}</dd>
+              </dl>
             </div>
-            <RequestViewingButton title={estate.title} />
-            <p className="text-xs text-faint">
-              Unverbindliche Anfrage · Antwort i. d. R. innerhalb eines Werktages.
-            </p>
+
+            <AnsprechpartnerCard contact={contact} context={estate.title} />
           </aside>
         </div>
 
