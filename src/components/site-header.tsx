@@ -21,12 +21,12 @@ export function SiteHeader() {
         <Wordmark />
 
         {/* Desktop-Navigation */}
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Hauptnavigation">
+        <nav className="hidden items-center gap-6 lg:gap-7 md:flex" aria-label="Hauptnavigation">
           {site.nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="text-sm tracking-wide text-muted transition-colors hover:text-fg"
+              className="whitespace-nowrap text-sm tracking-wide text-muted transition-colors hover:text-fg"
             >
               {item.label}
             </Link>
@@ -35,13 +35,13 @@ export function SiteHeader() {
           <Link
             href="/konto"
             aria-label="Konto / Anmelden"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
           >
             <Icon name="users" size={20} />
           </Link>
           <Link
             href="/rechner"
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
           >
             <Icon name="calculator" size={17} />
             Immobilie bewerten

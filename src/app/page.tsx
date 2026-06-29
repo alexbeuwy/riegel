@@ -73,7 +73,7 @@ export default function HomePage() {
         }}
       />
       {/* ───────── Block 1 · Hero (Bild) ───────── */}
-      <section className="relative flex min-h-[92svh] items-end overflow-hidden">
+      <section className="relative flex min-h-[88svh] items-center overflow-hidden">
         <Image
           src="/images/hero.jpg"
           alt="Hochwertige Immobilie in der Region Speyer / Ludwigshafen"
@@ -84,7 +84,7 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/40 to-transparent" />
-        <Container className="relative z-10 pb-28 pt-36 sm:pb-32">
+        <Container className="relative z-10 py-24 sm:py-28">
           <div className="max-w-3xl">
             <div className="reveal" style={{ animationDelay: "0ms" }}>
               <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
