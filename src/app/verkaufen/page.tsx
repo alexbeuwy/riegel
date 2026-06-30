@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
 import { BentoGrid, BentoTile } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
+import { photos } from "@/lib/photos";
 
 export const metadata = {
   title: "Immobilie verkaufen",
@@ -52,6 +54,42 @@ export default function VerkaufenPage() {
         Wir verkaufen Ihre Immobilie zum bestmöglichen Preis — mit regionaler
         Marktkenntnis, professioneller Vermarktung und persönlicher Begleitung.
       </PageIntro>
+
+      {/* Asymmetrischer Auftakt — echtes Beratungsfoto */}
+      <section className="pt-2">
+        <Container>
+          <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <div>
+              <h2 className="akira text-3xl leading-tight text-fg sm:text-4xl">
+                Den Bestpreis holt, <span className="text-accent">wer den Markt kennt.</span>
+              </h2>
+              <p className="mt-5 max-w-md text-muted">
+                Datenbasierte Bewertung, professionelle Vermarktung und ein fester
+                Ansprechpartner von der ersten Einschätzung bis zur Schlüsselübergabe.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-4">
+                <Link href="/rechner" className="press inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover">
+                  <Icon name="calculator" size={17} /> Wert ermitteln
+                </Link>
+                <Link href="/termin?anlass=Verkaufsberatung" className="press inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
+                  <Icon name="calendar" size={17} /> Beratung buchen
+                </Link>
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-3xl border border-border">
+              <Image
+                src={photos.broschuerePortrait}
+                alt="Persönliche Verkaufsberatung von Riegel Immobilien"
+                width={900}
+                height={1120}
+                sizes="(max-width: 1024px) 100vw, 520px"
+                className="h-[clamp(300px,42vw,520px)] w-full object-cover object-top"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/40 to-transparent" />
+            </div>
+          </div>
+        </Container>
+      </section>
 
       {/* Prozess */}
       <section className="py-20">

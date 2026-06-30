@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
+import { photos } from "@/lib/photos";
 import type { GeoArticle } from "@/lib/geo";
 
 /* ---------- Inline-Markdown: **fett** + *kursiv* ---------- */
@@ -293,7 +295,16 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
 
           {/* Sidebar-CTA */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="rounded-2xl border border-accent/30 bg-surface p-6">
+            <div className="overflow-hidden rounded-2xl border border-accent/30 bg-surface">
+              <Image
+                src={article.kind === "standort" ? photos.wertReportDay : photos.wertReportNight}
+                alt="Riegel Immobilien – persönliche Bewertung"
+                width={560}
+                height={360}
+                sizes="280px"
+                className="h-40 w-full object-cover"
+              />
+            <div className="p-6">
               <div className="flex items-center gap-2 text-sm text-accent">
                 <Icon name="sparkle" size={18} />
                 {article.kind === "standort" && article.ort ? article.ort : "Riegel Immobilien"}
@@ -313,6 +324,7 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
                   <Icon name="phone" size={15} /> {site.phone}
                 </a>
               </div>
+            </div>
             </div>
           </aside>
         </div>
