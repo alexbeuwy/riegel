@@ -43,6 +43,7 @@ export async function sendMail(opts: {
   subject: string;
   html: string;
   replyTo?: string;
+  attachments?: { filename: string; content: string }[];
 }): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   if (!resend) return { ok: false, skipped: true };
   try {
@@ -52,6 +53,7 @@ export async function sendMail(opts: {
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo,
+      ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
     });
     if (error) return { ok: false, error: String(error) };
     return { ok: true };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
+import { buildReportPdf } from "@/lib/report-pdf";
 import { supabase } from "@/lib/supabase";
 
 const esc = (s: unknown) =>
@@ -92,14 +93,50 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
 <td style="border-radius:999px;background:#015cff;"><a href="https://riegel-immobilien.de/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
 </tr></table>`;
 
-  // 1) Report an den Kunden
+  // PDF-Report bauen (markenkonform, dark) — als Anhang an Kunde & RIEGEL.
+  let pdfBase64: string | null = null;
+  try {
+    pdfBase64 = await buildReportPdf({
+      name,
+      address,
+      city,
+      postcode,
+      objektartLabel,
+      wohnflaeche: b.wohnflaeche as string | number | undefined,
+      grundflaeche: b.grundflaeche as string | number | undefined,
+      zimmer: b.zimmer as string | number | undefined,
+      baujahr: b.baujahr as string | number | undefined,
+      zustand: String(b.zustand ?? ""),
+      qualitaet: String(b.qualitaet ?? ""),
+      energieklasse: String(b.energieklasse ?? ""),
+      value: {
+        low,
+        mid,
+        high,
+        pricePerSqm: perSqm,
+        comparables: num(v.comparables) ?? undefined,
+        trendPct: num(v.trendPct) ?? undefined,
+        mikrolage: num(v.mikrolage) ?? undefined,
+        confidence: num(v.confidence) ?? undefined,
+      },
+      dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
+    });
+  } catch (e) {
+    console.error("[report] PDF-Erstellung fehlgeschlagen:", e);
+  }
+
+  const pdfName = `RIEGEL-Marktwert-Report${city ? `-${city}` : ""}.pdf`.replace(/\s+/g, "-");
+  const attachments = pdfBase64 ? [{ filename: pdfName, content: pdfBase64 }] : undefined;
+
+  // 1) Report an den Kunden (mit PDF im Anhang)
   const customer = await sendMail({
     to: email,
     replyTo: emailTargets.TO,
     subject: `Ihr Marktwert-Report${city ? ` · ${city}` : ""} — Riegel Immobilien`,
+    attachments,
     html: emailLayout({
       heading: "Ihr persönlicher Marktwert-Report",
-      intro: `Vielen Dank, ${name.split(" ")[0] || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${address}` : ""}.`,
+      intro: `Vielen Dank, ${name.split(" ")[0] || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${address}` : ""} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
       bodyHtml:
         valueHero(mid, low, high, perSqm) +
         `<div style="color:#a8a6a0;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
@@ -108,13 +145,14 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
     }),
   });
 
-  // 2) Interne Kopie an RIEGEL (das „Backend"/CC, das du sehen willst)
+  // 2) Interne Kopie an RIEGEL (das „Backend"/CC, das du sehen willst) — ebenfalls mit PDF
   const internal = await sendMail({
     replyTo: email,
     subject: `📋 Report-Lead: ${name}${city ? ` · ${city}` : ""} (${eur(mid)})`,
+    attachments,
     html: emailLayout({
       heading: "Neue Report-Anfrage (Rechner)",
-      intro: "Ein Interessent hat über den Immorechner einen Marktwert-Report angefordert.",
+      intro: "Ein Interessent hat über den Immorechner einen Marktwert-Report angefordert. Das versendete PDF hängt an.",
       bodyHtml:
         emailRows([
           { label: "Name", value: name },
