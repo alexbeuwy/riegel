@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
 import { FooterSocials, type SocialItem } from "@/components/footer-socials";
@@ -12,93 +13,134 @@ const socialLinks = [
   { key: "linkedin", href: site.socials.linkedin, label: "LinkedIn" },
 ].filter((s) => Boolean(s.href)) as SocialItem[];
 
+/** Footer-Link mit „underline grows from left"-Hover — high-end, ohne Layout-Shift. */
+function FootLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="group relative inline-block w-fit text-sm text-muted transition-colors duration-200 hover:text-fg"
+    >
+      {children}
+      <span
+        aria-hidden
+        className="absolute -bottom-0.5 left-0 h-px w-0 bg-accent/70 transition-all duration-300 ease-out group-hover:w-full"
+      />
+    </Link>
+  );
+}
+
 export function SiteFooter() {
   const year = 2026;
   return (
-    <footer className="mt-auto">
+    <footer className="mt-auto bg-bg">
       <GeoTeaser />
-      <Container className="grid gap-10 border-t border-border bg-surface py-16 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-riegel-short-mono.svg"
-            alt={site.name}
-            className="h-6 w-auto opacity-90"
-          />
-          <p className="max-w-xs text-sm text-muted">{site.tagline}</p>
-          <div className="space-y-4 text-sm text-faint">
-            {site.locations.map((l) => (
-              <div key={l.city} className="flex gap-2.5">
-                <span className="mt-0.5 text-accent">
-                  <Icon name="pin" size={16} />
-                </span>
-                <div>
-                  <div className="text-muted">{l.city}</div>
-                  <div>
-                    {l.street}, {l.zip} {l.city}
+
+      {/* Full-bleed, randlos — kein „hellgrauer Kasten", blendet edge-to-edge. */}
+      <div className="relative border-t border-border/80">
+        {/* Signatur-Hairline: feiner Akzent, zu den Rändern ausgeblendet */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent"
+        />
+        {/* Dezenter Tiefen-Glow oben — gibt dem Footer Präsenz ohne Box */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-48"
+          style={{ background: "radial-gradient(70% 120% at 50% 0%, rgba(1,92,255,0.10), transparent 72%)" }}
+        />
+
+        <Container className="relative grid gap-x-10 gap-y-12 py-16 sm:grid-cols-2 sm:py-20 lg:grid-cols-4">
+          {/* Marke + Standorte */}
+          <div className="space-y-6 sm:col-span-2 lg:col-span-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-riegel-short-mono.svg" alt={site.name} className="h-7 w-auto opacity-95" />
+            <p className="max-w-xs text-sm leading-relaxed text-muted">{site.tagline}</p>
+            <div className="space-y-5 text-sm">
+              {site.locations.map((l) => (
+                <div key={l.city} className="flex gap-3">
+                  <span className="mt-0.5 text-accent">
+                    <Icon name="pin" size={16} />
+                  </span>
+                  <div className="space-y-0.5">
+                    <div className="font-medium text-fg">{l.city}</div>
+                    <div className="text-faint">
+                      {l.street}, {l.zip} {l.city}
+                    </div>
+                    <a
+                      href={`tel:${l.phone.replace(/\s/g, "")}`}
+                      className="inline-flex items-center gap-1.5 text-faint transition-colors hover:text-fg"
+                    >
+                      <Icon name="phone" size={13} />
+                      {l.phone}
+                    </a>
                   </div>
-                  <a
-                    href={`tel:${l.phone.replace(/\s/g, "")}`}
-                    className="inline-flex items-center gap-1.5 hover:text-fg"
-                  >
-                    <Icon name="phone" size={14} />
-                    {l.phone}
-                  </a>
                 </div>
-              </div>
-            ))}
-            <a
-              href={`mailto:${site.email}`}
-              className="flex items-center gap-2.5 hover:text-fg"
-            >
-              <span className="text-accent">
-                <Icon name="mail" size={16} />
-              </span>
-              {site.email}
-            </a>
+              ))}
+              <a
+                href={`mailto:${site.email}`}
+                className="inline-flex items-center gap-2.5 text-faint transition-colors hover:text-fg"
+              >
+                <span className="text-accent">
+                  <Icon name="mail" size={16} />
+                </span>
+                {site.email}
+              </a>
+            </div>
           </div>
-        </div>
 
-        <nav aria-label="Footer-Navigation" className="space-y-3">
-          <div className="text-xs uppercase tracking-widest text-faint">Navigation</div>
-          {site.nav.map((item) => (
-            <Link key={item.href} href={item.href} className="block text-sm text-muted hover:text-fg">
-              {item.label}
-            </Link>
-          ))}
-          {[
-            { href: "/standorte", label: "Standorte" },
-            { href: "/ratgeber", label: "Ratgeber" },
-            { href: "/termin", label: "Termin" },
-          ].map((item) => (
-            <Link key={item.href} href={item.href} className="block text-sm text-muted hover:text-fg">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          {/* Navigation */}
+          <nav aria-label="Footer-Navigation" className="flex flex-col gap-3.5">
+            <div className="text-[0.65rem] uppercase tracking-[0.25em] text-faint">Navigation</div>
+            {site.nav.map((item) => (
+              <FootLink key={item.href} href={item.href}>
+                {item.label}
+              </FootLink>
+            ))}
+            {[
+              { href: "/standorte", label: "Standorte" },
+              { href: "/ratgeber", label: "Ratgeber" },
+              { href: "/termin", label: "Termin" },
+            ].map((item) => (
+              <FootLink key={item.href} href={item.href}>
+                {item.label}
+              </FootLink>
+            ))}
+          </nav>
 
-        <nav aria-label="Rechtliches" className="space-y-3">
-          <div className="text-xs uppercase tracking-widest text-faint">Rechtliches</div>
-          {site.legalNav.map((item) => (
-            <Link key={item.href} href={item.href} className="block text-sm text-muted hover:text-fg">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          {/* Rechtliches */}
+          <nav aria-label="Rechtliches" className="flex flex-col gap-3.5">
+            <div className="text-[0.65rem] uppercase tracking-[0.25em] text-faint">Rechtliches</div>
+            {site.legalNav.map((item) => (
+              <FootLink key={item.href} href={item.href}>
+                {item.label}
+              </FootLink>
+            ))}
+          </nav>
 
-        <div className="space-y-4">
-          <div className="text-xs uppercase tracking-widest text-faint">Folgen</div>
-          <FooterSocials links={socialLinks} />
-        </div>
-      </Container>
-
-      <div className="border-t border-border">
-        <Container className="flex flex-col items-center justify-between gap-2 py-6 text-xs text-faint sm:flex-row">
-          <span>© {year} {site.legalName}. Alle Rechte vorbehalten.</span>
-          <Link href="/widerruf" className="hover:text-fg">
-            Widerrufsbelehrung
-          </Link>
+          {/* Folgen */}
+          <div className="space-y-4">
+            <div className="text-[0.65rem] uppercase tracking-[0.25em] text-faint">Folgen</div>
+            <FooterSocials links={socialLinks} />
+            <p className="max-w-[14rem] text-xs leading-relaxed text-faint/80">
+              Einblicke, neue Objekte und Marktwissen aus der Vorderpfalz.
+            </p>
+          </div>
         </Container>
+
+        {/* Schlussleiste */}
+        <div className="border-t border-border/60">
+          <Container className="flex flex-col items-center justify-between gap-3 py-6 text-xs text-faint sm:flex-row">
+            <span>
+              © {year} {site.legalName}. Alle Rechte vorbehalten.
+            </span>
+            <div className="flex items-center gap-5">
+              <span className="hidden text-faint/70 sm:inline">Speyer · Ludwigshafen · Vorderpfalz</span>
+              <Link href="/widerruf" className="transition-colors hover:text-fg">
+                Widerrufsbelehrung
+              </Link>
+            </div>
+          </Container>
+        </div>
       </div>
     </footer>
   );

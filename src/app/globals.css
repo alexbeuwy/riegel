@@ -482,7 +482,12 @@
   animation: t-badge-slide-in var(--badge-slide-dur) var(--badge-slide-ease);
 }
 .t-badge-dot {
-  display: block;
+  /* grid + place-items zentriert die Zahl zuverlässig — unlayered display darf
+     die getokte Tailwind-Utility (flex/items-center) nicht überstimmen (siehe
+     .t-success-check). */
+  display: grid;
+  place-items: center;
+  line-height: 1;
   transform-origin: center;
   transform: scale(1);
   opacity: 1;
