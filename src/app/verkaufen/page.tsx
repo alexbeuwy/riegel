@@ -103,6 +103,42 @@ export default function VerkaufenPage() {
         </Container>
       </section>
 
+      {/* Aufbereitung & Unterlagen — echtes Foto (image-left) */}
+      <section className="pb-4">
+        <Container>
+          <div className="grid items-center gap-8 lg:grid-cols-2">
+            <div className="relative overflow-hidden rounded-3xl border border-border">
+              <Image
+                src={photos.dokumente}
+                alt="Aufbereitung von Grundrissen und Unterlagen bei Riegel Immobilien"
+                width={1400}
+                height={780}
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="h-[260px] w-full object-cover sm:h-[360px]"
+              />
+            </div>
+            <div>
+              <h2 className="akira text-2xl leading-tight text-fg sm:text-3xl">
+                Sauber aufbereitet, <span className="text-accent">lückenlos belegt.</span>
+              </h2>
+              <p className="mt-5 max-w-md text-muted">
+                Grundrisse, Energieausweis, Grundbuch und Exposé — wir bringen alle
+                Unterlagen in Form und verbinden sie mit einer datenbasierten Bewertung.
+                Das schafft Vertrauen bei Käufern und beschleunigt den Verkauf.
+              </p>
+              <ul className="mt-6 space-y-2.5">
+                {["Vollständige Objektakte & Grundrisse", "Datenbasierte Wertermittlung", "Aussagekräftiges, professionelles Exposé"].map((t) => (
+                  <li key={t} className="flex items-start gap-2.5 text-fg/90">
+                    <span className="mt-0.5 text-accent"><Icon name="check" size={17} /></span>
+                    <span className="text-sm">{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Container>
+      </section>
+
       {/* Warum Riegel (Bento) */}
       <section className="border-t border-border bg-surface/40 py-20 sm:py-28">
         <Container>

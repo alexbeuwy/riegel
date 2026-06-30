@@ -388,7 +388,10 @@
 
 /* ── 10 Success check ── */
 .t-success-check {
-  display: inline-block;
+  /* inline-grid + place-items zentriert den Haken zuverlässig — unabhängig von
+     evtl. überschriebenen Flex-Utilities (unlayered CSS schlägt @layer utilities). */
+  display: inline-grid;
+  place-items: center;
   transform-origin: center;
   opacity: 0;
   will-change: transform, opacity, filter;

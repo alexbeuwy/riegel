@@ -158,7 +158,9 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
   }
 
   const pdfName = `RIEGEL-Marktwert-Report${city ? `-${city}` : ""}.pdf`.replace(/\s+/g, "-");
-  const attachments = pdfBase64 ? [{ filename: pdfName, content: pdfBase64 }] : undefined;
+  // Resend akzeptiert Buffer am zuverlässigsten (Base64-String kann je nach Version
+  // doppelt kodiert werden) → als Buffer übergeben.
+  const attachments = pdfBase64 ? [{ filename: pdfName, content: Buffer.from(pdfBase64, "base64") }] : undefined;
 
   // 1) Report an den Kunden (mit PDF im Anhang)
   const customer = await sendMail({

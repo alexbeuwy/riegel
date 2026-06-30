@@ -7,6 +7,8 @@ const CDN = "https://riegel.b-cdn.net";
 export const photos = {
   /** Landscape, cinematic — Makler am Rechner mit großer Wert-Anzeige (Hero /rechner). */
   rechnerHero: `${CDN}/RIEGEL_Rechner-Hero.webp`,
+  /** Landscape, cinematic — Grundrisse/Immobilienakten + Rechner (Aufbereitung/Unterlagen). */
+  dokumente: `${CDN}/Dokumente_RIEGEL.webp`,
   /** Landscape — Paar liest WERT-REPORT mit Diagramm, Tageslicht (Bewertung). */
   wertReportDay: `${CDN}/Riegel-Wert-Report.webp`,
   /** Landscape — Paar auf Sofa, abends, RIEGEL-Broschüre, Stadtlichter. */
