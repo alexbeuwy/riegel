@@ -26,6 +26,7 @@ const LocationMap = dynamic(
 
 type Phase = "form" | "analyzing" | "result";
 const ENERGIE = ["A+", "A", "B", "C", "D", "E", "F", "G", "H"];
+const STEP_LABELS = ["Objektart", "Standort", "Eckdaten"];
 
 interface FormState {
   objektart: Objektart;
@@ -143,6 +144,18 @@ export function Calculator() {
   // Adress-Autocomplete
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+
+  // Fokus-Management: bei NUTZER-Schrittwechsel zur neuen Überschrift springen
+  // (nicht beim Initial-Mount / URL-Prefill → kein Fokus-Klau beim Laden).
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const userNav = useRef(false);
+  useEffect(() => {
+    if (phase === "form" && userNav.current) {
+      userNav.current = false;
+      headingRef.current?.focus();
+    }
+  }, [step, phase]);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }));
 
@@ -157,6 +170,7 @@ export function Calculator() {
     const q = f.addressQuery;
     if (q.trim().length < 3) {
       setSuggestions([]);
+      setActiveIdx(-1);
       return;
     }
     const ctrl = new AbortController();
@@ -164,6 +178,7 @@ export function Calculator() {
     const t = setTimeout(async () => {
       const res = await searchAddress(q, ctrl.signal);
       setSuggestions(res);
+      setActiveIdx(-1);
       setSearching(false);
     }, 350);
     return () => {
@@ -190,8 +205,10 @@ export function Calculator() {
       return;
     }
     setError(null);
-    if (step < 2) setStep(step + 1);
-    else startAnalysis();
+    if (step < 2) {
+      userNav.current = true;
+      setStep(step + 1);
+    } else startAnalysis();
   }
 
   function startAnalysis() {
@@ -247,30 +264,34 @@ export function Calculator() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-8 flex items-center gap-3">
+      <ol role="list" aria-label="Fortschritt der Bewertung" className="mb-8 flex items-center gap-3">
         {[0, 1, 2].map((s) => (
-          <div key={s} className="flex flex-1 items-center gap-3">
+          <li key={s} className="flex flex-1 items-center gap-3" aria-current={s === step ? "step" : undefined}>
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${
                 s <= step ? "border-accent bg-accent text-on-accent" : "border-border text-muted"
               }`}
             >
-              {s + 1}
+              <span aria-hidden="true">{s + 1}</span>
+              <span className="sr-only">
+                {`Schritt ${s + 1} von 3: ${STEP_LABELS[s]}${s === step ? " (aktuell)" : s < step ? " (abgeschlossen)" : ""}`}
+              </span>
             </div>
-            {s < 2 && <div className={`h-px flex-1 ${s < step ? "bg-accent" : "bg-border"}`} />}
-          </div>
+            {s < 2 && <div aria-hidden="true" className={`h-px flex-1 ${s < step ? "bg-accent" : "bg-border"}`} />}
+          </li>
         ))}
-      </div>
+      </ol>
 
       <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
         {step === 0 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Was möchten Sie bewerten?</h2>
+            <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Was möchten Sie bewerten?</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {OBJEKTARTEN.map((o) => (
                 <button
                   key={o.key}
                   type="button"
+                  aria-pressed={f.objektart === o.key}
                   onClick={() => set("objektart", o.key)}
                   className={`press flex flex-col items-center gap-3 rounded-xl border p-5 ${
                     f.objektart === o.key ? "border-accent bg-surface-2" : "border-border hover:border-accent/50"
@@ -288,7 +309,7 @@ export function Calculator() {
 
         {step === 1 && (
           <div className="space-y-5">
-            <h2 className="text-xl font-semibold">Wo befindet sich die Immobilie?</h2>
+            <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Wo befindet sich die Immobilie?</h2>
             <div className="relative">
               <input
                 className={inputCls}
@@ -299,20 +320,60 @@ export function Calculator() {
                 }}
                 placeholder="Straße, Hausnummer, Ort eingeben…"
                 autoComplete="off"
+                aria-label="Adresse"
+                role="combobox"
+                aria-expanded={suggestions.length > 0 && !f.address}
+                aria-controls="addr-listbox"
+                aria-autocomplete="list"
+                aria-activedescendant={activeIdx >= 0 ? `addr-opt-${activeIdx}` : undefined}
+                onKeyDown={(e) => {
+                  if (f.address || suggestions.length === 0) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+                  } else if (e.key === "Enter" && activeIdx >= 0 && activeIdx < suggestions.length) {
+                    e.preventDefault();
+                    const s = suggestions[activeIdx];
+                    set("address", s);
+                    set("addressQuery", s.label);
+                    setSuggestions([]);
+                    setActiveIdx(-1);
+                  } else if (e.key === "Escape") {
+                    setSuggestions([]);
+                    setActiveIdx(-1);
+                  }
+                }}
               />
-              {searching && <div className="absolute right-3 top-3.5 text-xs text-faint">sucht…</div>}
+              {searching && (
+                <div role="status" aria-live="polite" className="absolute right-3 top-3.5 text-xs text-faint">
+                  sucht…
+                </div>
+              )}
               {suggestions.length > 0 && !f.address && (
-                <ul className="absolute z-20 mt-2 w-full overflow-hidden rounded-lg border border-border bg-surface shadow-2xl">
-                  {suggestions.map((s) => (
-                    <li key={`${s.lat},${s.lng}`}>
+                <ul
+                  id="addr-listbox"
+                  role="listbox"
+                  aria-label="Adressvorschläge"
+                  className="absolute z-20 mt-2 w-full overflow-hidden rounded-lg border border-border bg-surface shadow-2xl"
+                >
+                  {suggestions.map((s, i) => (
+                    <li key={`${s.lat},${s.lng}`} id={`addr-opt-${i}`} role="option" aria-selected={i === activeIdx}>
                       <button
                         type="button"
+                        tabIndex={-1}
+                        onMouseEnter={() => setActiveIdx(i)}
                         onClick={() => {
                           set("address", s);
                           set("addressQuery", s.label);
                           setSuggestions([]);
+                          setActiveIdx(-1);
                         }}
-                        className="block w-full px-4 py-3 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                        className={`block w-full px-4 py-3 text-left text-sm transition-colors ${
+                          i === activeIdx ? "bg-surface-2 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg"
+                        }`}
                       >
                         {s.label}
                       </button>
@@ -344,7 +405,7 @@ export function Calculator() {
 
         {step === 2 && (
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Eckdaten der Immobilie</h2>
+            <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Eckdaten der Immobilie</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {f.objektart !== "grundstueck" && (
                 <Field label="Wohnfläche (m²)">
@@ -400,6 +461,7 @@ export function Calculator() {
                     <button
                       key={a}
                       type="button"
+                      aria-pressed={f.ausstattung.includes(a)}
                       onClick={() => toggleAusst(a)}
                       className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                         f.ausstattung.includes(a) ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
@@ -422,7 +484,7 @@ export function Calculator() {
 
         <div className="mt-6 flex items-center justify-between gap-4">
           {step > 0 ? (
-            <button type="button" onClick={() => { setError(null); setStep(step - 1); }} className="press text-sm text-muted hover:text-fg">
+            <button type="button" onClick={() => { setError(null); userNav.current = true; setStep(step - 1); }} className="press text-sm text-muted hover:text-fg">
               Zurück
             </button>
           ) : (
@@ -445,7 +507,9 @@ export function Calculator() {
 function Analyzing({ f, result, revealed }: { f: FormState; result: ValuationResult | null; revealed: number }) {
   const pct = Math.round((revealed / SOURCES.length) * 100);
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border">
+    <div className="relative overflow-hidden rounded-2xl border border-border" role="status" aria-live="polite" aria-busy={pct < 100}>
+      {/* Eine aggregierte Live-Ansage statt jeder einzelnen Quelle (nicht zu gesprächig). */}
+      <span className="sr-only">Bewertung wird berechnet, {pct} Prozent.</span>
       <HeroBackdrop />
       <div className="relative z-10 mx-auto max-w-2xl px-6 py-14">
         <div className="text-center">

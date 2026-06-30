@@ -63,7 +63,8 @@ export function Modal({
     >
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-bg/70 backdrop-blur-sm transition-opacity duration-300 ${
+        style={{ transitionDuration: shown ? "var(--modal-open-dur)" : "var(--modal-close-dur)" }}
+        className={`absolute inset-0 bg-bg/70 backdrop-blur-sm transition-opacity ${
           shown ? "opacity-100" : "opacity-0"
         }`}
       />

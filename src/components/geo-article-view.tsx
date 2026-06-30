@@ -275,9 +275,9 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
         </div>
 
         <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_280px]">
-          <div className="max-w-3xl">
+          <div className="max-w-[68ch]">
             {article.sections.map((s, i) => (
-              <section key={i} className="mt-10 first:mt-0">
+              <section key={i} id={`abschnitt-${i}`} className="mt-10 scroll-mt-24 first:mt-0">
                 <h2 className="flex items-center gap-2.5 text-2xl font-semibold text-fg">
                   <span className="text-accent"><Icon name={sectionIcon(s.h2)} size={20} /></span>
                   {s.h2}
@@ -343,8 +343,26 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
             )}
           </div>
 
-          {/* Sidebar-CTA */}
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          {/* Sidebar: Inhalt (bei langen Artikeln) + CTA */}
+          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+            {article.sections.length >= 4 && (
+              <nav aria-label="Inhalt" className="rounded-2xl border border-border bg-surface p-5">
+                <div className="text-[0.65rem] uppercase tracking-[0.25em] text-faint">Inhalt</div>
+                <ul className="mt-3 space-y-2">
+                  {article.sections.map((s, i) => (
+                    <li key={i}>
+                      <a
+                        href={`#abschnitt-${i}`}
+                        className="flex items-start gap-2 text-sm text-muted transition-colors hover:text-accent"
+                      >
+                        <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent/60" />
+                        {s.h2}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
             <div className="overflow-hidden rounded-2xl border border-accent/30 bg-surface">
               <Image
                 src={article.kind === "standort" ? photos.wertReportDay : photos.wertReportNight}

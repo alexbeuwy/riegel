@@ -121,6 +121,7 @@
   --duration-quick: 150ms;
   --duration-fast: 250ms;
   --duration-medium: 350ms;
+  --duration-normal: 350ms; /* Alias — von .t-collapse referenziert */
   --duration-slow: 400ms;
   --duration-very-slow: 500ms;
   --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);

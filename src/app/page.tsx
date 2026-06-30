@@ -42,12 +42,17 @@ function GhostCta({ href, children }: { href: string; children: React.ReactNode 
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-fg transition-colors duration-300 hover:border-accent hover:text-accent"
+      className="press inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-fg transition-colors duration-300 hover:border-accent hover:text-accent"
     >
       {children}
     </Link>
   );
 }
+
+// Winziger Blur-Platzhalter (aus public/images/hero.jpg generiert) → kein leerer
+// LCP-Bereich, sofortiger Eindruck bis das Hero-Bild geladen ist.
+const HERO_BLUR =
+  "data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAAIAAwDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAMF/8QAHRAAAgICAwEAAAAAAAAAAAAAAQIDBAARBTFBkf/EABUBAQEAAAAAAAAAAAAAAAAAAAAC/8QAGBEAAgMAAAAAAAAAAAAAAAAAAAECESH/2gAMAwEAAhEDEQA/AMepdqWZ0ltuu9bYSAsGPvXWSu80UnK1YoFi8BjBP04xhSdk4f/Z";
 
 const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
   { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
@@ -81,6 +86,8 @@ export default function HomePage() {
           fill
           priority
           sizes="100vw"
+          placeholder="blur"
+          blurDataURL={HERO_BLUR}
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
@@ -94,7 +101,7 @@ export default function HomePage() {
               <span className="reveal block" style={{ animationDelay: "80ms" }}>
                 Regionale Expertise.
               </span>
-              <span className="reveal block text-accent" style={{ animationDelay: "180ms" }}>
+              <span className="reveal block text-accent-strong" style={{ animationDelay: "180ms" }}>
                 Alles andere ist
               </span>
               <span className="reveal block akira-outline" style={{ animationDelay: "280ms" }}>
@@ -115,8 +122,9 @@ export default function HomePage() {
               className="reveal relative z-10 mt-6 flex flex-wrap items-center gap-4"
               style={{ animationDelay: "560ms" }}
             >
+              {/* Nur EIN Primary im Hero (die Adresssuche) — beide CTAs sekundär. */}
               <Magnetic>
-                <PrimaryCta href="/immobilien">Immobilien entdecken</PrimaryCta>
+                <GhostCta href="/immobilien">Immobilien entdecken</GhostCta>
               </Magnetic>
               <GhostCta href="/verkaufen">Verkaufen mit Riegel</GhostCta>
             </div>

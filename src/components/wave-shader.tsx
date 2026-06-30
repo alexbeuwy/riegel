@@ -96,16 +96,32 @@ export function WaveShader({ className = "" }: { className?: string }) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     let start = 0;
+    let running = false;
     const render = (t: number) => {
       if (!start) start = t;
       gl.uniform1f(uTime, reduce ? 8 : (t - start) / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-      if (!reduce) raf = requestAnimationFrame(render);
+      if (!reduce && running) raf = requestAnimationFrame(render);
     };
-    raf = requestAnimationFrame(render);
+    const startLoop = () => {
+      if (running) return;
+      running = true;
+      raf = requestAnimationFrame(render);
+    };
+    const stopLoop = () => {
+      running = false;
+      cancelAnimationFrame(raf);
+    };
+    // Nur animieren, wenn das Canvas sichtbar ist (spart GPU/Akku außerhalb des Viewports).
+    const io = new IntersectionObserver(
+      ([e]) => (e.isIntersecting ? startLoop() : stopLoop()),
+      { threshold: 0 },
+    );
+    io.observe(canvas);
 
     return () => {
-      cancelAnimationFrame(raf);
+      stopLoop();
+      io.disconnect();
       ro.disconnect();
     };
   }, []);
