@@ -100,7 +100,8 @@ export function BookingTool() {
   const filled = [Boolean(date), Boolean(time), Boolean(name), /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)];
   const progress = Math.round((filled.filter(Boolean).length / filled.length) * 100);
 
-  function submit() {
+  async function submit() {
+    if (busy) return;
     if (!date || !time) return fail("Bitte Datum und Uhrzeit wählen.");
     if (!name.trim()) return fail("Bitte Ihren Namen angeben.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
@@ -116,18 +117,21 @@ export function BookingTool() {
       localStorage.setItem(key, JSON.stringify(cur));
     } catch {}
 
-    void fetch("/api/booking", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
-
-    // Kurzer, bewusster Moment für ein flüssiges „Bestätigt"-Gefühl.
-    window.setTimeout(() => {
+    // Erst nach erfolgreicher Übermittlung bestätigen — keine Schein-Bestätigung.
+    try {
+      const res = await fetch("/api/booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("booking failed");
       setBusy(false);
       setDone(true);
       burstConfetti();
-    }, 650);
+    } catch {
+      setBusy(false);
+      fail("Termin konnte nicht übermittelt werden. Bitte erneut versuchen oder rufen Sie uns direkt an.");
+    }
   }
 
   function eventDates() {

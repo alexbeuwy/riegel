@@ -3,6 +3,7 @@ import { Container } from "@/components/container";
 import { GeoExplorer, type GeoExplorerItem } from "@/components/geo/geo-explorer";
 import { ratgeber } from "@/lib/geo";
 import { RATGEBER_CATEGORIES, ratgeberCategory, ratgeberCategoryLabel, ratgeberIcon } from "@/lib/geo-taxonomy";
+import { site } from "@/lib/site";
 
 export const metadata = {
   title: "Ratgeber rund um den Immobilienverkauf",
@@ -25,8 +26,37 @@ export default function RatgeberIndex() {
     };
   });
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        name: "Ratgeber rund um den Immobilienverkauf",
+        description: metadata.description,
+        url: `${site.url}/ratgeber`,
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: items.map((it, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: it.title,
+            url: `${site.url}${it.href}`,
+          })),
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Start", item: site.url },
+          { "@type": "ListItem", position: 2, name: "Ratgeber", item: `${site.url}/ratgeber` },
+        ],
+      },
+    ],
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <PageIntro eyebrow="Ratgeber" title="Wissen für Eigentümer & Verkäufer">
         Klare Antworten auf die wichtigsten Fragen rund um Verkauf, Bewertung und
         Kosten — fundiert und regional eingeordnet.

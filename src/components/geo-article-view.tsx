@@ -4,7 +4,23 @@ import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
-import type { GeoArticle } from "@/lib/geo";
+import { geoArticles, type GeoArticle } from "@/lib/geo";
+import {
+  standortRegion,
+  standortRegionLabel,
+  ratgeberCategory,
+  ratgeberCategoryLabel,
+} from "@/lib/geo-taxonomy";
+
+/** Verwandte Seiten: gleiche Region (Standort) bzw. Kategorie (Ratgeber) zuerst, dann auffüllen. */
+function relatedArticles(article: GeoArticle): GeoArticle[] {
+  const groupOf = (a: GeoArticle) => (a.kind === "standort" ? standortRegion(a) : ratgeberCategory(a));
+  const key = groupOf(article);
+  const sameKind = geoArticles.filter((a) => a.kind === article.kind && a.slug !== article.slug);
+  const primary = sameKind.filter((a) => groupOf(a) === key);
+  const rest = sameKind.filter((a) => groupOf(a) !== key);
+  return [...primary, ...rest].slice(0, 4);
+}
 
 /* ---------- Inline-Markdown: **fett** + *kursiv* ---------- */
 function inline(text: string, keyBase: string): React.ReactNode[] {
@@ -177,6 +193,7 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
   const url = `${site.url}${basePath}/${article.slug}`;
   const facts = keyFacts(article);
   const heroIcon: IconName = article.kind === "standort" ? "pin" : sectionIcon(article.h1);
+  const related = relatedArticles(article);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -288,6 +305,39 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
                       <p className="mt-3 leading-relaxed text-muted">{f.a}</p>
                     </details>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {/* Verwandte Seiten — interne Verlinkung gegen Sackgassen (SEO + UX) */}
+            {related.length > 0 && (
+              <section className="mt-12">
+                <h2 className="flex items-center gap-2.5 text-2xl font-semibold text-fg">
+                  <span className="text-accent"><Icon name="layers" size={20} /></span>
+                  {article.kind === "standort" ? "Standorte in der Nähe" : "Passende Ratgeber"}
+                </h2>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {related.map((a) => {
+                    const isStandort = a.kind === "standort";
+                    const label = isStandort
+                      ? standortRegionLabel(standortRegion(a))
+                      : ratgeberCategoryLabel(ratgeberCategory(a));
+                    return (
+                      <Link
+                        key={a.slug}
+                        href={`${isStandort ? "/standorte" : "/ratgeber"}/${a.slug}`}
+                        className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 transition-colors hover:border-accent/50"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[0.62rem] uppercase tracking-[0.18em] text-faint">{label}</div>
+                          <div className="mt-0.5 truncate text-sm font-medium text-fg">
+                            {isStandort ? `Immobilienmakler ${a.ort}` : a.h1}
+                          </div>
+                        </div>
+                        <Icon name="arrowRight" size={16} className="shrink-0 text-accent transition-transform group-hover:translate-x-0.5" />
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             )}

@@ -10,11 +10,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const a = getArticle("ratgeber", slug);
   if (!a) return { title: "Ratgeber" };
+  const url = `/ratgeber/${a.slug}`;
   return {
-    title: a.metaTitle,
+    // absolute: metaTitle enthält die Marke bereits → kein doppeltes „| Riegel Immobilien".
+    title: { absolute: a.metaTitle },
     description: a.metaDescription,
-    alternates: { canonical: `/ratgeber/${a.slug}` },
+    alternates: { canonical: url },
     keywords: a.keywords,
+    openGraph: { title: a.metaTitle, description: a.metaDescription, url, type: "article" },
   };
 }
 

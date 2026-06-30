@@ -36,6 +36,7 @@ export function GeoMap({
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const elsRef = useRef<Record<string, HTMLElement>>({});
+  const didFit = useRef(false);
   const router = useRouter();
   const onHoverRef = useRef(onHover);
   onHoverRef.current = onHover;
@@ -85,17 +86,22 @@ export function GeoMap({
 
   // Sichtbarkeit (Suche/Filter): nicht passende Pins dimmen + Karte einpassen.
   useEffect(() => {
+    // Bei 0 Treffern nicht alles dimmen — sonst „tote" Karte; stattdessen Gesamtbild.
+    const hasFilter = visibleSlugs.size > 0;
     for (const [slug, el] of Object.entries(elsRef.current)) {
-      el.classList.toggle("is-dimmed", !visibleSlugs.has(slug));
+      el.classList.toggle("is-dimmed", hasFilter && !visibleSlugs.has(slug));
     }
     const map = mapRef.current;
     if (!map) return;
     const shown = points.filter((p) => visibleSlugs.has(p.slug));
-    if (shown.length) {
-      const b = new maplibregl.LngLatBounds();
-      shown.forEach((p) => b.extend([p.lng, p.lat]));
-      map.fitBounds(b, { padding: 64, maxZoom: shown.length === 1 ? 12 : 11, duration: 650 });
-    }
+    const target = shown.length ? shown : points;
+    if (!target.length) return;
+    const b = new maplibregl.LngLatBounds();
+    target.forEach((p) => b.extend([p.lng, p.lat]));
+    // Erste Einpassung instant (deckt sich mit dem Mount-Fit) — keine Schein-Animation.
+    const duration = didFit.current ? 650 : 0;
+    didFit.current = true;
+    map.fitBounds(b, { padding: 64, maxZoom: shown.length === 1 ? 12 : 11, duration });
   }, [visibleSlugs, points]);
 
   // Hover-Spiegelung Liste ↔ Karte.

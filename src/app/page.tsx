@@ -224,14 +224,14 @@ export default function HomePage() {
               {stats.map((s) => (
                 <div
                   key={s.label}
-                  className="group relative flex flex-col items-start gap-3 bg-surface p-7 transition-colors duration-300 hover:bg-surface-2 sm:p-8"
+                  className="group relative flex flex-col items-start gap-3 bg-surface p-5 transition-colors duration-300 hover:bg-surface-2 sm:p-8"
                 >
                   {/* Akzent-Hairline oben, erscheint beim Hover */}
                   <span className="pointer-events-none absolute inset-x-0 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-accent to-transparent transition-transform duration-500 group-hover:scale-x-100" />
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/[0.08] text-accent transition-transform duration-300 group-hover:-translate-y-0.5">
                     <Icon name={s.icon} size={20} />
                   </span>
-                  <span className="akira text-3xl text-fg sm:text-4xl">{s.value}</span>
+                  <span className="akira text-2xl text-fg sm:text-4xl">{s.value}</span>
                   <span className="text-sm leading-snug text-muted">{s.label}</span>
                 </div>
               ))}

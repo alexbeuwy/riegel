@@ -179,10 +179,10 @@ export function ReportRequest({
       ) : (
         <div className="mt-6">
           <div className="grid gap-3 sm:grid-cols-2">
-            <input className={inputCls} value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" />
-            <input className={inputCls} type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
-            <input className={`${inputCls} sm:col-span-2`} type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy" />
-            <textarea className={`${inputCls} sm:col-span-2 resize-none`} rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nachricht (optional)" />
+            <input className={inputCls} aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" />
+            <input className={inputCls} aria-label="E-Mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
+            <input className={`${inputCls} sm:col-span-2`} aria-label="Telefon / Handy" type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy" />
+            <textarea className={`${inputCls} sm:col-span-2 resize-none`} aria-label="Nachricht (optional)" rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nachricht (optional)" />
           </div>
 
           <label className="mt-3 flex items-start gap-2.5 text-left text-xs text-muted">

@@ -147,6 +147,7 @@ function Toolbar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
+          aria-label={placeholder}
           className="w-full rounded-full border border-border bg-surface py-2.5 pl-10 pr-4 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
         />
       </div>
@@ -168,16 +169,19 @@ function FilterSelect({
   value,
   onChange,
   options,
+  ariaLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  ariaLabel: string;
 }) {
   return (
     <div className="relative">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
         className="appearance-none rounded-full border border-border bg-surface py-2.5 pl-4 pr-9 text-sm text-fg outline-none transition-colors focus:border-accent"
       >
         {options.map((o) => (
@@ -209,6 +213,10 @@ export function InternDashboard() {
   const [lKind, setLKind] = useState("all");
 
   async function load() {
+    if (!password.trim()) {
+      setError("Bitte Passwort eingeben.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -289,6 +297,7 @@ export function InternDashboard() {
             <input
               type="password"
               value={password}
+              aria-label="Passwort"
               onChange={(e) => {
                 setPassword(e.target.value);
                 setError(null);
@@ -297,7 +306,7 @@ export function InternDashboard() {
               placeholder="Passwort"
               className="mt-5 w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
             />
-            {error && <p className="mt-3 text-sm text-accent">{error}</p>}
+            {error && <p className="mt-3 text-sm text-accent" role="alert">{error}</p>}
             <button
               type="button"
               onClick={load}
@@ -323,7 +332,7 @@ export function InternDashboard() {
     <section className="py-12 sm:py-16">
       <Container>
         {/* Kopf */}
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Lead-Cockpit</h1>
             <p className="mt-1 text-sm text-muted">
@@ -335,14 +344,14 @@ export function InternDashboard() {
             type="button"
             onClick={load}
             disabled={busy}
-            className="press inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-fg hover:border-accent hover:text-accent disabled:opacity-60"
+            className="press inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-fg hover:border-accent hover:text-accent disabled:opacity-60 sm:w-auto"
           >
             <Icon name="search" size={15} /> {busy ? "Lädt …" : "Aktualisieren"}
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="mb-8 flex flex-wrap gap-2 border-b border-border pb-px">
+        <div className="mb-8 flex gap-2 overflow-x-auto border-b border-border pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((t) => {
             const on = tab === t.key;
             return (
@@ -350,7 +359,7 @@ export function InternDashboard() {
                 key={t.key}
                 type="button"
                 onClick={() => setTab(t.key)}
-                className={`relative -mb-px inline-flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm transition-colors ${
+                className={`relative -mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm transition-colors ${
                   on ? "text-fg" : "text-muted hover:text-fg"
                 }`}
               >
@@ -450,6 +459,7 @@ export function InternDashboard() {
               <FilterSelect
                 value={rArt}
                 onChange={setRArt}
+                ariaLabel="Nach Objektart filtern"
                 options={[
                   { value: "all", label: "Alle Objektarten" },
                   ...reportArten.map((a) => ({ value: a, label: OBJEKTART_LABEL[a] ?? a })),
@@ -541,6 +551,7 @@ export function InternDashboard() {
               <FilterSelect
                 value={lKind}
                 onChange={setLKind}
+                ariaLabel="Nach Anfrageart filtern"
                 options={[
                   { value: "all", label: "Alle Arten" },
                   { value: "booking", label: "Termine" },

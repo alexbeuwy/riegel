@@ -121,7 +121,7 @@ export function SiteFooter() {
           <div className="space-y-4">
             <div className="text-[0.65rem] uppercase tracking-[0.25em] text-faint">Folgen</div>
             <FooterSocials links={socialLinks} />
-            <p className="max-w-[14rem] text-xs leading-relaxed text-faint/80">
+            <p className="max-w-[14rem] text-xs leading-relaxed text-muted">
               Einblicke, neue Objekte und Marktwissen aus der Vorderpfalz.
             </p>
           </div>
@@ -134,7 +134,7 @@ export function SiteFooter() {
               © {year} {site.legalName}. Alle Rechte vorbehalten.
             </span>
             <div className="flex items-center gap-5">
-              <span className="hidden text-faint/70 sm:inline">Speyer · Ludwigshafen · Vorderpfalz</span>
+              <span className="hidden text-faint sm:inline">Speyer · Ludwigshafen · Vorderpfalz</span>
               <Link href="/widerruf" className="transition-colors hover:text-fg">
                 Widerrufsbelehrung
               </Link>

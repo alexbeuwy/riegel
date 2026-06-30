@@ -27,6 +27,7 @@ export function ContactForm() {
   const [error, setError] = useState<string | null>(null);
   const [errorNonce, setErrorNonce] = useState(0);
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => {
     setError(null);
@@ -38,25 +39,36 @@ export function ContactForm() {
     setErrorNonce((n) => n + 1);
   };
 
-  function submit() {
+  async function submit() {
+    if (busy) return;
     if (!f.name) return fail("Bitte Ihren Namen angeben.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return fail("Bitte eine gültige E-Mail angeben.");
     if (!f.message) return fail("Bitte eine Nachricht eingeben.");
     if (!f.consent) return fail("Bitte der Verarbeitung zustimmen.");
     setError(null);
+    // Lokaler Fallback, falls der Versand scheitert (Daten nicht verlieren).
     try {
       const key = "riegel:contacts";
       const cur = JSON.parse(localStorage.getItem(key) || "[]");
       cur.push({ ...f, createdAt: Date.now() });
       localStorage.setItem(key, JSON.stringify(cur));
     } catch {}
-    // Echte Zustellung an Riegel + Bestätigung an den Absender (Resend, serverseitig)
-    void fetch("/api/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, topic: f.topic, message: f.message }),
-    }).catch(() => {});
-    setDone(true);
+    // Echte Zustellung an Riegel + Bestätigung an den Absender (Resend, serverseitig).
+    // Erst nach Erfolg bestätigen — keine Schein-Bestätigung bei Fehlern.
+    setBusy(true);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, topic: f.topic, message: f.message }),
+      });
+      if (!res.ok) throw new Error("send failed");
+      setDone(true);
+    } catch {
+      fail("Senden fehlgeschlagen. Bitte erneut versuchen oder rufen Sie uns direkt an.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (done) {
@@ -135,10 +147,11 @@ export function ContactForm() {
           key={errorNonce}
           type="button"
           onClick={submit}
-          className={`t-input ${error ? "is-shaking" : ""} inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99] sm:w-auto`}
+          disabled={busy}
+          className={`t-input ${error ? "is-shaking" : ""} inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.99] disabled:opacity-70 sm:w-auto`}
         >
           <Icon name="mail" size={18} />
-          Nachricht senden
+          {busy ? "Wird gesendet …" : "Nachricht senden"}
         </button>
       </div>
     </div>
