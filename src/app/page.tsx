@@ -6,6 +6,7 @@ import { Magnetic } from "@/components/magnetic";
 import { PropertyCard } from "@/components/property-card";
 import { mockEstates } from "@/lib/mock-estates";
 import { site } from "@/lib/site";
+import { photos } from "@/lib/photos";
 import { Faq } from "@/components/faq";
 import { faqs } from "@/lib/faq";
 import { BentoGrid, BentoTile } from "@/components/bento";
@@ -240,6 +241,53 @@ export default function HomePage() {
             Ø-Werte als Orientierung, abhängig von Objekt, Preis und Marktlage. ImmoScout24
             ImmoAward 2025 — Top 21 Makler des Jahres in Deutschland (von über 25.000).
           </p>
+        </Container>
+      </section>
+
+      {/* ───────── Block · Begleitung (Fotos) ───────── */}
+      <section className="py-20 sm:py-28">
+        <Container>
+          <Reveal className="mb-10 max-w-2xl">
+            <h2 className="text-2xl font-semibold sm:text-3xl">
+              Persönlich begleitet — von der Bewertung bis zur Übergabe
+            </h2>
+          </Reveal>
+          <Reveal>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="relative overflow-hidden rounded-3xl border border-border">
+                <Image
+                  src={photos.wertReport2}
+                  alt="Beratungsgespräch mit Riegel Immobilien"
+                  width={1100}
+                  height={1300}
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="h-[300px] w-full object-cover md:h-[520px]"
+                />
+              </div>
+              <div className="grid gap-4">
+                <div className="relative overflow-hidden rounded-3xl border border-border">
+                  <Image
+                    src={photos.analyse3}
+                    alt="Digitale Immobilienanalyse beim Kunden"
+                    width={1100}
+                    height={620}
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="h-[200px] w-full object-cover md:h-[252px]"
+                  />
+                </div>
+                <div className="relative overflow-hidden rounded-3xl border border-border">
+                  <Image
+                    src={photos.wertReport5}
+                    alt="Marktwert-Report mit Blick auf Speyer"
+                    width={1100}
+                    height={620}
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="h-[200px] w-full object-cover md:h-[252px]"
+                  />
+                </div>
+              </div>
+            </div>
+          </Reveal>
         </Container>
       </section>
 

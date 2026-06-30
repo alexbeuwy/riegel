@@ -4,6 +4,7 @@ import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
+import { photos } from "@/lib/photos";
 
 export const metadata = {
   title: "Über uns",
@@ -120,6 +121,38 @@ export default function UeberUnsPage() {
               </Reveal>
             ))}
           </div>
+        </Container>
+      </section>
+
+      {/* In der Beratung — echte Fotos */}
+      <section className="py-16 sm:py-20">
+        <Container>
+          <Reveal className="mb-8 max-w-2xl">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Nah dran — in der Beratung</h2>
+            <p className="mt-3 text-muted">
+              Ob am Küchentisch, vor Ort oder digital: Wir nehmen uns Zeit und
+              erklären jede Zahl, bis sie sitzt.
+            </p>
+          </Reveal>
+          <Reveal>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { src: photos.analyse2, alt: "Beratung mit digitaler Analyse" },
+                { src: photos.wertReport4, alt: "Telefonische Beratung mit Blick auf Speyer" },
+              ].map((img) => (
+                <div key={img.src} className="relative overflow-hidden rounded-3xl border border-border">
+                  <Image
+                    src={img.src}
+                    alt={img.alt}
+                    width={1100}
+                    height={680}
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                    className="h-[230px] w-full object-cover sm:h-[300px]"
+                  />
+                </div>
+              ))}
+            </div>
+          </Reveal>
         </Container>
       </section>
 
