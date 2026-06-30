@@ -20,6 +20,34 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+/**
+ * Luftbild des Objekts als Base64-JPEG — Esri World Imagery (u. a. Maxar),
+ * dieselbe Quelle wie die Satellitenkarte im Rechner, zentriert auf die
+ * vom Nutzer eingegebenen Koordinaten. Fehlertolerant (null bei Problemen).
+ */
+async function fetchSatellite(lat: number | null, lng: number | null): Promise<string | null> {
+  if (lat == null || lng == null) return null;
+  const latRad = (lat * Math.PI) / 180;
+  const dLon = 150 / (111320 * Math.cos(latRad)); // ~300 m breit
+  const dLat = 90 / 110540; // ~180 m hoch (5:3)
+  const bbox = `${lng - dLon},${lat - dLat},${lng + dLon},${lat + dLat}`;
+  const url =
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export" +
+    `?bbox=${bbox}&bboxSR=4326&imageSR=3857&size=1200,720&format=jpg&f=image`;
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 9000);
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(to);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 1000) return null; // kein gültiges Bild
+    return buf.toString("base64");
+  } catch {
+    return null;
+  }
+}
+
 const OBJEKTART_LABEL: Record<string, string> = {
   wohnung: "Wohnung",
   haus: "Haus",
@@ -93,6 +121,9 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
 <td style="border-radius:999px;background:#015cff;"><a href="https://riegel-immobilien.de/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
 </tr></table>`;
 
+  // Luftbild des EINGEGEBENEN Objekts holen (Esri World Imagery, wie im Rechner).
+  const satelliteB64 = await fetchSatellite(num(b.lat), num(b.lng));
+
   // PDF-Report bauen (markenkonform, dark) — als Anhang an Kunde & RIEGEL.
   let pdfBase64: string | null = null;
   try {
@@ -102,6 +133,7 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       city,
       postcode,
       objektartLabel,
+      satelliteB64: satelliteB64 ?? undefined,
       wohnflaeche: b.wohnflaeche as string | number | undefined,
       grundflaeche: b.grundflaeche as string | number | undefined,
       zimmer: b.zimmer as string | number | undefined,
