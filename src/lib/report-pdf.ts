@@ -3,6 +3,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
 import { COVER_JPG_B64 } from "@/lib/report-assets/cover";
+import { HERO_RAYS_B64, GAUGE_B64, ICONS } from "@/lib/report-assets/visuals";
 
 /**
  * Mehrseitiger RIEGEL-Marktwert-Report als PDF — als echtes Dokument aufgebaut:
@@ -58,6 +59,9 @@ interface Ctx {
   mark: PDFImage;
   vibe: PDFImage;
   satellite: PDFImage | null;
+  heroRays: PDFImage;
+  gauge: PDFImage;
+  icons: Record<string, PDFImage>;
 }
 
 export async function buildReportPdf(d: ReportData): Promise<string> {
@@ -80,7 +84,12 @@ export async function buildReportPdf(d: ReportData): Promise<string> {
     }
   }
 
-  const ctx: Ctx = { doc, reg, bold, akira, mark, vibe, satellite };
+  const heroRays = await doc.embedJpg(Buffer.from(HERO_RAYS_B64, "base64"));
+  const gauge = await doc.embedPng(Buffer.from(GAUGE_B64, "base64"));
+  const icons: Record<string, PDFImage> = {};
+  for (const [k, v] of Object.entries(ICONS)) icons[k] = await doc.embedPng(Buffer.from(v, "base64"));
+
+  const ctx: Ctx = { doc, reg, bold, akira, mark, vibe, satellite, heroRays, gauge, icons };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
 
   drawCover(ctx, d, objektTitle);
@@ -214,51 +223,85 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   const t = mkText(page);
   let y = header(ctx, page, w, h, "BEWERTUNG");
 
-  // Wert-Hero
-  const heroH = 112;
-  page.drawRectangle({ x: M, y: y - heroH, width: w - 2 * M, height: heroH, color: SURFACE, borderColor: ACCENT, borderWidth: 1 });
-  page.drawRectangle({ x: M, y: y - heroH, width: 4, height: heroH, color: ACCENT });
+  // Wert-Hero mit Light-Rays + Gradient-Gauge (Rechner-Optik)
+  const heroH = 168;
+  const heroTop = y;
+  const heroBottom = y - heroH;
+  const heroW = w - 2 * M;
+  // Light-Ray-Panel (JPEG mit dunklem Grund) + dezenter Bild-Outline + Akzentkante
+  page.drawImage(ctx.heroRays, { x: M, y: heroBottom, width: heroW, height: heroH });
+  page.drawRectangle({ x: M, y: heroBottom, width: heroW, height: heroH, borderColor: rgb(1, 1, 1), borderWidth: 1, borderOpacity: 0.1 });
+  page.drawRectangle({ x: M, y: heroBottom, width: 4, height: heroH, color: ACCENT });
+
   const cx = w / 2;
   const lbl = "GESCHÄTZTER MARKTWERT";
-  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 9) / 2, y - 26, 9, ctx.reg, FAINT, 1.5);
+  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 9) / 2, heroTop - 26, 9, ctx.reg, FAINT, 1.5);
   const mid = eur(d.value.mid);
-  t(mid, cx - ctx.akira.widthOfTextAtSize(mid, 30) / 2, y - 68, 30, ctx.akira, FG);
-  const span = `Spanne ${eur(d.value.low)} – ${eur(d.value.high)}${d.value.pricePerSqm ? `    ·    ${eur(d.value.pricePerSqm)}/m²` : ""}`;
-  t(span, cx - ctx.reg.widthOfTextAtSize(span, 11) / 2, y - 90, 11, ctx.reg, MUTED);
-  y -= heroH + 26;
+  t(mid, cx - ctx.akira.widthOfTextAtSize(mid, 32) / 2, heroTop - 72, 32, ctx.akira, FG);
+  if (d.value.pricePerSqm) {
+    const ps = `${eur(d.value.pricePerSqm)} / m²`;
+    t(ps, cx - ctx.reg.widthOfTextAtSize(ps, 10) / 2, heroTop - 90, 10, ctx.reg, ACCENT_SOFT);
+  }
+
+  // Spanne-Gauge: Gradient-Track + glühender Marker an der Wert-Position
+  const trackL = M + 40;
+  const trackR = w - M - 40;
+  const trackW = trackR - trackL;
+  const gaugeY = heroBottom + 46;
+  const gh = (ctx.gauge.height / ctx.gauge.width) * trackW;
+  page.drawImage(ctx.gauge, { x: trackL, y: gaugeY - gh / 2, width: trackW, height: gh });
+  const range = Math.max(1, d.value.high - d.value.low);
+  let f = (d.value.mid - d.value.low) / range;
+  f = Math.min(0.94, Math.max(0.06, Number.isFinite(f) ? f : 0.5));
+  const mx = trackL + f * trackW;
+  // Marker (glow → ring → dot) + dünne Führungslinie
+  page.drawLine({ start: { x: mx, y: gaugeY + 12 }, end: { x: mx, y: gaugeY - 12 }, thickness: 1, color: ACCENT_SOFT, opacity: 0.5 });
+  page.drawCircle({ x: mx, y: gaugeY, size: 11, color: ACCENT, opacity: 0.25 });
+  page.drawCircle({ x: mx, y: gaugeY, size: 6, color: BG });
+  page.drawCircle({ x: mx, y: gaugeY, size: 6, borderColor: rgb(1, 1, 1), borderWidth: 2 });
+  page.drawCircle({ x: mx, y: gaugeY, size: 2.5, color: ACCENT_SOFT });
+  // Spannen-Beschriftung (von / bis), tabellarisch ausgerichtet
+  t("von", trackL, gaugeY - 30, 7.5, ctx.reg, FAINT, 1);
+  t(eur(d.value.low), trackL, gaugeY - 22, 10, ctx.bold, FG);
+  textRight(page, "bis", trackR, gaugeY - 30, 7.5, ctx.reg, FAINT);
+  textRight(page, eur(d.value.high), trackR, gaugeY - 22, 10, ctx.bold, FG);
+
+  y = heroBottom - 26;
 
   const colW = (w - 2 * M - 24) / 2;
   const start = y;
-  const section = (title: string, rows: [string, string][], x: number) => {
+  const section = (title: string, rows: [string, string, string][], x: number) => {
     let yy = start;
     heading(ctx, page, title, x, yy, 11);
     yy -= 18;
-    for (const [label, value] of rows) {
+    for (const [icon, label, value] of rows) {
       if (!value) continue;
-      t(label, x, yy, 10, ctx.reg, FAINT);
+      const ic = ctx.icons[icon];
+      if (ic) page.drawImage(ic, { x, y: yy - 1.5, width: 11, height: 11 });
+      t(label, x + 17, yy, 10, ctx.reg, MUTED);
       textRight(page, value, x + colW, yy, 10, ctx.reg, FG);
-      yy -= 6;
+      yy -= 7;
       page.drawLine({ start: { x, y: yy }, end: { x: x + colW, y: yy }, thickness: 0.5, color: BORDER });
       yy -= 14;
     }
     return yy;
   };
   const a = section("Objektdaten", [
-    ["Objektart", d.objektartLabel ?? "–"],
-    ["Wohnfläche", d.wohnflaeche ? `${d.wohnflaeche} m²` : "–"],
-    ["Grundstück", d.grundflaeche ? `${d.grundflaeche} m²` : "–"],
-    ["Zimmer", d.zimmer ? String(d.zimmer) : "–"],
-    ["Baujahr", d.baujahr ? String(d.baujahr) : "–"],
-    ["Zustand", d.zustand || "–"],
-    ["Qualität", d.qualitaet || "–"],
-    ["Energieklasse", d.energieklasse || "–"],
+    ["building", "Objektart", d.objektartLabel ?? "–"],
+    ["ruler", "Wohnfläche", d.wohnflaeche ? `${d.wohnflaeche} m²` : "–"],
+    ["tree", "Grundstück", d.grundflaeche ? `${d.grundflaeche} m²` : "–"],
+    ["bed", "Zimmer", d.zimmer ? String(d.zimmer) : "–"],
+    ["calendar", "Baujahr", d.baujahr ? String(d.baujahr) : "–"],
+    ["sparkle", "Zustand", d.zustand || "–"],
+    ["star", "Qualität", d.qualitaet || "–"],
+    ["bolt", "Energieklasse", d.energieklasse || "–"],
   ], M);
   const b = section("Kennzahlen", [
-    ["Preis / m²", d.value.pricePerSqm ? eur(d.value.pricePerSqm) : "–"],
-    ["Vergleichsobjekte", d.value.comparables != null ? String(d.value.comparables) : "–"],
-    ["Markttrend (Lage)", d.value.trendPct != null ? `+${d.value.trendPct} % p.a.` : "–"],
-    ["Mikrolage", d.value.mikrolage != null ? `${d.value.mikrolage}/10` : "–"],
-    ["Daten-Konfidenz", d.value.confidence != null ? `${d.value.confidence} %` : "–"],
+    ["euro", "Preis / m²", d.value.pricePerSqm ? eur(d.value.pricePerSqm) : "–"],
+    ["layers", "Vergleichsobjekte", d.value.comparables != null ? String(d.value.comparables) : "–"],
+    ["trend", "Markttrend (Lage)", d.value.trendPct != null ? `+${d.value.trendPct} % p.a.` : "–"],
+    ["pin", "Mikrolage", d.value.mikrolage != null ? `${d.value.mikrolage}/10` : "–"],
+    ["chart", "Daten-Konfidenz", d.value.confidence != null ? `${d.value.confidence} %` : "–"],
   ], M + colW + 24);
 
   let yy = Math.min(a, b) - 8;
