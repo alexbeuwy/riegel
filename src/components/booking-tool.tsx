@@ -31,6 +31,11 @@ const TYPES: { label: string; icon: IconName }[] = [
 const MORNING = ["09:00", "10:00", "11:00"];
 const AFTERNOON = ["14:00", "15:00", "16:00", "17:00"];
 
+// ISO aus lokalen Datumsteilen — toISOString() wäre UTC und liefert in
+// Europe/Berlin nach Mitternacht den Vortag (falscher Termin in Mail/.ics).
+const toLocalIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 interface Day {
   iso: string;
   weekday: string;
@@ -51,6 +56,7 @@ export function BookingTool() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState(""); // Honeypot — bleibt bei Menschen leer
   const [error, setError] = useState<string | null>(null);
   const [errorNonce, setErrorNonce] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -71,7 +77,7 @@ export function BookingTool() {
       const wd = cursor.getDay();
       if (wd !== 0 && wd !== 6) {
         out.push({
-          iso: cursor.toISOString().slice(0, 10),
+          iso: toLocalIso(cursor),
           weekday: cursor.toLocaleDateString("de-DE", { weekday: "short" }),
           day: cursor.toLocaleDateString("de-DE", { day: "2-digit" }),
           month: cursor.toLocaleDateString("de-DE", { month: "short" }),
@@ -109,7 +115,7 @@ export function BookingTool() {
     setError(null);
     setBusy(true);
 
-    const payload = { type, mode: modeMeta.label, location: locationLabel, duration, date, time, name, email, phone, message };
+    const payload = { type, mode: modeMeta.label, location: locationLabel, duration, date, time, name, email, phone, message, website };
     try {
       const key = "riegel:bookings";
       const cur = JSON.parse(localStorage.getItem(key) || "[]");
@@ -428,6 +434,8 @@ export function BookingTool() {
             <input value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} type="email" placeholder="E-Mail" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
             <input value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder={mode === "telefon" ? "Telefon (für den Rückruf)" : "Telefon (optional)"} className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Nachricht (optional) — z. B. Objekt, das Sie interessiert" className="resize-none rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
+            {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />
           </div>
         </Field>
 

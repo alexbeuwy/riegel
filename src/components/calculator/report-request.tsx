@@ -18,6 +18,7 @@ export interface ReportSource {
   zustand: Zustand;
   qualitaet: Qualitaet;
   energieklasse: string;
+  ausstattung: string[];
 }
 
 export function ReportRequest({
@@ -34,6 +35,7 @@ export function ReportRequest({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState(""); // Honeypot — bleibt bei Menschen leer
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
@@ -49,7 +51,9 @@ export function ReportRequest({
   async function submit() {
     if (!name.trim()) return fail("Bitte Ihren Namen angeben.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
-    if (!/\d{5,}/.test(phone.replace(/\s+/g, ""))) return fail("Bitte Ihre Telefonnummer angeben.");
+    // Telefon ist optional (E-Mail reicht für den Report) — nur prüfen, wenn angegeben.
+    if (phone.trim() && !/\d{5,}/.test(phone.replace(/\s+/g, "")))
+      return fail("Die Telefonnummer scheint unvollständig — bitte prüfen (oder Feld leer lassen).");
     if (!consent) return fail("Bitte stimmen Sie der Verarbeitung Ihrer Angaben zu.");
     setError(null);
     setBusy(true);
@@ -58,6 +62,8 @@ export function ReportRequest({
       email,
       phone,
       message,
+      website,
+      ausstattung: f.ausstattung,
       address: f.address?.label ?? "",
       city: f.address?.city ?? "",
       postcode: f.address?.postcode ?? "",
@@ -89,17 +95,19 @@ export function ReportRequest({
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error("send failed");
+      if (!res.ok || data?.ok === false) throw new Error("send failed");
       setDelivered(Boolean(data?.delivered));
     } catch {
-      setDelivered(false);
-      // Auch ohne Mail-Backend: lokal sichern, freundlich bestätigen.
+      // KEINE Schein-Bestätigung: der Lead würde RIEGEL sonst nie erreichen.
+      // Lokal sichern (für erneuten Versuch) und ehrlich um Retry/Anruf bitten.
       try {
         const key = "riegel:reports";
         const cur = JSON.parse(localStorage.getItem(key) || "[]");
         cur.push({ ...payload, createdAt: Date.now() });
         localStorage.setItem(key, JSON.stringify(cur));
       } catch {}
+      setBusy(false);
+      return fail("Senden fehlgeschlagen — bitte erneut versuchen oder rufen Sie uns direkt an: 06232 100 10 10.");
     }
     setBusy(false);
     setDone(true);
@@ -181,7 +189,9 @@ export function ReportRequest({
           <div className="grid gap-3 sm:grid-cols-2">
             <input className={inputCls} aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" />
             <input className={inputCls} aria-label="E-Mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
-            <input className={`${inputCls} sm:col-span-2`} aria-label="Telefon / Handy" type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy" />
+            <input className={`${inputCls} sm:col-span-2`} aria-label="Telefon / Handy (optional)" type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy (optional)" />
+            {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />
             <textarea className={`${inputCls} sm:col-span-2 resize-none`} aria-label="Nachricht (optional)" rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nachricht (optional)" />
           </div>
 
@@ -219,6 +229,17 @@ export function ReportRequest({
           </div>
         </div>
       )}
+
+      <p className="mt-5 text-center text-xs text-muted">
+        Lieber direkt sprechen?{" "}
+        <a href="tel:+4962321001010" className="text-accent hover:underline">
+          06232 100 10 10
+        </a>{" "}
+        ·{" "}
+        <Link href="/termin" className="text-accent hover:underline">
+          Termin vereinbaren
+        </Link>
+      </p>
     </div>
   );
 }

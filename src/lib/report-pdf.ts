@@ -51,6 +51,27 @@ const PAGES = 5;
 const eur = (n: number) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
+// Helvetica arbeitet mit WinAnsi — Zeichen außerhalb Latin-1 (ą, ł, Emoji …)
+// lassen drawText werfen und das GANZE PDF scheitern. Nutzereingaben deshalb
+// transliterieren (NFKD) bzw. unbekannte Zeichen still verwerfen.
+const WINANSI_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ''“”•–—˜™š›œžŸ";
+const isWinAnsi = (ch: string) => {
+  const c = ch.codePointAt(0)!;
+  return (c >= 0x20 && c <= 0x7e) || (c >= 0xa0 && c <= 0xff) || WINANSI_EXTRA.includes(ch);
+};
+function toWinAnsi(s: string): string {
+  let out = "";
+  for (const ch of s) {
+    if (isWinAnsi(ch)) {
+      out += ch;
+      continue;
+    }
+    const t = ch.normalize("NFKD").replace(/[̀-ͯ]/g, "");
+    out += t && [...t].every(isWinAnsi) ? t : "";
+  }
+  return out.trim();
+}
+
 interface Ctx {
   doc: PDFDocument;
   reg: PDFFont;
@@ -64,7 +85,16 @@ interface Ctx {
   icons: Record<string, PDFImage>;
 }
 
-export async function buildReportPdf(d: ReportData): Promise<string> {
+export async function buildReportPdf(input: ReportData): Promise<string> {
+  // Freitext-Felder WinAnsi-sicher machen (s. toWinAnsi) — Zahlen bleiben roh.
+  const d: ReportData = {
+    ...input,
+    name: toWinAnsi(input.name) || "Interessent:in",
+    address: input.address ? toWinAnsi(input.address) : input.address,
+    city: input.city ? toWinAnsi(input.city) : input.city,
+    postcode: input.postcode ? toWinAnsi(input.postcode) : input.postcode,
+    objektartLabel: input.objektartLabel ? toWinAnsi(input.objektartLabel) : input.objektartLabel,
+  };
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   doc.setTitle("RIEGEL Marktwert-Report");

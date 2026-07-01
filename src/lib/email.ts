@@ -8,8 +8,6 @@ import { Resend } from "resend";
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
 
-export const emailEnabled = Boolean(resend);
-
 const FROM = process.env.EMAIL_FROM || "RIEGEL Immobilien <onboarding@resend.dev>";
 const TO = process.env.EMAIL_TO || "info@riegel-immobilien.de";
 

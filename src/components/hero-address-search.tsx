@@ -8,6 +8,8 @@ import { searchAddress, type GeoResult } from "@/lib/geocode";
 /**
  * Hero-Schnelleinstieg: Adresse eingeben → direkt in den Immorechner,
  * der die Lage schon als Satellitenbild zeigt. Kein Zwischen-Button.
+ * Combobox-Pattern (ARIA + Pfeiltasten) wie im Rechner; Enter funktioniert
+ * auch bevor Vorschläge geladen sind (Fallback: /rechner?query=…).
  */
 export function HeroAddressSearch() {
   const router = useRouter();
@@ -15,11 +17,13 @@ export function HeroAddressSearch() {
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (q.trim().length < 3) {
       setSuggestions([]);
+      setActiveIdx(-1);
       return;
     }
     const ctrl = new AbortController();
@@ -27,6 +31,7 @@ export function HeroAddressSearch() {
     const t = setTimeout(async () => {
       const res = await searchAddress(q, ctrl.signal);
       setSuggestions(res);
+      setActiveIdx(-1);
       setOpen(true);
       setSearching(false);
     }, 350);
@@ -57,8 +62,32 @@ export function HeroAddressSearch() {
   }
 
   function onSubmit() {
-    if (suggestions[0]) goToRechner(suggestions[0]);
+    const pick = activeIdx >= 0 ? suggestions[activeIdx] : suggestions[0];
+    if (pick) return goToRechner(pick);
+    // Vorschläge (noch) nicht da (Debounce/Netz) → kein toter Klick:
+    // Query mitnehmen, der Rechner sucht dort weiter.
+    const query = q.trim();
+    if (query.length >= 3) router.push(`/rechner?query=${encodeURIComponent(query)}`);
   }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown" && suggestions.length) {
+      e.preventDefault();
+      setOpen(true);
+      setActiveIdx((i) => (i + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp" && suggestions.length) {
+      e.preventDefault();
+      setActiveIdx((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIdx(-1);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      onSubmit();
+    }
+  }
+
+  const listboxId = "hero-address-listbox";
 
   return (
     <div ref={boxRef} className="relative w-full max-w-xl">
@@ -68,9 +97,14 @@ export function HeroAddressSearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => suggestions.length && setOpen(true)}
-          onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+          onKeyDown={onKeyDown}
           placeholder="Adresse eingeben — Wert in 60 Sekunden"
           aria-label="Adresse Ihrer Immobilie"
+          role="combobox"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeIdx >= 0 ? `${listboxId}-${activeIdx}` : undefined}
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent py-2.5 text-fg outline-none placeholder:text-faint"
         />
@@ -90,16 +124,30 @@ export function HeroAddressSearch() {
       </div>
 
       {open && (suggestions.length > 0 || searching) && (
-        <ul className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label="Adressvorschläge"
+          className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+        >
           {searching && suggestions.length === 0 && (
             <li className="px-4 py-3 text-sm text-faint">Adressen werden gesucht …</li>
           )}
-          {suggestions.map((s) => (
-            <li key={`${s.lat},${s.lng}`}>
+          {suggestions.map((s, i) => (
+            <li
+              key={`${s.lat},${s.lng}`}
+              id={`${listboxId}-${i}`}
+              role="option"
+              aria-selected={i === activeIdx}
+            >
               <button
                 type="button"
                 onClick={() => goToRechner(s)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                onMouseEnter={() => setActiveIdx(i)}
+                tabIndex={-1}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
+                  i === activeIdx ? "bg-surface-2 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg"
+                }`}
               >
                 <Icon name="pin" size={16} className="shrink-0 text-faint" />
                 <span className="truncate">{s.label}</span>

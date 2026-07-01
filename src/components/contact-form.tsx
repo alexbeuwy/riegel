@@ -23,6 +23,7 @@ export function ContactForm() {
     topic: ANLIEGEN[0],
     message: "",
     consent: false,
+    website: "", // Honeypot — bleibt bei Menschen leer
   });
   const [error, setError] = useState<string | null>(null);
   const [errorNonce, setErrorNonce] = useState(0);
@@ -60,7 +61,7 @@ export function ContactForm() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, topic: f.topic, message: f.message }),
+        body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, topic: f.topic, message: f.message, website: f.website }),
       });
       if (!res.ok) throw new Error("send failed");
       setDone(true);
@@ -107,6 +108,8 @@ export function ContactForm() {
           <span className="text-sm text-muted">Telefon (optional)</span>
           <input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Für Rückfragen" />
         </label>
+        {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={f.website} onChange={(e) => setF((s) => ({ ...s, website: e.target.value }))} className="hidden" />
         <label className="block space-y-2">
           <span className="text-sm text-muted">Anliegen</span>
           <select className={inputCls} value={f.topic} onChange={(e) => set("topic", e.target.value)}>

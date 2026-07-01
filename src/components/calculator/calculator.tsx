@@ -137,6 +137,11 @@ export function Calculator() {
       };
       setF((s) => ({ ...s, address: geo, addressQuery: label }));
       setStep(1);
+    } else {
+      // Hero-Fallback (Enter vor geladenen Vorschlägen): Query übernehmen,
+      // die Autocomplete-Suche läuft hier direkt weiter.
+      const query = p.get("query") || "";
+      if (query) setF((s) => ({ ...s, addressQuery: query }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

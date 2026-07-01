@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { buildReportPdf } from "@/lib/report-pdf";
-import { supabase } from "@/lib/supabase";
+import { supabaseServer } from "@/lib/supabase-server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
 
+// Nur beim HTML-Rendern escapen — PDF, DB, to/replyTo bekommen Rohwerte
+// (sonst landet „Müller &amp; Söhne" im Report und im CSV-Export).
 const esc = (s: unknown) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+
+const clean = (s: unknown, max: number) => String(s ?? "").trim().slice(0, max);
 
 const eur = (n: unknown) => {
   const v = Number(n);
@@ -18,6 +24,23 @@ const eur = (n: unknown) => {
 const num = (v: unknown): number | null => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+};
+
+/** Zahl im Bereich [min, max] oder undefined (für Eingaben/Kennzahlen). */
+const bounded = (v: unknown, min: number, max: number): number | undefined => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
+};
+
+const OBJEKTARTEN = new Set<Objektart>(["wohnung", "haus", "grundstueck", "gewerbe"]);
+const ZUSTAENDE = new Set<Zustand>(["neuwertig", "gepflegt", "renovierungsbeduerftig"]);
+const QUALITAETEN = new Set<Qualitaet>(["einfach", "normal", "gehoben", "luxus"]);
+
+const OBJEKTART_LABEL: Record<string, string> = {
+  wohnung: "Wohnung",
+  haus: "Haus",
+  grundstueck: "Grundstück",
+  gewerbe: "Gewerbe",
 };
 
 /**
@@ -48,13 +71,6 @@ async function fetchSatellite(lat: number | null, lng: number | null): Promise<s
   }
 }
 
-const OBJEKTART_LABEL: Record<string, string> = {
-  wohnung: "Wohnung",
-  haus: "Haus",
-  grundstueck: "Grundstück",
-  gewerbe: "Gewerbe",
-};
-
 /** Bewertungs-Hero (große Zahl + Spanne) als email-sichere Tabelle. */
 function valueHero(mid: number, low: number, high: number, perSqm: number) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#0f1117;border:1px solid #2a2a30;border-radius:12px;">
@@ -66,6 +82,10 @@ function valueHero(mid: number, low: number, high: number, perSqm: number) {
 }
 
 export async function POST(req: Request) {
+  if (!rateLimit(`report:${clientIp(req)}`, 6, 10 * 60_000)) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
+  }
+
   let b: Record<string, unknown>;
   try {
     b = await req.json();
@@ -73,44 +93,89 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
 
-  const name = esc(b.name).slice(0, 200);
-  const email = esc(b.email).slice(0, 200);
-  const phone = esc(b.phone).slice(0, 80);
-  const message = esc(b.message).slice(0, 2000);
-  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.email))) {
+  // Honeypot: unsichtbares Feld — von Menschen leer, von Bots gefüllt.
+  if (clean(b.website, 200)) {
+    return NextResponse.json({ ok: true, delivered: false, skipped: true });
+  }
+
+  const name = clean(b.name, 200);
+  const email = clean(b.email, 200);
+  const phone = clean(b.phone, 80);
+  const message = clean(b.message, 2000);
+  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
 
-  const address = esc(b.address).slice(0, 240);
-  const city = esc(b.city).slice(0, 120);
-  const postcode = esc(b.postcode).slice(0, 20);
-  const objektart = esc(b.objektart).slice(0, 40);
-  const objektartLabel = OBJEKTART_LABEL[String(b.objektart)] ?? objektart;
+  const address = clean(b.address, 240);
+  const city = clean(b.city, 120);
+  const postcode = clean(b.postcode, 20);
 
+  const objektart = String(b.objektart ?? "") as Objektart;
+  const zustand = String(b.zustand ?? "") as Zustand;
+  const qualitaet = String(b.qualitaet ?? "") as Qualitaet;
+  if (!OBJEKTARTEN.has(objektart) || !ZUSTAENDE.has(zustand) || !QUALITAETEN.has(qualitaet)) {
+    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  }
+  const objektartLabel = OBJEKTART_LABEL[objektart];
+  const energieklasse = /^(A\+|[A-H])$/.test(String(b.energieklasse ?? ""))
+    ? String(b.energieklasse)
+    : "";
+  const ausstattung = Array.isArray(b.ausstattung)
+    ? b.ausstattung.filter((x): x is string => typeof x === "string").slice(0, 12)
+    : [];
+
+  const wohnflaeche = bounded(b.wohnflaeche, 10, 5000);
+  const grundflaeche = bounded(b.grundflaeche, 20, 200000);
+  const zimmer = bounded(b.zimmer, 1, 50);
+  const baujahr = bounded(b.baujahr, 1800, 2030);
+
+  // Wert SERVERSEITIG nachrechnen (Kern der Engine ist deterministisch) —
+  // Client-Zahlen werden nicht übernommen, sonst ließen sich per curl
+  // offiziell aussehende RIEGEL-PDFs mit Fantasiewerten erzeugen.
+  const calc = estimateValue({
+    objektart,
+    ort: city,
+    plz: postcode,
+    wohnflaeche,
+    grundflaeche,
+    zimmer,
+    baujahr,
+    zustand,
+    qualitaet,
+    energieklasse: energieklasse || undefined,
+    ausstattung,
+  });
+  const { low, mid, high, pricePerSqm: perSqm } = calc;
+  if (!mid || mid <= 0) {
+    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  }
+
+  // Kennzahlen: Client-Werte (gleiche Optik wie im Rechner angezeigt),
+  // aber auf plausible Bereiche geklemmt; sonst Server-Fallback.
   const v = (b.valuation ?? {}) as Record<string, unknown>;
-  const mid = num(v.mid) ?? 0;
-  const low = num(v.low) ?? 0;
-  const high = num(v.high) ?? 0;
-  const perSqm = num(v.pricePerSqm) ?? 0;
+  const comparables = Math.round(bounded(v.comparables, 3, 300) ?? calc.comparables);
+  const confidence = Math.round(bounded(v.confidence, 50, 96) ?? calc.confidence);
+  const trendPct = Math.round((bounded(v.trendPct, 0, 15) ?? calc.trendPct) * 10) / 10;
+  const mikrolage = Math.round((bounded(v.mikrolage, 1, 10) ?? calc.mikrolage) * 10) / 10;
 
   const objektRows = emailRows([
-    { label: "Adresse", value: address },
-    { label: "Objektart", value: objektartLabel },
-    { label: "Wohnfläche", value: b.wohnflaeche ? `${esc(b.wohnflaeche)} m²` : "" },
-    { label: "Grundstück", value: b.grundflaeche ? `${esc(b.grundflaeche)} m²` : "" },
-    { label: "Zimmer", value: esc(b.zimmer) },
-    { label: "Baujahr", value: esc(b.baujahr) },
-    { label: "Zustand", value: esc(b.zustand) },
-    { label: "Qualität", value: esc(b.qualitaet) },
-    { label: "Energieklasse", value: esc(b.energieklasse) },
+    { label: "Adresse", value: esc(address) },
+    { label: "Objektart", value: esc(objektartLabel) },
+    { label: "Wohnfläche", value: wohnflaeche ? `${wohnflaeche} m²` : "" },
+    { label: "Grundstück", value: grundflaeche ? `${grundflaeche} m²` : "" },
+    { label: "Zimmer", value: zimmer ? String(zimmer) : "" },
+    { label: "Baujahr", value: baujahr ? String(baujahr) : "" },
+    { label: "Zustand", value: esc(zustand) },
+    { label: "Qualität", value: esc(qualitaet) },
+    { label: "Energieklasse", value: esc(energieklasse) },
   ]);
 
   const kennzahlen = emailRows([
     { label: "Preis / m²", value: perSqm ? `${eur(perSqm)}` : "" },
-    { label: "Vergleichsobjekte", value: v.comparables != null ? `${esc(v.comparables)}` : "" },
-    { label: "Markttrend", value: v.trendPct != null ? `+${esc(v.trendPct)} % p.a.` : "" },
-    { label: "Mikrolage", value: v.mikrolage != null ? `${esc(v.mikrolage)}/10` : "" },
-    { label: "Konfidenz", value: v.confidence != null ? `${esc(v.confidence)} %` : "" },
+    { label: "Vergleichsobjekte", value: String(comparables) },
+    { label: "Markttrend", value: `+${trendPct} % p.a.` },
+    { label: "Mikrolage", value: `${mikrolage}/10` },
+    { label: "Konfidenz", value: `${confidence} %` },
   ]);
 
   const disclaimer = `<p style="margin:18px 0 0;color:#7c7a75;font-size:12px;line-height:1.6;">
@@ -134,22 +199,22 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       postcode,
       objektartLabel,
       satelliteB64: satelliteB64 ?? undefined,
-      wohnflaeche: b.wohnflaeche as string | number | undefined,
-      grundflaeche: b.grundflaeche as string | number | undefined,
-      zimmer: b.zimmer as string | number | undefined,
-      baujahr: b.baujahr as string | number | undefined,
-      zustand: String(b.zustand ?? ""),
-      qualitaet: String(b.qualitaet ?? ""),
-      energieklasse: String(b.energieklasse ?? ""),
+      wohnflaeche,
+      grundflaeche,
+      zimmer,
+      baujahr,
+      zustand,
+      qualitaet,
+      energieklasse,
       value: {
         low,
         mid,
         high,
         pricePerSqm: perSqm,
-        comparables: num(v.comparables) ?? undefined,
-        trendPct: num(v.trendPct) ?? undefined,
-        mikrolage: num(v.mikrolage) ?? undefined,
-        confidence: num(v.confidence) ?? undefined,
+        comparables,
+        trendPct,
+        mikrolage,
+        confidence,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
     });
@@ -170,7 +235,7 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
     attachments,
     html: emailLayout({
       heading: "Ihr persönlicher Marktwert-Report",
-      intro: `Vielen Dank, ${name.split(" ")[0] || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${address}` : ""} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
+      intro: `Vielen Dank, ${esc(name.split(" ")[0]) || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${esc(address)}` : ""} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
       bodyHtml:
         valueHero(mid, low, high, perSqm) +
         `<div style="color:#a8a6a0;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
@@ -189,10 +254,10 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       intro: "Ein Interessent hat über den Immorechner einen Marktwert-Report angefordert. Das versendete PDF hängt an.",
       bodyHtml:
         emailRows([
-          { label: "Name", value: name },
-          { label: "E-Mail", value: email },
-          { label: "Telefon", value: phone },
-          { label: "Nachricht", value: message },
+          { label: "Name", value: esc(name) },
+          { label: "E-Mail", value: esc(email) },
+          { label: "Telefon", value: esc(phone) },
+          { label: "Nachricht", value: esc(message) },
         ]) +
         valueHero(mid, low, high, perSqm) +
         `<div style="color:#a8a6a0;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
@@ -200,38 +265,35 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
     }),
   });
 
-  // 3) In Supabase protokollieren (Nachvollziehbarkeit) — fehlertolerant
+  // 3) In Supabase protokollieren (Nachvollziehbarkeit)
   let logged = false;
-  if (supabase) {
-    try {
-      const { error } = await supabase.from("valuation_requests").insert({
-        address: address || null,
-        city: city || null,
-        postcode: postcode || null,
-        lat: num(b.lat),
-        lng: num(b.lng),
-        objektart: objektart || null,
-        wohnflaeche: num(b.wohnflaeche),
-        grundflaeche: num(b.grundflaeche),
-        zimmer: num(b.zimmer),
-        baujahr: num(b.baujahr),
-        zustand: String(b.zustand ?? "") || null,
-        qualitaet: String(b.qualitaet ?? "") || null,
-        value_low: low || null,
-        value_mid: mid || null,
-        value_high: high || null,
-        price_per_sqm: perSqm || null,
-        confidence: num(v.confidence),
-        report_requested: true,
-        name,
-        email,
-        phone: phone || null,
-        message: message || null,
-      });
-      logged = !error;
-    } catch {
-      logged = false;
-    }
+  if (supabaseServer) {
+    const { error } = await supabaseServer.from("valuation_requests").insert({
+      address: address || null,
+      city: city || null,
+      postcode: postcode || null,
+      lat: num(b.lat),
+      lng: num(b.lng),
+      objektart,
+      wohnflaeche: wohnflaeche ?? null,
+      grundflaeche: grundflaeche ?? null,
+      zimmer: zimmer ?? null,
+      baujahr: baujahr ?? null,
+      zustand,
+      qualitaet,
+      value_low: low || null,
+      value_mid: mid || null,
+      value_high: high || null,
+      price_per_sqm: perSqm || null,
+      confidence,
+      report_requested: true,
+      name,
+      email,
+      phone: phone || null,
+      message: message || null,
+    });
+    if (error) console.error("[report] valuation_requests-Insert fehlgeschlagen:", error.message);
+    logged = !error;
   }
 
   // Observability: Zustellfehler in den Vercel-Logs sichtbar machen.
@@ -239,6 +301,12 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
     console.warn("[report] Mailversand übersprungen — RESEND_API_KEY fehlt.");
   } else if (!customer.ok || !internal.ok) {
     console.error("[report] Resend-Fehler:", { customer: customer.error, internal: internal.error });
+  }
+
+  // Weder Mail zugestellt noch in der DB → ehrlich scheitern statt Lead verlieren.
+  if (!customer.ok && !internal.ok && !logged) {
+    console.error("[report] Lead weder gemailt noch gespeichert — 502.");
+    return NextResponse.json({ ok: false, error: "persistence" }, { status: 502 });
   }
 
   return NextResponse.json({

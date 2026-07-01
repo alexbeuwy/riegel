@@ -5,6 +5,7 @@ export const metadata = {
   title: "Datenschutzerklärung",
   description:
     "Datenschutzerklärung von Riegel Immobilien — umfassende Informationen zur Verarbeitung personenbezogener Daten nach DSGVO und TDDDG.",
+  alternates: { canonical: "/datenschutz" },
 };
 
 const prose =
@@ -230,13 +231,14 @@ export default function DatenschutzPage() {
               Ihre Einwilligung (Art. 6 Abs. 1 lit. f/a DSGVO).
             </p>
 
-            <h2 id="geocoding">13. Adresssuche / Geokodierung (OpenStreetMap Nominatim)</h2>
+            <h2 id="geocoding">13. Adresssuche / Geokodierung (Photon / OpenStreetMap)</h2>
             <p>
-              Für die Adress-Vervollständigung nutzen wir den Dienst „Nominatim" auf Basis von
-              OpenStreetMap (OpenStreetMap Foundation, Vereinigtes Königreich). Die von Ihnen
-              eingegebene Adresse sowie Ihre IP-Adresse werden zur Ermittlung von Adressvorschlägen
-              und Koordinaten an diesen Dienst übermittelt. Rechtsgrundlage ist Ihre Einwilligung
-              bzw. unser berechtigtes Interesse (Art. 6 Abs. 1 lit. a/f DSGVO).
+              Für die Adress-Vervollständigung nutzen wir den Dienst „Photon" (komoot GmbH,
+              Deutschland) auf Basis von OpenStreetMap. Die Anfrage läuft über unseren eigenen
+              Server: Die von Ihnen eingegebene Adresse wird zur Ermittlung von Adressvorschlägen
+              und Koordinaten an den Dienst weitergereicht — Ihre IP-Adresse wird dabei{" "}
+              <strong>nicht</strong> an den Anbieter übermittelt. Rechtsgrundlage ist unser
+              berechtigtes Interesse an einer funktionalen Adresssuche (Art. 6 Abs. 1 lit. f DSGVO).
             </p>
 
             <h2 id="karten">14. Kartendarstellung (CARTO & Esri)</h2>
