@@ -60,7 +60,14 @@ anonymen Portal-Maklern.
 - GEO weiter skalieren (mehr Orte/Themen, interne Verlinkung, Aktualität).
 - Consent für Geocoding (Nominatim) hart gaten; AV-Verträge; Domain-Cutover.
 
-## 6. Erfolgsmessung (Vorschlag)
+## 6. Wachstum & Monetarisierung → `wachstum.md`
+
+Nordstern: **Mandate, nicht Klicks** (1 Mandat ≈ 15–30k € Provision). Priorisiert:
+Speed-to-Lead-Alarm, €-Pipeline im Lead-Cockpit, PDF-Report-Funnel (ohne Gate),
+Follow-up-Automatik, Käufer-Flywheel, Google/Meta-Ads mit hartem Conversion-Tracking,
+Tippgeber. Details + Ads-Modellrechnung + Pitch-/De-Risking-Strategie: `wachstum.md`.
+
+## 7. Erfolgsmessung (Vorschlag)
 
 - Bewertungs-Starts & -Abschlüsse (Rechner-Funnel), Termin-/Kontaktanfragen.
 - Portal-Engagement (Sessions, Favoriten, Suchaufträge, Konten).

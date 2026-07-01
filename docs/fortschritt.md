@@ -54,11 +54,10 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Dashboard-Schritte Supabase**: `docs/supabase-schema.sql` ausführen; Auth „Confirm email" + Site-URL
   setzen; für Mails **SMTP = Resend** (siehe `email-templates/README.md`).
 - **`RESEND_API_KEY`** in Vercel setzen, damit Kontakt/Termin-Mails rausgehen.
-- **Reels**: echte MP4s (Behold.so-Feed oder Export) — Grid ist vorbereitet.
+- **Reels**: echte MP4s — Quelle wählen (Behold.so / Instagram Graph API / MP4-Export) → siehe
+  `instagram-integration.md`. Grid ist vorbereitet.
 - **OnOffice-Keys** → 108 Objekte importieren (Plan steht).
 - **Consent**: Geocoding (Nominatim) ist aktuell funktional-on-use disclosed; bei Bedarf hart gaten.
-
-- **Echte Reel-Videos**: Quelle wählen (Behold.so / Instagram Graph API / MP4-Export) → siehe `instagram-integration.md`. Grid ist vorbereitet.
 - **Accounts/Login (Supabase)**: RIEGEL-Org angelegt; nach Aufräumen Project-URL + anon-Key liefern → Login/Registrierung + Favoriten-/Suchauftrag-Sync. Läuft bis dahin über localStorage.
 - **GEO-Texte**: KI-Entwürfe mit ca.-Zahlen — fachlich gegenlesen vor großer Bewerbung.
 - **Echte Objektdaten**: OnOffice-Token+Secret (serverseitig) → Live-Listings statt Mock.
@@ -81,7 +80,8 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Pitchdeck v4**: Preis tabellarisch (21.800 € − 3.000 € Rabatt = **18.800 €** pauschal,
   Betrieb 290 €/Mon) + Vision-Slide "Fundament → nächstes Level → Nr. 1" ("Nachahmer können einpacken").
 - **Echte Fotos eingebaut**: Team-Gruppenfoto (Home), Büro-Exterieurs (Über-uns/Kontakt),
-  Innenaufnahmen-Galerie (Über-uns). Hero bleibt Unsplash → ersetzen (s. `foto-assets.md`).
+  Innenaufnahmen-Galerie (Über-uns). ~~Hero bleibt Unsplash~~ → inzwischen ersetzt
+  (s. Update „Hero ohne Stockfoto" unten).
 - **Recherche dokumentiert**: ImmoScout-Features, HomeDay Preisatlas, Bewertungsreport, Insta-Reels,
   Foto-Assets (siehe jeweilige `docs/*.md`).
 - **Env scharf**: RESEND_API_KEY gesetzt + Schema (inkl. `valuation_requests`) ausgeführt
@@ -107,3 +107,18 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - Alex erstellt einen **neuen Resend-Account** und richtet Domain + Versand in Ruhe ein (später).
 - Bis dahin: Mails werden serverseitig „skipped" (kein Crash), Daten landen in Supabase `leads`/`valuation_requests`
   und lokal. Sobald Account + Domain stehen: `RESEND_API_KEY`, `EMAIL_FROM` (verifizierte Domain), `EMAIL_TO` setzen → Redeploy.
+
+## Update — Hero ohne Stockfoto + Wachstumsplan ✅
+
+- **Hero**: Unsplash-`hero.jpg` ersetzt durch den vorhandenen **HeroBackdrop** (WebGL-Mesh-Gradient
+  Near-Black → #015CFF, CSS- & reduced-motion-Fallback). Dezente Links-Abdunklung für die Textspalte,
+  Bottom-Fade in die Folge-Sektion. `HERO_BLUR`-Platzhalter entfernt — **kein Foto mehr im LCP-Pfad**.
+  `hero.jpg` bleibt nur noch als Objektbild in `mock-estates.ts`. (`foto-assets.md`-Punkt damit erledigt.)
+- **Entscheidung Video-Hero**: Objekt-Reels (9:16 hochkant) ungeeignet als Landscape-Hintergrund.
+  Falls Video-Hero, dann eigenes 8–12s-Landscape-Footage via **Bunny Stream** (Poster-first,
+  Mobil/reduced-motion → Gradient bleibt Fallback). Basis steht.
+- **Bunny Database geprüft**: SQLite/libSQL-Edge-DB (Public Preview, gratis) — **kein** Supabase-Ersatz
+  (kein Auth/RLS/Realtime); allenfalls später als Read-Cache für öffentliche Listen interessant.
+- **Wachstumsplan dokumentiert** → `wachstum.md`: Mandate-Kernrechnung, Speed-to-Lead-Alarm,
+  €-Pipeline im Cockpit, Report-Funnel-Ausbau, Follow-up-Automatik, Käufer-Flywheel, Ads-Modell,
+  Tippgeber — inkl. Status-Abgleich mit bereits Gebautem (`/api/report`, `/intern`, `leads`).
