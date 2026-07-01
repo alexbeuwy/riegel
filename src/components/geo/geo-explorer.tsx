@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Icon, type IconName } from "@/components/icon";
+import { MapConsentGate } from "@/components/consent";
 import type { GeoCategory } from "@/lib/geo-taxonomy";
 
 const GeoMap = dynamic(() => import("@/components/geo/geo-map").then((m) => m.GeoMap), {
@@ -110,12 +111,15 @@ export function GeoExplorer({
   return (
     <div className="space-y-8">
       {withMap && mapPoints.length > 0 && (
-        <GeoMap
-          points={mapPoints}
-          visibleSlugs={visibleSlugs}
-          hoveredSlug={hovered}
-          onHover={setHovered}
-        />
+        // Wie Portal/Rechner: CARTO-Kacheln erst nach Einwilligung (TDDDG).
+        <MapConsentGate>
+          <GeoMap
+            points={mapPoints}
+            visibleSlugs={visibleSlugs}
+            hoveredSlug={hovered}
+            onHover={setHovered}
+          />
+        </MapConsentGate>
       )}
 
       {/* Suche + Filter */}

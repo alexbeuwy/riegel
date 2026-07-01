@@ -107,17 +107,35 @@ export function HeroBackdrop() {
     };
 
     resize();
+    let io: IntersectionObserver | null = null;
     if (reduce) {
       gl.uniform1f(uTime, 12.0); // statisches, schönes Standbild
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     } else {
-      raf = requestAnimationFrame(render);
+      // Nur rendern, wenn sichtbar — der fbm-Shader ist GPU-teuer und würde
+      // sonst nach dem Scrollen endlos weiterlaufen (Akku, v. a. mobil).
+      let visible = false;
+      io = new IntersectionObserver(
+        ([entry]) => {
+          const nowVisible = entry.isIntersecting;
+          if (nowVisible && !visible) {
+            visible = true;
+            raf = requestAnimationFrame(render);
+          } else if (!nowVisible && visible) {
+            visible = false;
+            cancelAnimationFrame(raf);
+          }
+        },
+        { threshold: 0.01 },
+      );
+      io.observe(canvas);
     }
 
     const onResize = () => resize();
     window.addEventListener("resize", onResize);
     return () => {
       cancelAnimationFrame(raf);
+      io?.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, []);

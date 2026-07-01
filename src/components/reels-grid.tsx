@@ -95,6 +95,9 @@ export function ReelsGrid() {
               onMouseLeave={muteAll}
             >
               <div className="relative aspect-[9/16]">
+                {/* preload=metadata → Browser zeigen den ersten Frame statt einer
+                    leeren Kachel (v. a. iOS-Stromsparmodus, wo Autoplay aus ist).
+                    Echte Poster-JPEGs (z. B. Bunny-Thumbnails) wären der Ausbau. */}
                 <video
                   ref={(el) => {
                     refs.current[i] = el;
@@ -103,7 +106,7 @@ export function ReelsGrid() {
                   muted
                   loop
                   playsInline
-                  preload="none"
+                  preload="metadata"
                   className="h-full w-full object-cover"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/90 via-transparent to-bg/20" />

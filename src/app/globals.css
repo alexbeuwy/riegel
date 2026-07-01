@@ -107,6 +107,15 @@
   .reveal {
     animation: riegel-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+  /* Above-the-fold (Hero): NUR transform — die H1 ist das LCP-Element,
+     ein Opacity-0-Start würde den LCP um ~0,8–1 s verzögern. */
+  @keyframes riegel-rise-lcp {
+    from { transform: translateY(14px); }
+    to { transform: translateY(0); }
+  }
+  .reveal-lcp {
+    animation: riegel-rise-lcp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }
 
 /* ============================================================
