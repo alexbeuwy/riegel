@@ -8,7 +8,7 @@ import { Icon } from "@/components/icon";
 import { contacts } from "@/lib/contacts";
 import { site, whatsappHref } from "@/lib/site";
 
-export const metadata = { title: "Kontakt" };
+export const metadata = { title: "Kontakt", alternates: { canonical: "/kontakt" } };
 
 export default function KontaktPage() {
   const wa = whatsappHref();
@@ -36,7 +36,16 @@ export default function KontaktPage() {
                 Telefon
               </div>
               <div className="mt-3 text-lg text-fg">
-                {site.phone || "wird in Kürze ergänzt"}
+                {site.phone ? (
+                  <a
+                    href={`tel:+49${site.phone.replace(/\D/g, "").replace(/^0/, "")}`}
+                    className="hover:text-accent"
+                  >
+                    {site.phone}
+                  </a>
+                ) : (
+                  "wird in Kürze ergänzt"
+                )}
               </div>
             </div>
             <div className="rounded-xl border border-border bg-surface p-6">

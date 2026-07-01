@@ -22,6 +22,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: estate.title,
     description: `${estate.title} in ${estate.city} — ${formatPrice(estate)}. ${estate.description ?? ""}`.slice(0, 160),
+    alternates: { canonical: `/immobilien/${estate.slug}` },
+    // Beispiel-Objekte (Mock) nicht indexieren — sonst landen Fantasie-Inserate
+    // im Google-Index. Beim OnOffice-Import (echte Objekte) wieder freigeben.
+    robots: { index: false, follow: true },
   };
 }
 

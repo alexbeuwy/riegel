@@ -9,6 +9,7 @@ export const metadata = {
   title: "Immobilienbewertung",
   description:
     "Kostenlose, datenbasierte Sofort-Bewertung Ihrer Immobilie in Speyer, Ludwigshafen und der Vorderpfalz — aus Bodenrichtwerten, Vergleichsobjekten und eigener Transaktionsdatenbank.",
+  alternates: { canonical: "/rechner" },
 };
 
 export default function RechnerPage() {

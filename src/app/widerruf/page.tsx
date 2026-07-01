@@ -1,7 +1,7 @@
 import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 
-export const metadata = { title: "Widerrufsbelehrung" };
+export const metadata = { title: "Widerrufsbelehrung", alternates: { canonical: "/widerruf" } };
 
 const prose =
   "mx-auto max-w-3xl space-y-4 text-muted [&_a]:text-accent [&_a]:underline [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-fg [&_strong]:text-fg";

@@ -4,7 +4,7 @@ import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
-import { geoArticles, type GeoArticle } from "@/lib/geo";
+import { geoArticles, GEO_CONTENT_PUBLISHED, GEO_CONTENT_UPDATED, type GeoArticle } from "@/lib/geo";
 import {
   standortRegion,
   standortRegionLabel,
@@ -207,10 +207,15 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
         publisher: { "@type": "Organization", name: site.legalName, url: site.url },
         mainEntityOfPage: url,
         inLanguage: "de-DE",
+        datePublished: GEO_CONTENT_PUBLISHED,
+        dateModified: GEO_CONTENT_UPDATED,
       },
       {
         // Starker Entity-/Local-Signal für KI-Antworten (wer ist der Makler?)
+        // @id verweist auf den Org-Knoten im Layout → Google führt die
+        // Entitäten zusammen (geo/Standorte/Award kommen von dort).
         "@type": "RealEstateAgent",
+        "@id": `${site.url}/#organization`,
         name: site.legalName,
         url: site.url,
         telephone: site.phone,

@@ -10,6 +10,7 @@ export const metadata = {
   title: "Immobilien",
   description:
     "Alle Immobilienangebote von Riegel Immobilien — filtern nach Typ, Preis, Ort, Zimmern und Fläche, mit interaktiver Karte. Keine Weiterleitung.",
+  alternates: { canonical: "/immobilien" },
 };
 
 export default async function ImmobilienPage({

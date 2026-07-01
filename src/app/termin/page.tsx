@@ -8,6 +8,7 @@ export const metadata = {
   title: "Termin vereinbaren",
   description:
     "Besichtigung oder Beratung bei Riegel Immobilien online buchen — Anlass, Datum und Uhrzeit wählen, wir bestätigen kurzfristig.",
+  alternates: { canonical: "/termin" },
 };
 
 const ablauf: { icon: IconName; title: string; text: string }[] = [

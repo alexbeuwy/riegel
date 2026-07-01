@@ -10,6 +10,7 @@ export const metadata = {
   title: "Über uns",
   description:
     "Riegel Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Expert:innen an zwei Standorten. Lernen Sie die Familie Riegel und das Team kennen.",
+  alternates: { canonical: "/ueber-uns" },
 };
 
 // Familie Riegel — echte Namen & Rollen (Live-Seite). Manfred=Vater, Sylwia=Mutter,

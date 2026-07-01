@@ -12,6 +12,7 @@ export const metadata = {
   title: "Immobilie verkaufen",
   description:
     "Verkaufen Sie Ihre Immobilie in Speyer, Ludwigshafen und der Vorderpfalz zum bestmöglichen Preis — mit professioneller Vermarktung und persönlicher Begleitung von Riegel Immobilien.",
+  alternates: { canonical: "/verkaufen" },
 };
 
 const steps: { n: string; icon: IconName; title: string; text: string }[] = [

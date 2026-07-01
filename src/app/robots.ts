@@ -8,10 +8,12 @@ export default function robots(): MetadataRoute.Robots {
     "anthropic-ai", "PerplexityBot", "Perplexity-User", "Google-Extended",
     "Applebot-Extended", "CCBot",
   ];
+  // APIs, internes Dashboard und nutzerspezifische Seiten nicht crawlen.
+  const disallow = ["/api/", "/intern", "/konto", "/merkliste"];
   return {
     rules: [
-      { userAgent: "*", allow: "/" },
-      ...aiBots.map((userAgent) => ({ userAgent, allow: "/" })),
+      { userAgent: "*", allow: "/", disallow },
+      ...aiBots.map((userAgent) => ({ userAgent, allow: "/", disallow })),
     ],
     sitemap: `${site.url}/sitemap.xml`,
     host: site.url,

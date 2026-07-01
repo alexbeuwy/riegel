@@ -50,6 +50,10 @@ function GhostCta({ href, children }: { href: string; children: React.ReactNode 
   );
 }
 
+export const metadata = {
+  alternates: { canonical: "/" },
+};
+
 const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
   { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
   { value: "Ø ~4 Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
@@ -85,32 +89,32 @@ export default function HomePage() {
         <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-bg to-transparent" />
         <Container className="relative z-10 py-24 sm:py-28">
           <div className="max-w-3xl">
-            <div className="reveal" style={{ animationDelay: "0ms" }}>
+            <div className="reveal-lcp" style={{ animationDelay: "0ms" }}>
               <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
             </div>
             <h1 className="mt-8 akira text-[2rem] leading-[1.02] sm:text-5xl lg:text-[4.25rem]">
-              <span className="reveal block" style={{ animationDelay: "80ms" }}>
+              <span className="reveal-lcp block" style={{ animationDelay: "80ms" }}>
                 Regionale Expertise.
               </span>
-              <span className="reveal block text-accent-strong" style={{ animationDelay: "180ms" }}>
+              <span className="reveal-lcp block text-accent-strong" style={{ animationDelay: "180ms" }}>
                 Alles andere ist
               </span>
-              <span className="reveal block akira-outline" style={{ animationDelay: "280ms" }}>
+              <span className="reveal-lcp block akira-outline" style={{ animationDelay: "280ms" }}>
                 Fast Food.
               </span>
             </h1>
             <p
-              className="reveal mt-8 max-w-xl text-lg text-muted"
+              className="reveal-lcp mt-8 max-w-xl text-lg text-muted"
               style={{ animationDelay: "380ms" }}
             >
               Verkauf, Bewertung und Beratung in Speyer, Ludwigshafen und der
               Vorderpfalz — diskret, persönlich und datenbasiert.
             </p>
-            <div className="reveal relative z-20 mt-10" style={{ animationDelay: "480ms" }}>
+            <div className="reveal-lcp relative z-20 mt-10" style={{ animationDelay: "480ms" }}>
               <HeroAddressSearch />
             </div>
             <div
-              className="reveal relative z-10 mt-6 flex flex-wrap items-center gap-4"
+              className="reveal-lcp relative z-10 mt-6 flex flex-wrap items-center gap-4"
               style={{ animationDelay: "560ms" }}
             >
               {/* Nur EIN Primary im Hero (die Adresssuche) — beide CTAs sekundär. */}

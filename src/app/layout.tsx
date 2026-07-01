@@ -11,21 +11,30 @@ import { AuthProvider } from "@/components/auth";
 import { ConsentProvider } from "@/components/consent";
 import "./globals.css";
 
+// Money-Keyword in den Default-Title (Startseite); Unterseiten via Template.
+// WICHTIG: kein globales `alternates.canonical` — das würde an alle Seiten
+// vererbt und fast die gesamte Site auf „/" kanonisieren (De-Indexierung).
+const DEFAULT_TITLE = `Immobilienmakler Speyer & Ludwigshafen — ${site.name}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name} — ${site.tagline}`,
+    default: DEFAULT_TITLE,
     template: `%s | ${site.name}`,
   },
   description: site.description,
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "de_DE",
     siteName: site.name,
-    title: `${site.name} — ${site.tagline}`,
+    title: DEFAULT_TITLE,
     description: site.description,
     url: site.url,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_TITLE,
+    description: site.description,
   },
   robots: { index: true, follow: true },
 };
@@ -64,11 +73,20 @@ const orgJsonLd = {
     addressLocality: l.city,
     addressCountry: "DE",
   })),
-  location: site.locations.map((l) => ({
+  image: `${site.url}/images/standorte/buero-1.jpg`,
+  logo: `${site.url}/icon.png`,
+  // Büro-Koordinaten (straßengenau) für Local-SEO; Öffnungszeiten folgen,
+  // sobald Riegel sie bestätigt (nicht erfinden).
+  location: site.locations.map((l, i) => ({
     "@type": "Place",
     name: `Riegel Immobilien ${l.city}`,
     address: { "@type": "PostalAddress", streetAddress: l.street, postalCode: l.zip, addressLocality: l.city, addressCountry: "DE" },
     telephone: l.phone,
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: i === 0 ? 49.3199 : 49.4806,
+      longitude: i === 0 ? 8.4313 : 8.4453,
+    },
   })),
   sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube, site.socials.linkedin].filter(Boolean),
 };
@@ -95,8 +113,14 @@ export default function RootLayout({
           <AuthProvider>
             <FavoritesProvider>
               <SavedSearchesProvider>
+                <a
+                  href="#content"
+                  className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-accent focus:px-5 focus:py-2.5 focus:text-sm focus:font-medium focus:text-on-accent"
+                >
+                  Zum Inhalt springen
+                </a>
                 <SiteHeader />
-                <main className="flex-1">{children}</main>
+                <main id="content" className="flex-1">{children}</main>
                 <CtaBand />
                 <SiteFooter />
                 <WhatsappFab />
