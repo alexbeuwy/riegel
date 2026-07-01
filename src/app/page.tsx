@@ -12,6 +12,7 @@ import { faqs } from "@/lib/faq";
 import { BentoGrid, BentoTile } from "@/components/bento";
 import { Icon } from "@/components/icon";
 import { HeroAddressSearch } from "@/components/hero-address-search";
+import { HeroBackdrop } from "@/components/hero-backdrop";
 import { ShaderCta } from "@/components/shader-cta";
 import { AwardHighlight } from "@/components/award-highlight";
 import { ReelsGrid } from "@/components/reels-grid";
@@ -49,11 +50,6 @@ function GhostCta({ href, children }: { href: string; children: React.ReactNode 
   );
 }
 
-// Winziger Blur-Platzhalter (aus public/images/hero.jpg generiert) → kein leerer
-// LCP-Bereich, sofortiger Eindruck bis das Hero-Bild geladen ist.
-const HERO_BLUR =
-  "data:image/jpeg;base64,/9j/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAAIAAwDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAMF/8QAHRAAAgICAwEAAAAAAAAAAAAAAQIDBAARBTFBkf/EABUBAQEAAAAAAAAAAAAAAAAAAAAC/8QAGBEAAgMAAAAAAAAAAAAAAAAAAAECESH/2gAMAwEAAhEDEQA/AMepdqWZ0ltuu9bYSAsGPvXWSu80UnK1YoFi8BjBP04xhSdk4f/Z";
-
 const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
   { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
   { value: "Ø ~4 Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
@@ -78,20 +74,15 @@ export default function HomePage() {
           }),
         }}
       />
-      {/* ───────── Block 1 · Hero (Bild) ───────── */}
+      {/* ───────── Block 1 · Hero (WebGL-Gradient) ───────── */}
       <section className="relative flex min-h-[88svh] items-center overflow-hidden">
-        <Image
-          src="/images/hero.jpg"
-          alt="Hochwertige Immobilie in der Region Speyer / Ludwigshafen"
-          fill
-          priority
-          sizes="100vw"
-          placeholder="blur"
-          blurDataURL={HERO_BLUR}
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/40 to-transparent" />
+        {/* Animierter Mesh-Gradient (Near-Black → RIEGEL-Blau), GPU-only,
+            mit CSS- & reduced-motion-Fallback. Kein Stockfoto mehr. */}
+        <HeroBackdrop />
+        {/* Dezente Abdunklung links für die Textspalte; der blaue Glow oben
+            rechts bleibt sichtbar. Unten weicher Übergang in die Folge-Sektion. */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-bg/70 via-bg/20 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-bg to-transparent" />
         <Container className="relative z-10 py-24 sm:py-28">
           <div className="max-w-3xl">
             <div className="reveal" style={{ animationDelay: "0ms" }}>
