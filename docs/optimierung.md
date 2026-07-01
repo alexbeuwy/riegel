@@ -5,6 +5,24 @@ SEO/Performance/Conversion · Doku-Konsistenz) + Prod-Build-Härtetest
 (**grün, 70 Seiten**, `tsc` sauber). Priorisiert nach Business-Impact
 (Leads/Geld/Recht zuerst). Datei:Zeile jeweils als Einstiegspunkt.
 
+## ✅ Umsetzungsstand (gleiche Session, 2026-07-01)
+
+**Alle P0–P3-Punkte und der komplette Doku-Backlog sind umgesetzt** — mit diesen
+bewussten Ausnahmen:
+
+- **P0 #4 (Zufalls-Kennzahlen)**: bleibt wie gehabt — Entscheidung Alex: ohne echte
+  BORIS-/Marktdaten wäre jede Ableitung weiterhin nur Annäherung. Absicherung trotzdem
+  eingebaut: `/api/report` rechnet den **Kernwert serverseitig nach** und **klemmt** die
+  Kennzahlen auf plausible Bereiche (keine Fantasie-PDFs per curl mehr).
+- **openingHours im JSON-LD**: erst wenn Riegel echte Öffnungszeiten liefert (nicht erfinden).
+- **Reels-Poster**: `preload="metadata"` statt echter Poster-JPEGs (Ausbau: Bunny-Thumbnails).
+- **CSP**: Basis-Security-Header gesetzt; vollwertige CSP bräuchte Nonces (Ausbau).
+- **WhatsApp/LinkedIn**: wartet weiter auf Daten (`site.ts`).
+- **OG-Images**: bewusst Default-Font statt Akira — Akiras defekte Space-Metriken lassen
+  satori Wörter kollabieren (Detail im Code-Kommentar).
+- Vorbestehende **ESLint-Altlasten** (20 Errors, u. a. `set-state-in-effect` in Alt-Komponenten)
+  waren nicht Teil des Audits und bleiben unangetastet (Baseline unverändert).
+
 ## P0 — Kritisch (kostet jetzt Leads, Geld oder Vertrauen)
 
 1. **Terminbuchung sendet falsches Datum (verifiziert).** `booking-tool.tsx:74`:

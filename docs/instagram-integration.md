@@ -1,8 +1,12 @@
-# Instagram-Reels-Einbindung — Lösungen & Empfehlung
+# Instagram-Reels-Einbindung — Lösungen & Stand
 
 > Kontext: Die Reels sollen „super smooth" auf der Seite laufen (Autoplay-Grid),
 > damit Interessenten sehen, wie Riegel vermarktet. Direktes Scrapen der
 > Instagram-Videos ist **nicht möglich/erlaubt** — daher hier die echten Optionen.
+>
+> **Status: Option 3 (self-hosted MP4s) ist umgesetzt und live** (siehe „Aktueller
+> Stand im Code"). Optionen 1/2 bleiben als späterer Ausbau für einen automatisch
+> aktuellen Feed.
 
 ## Warum direktes Scraping nicht geht
 
@@ -15,7 +19,7 @@
 
 ## Die realen Lösungen (sortiert nach Empfehlung)
 
-### 1. Offizielle Instagram Graph API  ⭐ robust & kostenlos (Erstanbieter)
+### 1. Offizielle Instagram Graph API  — späterer Ausbau (robust & kostenlos, Erstanbieter)
 - Voraussetzung: IG **Business/Creator-Account** + verknüpfte Facebook-Seite +
   Meta-App (Basic Display API ist abgekündigt → **Instagram Graph API**).
 - Endpoint `GET /<ig-user-id>/media` liefert `media_url` (bei Videos die MP4),
@@ -24,19 +28,16 @@
   in unserem Grid → volle Kontrolle, on-brand, Autoplay.
 - Aufwand: einmalig Meta-App + Token. Danach automatisch aktuell.
 
-### 2. Feed-as-a-Service (z. B. Behold.so)  ⭐ schnellster „smooth + auto-aktuell"
+### 2. Feed-as-a-Service (z. B. Behold.so)  — späterer Ausbau („smooth + auto-aktuell")
 - Behold.so / Curator.io / EmbedSocial verbinden den IG-Account per OAuth und
   stellen einen **JSON-Feed** der letzten Posts bereit (inkl. Medien-URLs).
 - Wir fetchen das JSON serverseitig und rendern es in **unserem** Grid (kein
   fremdes iFrame, kein fremdes Styling) → smooth & on-brand.
 - Behold hat eine **kostenlose Stufe**. Aufwand: Account anlegen → Feed-ID an mich.
 
-### 3. Manueller MP4-Export  ⭐ sofort, ohne Abhängigkeit, 100 % smooth
-- Riegel exportiert die eigenen Reels (Eigentum) als MP4 + ein Poster-JPG.
-- Ablegen unter `public/reels/<name>.mp4` und `public/images/reels/<name>.jpg`.
-- In `src/components/reels-grid.tsx` beim jeweiligen Eintrag `video: "/reels/<name>.mp4"`
-  setzen → das Grid spielt es automatisch ab (nur sichtbare Kacheln, stummgeschaltet,
-  geloopt). **Bereits vorbereitet.**
+### 3. Manueller MP4-Export  ⭐ **UMGESETZT** — sofort, ohne Abhängigkeit, 100 % smooth
+- Riegels eigene Reels (Eigentum) als MP4 exportiert und self-hosted eingebunden
+  (aktuell unter `https://beuwy.com/riegel/`, siehe unten).
 
 ### 4. Offizielles oEmbed / embed.js (Blockquote-iFrame)  — Notlösung
 - Rendert den Original-Post als iFrame. **Kein** Autoplay, fremdes Styling,
@@ -46,20 +47,26 @@
 - Gegen die AGB, brüchig (brechen bei IG-Änderungen), DSGVO-/Marken-Risiko.
   **Für eine Kundenseite nicht empfohlen.**
 
-## Aktueller Stand im Code
+## Aktueller Stand im Code ✅ (Option 3 umgesetzt)
 
-`src/components/reels-grid.tsx` ist ein **Autoplay-in-View-Grid**:
-- Mit `video`-Feld → `<video autoPlay(muted) loop playsInline>` via IntersectionObserver
-  (nur sichtbare Kacheln spielen → flüssig, akkuschonend).
-- Ohne `video` → Poster (echtes Riegel-Bild) + Play-Overlay + Link zum echten Reel.
+`src/components/reels-grid.tsx` zeigt **5 echte, selbst gehostete RIEGEL-Reels**
+(MP4s auf `https://beuwy.com/riegel/`: Doppelhaushälfte Schifferstadt, Einfamilienhaus,
+Wohnung Bad Dürkheim, Einfamilienhaus mit Carina, Miete Speyer mit Sissy):
 
-→ Sobald **Option 1, 2 oder 3** gewählt ist, ist die Einbindung in <1 h erledigt.
+- **Autoplay-in-View, stumm**: `<video muted loop playsInline preload="none">` spielt nur,
+  wenn die Kachel sichtbar ist (IntersectionObserver, threshold 0.35) — flüssig, akkuschonend.
+- **Hover → Ton an**: `onMouseEnter` schaltet genau dieses Video laut, alle anderen stumm;
+  `onMouseLeave` → wieder alle stumm.
+- **Mute/Unmute-Toggle** unten links pro Kachel (Klick = sichere User-Geste für Ton,
+  `aria-pressed`/`aria-label` gesetzt).
+- Respektiert `prefers-reduced-motion` (dann kein Autoplay).
+- Kein Instagram-Embed, kein externer Feed → kein Consent nötig, keine Abhängigkeit.
 
-## Empfehlung
+## Späterer Ausbau (wenn „automatisch aktuell" gewünscht)
 
-- **Schnell & dauerhaft aktuell:** Behold.so (Option 2) — Feed-ID schicken, Rest mache ich.
-- **Voll Erstanbieter:** Instagram Graph API (Option 1) — wenn ein Business-Account + Meta-App ok ist.
-- **Sofort für den Launch:** ein paar MP4s exportieren (Option 3) — läuft ohne jede Abhängigkeit.
+- **Behold.so (Option 2)** — Feed-ID einrichten (Konto-Verbindung durch RIEGEL), Rest <1 h.
+- **Instagram Graph API (Option 1)** — wenn Business-Account + Meta-App ok sind.
+- Neue Reels heute: MP4 liefern → Upload → Eintrag in `REELS` in `reels-grid.tsx`.
 
 ---
 
@@ -83,5 +90,5 @@ Behold.so (Empfehlung, ab 10 $) · Elfsight (ab 5 $) · EmbedSocial (Reels ab ~2
 Alle Managed-Dienste brauchen einen **menschlichen** OAuth-/App-Setup-Schritt; der Agent kann danach nur
 den fertigen Embed-Code integrieren.
 
-**Empfehlung RIEGEL:** Grid ist MP4-ready. Eigene Reels als MP4 von Sissy/Christoph liefern lassen →
-self-hosten. Wenn „immer aktuell" gewünscht: Behold.so-Feed-ID einrichten (Konto-Verbindung durch RIEGEL).
+**Stand RIEGEL:** ✅ genau so umgesetzt — 5 eigene Reels als MP4 self-hosted (Option 3, s. o.).
+Wenn „immer aktuell" gewünscht: Behold.so-Feed-ID einrichten (Konto-Verbindung durch RIEGEL).

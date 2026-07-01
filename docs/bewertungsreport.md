@@ -4,8 +4,13 @@
 > Ziel: Der Rechner-CTA fordert **keinen** generischen „Beratungstermin", sondern
 > einen **persönlichen Marktwert-Report** an. Report geht an den Kunden **und** als
 > CC/Backend an RIEGEL. Jede recherchierte Adresse wird gespeichert (Nachvollziehbarkeit).
+>
+> **Status: Der PDF-Anhang ist LIVE** (`/api/report` + `src/lib/report-pdf.ts`, 5 Seiten).
+> Die früher hier beschriebene HTML-Report-Seite `/report/...` ist **entfallen** — es gibt
+> keine solche Route; der Report wird direkt als PDF per Mail zugestellt.
+> Die 11 Abschnitte unten sind das **Zielbild/Blueprint** für den weiteren Ausbau.
 
-## Report-Abschnitte (Reihenfolge im Dokument)
+## Report-Abschnitte (Blueprint — Zielbild, Reihenfolge im Dokument)
 1. **Deckblatt** — RIEGEL-Logo (Akira), „Sofort-Marktwertbericht", Objektadresse, Hero-Visual
    (Objektfoto/Kartenmotiv), Erstellungsdatum + Referenznummer, „Erstellt für [Name]", Stichtag.
 2. **Management Summary** — Punktschätzung (EUR), Wertspanne von–bis, €/m² + Regionsvergleich,
@@ -37,17 +42,43 @@
 - 12-Spalten-Raster, Bento-Cards für Kennzahlen, Kapitelnummern 01–11 in Akira.
 - Range-Bar für Wertspanne, Linien-Chart für Trend, dunkles Map-Theme mit blauem Pin, Donut für Konfidenz.
 
-## Umsetzung (Stufen)
-- **Datenhaltung**: Supabase-Tabelle `valuation_requests` — jede Adress-Recherche + Report-Anfrage
-  wird gespeichert (Adresse, Geo, Objektdaten, Wertspanne, Name/E-Mail/Tel, Zeitpunkt, user_id).
-  → Nachvollziehbar „wer prüft welches Objekt". Schema in `supabase-schema.sql`.
-- **Anfrage-Flow**: Rechner-CTA „Persönlichen Report anfordern" → `/api/report`:
-  (1) speichert in Supabase, (2) Mail an Kunde + **CC an RIEGEL** (EMAIL_TO), (3) Report-Link.
-- **Report-Ausgabe**: server-gerenderte Premium-Report-Seite (`/report/...`), die der Kunde als
-  PDF speichern/drucken kann (print-CSS). Echtes server-seitiges PDF-Attachment (z. B. via Worker
-  mit Playwright oder `@react-pdf`) ist als spätere Ausbaustufe vorgesehen.
+## Umsetzung (Ist-Stand) ✅
+
+- **Anfrage-Flow (live)**: Rechner (`/rechner`, Wizard) → CTA „Persönlichen Report anfordern" →
+  `POST /api/report`: (1) Esri-World-Imagery-Luftbild der eingegebenen Koordinaten holen,
+  (2) PDF bauen, (3) Mail an den Kunden **mit PDF-Anhang** + interne Kopie an RIEGEL
+  (`EMAIL_TO`, ebenfalls mit PDF), (4) Insert in Supabase `valuation_requests`. Jeder Schritt
+  fehlertolerant (ohne `RESEND_API_KEY` wird der Versand „geskippt", das Logging bleibt).
+- **Datenhaltung (live)**: Supabase-Tabelle `valuation_requests` — Adresse+Geo, Objektdaten,
+  Wertspanne, Kontaktdaten, Zeitpunkt. Lesen nur per `service_role` (Auswertung über `/intern`).
+  Schema in `supabase-schema.sql`.
+- ~~Report-Ausgabe als HTML-Seite `/report/...`~~ **entfallen** — direkt serverseitiges
+  PDF-Attachment via pdf-lib (kein Playwright/`@react-pdf` nötig, serverless-tauglich).
 - **Datenquellen (später)**: Bodenrichtwerte, reale Vergleichsdaten/Transaktionen, Energiedaten —
-  zunächst transparente Schätzlogik mit klarem Disclaimer.
+  aktuell transparente Schätzlogik mit klarem Disclaimer.
+
+### `src/lib/valuation.ts` — Bewertungs-Engine (client-seitig)
+
+Heuristische Engine v2: regionale €/m²-Basiswerte für 8 Regionen (Speyer, Ludwigshafen,
+Schifferstadt, Frankenthal, Neustadt, Mannheim, Heidelberg, Vorderpfalz + Default) je Objektart
+(Wohnung/Haus/Gewerbe) plus Bodenrichtwert. Der Mittelwert entsteht aus Fläche × €/m², multipliziert
+mit Faktoren für Zustand, Ausstattungsqualität, Baujahr, Energieklasse und Ausstattungs-Bonus
+(max. +8 %) sowie einem bewussten „Optimismus"-Faktor von +6 % (Verkaufsargument); bei Häusern
+kommt anteilig Bodenwert fürs Grundstück dazu. Ergebnis ist eine Spanne (−7 %/+11 % um den
+Mittelwert), €/m², Kennzahlen (Comparables, Konfidenz, Trend, Mikrolage, Rendite — teils
+randomisiert, siehe `optimierung.md`) und die Einzelfaktoren mit %-Wirkung. Klar als Schätzung
+deklariert — **kein** Verkehrswertgutachten.
+
+### `src/lib/report-pdf.ts` — PDF-Generator (serverseitig)
+
+Baut mit **pdf-lib + @pdf-lib/fontkit** einen 5-seitigen, markenkonformen A4-Report (dark):
+Deckblatt mit Luftbild des Objekts, Bewertungsseite (Wert-Hero, Objekt-/Kennzahlen), Preis-Faktoren,
+Vermarktungszeit & Markttrend, Endblatt mit Rechtlichem/Disclaimer und Ansprechpartner. AKIRA wird
+per fontkit eingebettet, Logo/Cover/Grafiken liegen als Base64 in `src/lib/report-assets/`
+(akira, mark, cover, visuals) — dadurch pure-JS ohne Dateisystem-/Browser-Abhängigkeit und
+Vercel-serverless-tauglich. Rückgabe ist Base64, das `/api/report` als Resend-Attachment
+(Buffer) verschickt. Kontaktdaten/Links im PDF zeigen auf riegel-immobilien.de
+(beim Domain-Cutover prüfen, siehe [betrieb.md](./betrieb.md)).
 
 ## Benchmarks
 Sprengnetter (Management-Summary, ImmoWertV/BelWertV/EBA), PriceHubble (AVM-Dossier, KI-Effizienzklasse,

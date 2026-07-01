@@ -121,6 +121,36 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   €-Pipeline im Cockpit, Report-Funnel-Ausbau, Follow-up-Automatik, Käufer-Flywheel, Ads-Modell,
   Tippgeber — inkl. Status-Abgleich mit bereits Gebautem (`/api/report`, `/intern`, `leads`).
 
+## Update — Audit-Fixes P0–P3 umgesetzt ✅
+
+- **P0**: Termin-Datums-Bug behoben (lokale ISO statt UTC-Vortag); **stiller Lead-Verlust**
+  beseitigt (Report-Formular zeigt echte Fehler + Retry + Anruf-Fallback; contact/booking/report
+  prüfen den DB-Insert und antworten 502, wenn weder Mail noch DB den Lead haben);
+  **Canonical-Bug** gefixt (Root-Canonical raus, jede Seite eigene); Rechner-Result mit
+  tel:-/Termin-CTAs + Telefon optional; `/intern` gehärtet (timingSafeEqual + Rate-Limit +
+  generische Fehler).
+- **P1**: **OG-Images** (Root + dynamisch je Standort/Ratgeber via next/og, Hero-Look);
+  robots-Disallow (api/intern/konto/merkliste); Mock-Objekte noindex + aus Sitemap;
+  Geocoding auf eigenen **Photon-Proxy `/api/geocode`** umgestellt (OSM-Policy + DSGVO:
+  keine Nutzer-IP an Dritte; Datenschutz §13 angepasst); **Rate-Limit + Honeypot** auf allen
+  drei Formularen; `/api/report` **rechnet Werte serverseitig nach** (keine Fake-PDFs per curl)
+  + Escaping-Fix (kein „&amp;amp;" mehr in PDF/DB/replyTo); Hero-Suche mit Enter-Fallback
+  `/rechner?query=` + Combobox-ARIA/Pfeiltasten.
+- **P2/P3**: Homepage-Title mit „Immobilienmakler Speyer & Ludwigshafen"; JSON-LD geo je Büro,
+  Article datePublished/Modified, @id-Entity-Verknüpfung; **LCP-Fix** (Hero-Reveals nur noch
+  transform); Modal-Fokus-Falle + -Rückgabe; Skip-Link; GeoMap hinter Consent-Gate; WebGL-Hero
+  pausiert offscreen (IntersectionObserver); Reels `preload="metadata"`; Kontakt-Telefon als
+  tel:-Link; PDF WinAnsi-sicher (kein Crash bei ą/ł/Emoji); Security-Header; Dead Code raus
+  (`emailEnabled`, `playwright-core`); Lead-Inserts laufen über Service-Role (`supabase-server.ts`).
+- **Doku-Backlog komplett**: architecture/build-plan/design-system/pitchdeck-README/
+  instagram-integration/bewertungsreport/dsgvo-check auf Ist-Stand + **`betrieb.md` neu**
+  (Env-Referenz, Deploy, Domain-Cutover-Checkliste).
+- **Verifiziert**: `tsc` 0 Fehler, ESLint exakt auf Vor-Stand (nur Altlasten), Prod-Build grün,
+  Runtime-Smoke-Test (OG-Images gerendert, Geocode-Proxy liefert Büroadresse, robots korrekt).
+- **Bewusste Ausnahmen** (Details im Status-Block von `optimierung.md`): Zufalls-Kennzahlen
+  bleiben (nur serverseitig geklemmt — ohne BORIS-Daten keine Scheinpräzision), openingHours
+  & WhatsApp warten auf echte Daten, Reels-Poster/CSP als Ausbau.
+
 ## Update — Projekt-Audit: Code · SEO/Funnel · Doku ✅
 
 - **3 parallele Audits + Prod-Build** auf Stand `1951532`: Build grün (**70 Seiten**), `tsc` 0 Fehler.
