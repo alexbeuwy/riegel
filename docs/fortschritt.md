@@ -51,18 +51,16 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 
 ## Offen / wartet auf Input 🔧
 
-- **Dashboard-Schritte Supabase**: `docs/supabase-schema.sql` ausführen; Auth „Confirm email" + Site-URL
-  setzen; für Mails **SMTP = Resend** (siehe `email-templates/README.md`).
-- **`RESEND_API_KEY`** in Vercel setzen, damit Kontakt/Termin-Mails rausgehen.
-- **Reels**: echte MP4s — Quelle wählen (Behold.so / Instagram Graph API / MP4-Export) → siehe
-  `instagram-integration.md`. Grid ist vorbereitet.
-- **OnOffice-Keys** → 108 Objekte importieren (Plan steht).
-- **Consent**: Geocoding (Nominatim) ist aktuell funktional-on-use disclosed; bei Bedarf hart gaten.
-- **Accounts/Login (Supabase)**: RIEGEL-Org angelegt; nach Aufräumen Project-URL + anon-Key liefern → Login/Registrierung + Favoriten-/Suchauftrag-Sync. Läuft bis dahin über localStorage.
+- **OnOffice**: Token+Secret (serverseitig) → 108 Objekte importieren, Live-Listings statt
+  Mock (Plan: `onoffice-integration.md` §8). Bis dahin: Mock-Detailseiten `noindex` setzen
+  (s. `optimierung.md` P1).
+- **Resend**: neuer Account durch Alex (s. Notiz unten) — bis dahin Versand „skipped".
+- **Geocoding**: Nominatim-Autocomplete verstößt gegen OSM-Policy + feuert vor Consent →
+  auf Photon/MapTiler oder Server-Proxy umstellen, **vor Ads-Start zwingend** (`optimierung.md` P1).
 - **GEO-Texte**: KI-Entwürfe mit ca.-Zahlen — fachlich gegenlesen vor großer Bewerbung.
-- **Echte Objektdaten**: OnOffice-Token+Secret (serverseitig) → Live-Listings statt Mock.
-- **WhatsApp-Nummer + LinkedIn-URL**.
+- **WhatsApp-Nummer + LinkedIn-URL** (`site.ts` — FAB rendert bis dahin nicht).
 - **Team-Klarnamen + Porträts** (aktuell Platzhalter).
+- **Audit-Befunde P0–P3** abarbeiten → priorisierte Liste in `optimierung.md`.
 
 ## Sicherheit
 
@@ -73,9 +71,9 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 
 - **Ansprechpartner-Block** (Avatar + Kontakt + "Ich freue mich auf Ihre Anfrage") auf Objektdetail
   & Kontaktseite; Objekt-ID/"Online seit"/Vermarktung (ImmoScout-Trust-Muster). `lib/contacts.ts`.
-- **Rechner-Report-Funnel**: CTA "Report als PDF anfordern" → `/api/report` → HTML-Report an Kunde
-  **+ CC an RIEGEL**, Supabase `valuation_requests` protokolliert jede Anfrage. (PDF-Anhang als
-  Ausbaustufe, Blueprint in `bewertungsreport.md`.)
+- **Rechner-Report-Funnel**: CTA "Report als PDF anfordern" → `/api/report` → Report an Kunde
+  **+ CC an RIEGEL**, Supabase `valuation_requests` protokolliert jede Anfrage. (PDF-Anhang
+  inzwischen **live** via `report-pdf.ts`/pdf-lib — `bewertungsreport.md` dazu veraltet.)
 - **Pitchdeck v3**: Headlines im Copywriting-Stil ("Fast Food"-Closing, "Erben von morgen").
 - **Pitchdeck v4**: Preis tabellarisch (21.800 € − 3.000 € Rabatt = **18.800 €** pauschal,
   Betrieb 290 €/Mon) + Vision-Slide "Fundament → nächstes Level → Nr. 1" ("Nachahmer können einpacken").
@@ -84,8 +82,8 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   (s. Update „Hero ohne Stockfoto" unten).
 - **Recherche dokumentiert**: ImmoScout-Features, HomeDay Preisatlas, Bewertungsreport, Insta-Reels,
   Foto-Assets (siehe jeweilige `docs/*.md`).
-- **Env scharf**: RESEND_API_KEY gesetzt + Schema (inkl. `valuation_requests`) ausgeführt
-  → Report-/Kontakt-/Termin-Mails inkl. CC laufen live.
+- **Supabase-Schema** (inkl. `valuation_requests`) ausgeführt. (Resend-Status: s. Notiz
+  unten — **zurückgestellt**, Versand wird aktuell übersprungen, Leads landen in Supabase.)
 
 ## Update — Video-Reels & internes Lead-Dashboard ✅
 
@@ -122,3 +120,17 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Wachstumsplan dokumentiert** → `wachstum.md`: Mandate-Kernrechnung, Speed-to-Lead-Alarm,
   €-Pipeline im Cockpit, Report-Funnel-Ausbau, Follow-up-Automatik, Käufer-Flywheel, Ads-Modell,
   Tippgeber — inkl. Status-Abgleich mit bereits Gebautem (`/api/report`, `/intern`, `leads`).
+
+## Update — Projekt-Audit: Code · SEO/Funnel · Doku ✅
+
+- **3 parallele Audits + Prod-Build** auf Stand `1951532`: Build grün (**70 Seiten**), `tsc` 0 Fehler.
+- Ergebnisse priorisiert in **`optimierung.md`** (P0–P3 + Doku-Backlog + Positiv-Bestätigungen).
+  Kritischste Funde (P0): **Termin-Datums-Bug** (Zeitzone → Vortag, verifiziert), **stiller
+  Lead-Verlust** an 3 Stellen, **Canonical-Bug** (fast alle Seiten → „/"), **Zufallswerte als
+  „Daten-Konfidenz"** im PDF-Report, **/intern ohne Brute-Force-Schutz**, Rechner-Ergebnis
+  als Conversion-Sackgasse.
+- **Doku-Widersprüche direkt gefixt**: Resend-Status vereinheitlicht (zurückgestellt),
+  erledigte „Offen"-Punkte entfernt (Reels, Schema, Accounts), PDF-Report-Status korrigiert
+  (live statt „Ausbaustufe") — in `fortschritt.md`, `wachstum.md`, `strategie.md`.
+- Größere Doku-Überarbeitungen (architecture, build-plan, design-system, pitchdeck-README,
+  instagram-integration, `betrieb.md` neu) → Backlog in `optimierung.md`.

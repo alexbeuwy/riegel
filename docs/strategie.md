@@ -37,7 +37,9 @@ anonymen Portal-Maklern.
 - **Daten:** aktuell Mock (`Estate`-Modell) → bald **OnOffice → Supabase `estates`** (Single Source);
   UI bleibt unverändert (siehe `onoffice-integration.md` §8).
 - **Konten:** Supabase Auth (env-gated), Favoriten/Suchen-Sync, localStorage-Fallback.
-- **Mails:** Resend (`/api/contact`, `/api/booking`) + Supabase-Auth-Mails (SMTP=Resend, Templates da).
+- **Mails:** Resend (`/api/contact`, `/api/booking`, `/api/report` inkl. PDF) + Supabase-Auth-Mails
+  (SMTP=Resend, Templates da). **Aktuell zurückgestellt**: ohne `RESEND_API_KEY` wird der Versand
+  übersprungen; Leads landen in Supabase (`leads`, `valuation_requests`).
 - **Consent:** TDDDG-Banner, externe Karten/Luftbilder Click-to-Load.
 - **Motion:** transitions-dev-Tokens + t-*-Patterns (Dropdown, Modal, Tabs, Success-Check,
   Error-Shake, Badge, Avatar-Hover, Tilt, Tooltip).
@@ -45,14 +47,15 @@ anonymen Portal-Maklern.
 ## 5. Roadmap (priorisiert)
 
 **Jetzt / kurzfristig**
-- Portal-Politur (dieser Audit): Filter-Edgecases (Min>Max, Miet-/Kauf-Preisraster), Motion-Lücken
-  (Chip-Entfernen, Treffer-Pop-in, Skeleton→Reveal), A11y, Mobile-Feinschliff.
-- Supabase scharf schalten: SQL-Schema, Auth-Mails (SMTP=Resend), `RESEND_API_KEY`.
-- Reels-Quelle wählen (Behold.so / MP4).
+- **Audit-Befunde P0/P1 fixen** (`optimierung.md`): Termin-Datums-Bug, stiller Lead-Verlust,
+  Canonical-Bug, Random-Konfidenz im Report, /intern-Härtung, og:image, robots-Disallow,
+  Formular-Schutz, Rechner-Ergebnis-CTAs.
+- Geocoding von Nominatim auf Photon/MapTiler bzw. Server-Proxy umstellen (**vor Ads-Start**).
 
 **Sobald Keys/Assets da**
 - **OnOffice**: 108 Objekte importieren → Mock ersetzen → **Karten-Clustering** aktivieren.
-- Echte Team-Porträts + Reel-MP4s.
+- **Resend**: neuer Account (Alex) → Versand scharf schalten.
+- Echte Team-Porträts.
 
 **Mittelfristig**
 - Suchauftrag-**Mail-Benachrichtigung** (Edge-Function + Cron gegen neue Objekte).
