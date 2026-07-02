@@ -30,7 +30,13 @@ export function Testimonials() {
                 {t.sterne ? (
                   <div className="flex text-accent" aria-hidden>
                     {Array.from({ length: 5 }).map((_, s) => (
-                      <Icon key={s} name="star" size={14} className={s < t.sterne! ? "" : "text-faint"} />
+                      <Icon
+                        key={s}
+                        name="star"
+                        size={14}
+                        fill={s < t.sterne! ? "currentColor" : "none"}
+                        className={s < t.sterne! ? "" : "text-faint"}
+                      />
                     ))}
                   </div>
                 ) : (

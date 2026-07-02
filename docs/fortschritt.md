@@ -2,6 +2,23 @@
 
 Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/zealous-newton-88eff9`.
 
+## Standing Rules — gilt ab sofort für jedes Update (nicht mehr wiederholen)
+
+- **Transitions-dev & Mikro-Animationen sind Standard, nicht optional.** Jede neue UI nutzt die
+  vorhandenen `.t-*`-Klassen/Skills (`transitions-dev`, `make-interfaces-feel-better`). Kein
+  Feature ohne Hover-/Reveal-/Press-Polish gilt als fertig.
+- **`interpolate-size: allow-keywords`** ist global in `:root` gesetzt (`globals.css`, im
+  transitions-dev-Tokens-Block) — natives `height:auto`-Animieren für einfache Ein-/Ausklapp-
+  Fälle. Für komplexere Fälle (dynamischer Inhalt, SSR-Erstzustand) bleibt die bestehende
+  `.t-collapse`-Grid-Technik (`grid-template-rows: 0fr → 1fr`) die robustere Wahl.
+- **Foto-Hero-Overlays nicht überdunkeln.** Die BunnyCDN-Fotos sind bereits dunkel/kontrastarm
+  fotografiert. Neue Foto-Hero-Sektionen starten mit leichten Gradienten (Richtwert
+  `from-bg/50–60` statt `/80–90`) und werden nur bei echtem Lesbarkeits-Problem nachgeschärft.
+- **Sterne-Icons für Bewertungen**: Das Icon-System ist reine Outline (`fill="none"` per
+  Default in `icon.tsx`). Für „gefüllte" Sterne in jeder Bewertungsanzeige immer
+  `fill="currentColor"` an der jeweiligen `<Icon name="star">`-Instanz mitgeben — sonst sehen
+  auch Bestnoten wie leere Sterne aus (Bug, der `trust-strip.tsx` und `testimonials.tsx` betraf).
+
 ## Erledigt ✅
 
 - **Portal** (Airbnb/Zillow-Style): Karte + Liste, Instant-Filter, teilbare URL-States, „Bei Kartenbewegung suchen", aufgeräumte Filterleiste (Swipe mobil / Wrap desktop).
@@ -298,12 +315,44 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - Verifiziert: tsc/Build grün, Desktop- und echter Mobile-CDP-Screenshot (kein horizontaler
   Overflow, `scrollWidth === clientWidth`).
 
+## Update — Foto-Pass Teil 2, Sterne-Bug, Reel-Sound, Bento-Lücke, Trust-Ausbau ✅
+
+- **Startseiten-Hero**: Foto gewechselt auf `Model-Mann-in-Wohnung.webp` — Subjekt steht
+  rechts, Textspalte links bleibt frei (kein Haus-POI mehr hinter der Headline wie zuvor bei
+  „Mann mit iPad"). Gradienten dabei gleich aufgehellt (Regel s. o.).
+- **Sterne-Bug behoben**: `trust-strip.tsx` (Marquee) und `testimonials.tsx` zeigten trotz
+  Bestnoten (4,6/5, 8,6/10 …) fast leere Sterne — Ursache: das Icon-System zeichnet Sterne rein
+  als Outline (`fill="none"`), Farbwechsel allein macht sie nicht „voll". Fix: `fill=
+  "currentColor"` an den gefüllten Sternen. Jetzt sichtbar korrekt gefüllt (screenshot-geprüft).
+- **Reel-Hover-Sound zuverlässiger**: `reels-grid.tsx` setzte beim Hover `muted=false` **vor**
+  `play()` — das kann als „Autoplay mit Ton ohne User-Geste" vom Browser abgelehnt werden
+  (Hover zählt nicht als User-Activation). Jetzt: zuerst (stumm) sicherstellen, dass das Video
+  läuft, danach erst entstummen — das ist die robuste, browserseitig erlaubte Reihenfolge.
+- **`/verkaufen`**: PageIntro ersetzt durch echten Foto-Hero (`Mann-mit-iPad…abgedunkelte-
+  version.webp`, neu in `photos.ts` als `heroKitchenDark`) — damit hat auch das ursprüngliche
+  „Mann mit iPad"-Motiv jetzt eine sinnvolle Platzierung. Bento-Lücke am Zeilenende („Warum
+  Riegel") mit `BentoPhoto` gefüllt statt Leerraum.
+- **`/rechner`-Hero aufgehellt**: Overlay-Gradienten von `/80–90` auf `/50–60` reduziert (war
+  das explizit genannte Negativ-Beispiel für „zu stark abgedunkelt").
+- **Startseite — „Persönlich begleitet"-Sektion ausgebaut**: echtes Testimonial (golocal,
+  5★, Frau Redmann) jetzt groß als Pull-Quote neben den Fotos, dazu eine kompakte
+  Bewertungs-Liste aller 4 Plattformen (Sterne + Wert). Trust-Testimonial-Signal ist stark —
+  jetzt auch hier zusätzlich zur separaten Kundenstimmen-Sektion prominent sichtbar.
+- **CTA-Shader-Audit**: Verdacht „`/immobilien/[slug]`-CTA ohne WaveShader" geprüft — Fix aus
+  dem vorherigen Batch (`cta-band.tsx`) ist bereits auf `main` und live (verifiziert per curl
+  gegen die Produktions-URL, Response enthält den neuen Shader-Wrapper, kein `wave-2.svg`
+  mehr). Der Screenshot des Nutzers war vermutlich vor dem Deploy dieses Fixes entstanden.
+  `process-timeline.tsx`/`termin/page.tsx` nutzen `wave-2.svg` bewusst nur als dezentes
+  Deko-Muster in kleinen Bild-Slot-Platzhaltern — kein CTA, keine Änderung nötig.
+- Verifiziert: tsc 0 Fehler, Lint clean, Build (74 Seiten) grün, Desktop-Screenshots von
+  Startseite/Rechner/Verkaufen (Hero, Bento-Lücke, Sterne, Begleitung-Sektion) bestätigt.
+
 ## Offen 🔧
 
-- **Hero-Foto-Feinschliff**: „Mann mit iPad"-Foto hat den Haus-POI zu mittig hinter der
-  Headline — Ersatz durch `Model-Mann-in-Wohnung.webp` (Subjekt rechts, Textspalte frei)
-  vorgesehen, `photos.ts` bereits vorbereitet. Weitere Storage-Fotos als Hintergründe an
-  passenden Stellen (Verkaufen/Über-uns) — offener Foto-Pass.
+- **„Seit wie vielen Jahren gibt es Riegel"**: Nutzer möchte diesen Fakt (Kennzahlen-Band
+  und/oder Begleitung-Sektion) ergänzen — dafür fehlt eine verifizierte Jahreszahl
+  (Gründungsjahr). Bewusst **nicht** geschätzt/erfunden, da echte Unternehmensdaten. Sobald
+  das Gründungsjahr vorliegt, Ergänzung in `stats` (page.tsx) und ggf. `/ueber-uns`.
 - **Portal-Filter**: `mehrfamilienhaus` ist noch keine wählbare Kategorie im Immobilien-Portal
   (`ObjectCategory`/`CATS` in `mock-estates.ts`/`portal-filter.ts` nicht erweitert — bewusst
   zurückgestellt, siehe Batch-Protokoll).

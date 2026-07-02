@@ -36,9 +36,11 @@ export default function RechnerPage() {
             className="object-cover object-center"
           />
           {/* Lesbarkeit: unten in den Seitenhintergrund auslaufen (nahtloser
-              Übergang zum Rechner), links stärker abdunkeln für die Textspalte. */}
-          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/80 to-bg/45" />
-          <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/35 to-transparent" />
+              Übergang zum Rechner), links dezent abdunkeln für die Textspalte.
+              Foto ist bereits dunkel — Overlay bewusst leicht (Regel: nicht
+              überdunkeln, sonst geht die Bildwirkung verloren). */}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/55 to-bg/20" />
+          <div className="absolute inset-0 bg-gradient-to-r from-bg/60 via-bg/15 to-transparent" />
         </div>
 
         <Container className="py-14 sm:py-20">

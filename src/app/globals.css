@@ -131,6 +131,12 @@
    Snippets verbatim übernommen inkl. prefers-reduced-motion-Guards.
    ============================================================ */
 :root {
+  /* Native height:auto-Interpolation (Chrome/Edge ≥129) für einfache
+     Ein-/Ausklapp-Fälle ohne eigene .t-collapse-Grid-Konstruktion.
+     Quelle: https://developer.chrome.com/docs/css-ui/animate-to-height-auto
+     Progressive Enhancement — Browser ohne Support ignorieren die Property. */
+  interpolate-size: allow-keywords;
+
   /* Shared motion scale (für eigene Transitions referenzierbar) */
   --duration-stagger: 40ms;
   --duration-micro: 80ms;

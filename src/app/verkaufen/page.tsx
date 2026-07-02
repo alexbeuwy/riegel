@@ -1,10 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
-import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
-import { BentoGrid, BentoTile } from "@/components/bento";
+import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
 import { photos } from "@/lib/photos";
@@ -52,10 +51,32 @@ const steps: { n: string; icon: IconName; title: string; text: string }[] = [
 export default function VerkaufenPage() {
   return (
     <>
-      <PageIntro eyebrow="Für Eigentümer" title="Immobilie verkaufen">
-        Wir verkaufen Ihre Immobilie zum bestmöglichen Preis — mit regionaler
-        Marktkenntnis, professioneller Vermarktung und persönlicher Begleitung.
-      </PageIntro>
+      {/* Hero — Foto-Hintergrund (Mann mit iPad, Küche, abgedunkelte Fassung) */}
+      <section className="relative overflow-hidden border-b border-border pb-16 pt-36">
+        <div className="absolute inset-0 -z-10">
+          <Image
+            src={photos.heroKitchenDark}
+            alt="Immobilienberatung mit iPad — Riegel Immobilien"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          {/* Foto ist bereits abgedunkelt — Overlay bewusst leicht. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/50 to-bg/15" />
+          <div className="absolute inset-0 bg-gradient-to-r from-bg/55 via-bg/10 to-transparent" />
+        </div>
+        <Container className="relative z-10">
+          <span className="inline-block rounded-full border border-border bg-bg/40 px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted backdrop-blur">
+            Für Eigentümer
+          </span>
+          <h1 className="mt-5 text-4xl font-semibold sm:text-5xl">Immobilie verkaufen</h1>
+          <p className="mt-5 max-w-2xl text-lg text-muted">
+            Wir verkaufen Ihre Immobilie zum bestmöglichen Preis — mit regionaler
+            Marktkenntnis, professioneller Vermarktung und persönlicher Begleitung.
+          </p>
+        </Container>
+      </section>
 
       <TrustStrip />
 
@@ -205,6 +226,14 @@ export default function VerkaufenPage() {
                 Verschaffen Sie sich sofort eine erste Einschätzung — kostenfrei
                 und ohne Anmeldung.
               </BentoTile>
+
+              {/* Füllt die Grid-Lücke am Zeilenende mit einem echten Foto
+                  statt Leerraum. */}
+              <BentoPhoto
+                src={photos.wertReportNight}
+                alt="Beratungsabend mit der RIEGEL-Broschüre"
+                cols="2"
+              />
             </BentoGrid>
           </Reveal>
 

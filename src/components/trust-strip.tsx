@@ -20,7 +20,7 @@ function Stars({ rating, max }: { rating: number; max: number }) {
         style={{ width: `${pct}%` }}
       >
         {Array.from({ length: 5 }).map((_, i) => (
-          <Icon key={i} name="star" size={13} />
+          <Icon key={i} name="star" size={13} fill="currentColor" />
         ))}
       </span>
     </span>

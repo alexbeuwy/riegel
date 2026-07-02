@@ -51,11 +51,28 @@ export function ReelsGrid() {
   }, []);
 
   // Genau ein Video mit Ton; alle anderen stumm.
+  //
+  // Wichtig: erst (stumm) abspielen, dann entstummen — NICHT umgekehrt.
+  // Autoplay-mit-Ton per Hover ist keine "User-Activation"-Geste (nur Klick/
+  // Tap zählt), daher lehnen Browser ein direktes muted→false + play() manchmal
+  // ab. Ein bereits (stumm) laufendes Video darf dagegen jederzeit skriptgesteuert
+  // entstummt werden — das erklärt das "manchmal kommt kein Ton" beim Hover.
   const soundOn = (i: number) => {
     refs.current.forEach((v, idx) => {
       if (!v) return;
-      v.muted = idx !== i;
-      if (idx === i) v.play().catch(() => {});
+      if (idx !== i) {
+        v.muted = true;
+        return;
+      }
+      if (v.paused) {
+        v.play()
+          .then(() => {
+            v.muted = false;
+          })
+          .catch(() => {});
+      } else {
+        v.muted = false;
+      }
     });
     setMuted(REELS.map((_, idx) => idx !== i));
   };

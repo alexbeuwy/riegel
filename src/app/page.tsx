@@ -19,6 +19,7 @@ import { ReelsGrid } from "@/components/reels-grid";
 import { TrustStrip } from "@/components/trust-strip";
 import { Testimonials } from "@/components/testimonials";
 import { PreisatlasTeaser } from "@/components/preisatlas-teaser";
+import { TESTIMONIALS, TRUST_PLATFORMS } from "@/lib/trust-data";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -81,21 +82,22 @@ export default function HomePage() {
           }),
         }}
       />
-      {/* ───────── Block 1 · Hero (Foto: Mann mit iPad, blaues Licht) ───────── */}
+      {/* ───────── Block 1 · Hero (Foto: Model in Wohnung, blaues Licht) ───────── */}
       <section className="relative flex min-h-[88svh] items-center overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <Image
-            src={photos.heroKitchen}
-            alt="Immobilienberatung mit iPad — RIEGEL Immobilien"
+            src={photos.modelWohnung}
+            alt="Premium-Wohnraum mit blauem Lichtakzent — RIEGEL Immobilien"
             fill
             priority
             sizes="100vw"
-            className="object-cover object-center"
+            className="object-cover object-[75%_center]"
           />
-          {/* Dezente Gradienten (Foto ist bereits dunkel): links für die Text-
-              spalte abdunkeln, unten weicher Übergang in die Folge-Sektion. */}
-          <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/45 to-bg/10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-bg/75 via-transparent to-bg/30" />
+          {/* Motiv ist links bereits natürlich dunkel/leer (Textspalte) und
+              rechts das Subjekt/der Raum — Gradienten daher dezenter als bei
+              helleren Motiven. Unten weicher Übergang in die Folge-Sektion. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-bg/80 via-bg/25 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-bg/70 via-transparent to-bg/20" />
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent" />
         </div>
         <Container className="relative z-10 py-24 sm:py-28">
@@ -281,50 +283,76 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* ───────── Block · Begleitung (Fotos) ───────── */}
+      {/* ───────── Block · Begleitung (Fotos + starkes Trust-Signal) ───────── */}
       <section className="py-20 sm:py-28">
         <Container>
-          <Reveal className="mb-10 max-w-2xl">
-            <h2 className="text-2xl font-semibold sm:text-3xl">
-              Persönlich begleitet — von der Bewertung bis zur Übergabe
-            </h2>
-          </Reveal>
-          <Reveal>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="relative overflow-hidden rounded-3xl border border-border">
-                <Image
-                  src={photos.wertReport2}
-                  alt="Beratungsgespräch mit Riegel Immobilien"
-                  width={1100}
-                  height={1300}
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="h-[300px] w-full object-cover md:h-[520px]"
-                />
-              </div>
-              <div className="grid gap-4">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <Reveal>
+              <h2 className="text-2xl font-semibold sm:text-3xl">
+                Persönlich begleitet — von der Bewertung bis zur Übergabe
+              </h2>
+              {/* Echtes Testimonial, groß & sichtbar — dieses Vertrauens-Signal
+                  ist stark, daher hier zusätzlich zur Kundenstimmen-Sektion
+                  prominent herausgestellt. */}
+              <blockquote className="mt-8 border-l-2 border-accent pl-5">
+                <p className="text-xl font-medium leading-snug text-fg sm:text-2xl">
+                  „{TESTIMONIALS[0].text}&rdquo;
+                </p>
+                <footer className="mt-3 text-sm text-muted">
+                  <span className="font-medium text-fg">{TESTIMONIALS[0].autor}</span>
+                  <span className="text-faint"> · {TESTIMONIALS[0].plattform}-Bewertung</span>
+                </footer>
+              </blockquote>
+              {/* Kompakte Bewertungs-Liste — wie gut Riegel überall bewertet ist. */}
+              <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2.5">
+                {TRUST_PLATFORMS.map((p) => (
+                  <li key={p.key} className="flex items-center gap-1.5 text-sm">
+                    <Icon name="star" size={14} className="text-accent" fill="currentColor" />
+                    <span className="text-fg">{p.name}</span>
+                    <span className="text-faint">
+                      {p.rating.toLocaleString("de-DE")}/{p.scaleMax}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="relative overflow-hidden rounded-3xl border border-border">
                   <Image
-                    src={photos.analyse3}
-                    alt="Digitale Immobilienanalyse beim Kunden"
+                    src={photos.wertReport2}
+                    alt="Beratungsgespräch mit Riegel Immobilien"
                     width={1100}
-                    height={620}
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="h-[200px] w-full object-cover md:h-[252px]"
+                    height={1300}
+                    sizes="(max-width: 1024px) 50vw, 28vw"
+                    className="h-[300px] w-full object-cover md:h-[420px]"
                   />
                 </div>
-                <div className="relative overflow-hidden rounded-3xl border border-border">
-                  <Image
-                    src={photos.wertReport5}
-                    alt="Marktwert-Report mit Blick auf Speyer"
-                    width={1100}
-                    height={620}
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="h-[200px] w-full object-cover md:h-[252px]"
-                  />
+                <div className="grid gap-4">
+                  <div className="relative overflow-hidden rounded-3xl border border-border">
+                    <Image
+                      src={photos.analyse3}
+                      alt="Digitale Immobilienanalyse beim Kunden"
+                      width={1100}
+                      height={620}
+                      sizes="(max-width: 1024px) 50vw, 28vw"
+                      className="h-[140px] w-full object-cover md:h-[198px]"
+                    />
+                  </div>
+                  <div className="relative overflow-hidden rounded-3xl border border-border">
+                    <Image
+                      src={photos.wertReport5}
+                      alt="Marktwert-Report mit Blick auf Speyer"
+                      width={1100}
+                      height={620}
+                      sizes="(max-width: 1024px) 50vw, 28vw"
+                      className="h-[140px] w-full object-cover md:h-[198px]"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          </div>
         </Container>
       </section>
 

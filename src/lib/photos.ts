@@ -11,6 +11,9 @@ export const photos = {
   /** Landscape, dunkel/cinematic — Mann mit iPad in Küche, blaues Licht. Als Sektions-/
    *  CTA-Hintergrund geeignet (Haus-POI liegt mittig → nicht hinter Headline setzen). */
   heroKitchen: `${CDN}/Mann-mit-iPad-in-Kueche-blaues-Licht-Haus.webp`,
+  /** Wie heroKitchen, aber vorab abgedunkelte Fassung (bessere Textlesbarkeit ohne
+   *  starkes CSS-Overlay). Genutzt als Hero-Hintergrund /verkaufen. */
+  heroKitchenDark: `${CDN}/Mann-mit-iPad-in-Kueche-blaues-Licht-Haus-abgedunkelte-version.webp`,
   /** Landscape, cinematic — Makler am Rechner mit großer Wert-Anzeige (Hero /rechner). */
   rechnerHero: `${CDN}/RIEGEL_Rechner-Hero.webp`,
   /** Landscape, cinematic — Grundrisse/Immobilienakten + Rechner (Aufbereitung/Unterlagen). */
