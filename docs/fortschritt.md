@@ -347,12 +347,73 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - Verifiziert: tsc 0 Fehler, Lint clean, Build (74 Seiten) grün, Desktop-Screenshots von
   Startseite/Rechner/Verkaufen (Hero, Bento-Lücke, Sterne, Begleitung-Sektion) bestätigt.
 
+## Update — Mega-Menü-Hover-Fix, Sterne-Formmismatch, GEO-Chart-Bugs, Hero-Bild per /intern ✅
+
+- **Mega-Menü-Hover-Bug**: Panel sitzt `mt-3` unterhalb des Trigger-Buttons — beim
+  Runterfahren verließ die Maus kurz jede Hover-Fläche (Lücke zwischen Button und Panel),
+  `mouseleave` schloss das Menü dadurch fälschlich sofort. Fix: 200 ms Grace-Period
+  (`scheduleClose`) vor dem tatsächlichen Schließen in `site-header.tsx`, per CDP mit
+  echter langsamer Mausbewegung durch die Lücke verifiziert (Menü bleibt offen).
+- **Sterne-Bug (Runde 2, der eigentliche Fehler)**: der erste Fix (`fill="currentColor"`
+  nur auf der gefüllten Ebene) reichte nicht — die Outline-Ebene darunter hatte dadurch
+  eine ANDERE Silhouette (Stroke allein wirkt schmaler als Stroke+Fill), beide Ebenen lagen
+  sichtbar nicht bündig übereinander. Fix: **beide** Ebenen in `trust-strip.tsx` bekommen
+  `fill="currentColor"` — identische Form, nur unterschiedliche Farbe, damit deckt sich die
+  gefüllte Ebene exakt mit der Hintergrund-Ebene.
+- **Foto-Tausch**: Startseiten-Hero → `heroKitchenDark` (abgedunkelte Kamera-Küche-Fassung),
+  `/verkaufen`-Hero → `modelWohnung` (dafür freigeworden).
+- **GEO-Content-Balkendiagramme grundlegend gefixt**: `cellNumber()` akzeptierte jede
+  Ziffernfolge in der letzten Tabellenspalte blind — dadurch wurden u. a. **Telefonnummern**
+  (Standort-Tabellen bei `bester-immobilienmakler-speyer`/`geerbtes-haus-verkaufen-speyer`),
+  **Jahreszahlen/Quartalsangaben** (`bester-immobilienmakler-ludwigshafen`) und eine
+  Mischung aus Ranking+Jahr+Anzahl gemittelt und als Chart-Balken dargestellt — sinnlose
+  bis peinliche Ergebnisse. Neue Logik: `cellMetric()` verlangt ein erkennbares
+  Einheiten-Signal (€/%/m²/Zeitdauer — Zeitdauern werden auf Tage normiert, damit „3 Wochen"
+  und „75 Tage" vergleichbar werden), `pickChartColumn()` wählt die am besten geeignete
+  Spalte statt blind die letzte, und Rechenschritt-Tabellen (Zeilen mit −/=/+-Präfix, z. B.
+  die Spekulationssteuer-Beispielrechnung) bekommen bewusst **keinen** Balken mehr — ein
+  flacher Größenvergleich ist bei einer laufenden Subtraktion irreführend.
+- **Fehlende Rechenbeispiele ergänzt**: Workflow-Audit über alle 16 Ratgeber-Artikel
+  (Frage: hat das Thema eine Formel/Berechnung, aber KEIN durchgerechnetes Zahlenbeispiel?).
+  9 Sections bekamen ein neues „Rechenbeispiel zur Orientierung" mit echten €-Beträgen
+  (u. a. Maklerprovision Ludwigshafen, Erbschaftsteuer-Freibeträge, Mietrendite,
+  Verkaufskosten-Aufstellung) — im selben Stil wie die bereits vorhandenen Referenzbeispiele
+  (Spekulationssteuer, Notarkosten), konsistent mit bereits im Projekt verwendeten Sätzen
+  (5,95 %/7,14 % Provision, 35 % Grenzsteuersatz, Erbschaftsteuer-Freibeträge) — keine neuen
+  Rechtswerte erfunden.
+- **Neu: Hero-Bild der Startseite per `/intern` austauschbar** (Tab „Medien"): Bild per
+  Klick aus dem BunnyCDN-Storage übernehmen oder per Drag & Drop hochladen. Architektur:
+  neue Supabase-Tabelle `site_settings` (Key-Value, öffentlich lesbar, Schreiben nur
+  `service_role`), `page.tsx` liest den Wert serverseitig mit Fallback auf das feste
+  Default-Foto (Seite bricht nie, auch ohne Supabase/Bunny-Konfiguration). Eine Änderung
+  geht per `revalidatePath("/")` **sofort** live, zusätzlich `revalidate = 300` als
+  ISR-Sicherheitsnetz. Passwort-Prüfung aus `/api/intern` in `admin-auth.ts` extrahiert und
+  von der neuen Route mitgenutzt (gleicher zeitkonstanter Vergleich, gleiches Rate-Limit).
+  **Für den Produktivbetrieb nötig** (in Vercel als Env eintragen + SQL-Migration
+  ausführen): `BUNNY_STORAGE_ZONE`, `BUNNY_STORAGE_ACCESS_KEY` (Werte aus dem Bunny-Dashboard
+  wie bei `scripts/bunny-upload.mjs`), sowie den neuen `site_settings`-Block aus
+  `docs/supabase-schema.sql` (Abschnitt „6) Site-Settings") einmal im Supabase-SQL-Editor
+  ausführen. Ohne diese Konfiguration bleibt die Startseite unverändert beim festen Foto.
+- **Gründungsjahr-Recherche** (Workflow, 6 unabhängige Web-Rechercheagenten + Kreuzprüfung):
+  kein von der Firma selbst schriftlich bestätigtes Jahr auffindbar — die eigene Website
+  vermeidet bewusst eine Zahl. Amtlicher Handelsregistereintrag (Nordata, HRA 51804 Sp,
+  AG Ludwigshafen): Ersteintragung **14.11.2005**, Inhaberin Sylwia Riegel. Eine
+  Presseangabe (Rheinpfalz 2022, Zitat Manfred Riegel) deutet auf informellen Start ca. 2002
+  hin. Die kursierende Zahl „seit 1989" wurde als Artefakt entlarvt (generischer
+  JACASA-Vorlagentext, identisch bei fremden Maklerbetrieben, rechnerisch aus einer
+  statischen „37-Jahre"-Marketingphrase von 2021 hochgerechnet) — **nicht verwenden**.
+  Empfehlung: entweder unscharf „seit über 20 Jahren" (deckt beide Daten ab, kein Risiko),
+  oder mit Verweis auf die Registereintragung „seit 2005". Vor einer festen Jahreszahl auf
+  der Website am besten kurz bei Manfred/Sylwia Riegel direkt nachfragen.
+
 ## Offen 🔧
 
-- **„Seit wie vielen Jahren gibt es Riegel"**: Nutzer möchte diesen Fakt (Kennzahlen-Band
-  und/oder Begleitung-Sektion) ergänzen — dafür fehlt eine verifizierte Jahreszahl
-  (Gründungsjahr). Bewusst **nicht** geschätzt/erfunden, da echte Unternehmensdaten. Sobald
-  das Gründungsjahr vorliegt, Ergänzung in `stats` (page.tsx) und ggf. `/ueber-uns`.
+- **Gründungsjahr-Entscheidung**: s. o. — Alex/Familie Riegel sollte final entscheiden,
+  ob „seit über 20 Jahren" (unscharf, sicher) oder „seit 2005" (Registereintragung) auf die
+  Seite kommt, bevor eine Jahreszahl live geht.
+- **Bunny/Supabase-Env für das neue Hero-Bild-Feature**: siehe Update oben — ohne
+  `BUNNY_STORAGE_ZONE`/`BUNNY_STORAGE_ACCESS_KEY` in Vercel + die SQL-Migration bleibt der
+  Medien-Tab in `/intern` funktionslos (zeigt Fehlermeldung, Startseite bleibt unverändert).
 - **Portal-Filter**: `mehrfamilienhaus` ist noch keine wählbare Kategorie im Immobilien-Portal
   (`ObjectCategory`/`CATS` in `mock-estates.ts`/`portal-filter.ts` nicht erweitert — bewusst
   zurückgestellt, siehe Batch-Protokoll).
