@@ -5,7 +5,11 @@
 const CDN = "https://riegel.b-cdn.net";
 
 export const photos = {
-  /** Landscape, dunkel/cinematic — Mann mit iPad in Küche, blaues Licht (Startseiten-Hero). */
+  /** Portrait/Editorial — Model-Mann in Wohnung (Startseiten-Hero; Subjekt rechts,
+   *  Textspalte links frei — kein POI hinter der Headline). */
+  modelWohnung: `${CDN}/Model-Mann-in-Wohnung.webp`,
+  /** Landscape, dunkel/cinematic — Mann mit iPad in Küche, blaues Licht. Als Sektions-/
+   *  CTA-Hintergrund geeignet (Haus-POI liegt mittig → nicht hinter Headline setzen). */
   heroKitchen: `${CDN}/Mann-mit-iPad-in-Kueche-blaues-Licht-Haus.webp`,
   /** Landscape, cinematic — Makler am Rechner mit großer Wert-Anzeige (Hero /rechner). */
   rechnerHero: `${CDN}/RIEGEL_Rechner-Hero.webp`,
