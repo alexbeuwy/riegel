@@ -251,3 +251,59 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **BW-Bodenrichtwerte**: kurze Prüfung, ob es für Baden-Württemberg (Mannheim/Heidelberg-
   Nähe) einen vergleichbar freien Dienst gibt; sonst bleibt der Modell-Fallback (laut Alex
   „Annäherung reicht, vor Ort wird ohnehin exakt bewertet").
+
+## Update — Mega-Menü, Wave-Shader vereinheitlicht, Preisatlas-Politur, Mehrfamilienhaus, Kontakt-CTA ✅
+
+- **Mega-Menü** für „Immobilienbewertung": Desktop-Dropdown (2×2-Icon-Grid: Immorechner,
+  Preisatlas Vorderpfalz, Standort-Guide, Ratgeber) + mobiles Akkordeon (`.t-collapse`,
+  Chevron dreht) — vorher waren diese Features nur im Footer auffindbar. `site.ts` trägt
+  jetzt eine `NavItem.children`-Struktur.
+- **Wave-Shader vereinheitlicht**: `cta-band.tsx` (sitewide Pre-Footer) nutzte nur ein
+  statisches `wave-2.svg`-Bild (12 % Deckkraft) — jetzt der echte `WaveShader`, ebenso die
+  Preisatlas-CTA-Sektion (`HeroBackdrop` ersetzt). Konsistenter Look mit der Sofort-
+  Bewertung-Box auf der Startseite.
+- **Preisatlas-Fixes**: Ursache für „Punkte überdecken Städtenamen" behoben — labelfreier
+  CARTO-Style (`dark-matter-nolabels`) + eigene Ortsnamen-Labels je Marker mit
+  Kollisionsvermeidung (Screen-Position-Tracking, Prioritäts-Ausblendung bei Überlappung).
+  Neue **Städte-Suche** (Combobox, wie Hero-Adresssuche) mit ehrlichem Fallback „Für '{Stadt}'
+  liegen uns noch keine Marktdaten vor" + Link zum Rechner. transitions-Polish (Hover,
+  Paddings) auf Panel/Vergleich/Chips.
+- **Preisatlas-Homepage-Teaser**: eigenständige, prominente Sektion (`preisatlas-teaser.tsx`)
+  mit Top-6-Städte-Chips (Spannen, `?ort=slug`-Links) statt nur der kleinen Bento-Kachel.
+- **Mehrfamilienhaus** als neuer Objekttyp im Rechner: Ertragswert-Berechnung
+  (Jahresnettokaltmiete × regionaler Vervielfältiger, gedeckelt 18–30), eigene Formularfelder
+  (Miete Pflicht, Wohn-/Gewerbeeinheiten optional), Server-Nachrechnung + PDF/E-Mail-Ausgabe.
+- **Kontakt-Seite**: prominenter blauer CTA „Direkt zur Terminbuchung — ohne Formular" direkt
+  unter der Headline (Link `/termin`) + Anker zum Formular darunter.
+- **BW-Bodenrichtwerte geprüft**: funktionierender ArcGIS-Endpoint für Mannheim gefunden,
+  aber bewusst **nicht** angebunden — kein dokumentierter API-Vertrag, nur ein spoofbarer
+  Referer-Check, lückenhafte Abdeckung (Heidelberg/Weinheim ohne Wert). Modell-Fallback bleibt
+  für BW; Befund inkl. Testkoordinaten in `preisatlas-research.md` dokumentiert.
+- **Qualität**: 6 Bau- + 2 Review-Agenten + Fix-Runde — 7 Findings, 6 gefixt (u. a. fehlendes
+  Mobile-Akkordeon nachgebaut, MFH-Validierung/Karten-Label-Kollision behoben), 1 als reines
+  Sandbox-Env-Limit (fehlende Resend/Supabase-Keys lokal) identifiziert. tsc 0 Fehler, Lint auf
+  Baseline, Build 74 Seiten grün. Eigene Verifikation: Mega-Menü Desktop+Mobil, Preisatlas-
+  Suche-Fallback, Kontakt-CTA je per Screenshot bestätigt.
+
+## Update — Foto-Pass: Hero-Foto, Bento-Lücke, Rechner-Header ✅
+
+- **Rechner-Header umgebaut**: vorher zwang eine separate Foto-Karte + `PageIntro` zum
+  Scrollen, bevor der Rechner sichtbar war. Jetzt: Report-Foto als Hintergrund hinter der
+  Headline „Was ist Ihre Immobilie wert?", Trust-Chips, Rechner direkt im Anschluss —
+  Schritt 1 ist auf Desktop ohne Scrollen sichtbar.
+- **Startseiten-Hero**: Wave-Shader ersetzt durch das Foto „Mann mit iPad, blaues Licht"
+  (BunnyCDN) — dezente Gradienten, da das Foto bereits dunkel ist.
+- **Bento-Lücke gefüllt**: neue `BentoPhoto`-Kachel (Foto statt Leerraum, Hover-Zoom) —
+  füllt die leere Zelle neben „Beratung" mit einem echten RIEGEL-Beratungsfoto.
+- Verifiziert: tsc/Build grün, Desktop- und echter Mobile-CDP-Screenshot (kein horizontaler
+  Overflow, `scrollWidth === clientWidth`).
+
+## Offen 🔧
+
+- **Hero-Foto-Feinschliff**: „Mann mit iPad"-Foto hat den Haus-POI zu mittig hinter der
+  Headline — Ersatz durch `Model-Mann-in-Wohnung.webp` (Subjekt rechts, Textspalte frei)
+  vorgesehen, `photos.ts` bereits vorbereitet. Weitere Storage-Fotos als Hintergründe an
+  passenden Stellen (Verkaufen/Über-uns) — offener Foto-Pass.
+- **Portal-Filter**: `mehrfamilienhaus` ist noch keine wählbare Kategorie im Immobilien-Portal
+  (`ObjectCategory`/`CATS` in `mock-estates.ts`/`portal-filter.ts` nicht erweitert — bewusst
+  zurückgestellt, siehe Batch-Protokoll).

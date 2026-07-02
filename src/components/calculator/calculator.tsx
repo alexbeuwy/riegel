@@ -157,6 +157,12 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
     // Bei Treffer: reale Preisspanne des Marktorts (Wohnung/Haus) statt der
     // zufälligen Objektzahl aus dem Ergebnis.
     value: (r, f, ctx) => {
+      // Mehrfamilienhaus ist ein Ertragswert-Objekt — die Wohnungs-€/m²-Spanne
+      // des Marktorts passt fachlich nicht als "Vergleichspreis" für ein
+      // ganzes Zinshaus, daher hier auf den Vervielfältiger verweisen.
+      if (f.objektart === "mehrfamilienhaus") {
+        return r.vervielfaeltiger != null ? `${r.vervielfaeltiger}× Jahresmiete` : `${r.comparables} Objekte`;
+      }
       const m = ctx.markt;
       if (!m) return `${r.comparables} Objekte`;
       const spanne = f.objektart === "haus" ? m.haus : m.wohnung;
@@ -349,7 +355,12 @@ export function Calculator() {
       if (f.objektart === "grundstueck" && !f.grundflaeche) return "Bitte die Grundstücksfläche angeben.";
       // Mehrfamilienhaus: Ertragswert-Ansatz braucht die Jahresnettokaltmiete
       // statt der Wohnfläche (die bleibt hier optional, nur für den €/m²-Wert).
-      if (f.objektart === "mehrfamilienhaus" && !f.jahresnettokaltmiete) return "Bitte die Jahresnettokaltmiete angeben.";
+      // Echte Zahlprüfung statt Truthy-Check ("0"/"-5000" sind truthy) —
+      // spiegelt die Server-Bound in api/report/route.ts (bounded(…, 100, …)).
+      if (f.objektart === "mehrfamilienhaus") {
+        const miete = Number(f.jahresnettokaltmiete);
+        if (!Number.isFinite(miete) || miete < 100) return "Bitte eine gültige Jahresnettokaltmiete angeben (mind. 100 €).";
+      }
       if (f.objektart !== "grundstueck" && f.objektart !== "mehrfamilienhaus" && !f.wohnflaeche)
         return "Bitte die Wohnfläche angeben.";
     }
@@ -445,7 +456,9 @@ export function Calculator() {
   }
 
   if (phase === "analyzing") return <Analyzing f={f} result={result} revealed={revealed} boris={boris} />;
-  if (phase === "result" && result) return <Result f={f} result={result} onReset={reset} boris={boris} />;
+  // mid<=0-Guard: sollte durch validateStep nicht mehr vorkommen, fängt aber
+  // ungültige/negative Eingaben ab, statt ein "0 €"-Ergebnis als gültig zu zeigen.
+  if (phase === "result" && result && result.mid > 0) return <Result f={f} result={result} onReset={reset} boris={boris} />;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -790,6 +803,7 @@ function Result({ f, result, onReset, boris }: { f: FormState; result: Valuation
   const mid = useCountUp(result.mid, true);
   const rangePos = result.high > result.low ? ((result.mid - result.low) / (result.high - result.low)) * 100 : 50;
   const b = boris.data;
+  const tiles = statTiles(result);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border">
@@ -846,8 +860,12 @@ function Result({ f, result, onReset, boris }: { f: FormState; result: Valuation
           )}
         </div>
 
-        <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {statTiles(result).map((s) => (
+        <div
+          className={`mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 ${
+            tiles.length > 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"
+          }`}
+        >
+          {tiles.map((s) => (
             <div key={s.k} className="rounded-xl border border-border bg-surface p-4 text-center">
               <div className="mb-2 flex justify-center text-accent">
                 <Icon name={s.icon} size={20} />

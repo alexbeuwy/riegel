@@ -45,6 +45,11 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
   >({});
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const onSelectRef = useRef(onSelect);
+  // Aktueller Auswahl-Slug + die im Mount-Effect gebaute Kollisions-Funktion —
+  // beide werden aus dem Selection-Effect heraus gebraucht (s. u.), müssen aber
+  // als Ref durchgereicht werden, da sie in unterschiedlichen Effects entstehen.
+  const selectedSlugRef = useRef<string | null>(null);
+  const updateLabelVisibilityRef = useRef<() => void>(() => {});
   // "Latest ref" erst im Effect schreiben — Refs dürfen nicht während des Renders
   // mutiert werden (react-hooks/refs), sonst drohen inkonsistente Zwischenstände.
   useEffect(() => {
@@ -77,6 +82,8 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
     const span = Math.max(1, max - min);
 
     const bounds = new maplibregl.LngLatBounds();
+    // Einmalig gemessene Chip-Größe je Ort (s. Kollisionsvermeidung unten).
+    const labelSize: Record<string, { w: number; h: number }> = {};
     for (const ort of orte) {
       const t = (ort.wohnung.max - min) / span; // 0..1 Preisniveau relativ zur Region
       const pct = Math.round(t * 100);
@@ -151,18 +158,20 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
       label.style.background = "color-mix(in srgb, var(--color-bg) 78%, transparent)";
       label.style.border = "1px solid color-mix(in srgb, var(--color-border) 92%, transparent)";
       label.style.boxShadow = "0 2px 6px rgba(0,0,0,0.35)";
-      label.style.transition = `color var(--duration-fast) var(--ease-smooth-out), border-color var(--duration-fast) var(--ease-smooth-out), background-color var(--duration-fast) var(--ease-smooth-out)`;
+      label.style.transition = `color var(--duration-fast) var(--ease-smooth-out), border-color var(--duration-fast) var(--ease-smooth-out), background-color var(--duration-fast) var(--ease-smooth-out), opacity var(--duration-fast) var(--ease-smooth-out)`;
 
       el.append(ring, dot, label);
 
       el.addEventListener("mouseenter", () => {
         dot.style.transform = "scale(1.25)";
+        label.style.opacity = "1"; // Hover gewinnt immer gegen die Kollisionsvermeidung
         popup.setLngLat([ort.lng, ort.lat]).setDOMContent(popupContent(ort)).addTo(map);
         stylePopup(popup);
       });
       el.addEventListener("mouseleave", () => {
         dot.style.transform = "scale(1)";
         popup.remove();
+        updateLabelVisibilityRef.current(); // ggf. wieder ausblenden, falls kollidierend
       });
       el.addEventListener("click", (ev) => {
         ev.stopPropagation();
@@ -171,11 +180,78 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
 
       const marker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ort.lng, ort.lat]).addTo(map);
       markersRef.current[ort.slug] = { marker, el, dot, ring, label };
+      // Chip-Größe einmalig messen (Element ist über addTo bereits im DOM) —
+      // Grundlage für die Kollisionserkennung unten, Text/Padding ändern sich
+      // nach dem Erstellen nicht mehr, daher reicht eine einmalige Messung.
+      labelSize[ort.slug] = { w: label.offsetWidth, h: label.offsetHeight };
       bounds.extend([ort.lng, ort.lat]);
     }
     map.fitBounds(bounds, { padding: 56, maxZoom: 11, duration: 0 });
 
+    // Kollisionsvermeidung für die selbstgezeichneten Ortsnamen-Label: bei der
+    // initialen Gesamtansicht (18 dicht stehende Marktorte, z. B. Otterstadt/
+    // Waldsee/Schifferstadt) überlappen sich sonst benachbarte Chips — statt
+    // fixer Offsets werden die aktuellen Bildschirmpositionen + die einmalig
+    // gemessene Chip-Größe genutzt, um kollidierende, niedriger priorisierte
+    // Label pro Frame auszublenden (höherer Wohnungspreis bzw. aktuelle
+    // Auswahl gewinnt — dieselbe Priorität wie die Punktgröße oben).
+    const updateLabelVisibility = () => {
+      const GAP = 3;
+      type Box = { slug: string; left: number; right: number; top: number; bottom: number; weight: number };
+      const boxes: Box[] = [];
+      for (const ort of orte) {
+        const size = labelSize[ort.slug];
+        const entry = markersRef.current[ort.slug];
+        if (!size || !entry) continue;
+        const p = map.project([ort.lng, ort.lat]);
+        const hitSize = parseFloat(entry.el.style.height) || 0;
+        const top = p.y + hitSize / 2 + 4;
+        boxes.push({
+          slug: ort.slug,
+          left: p.x - size.w / 2,
+          right: p.x + size.w / 2,
+          top,
+          bottom: top + size.h,
+          weight: ort.slug === selectedSlugRef.current ? Number.POSITIVE_INFINITY : ort.wohnung.max,
+        });
+      }
+      boxes.sort((a, b) => b.weight - a.weight);
+      const accepted: Box[] = [];
+      for (const box of boxes) {
+        const overlaps = accepted.some(
+          (o) =>
+            box.left < o.right + GAP &&
+            box.right > o.left - GAP &&
+            box.top < o.bottom + GAP &&
+            box.bottom > o.top - GAP,
+        );
+        const show = !overlaps || box.slug === selectedSlugRef.current;
+        if (show) accepted.push(box);
+        markersRef.current[box.slug].label.style.opacity = show ? "1" : "0";
+      }
+    };
+    updateLabelVisibilityRef.current = updateLabelVisibility;
+
+    // Erst direkt, dann nochmal nach einem Frame (falls fitBounds die
+    // Kamera-Transform nicht synchron anwendet) — plus laufend bei Zoom/Pan/
+    // Resize, da sich Bildschirmpositionen dabei ändern.
+    updateLabelVisibility();
+    let raf = requestAnimationFrame(updateLabelVisibility);
+    let scheduled = false;
+    const scheduleUpdate = () => {
+      if (scheduled) return;
+      scheduled = true;
+      raf = requestAnimationFrame(() => {
+        scheduled = false;
+        updateLabelVisibility();
+      });
+    };
+    map.on("zoom", scheduleUpdate);
+    map.on("move", scheduleUpdate);
+    map.on("resize", scheduleUpdate);
+
     return () => {
+      cancelAnimationFrame(raf);
       popup.remove();
       map.remove();
       mapRef.current = null;
@@ -187,6 +263,11 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
   // Auswahl visuell hervorheben: Halo-Ring (zwei Tokens statt Alpha-Hex) + Puls.
   useEffect(() => {
     const map = mapRef.current;
+    // Kollisions-Priorität der Auswahl mitgeben (s. updateLabelVisibility oben)
+    // und sofort neu berechnen — die Auswahl soll unabhängig von Überlappung
+    // immer sichtbar sein, nicht erst beim nächsten Zoom/Pan.
+    selectedSlugRef.current = selectedSlug;
+    updateLabelVisibilityRef.current();
     for (const [slug, { el, dot, ring, label, marker }] of Object.entries(markersRef.current)) {
       const active = slug === selectedSlug;
       dot.style.boxShadow = active

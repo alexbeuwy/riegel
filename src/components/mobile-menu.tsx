@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { site } from "@/lib/site";
+import { site, type NavItem } from "@/lib/site";
+import { Icon } from "@/components/icon";
 
 function closeMs() {
   if (typeof window === "undefined") return 150;
@@ -12,6 +13,64 @@ function closeMs() {
         "--dropdown-close-dur",
       ),
     ) || 150
+  );
+}
+
+/**
+ * Ein Mobile-Nav-Eintrag. Ohne `children` ein einfacher Link. Mit `children`
+ * ein Akkordeon (.t-collapse) mit den Mega-Menü-Einträgen darunter — mobiles
+ * Pendant zum Desktop-Mega-Menü in site-header.tsx.
+ */
+function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!item.children) {
+    return (
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+      >
+        {item.label}
+      </Link>
+    );
+  }
+
+  const panelId = `mobile-mega-${item.href.replace(/\//g, "")}`;
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        onClick={() => setExpanded((e) => !e)}
+        className="press flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+      >
+        {item.label}
+        <Icon
+          name="chevronDown"
+          size={14}
+          className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
+            expanded ? "rotate-180 text-fg" : ""
+          }`}
+        />
+      </button>
+      <div id={panelId} className={`t-collapse ${expanded ? "is-open" : ""}`}>
+        <div className="t-collapse-inner pl-2">
+          {item.children.map((child) => (
+            <Link
+              key={child.href}
+              href={child.href}
+              onClick={onNavigate}
+              className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            >
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -56,8 +115,6 @@ export function MobileMenu() {
     };
   }, [open, close]);
 
-  const items = [...site.nav, ...site.legalNav];
-
   return (
     <div ref={wrapRef} className="relative md:hidden">
       <button
@@ -86,16 +143,21 @@ export function MobileMenu() {
           open ? "is-open" : closing ? "is-closing" : ""
         }`}
       >
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={close}
-            className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-          >
-            {item.label}
-          </Link>
+        {site.nav.map((item) => (
+          <MobileNavItem key={item.href} item={item} onNavigate={close} />
         ))}
+        <div className="mt-1 border-t border-border pt-1">
+          {site.legalNav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={close}
+              className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

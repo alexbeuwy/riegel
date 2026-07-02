@@ -126,7 +126,10 @@ export async function POST(req: Request) {
     ? b.ausstattung.filter((x): x is string => typeof x === "string").slice(0, 12)
     : [];
 
-  const wohnflaeche = bounded(b.wohnflaeche, 10, 5000);
+  // Mehrfamilienhäuser (Zinshäuser) können deutlich über 5000 m² liegen —
+  // großzügigere Obergrenze, sonst fällt wohnflaeche bei validen Großobjekten
+  // stillschweigend auf undefined (kein Preis/m² mehr im Report).
+  const wohnflaeche = bounded(b.wohnflaeche, 10, objektart === "mehrfamilienhaus" ? 30_000 : 5000);
   const grundflaeche = bounded(b.grundflaeche, 20, 200000);
   const zimmer = bounded(b.zimmer, 1, 50);
   const baujahr = bounded(b.baujahr, 1800, 2030);
