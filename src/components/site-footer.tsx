@@ -101,6 +101,7 @@ export function SiteFooter() {
               { href: "/standorte", label: "Standorte" },
               { href: "/ratgeber", label: "Ratgeber" },
               { href: "/termin", label: "Termin" },
+              { href: "/spiel", label: "Blitzverkauf (Spiel)" },
             ].map((item) => (
               <FootLink key={item.href} href={item.href}>
                 {item.label}

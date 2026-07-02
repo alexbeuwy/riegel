@@ -773,3 +773,22 @@
 @media (prefers-reduced-motion: reduce) {
   .geo-in { animation: none; }
 }
+
+/* ── Blitzverkauf-Spiel (/spiel): Treffer-Popup + Miss-Ring ── */
+@keyframes game-float-up {
+  from { transform: translate(-50%, 0) scale(0.85); opacity: 0; }
+  15%  { transform: translate(-50%, -8px) scale(1.05); opacity: 1; }
+  100% { transform: translate(-50%, -72px) scale(1); opacity: 0; }
+}
+.game-hit-label { animation: game-float-up 1.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes game-miss-ring {
+  from { transform: scale(0.6); opacity: 0.8; }
+  to   { transform: scale(1.8); opacity: 0; }
+}
+.game-miss-ring { animation: game-miss-ring 0.35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .game-hit-label { animation-duration: 0.01ms; }
+  .game-miss-ring { animation: none; }
+}
