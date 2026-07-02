@@ -272,8 +272,16 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
           {/* Lange Komposita (Akira Expanded ist ein breiter Schriftschnitt) sprengen bei
               fester text-3xl sonst den 390px-Viewport → clamp() statt Fixgröße + Silbentrennung
               (lang="de" ist auf <html> gesetzt, s. layout.tsx) mit break-words als Fallback,
-              falls der Browser für ein Wort keine Trennstelle findet. */}
-          <h1 className="akira mt-5 text-[clamp(1.5rem,7.5vw,1.875rem)] leading-[1.05] hyphens-auto break-words sm:text-5xl">
+              falls der Browser für ein Wort keine Trennstelle findet. Sehr lange Titel (>65
+              Zeichen) bekommen eine kleinere Basisgröße, damit weniger Wörter mitten im
+              Kompositum getrennt werden müssen. */}
+          <h1
+            className={`akira mt-5 leading-[1.05] hyphens-auto break-words ${
+              article.h1.length > 65
+                ? "text-[clamp(1.35rem,6.5vw,1.5rem)] sm:text-4xl"
+                : "text-[clamp(1.5rem,7.5vw,1.875rem)] sm:text-5xl"
+            }`}
+          >
             {article.h1}
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-fg/90">{article.intro}</p>

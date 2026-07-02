@@ -124,13 +124,14 @@ export function ReelsGrid() {
                     if (muted[i]) soundOn(i);
                     else muteAll();
                   }}
-                  className="press absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-full bg-bg/60 text-fg backdrop-blur transition-colors hover:text-accent"
+                  className="press absolute bottom-2 left-2 flex h-11 w-11 items-center justify-center rounded-full bg-bg/60 text-fg backdrop-blur transition-colors hover:text-accent"
                 >
                   <Icon name={muted[i] ? "volumeOff" : "volume"} size={15} />
                 </button>
 
-                {/* Caption unten rechts */}
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 p-3 pl-12 text-right">
+                {/* Caption unten rechts — Reserve links auf pl-14 angehoben (Mute-Button
+                    ist jetzt h-11/44px statt h-8/32px, siehe Touch-Ziel-Mindestgröße). */}
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 p-3 pl-14 text-right">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-fg">{r.caption}</div>
                     <div className="truncate text-xs text-faint">{r.tag}</div>

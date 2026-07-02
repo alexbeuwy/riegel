@@ -243,7 +243,7 @@ export default function DatenschutzPage() {
             <p>
               Für den Bewertungsrechner rufen wir zusätzlich den amtlichen Bodenrichtwert zur
               bestätigten Objekt-Adresse beim Landesamt für Vermessung und Geobasisinformation
-              Rheinland-Pfalz (LVermGeo, Dienst „VBORIS") ab. Auch diese Abfrage läuft
+              Rheinland-Pfalz (LVermGeo, Dienst „VBORIS&quot;) ab. Auch diese Abfrage läuft
               ausschließlich serverseitig: Übermittelt werden nur die Objekt-Koordinaten, Ihre
               IP-Adresse wird dabei <strong>nicht</strong> an den Anbieter weitergegeben.
               Rechtsgrundlage ist unser berechtigtes Interesse an einer datenbasierten

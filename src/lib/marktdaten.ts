@@ -205,18 +205,44 @@ export function marktort(slug: string): MarktOrt | undefined {
   return alleMarktorte().find((m) => m.slug === slug);
 }
 
+/** Erdradius in km — Basis für die Distanzprüfung in marktortByOrt(). */
+const EARTH_RADIUS_KM = 6371;
+/** Max. Distanz für einen Namens-Teiltreffer — verhindert Kollisionen mit
+ * gleichnamigen, aber weit entfernten Orten (siehe marktortByOrt). */
+const MAX_MATCH_KM = 25;
+
+/** Haversine-Distanz in km zwischen zwei Koordinaten. */
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
+}
+
 /**
  * Marktort per Stadtnamen finden (z. B. `f.address.city` aus der
  * OSM-Geokodierung im Rechner) — tolerant per Kleinschreibung/`includes` in
  * beide Richtungen, da city-Strings aus der Adresssuche nicht immer exakt
- * dem `ort`-Feld der Standort-Artikel entsprechen (z. B. Ortsteile). Ohne
- * Treffer `undefined` → Aufrufer fällt auf sein bisheriges Verhalten zurück.
+ * dem `ort`-Feld der Standort-Artikel entsprechen (z. B. Ortsteile). Ein
+ * reiner Namens-Teiltreffer kollidiert aber real mit gleichnamigen, weit
+ * entfernten Orten (z. B. „Bad Waldsee" in Baden-Württemberg vs. RIEGELs
+ * „Waldsee" in der Pfalz) — deshalb wird bei Teiltreffern zusätzlich die
+ * Distanz zu lat/lng geprüft (≤ 25 km). Ohne lat/lng bleibt es aus
+ * Vorsicht bei der exakten Namensgleichheit. Ohne Treffer `undefined` →
+ * Aufrufer fällt auf sein bisheriges Verhalten zurück.
  */
-export function marktortByOrt(city: string): MarktOrt | undefined {
+export function marktortByOrt(city: string, lat?: number, lng?: number): MarktOrt | undefined {
   const c = city.trim().toLowerCase();
   if (!c) return undefined;
-  return alleMarktorte().find((m) => {
+  const candidates = alleMarktorte().filter((m) => {
     const name = m.name.toLowerCase();
     return name === c || name.includes(c) || c.includes(name);
   });
+  if (lat == null || lng == null) {
+    return candidates.find((m) => m.name.toLowerCase() === c);
+  }
+  return candidates.find((m) => distanceKm(lat, lng, m.lat, m.lng) <= MAX_MATCH_KM);
 }

@@ -25,10 +25,16 @@ export function ReportRequest({
   f,
   result,
   onReset,
+  borisLoading = false,
 }: {
   f: ReportSource;
   result: ValuationResult;
   onReset: () => void;
+  /** Amtlicher Bodenrichtwert lädt noch (s. calculator.tsx) — der Server
+   * rechnet beim Versand ohnehin serverseitig mit dem amtlichen Wert nach
+   * (gegen Manipulation), daher blockt der Button den Versand, solange die
+   * im Formular sichtbare Zahl davon noch abweichen könnte. */
+  borisLoading?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -248,7 +254,7 @@ export function ReportRequest({
                 key={nonce}
                 type="button"
                 onClick={submit}
-                disabled={busy}
+                disabled={busy || borisLoading}
                 className={`t-input ${error ? "is-shaking" : ""} press inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70`}
               >
                 {busy ? (
@@ -257,6 +263,13 @@ export function ReportRequest({
                       <path d="M21 12a9 9 0 0 1-9 9" />
                     </svg>
                     Report wird erstellt …
+                  </>
+                ) : borisLoading ? (
+                  <>
+                    <svg className="animate-spin" viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
+                      <path d="M21 12a9 9 0 0 1-9 9" />
+                    </svg>
+                    Amtliche Daten werden abgeglichen …
                   </>
                 ) : (
                   <>

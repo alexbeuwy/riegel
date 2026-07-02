@@ -27,6 +27,17 @@ export interface Bodenrichtwert {
 /** Pflicht-Quellenangabe bei jeder Anzeige/Weitergabe der Werte (dl-de/by-2.0). */
 export const BORIS_ATTRIBUTION = "© GeoBasis-DE / LVermGeo RLP (dl-de/by-2.0)";
 
+/**
+ * Grobe RLP-BBox (Land inkl. Toleranzrand) — EINZIGE Quelle für alle Aufrufer
+ * (Route + fetchBodenrichtwert() selbst), damit niemand den externen
+ * LVermGeo-Dienst mit offensichtlich unplausiblen Koordinaten kontaktiert.
+ */
+export const RLP_BBOX = { lngMin: 6.1, lngMax: 8.6, latMin: 48.9, latMax: 50.9 };
+
+export function isInRlpBbox(lat: number, lng: number): boolean {
+  return lat >= RLP_BBOX.latMin && lat <= RLP_BBOX.latMax && lng >= RLP_BBOX.lngMin && lng <= RLP_BBOX.lngMax;
+}
+
 const ENDPOINT = "https://geo5.service24.rlp.de/wms/RLP_VBORISFREE2026.fcgi";
 const TIMEOUT_MS = 6000;
 
@@ -57,11 +68,13 @@ function cacheSet(key: string, value: Bodenrichtwert | null): void {
 }
 
 /* ─────────────────────────  Fail-soft Logging  ───────────────────────── */
-// Einmalig knapp warnen statt bei jedem Request die Logs zu fluten.
-let warned = false;
-function warnOnce(msg: string): void {
-  if (warned) return;
-  warned = true;
+// Einmalig knapp warnen statt bei jedem Request die Logs zu fluten — je
+// Kategorie eigenes „once", sonst würde z. B. ein Format-Wechsel des Diensts
+// von einem früheren Netzwerkfehler-Log verdeckt bleiben.
+const warnedCategories = new Set<string>();
+function warnOnce(category: string, msg: string): void {
+  if (warnedCategories.has(category)) return;
+  warnedCategories.add(category);
   console.warn(`[boris] ${msg}`);
 }
 
@@ -120,17 +133,26 @@ function parseBodenrichtwertHtml(html: string): Bodenrichtwert | null {
 /* ─────────────────────────  Öffentliche Funktion  ───────────────────────── */
 
 /**
- * Amtlichen Bodenrichtwert für eine Koordinate abfragen (VBORIS-RLP-Basisdienst).
- * Fail-soft: liefert bei JEDEM Problem `null` (Timeout 6 s, HTTP-Fehler,
- * Parse-Fehler, Lage außerhalb bebauter Zonen oder außerhalb von RLP).
+ * Wie fetchBodenrichtwert(), liefert aber zusätzlich `confirmed`: true bei
+ * einer bestätigten Antwort (Cache-Treffer, HTTP ok — auch wenn `value` dabei
+ * null ist, weil die Lage außerhalb einer Zone/RLP liegt), false bei einem
+ * transienten Fehler (Timeout/Netzwerk). Aufrufer, die auf HTTP-/CDN-Ebene
+ * cachen (z. B. die Bodenrichtwert-Route), dürfen NUR bestätigte Antworten
+ * langfristig cachen — sonst würde ein einzelner Ausfall wie ein bestätigtes
+ * „außerhalb der Zone" 24 h lang wiederholt ausgeliefert.
  */
-export async function fetchBodenrichtwert(lat: number, lng: number): Promise<Bodenrichtwert | null> {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+async function fetchBodenrichtwertRaw(
+  lat: number,
+  lng: number,
+): Promise<{ value: Bodenrichtwert | null; confirmed: boolean }> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { value: null, confirmed: true };
+  // Außerhalb der groben RLP-Bbox: bestätigte Ablehnung, kein Netzwerk-Call.
+  if (!isInRlpBbox(lat, lng)) return { value: null, confirmed: true };
 
   const key = cacheKey(lat, lng);
   const now = Date.now();
   const hit = cache.get(key);
-  if (hit && hit.expires > now) return hit.value;
+  if (hit && hit.expires > now) return { value: hit.value, confirmed: true };
 
   const d = 0.001;
   const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`;
@@ -147,14 +169,37 @@ export async function fetchBodenrichtwert(lat: number, lng: number): Promise<Bod
     if (res.ok) {
       responded = true;
       result = parseBodenrichtwertHtml(await res.text());
+      if (!result) {
+        // Kann ein legitimes „außerhalb der Zone" sein — bei dauerhaftem
+        // Auftreten aber auch ein Format-Wechsel des Diensts. Einmalig
+        // warnen, damit ein schleichender Format-Bruch in den Logs auffällt.
+        warnOnce("parse", "HTTP ok, aber kein Bodenrichtwert aus der Antwort extrahiert (normal außerhalb einer Zone — bei dauerhaftem Auftreten Format-Wechsel des LVermGeo-Diensts prüfen).");
+      }
     }
   } catch {
     // Timeout/Netzwerkfehler — NICHT cachen (s. Cache-Kommentar oben).
-    warnOnce("Abfrage fehlgeschlagen (Timeout/Netzwerk) — fail-soft, liefere null.");
+    warnOnce("network", "Abfrage fehlgeschlagen (Timeout/Netzwerk) — fail-soft, liefere null.");
   } finally {
     clearTimeout(timer);
   }
 
   if (responded) cacheSet(key, result);
-  return result;
+  return { value: result, confirmed: responded };
+}
+
+/**
+ * Amtlichen Bodenrichtwert für eine Koordinate abfragen (VBORIS-RLP-Basisdienst).
+ * Fail-soft: liefert bei JEDEM Problem `null` (Timeout 6 s, HTTP-Fehler,
+ * Parse-Fehler, Lage außerhalb bebauter Zonen oder außerhalb von RLP).
+ */
+export async function fetchBodenrichtwert(lat: number, lng: number): Promise<Bodenrichtwert | null> {
+  return (await fetchBodenrichtwertRaw(lat, lng)).value;
+}
+
+/** Wie fetchBodenrichtwert(), aber mit `confirmed`-Flag für Cache-Control-Header (s. oben). */
+export async function fetchBodenrichtwertWithStatus(
+  lat: number,
+  lng: number,
+): Promise<{ value: Bodenrichtwert | null; confirmed: boolean }> {
+  return fetchBodenrichtwertRaw(lat, lng);
 }

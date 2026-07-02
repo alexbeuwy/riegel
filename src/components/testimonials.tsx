@@ -37,7 +37,7 @@ export function Testimonials() {
                   <span className="text-xs uppercase tracking-widest text-faint">Google-Bewertung</span>
                 )}
                 <p className="mt-4 flex-1 text-[0.95rem] leading-relaxed text-fg/90">
-                  „{t.text}"
+                  „{t.text}&rdquo;
                 </p>
                 <a
                   href={t.url}

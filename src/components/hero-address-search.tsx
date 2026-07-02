@@ -98,7 +98,7 @@ export function HeroAddressSearch() {
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => suggestions.length && setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Adresse eingeben — Wert in 60 Sekunden"
+          placeholder="Adresse eingeben"
           aria-label="Adresse Ihrer Immobilie"
           role="combobox"
           aria-expanded={open && suggestions.length > 0}
@@ -157,7 +157,7 @@ export function HeroAddressSearch() {
         </ul>
       )}
       <p className="mt-3 pl-2 text-xs text-faint">
-        Kostenlos &amp; ohne Anmeldung · inkl. Satellitenansicht Ihrer Lage
+        Wert in 60 Sekunden — kostenlos &amp; ohne Anmeldung · inkl. Satellitenansicht Ihrer Lage
       </p>
     </div>
   );

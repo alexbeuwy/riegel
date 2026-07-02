@@ -99,12 +99,20 @@ interface SourceCtx {
   markt?: MarktOrt;
 }
 
+/** Bodenrichtwert fließt nur bei Grundstück (voll) und Haus (Grundstücksanteil)
+ * tatsächlich in mid/pricePerSqm ein (s. estimateValue in lib/valuation.ts) —
+ * bei Wohnung/Gewerbe ist er rein informativ, der "amtlich"-Badge muss das
+ * kennzeichnen statt fälschlich einen Preiseinfluss zu suggerieren. */
+function borisPriceRelevant(objektart: Objektart): boolean {
+  return objektart === "grundstueck" || objektart === "haus";
+}
+
 const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: FormState, ctx: SourceCtx) => React.ReactNode }[] = [
   { label: "Adresse & Mikrolage", sub: "Geokoordinaten werden lokalisiert", value: (_r, f) => f.address?.city || "bestätigt" },
   {
     label: "Amtliche Bodenrichtwerte (BORIS)",
     sub: "Zonenwerte werden abgeglichen",
-    value: (r, _f, ctx) => {
+    value: (r, f, ctx) => {
       const b = ctx.boris.data;
       if (!b) return `${r.bodenrichtwert} €/m²`;
       // .t-num-d ist unlayered CSS und überschreibt `display` von Flex-Utilities
@@ -116,7 +124,7 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
             {`${b.brw} €/m²${b.zone ? ` · Zone ${b.zone}` : ""}`}
           </span>
           <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-            amtlich
+            {borisPriceRelevant(f.objektart) ? "amtlich" : "amtlich · informativ"}
           </span>
         </span>
       );
@@ -637,7 +645,10 @@ function Analyzing({ f, result, revealed, boris }: { f: FormState; result: Valua
   const pct = Math.round((revealed / SOURCES.length) * 100);
   // Passenden Preisatlas-Standort einmal pro Adresse ermitteln (statt in
   // jeder SOURCES-Zeile neu) — s. marktortByOrt in lib/marktdaten.ts.
-  const markt = useMemo(() => marktortByOrt(f.address?.city ?? ""), [f.address?.city]);
+  const markt = useMemo(
+    () => marktortByOrt(f.address?.city ?? "", f.address?.lat, f.address?.lng),
+    [f.address?.city, f.address?.lat, f.address?.lng],
+  );
   const ctx: SourceCtx = { boris, markt };
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border" role="status" aria-live="polite" aria-busy={pct < 100}>
@@ -730,7 +741,7 @@ function Result({ f, result, onReset, boris }: { f: FormState; result: Valuation
                 Bodenrichtwert {b.brw} €/m²{b.zone ? ` · Zone ${b.zone}` : ""}
               </span>
               <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                amtlich · BORIS-RLP
+                {borisPriceRelevant(f.objektart) ? "amtlich · BORIS-RLP" : "informativ · BORIS-RLP"}
               </span>
             </div>
           )}
@@ -771,7 +782,7 @@ function Result({ f, result, onReset, boris }: { f: FormState; result: Valuation
           </div>
         )}
 
-        <ReportRequest f={f} result={result} onReset={onReset} />
+        <ReportRequest f={f} result={result} onReset={onReset} borisLoading={boris.loading} />
 
         <p className="mt-6 text-center text-xs text-faint">
           Unverbindliche, datenbasierte Schätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.

@@ -4,7 +4,7 @@ import { buildReportPdf } from "@/lib/report-pdf";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
-import { fetchBodenrichtwert } from "@/lib/boris";
+import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 
 // Nur beim HTML-Rendern escapen — PDF, DB, to/replyTo bekommen Rohwerte
 // (sonst landet „Müller &amp; Söhne" im Report und im CSV-Export).
@@ -136,7 +136,11 @@ export async function POST(req: Request) {
   // /api/bodenrichtwert) — Client und Server nutzen dadurch dieselbe Zahl,
   // PDF und Anzeige im Rechner widersprechen sich also nie. Fail-soft: bei
   // null (Timeout, außerhalb RLP, …) rechnet estimateValue mit dem Modellwert.
-  const boris = lat != null && lng != null ? await fetchBodenrichtwert(lat, lng) : null;
+  // Dieselbe grobe RLP-Bbox wie /api/bodenrichtwert vorschalten, damit sich
+  // über diese Route (Rate-Limit 6/10min, aber sonst ohne Bbox-Gate) nicht
+  // der externe LVermGeo-Dienst mit beliebigen Koordinaten anstoßen lässt.
+  const boris =
+    lat != null && lng != null && isInRlpBbox(lat, lng) ? await fetchBodenrichtwert(lat, lng) : null;
 
   // Wert SERVERSEITIG nachrechnen (Kern der Engine ist deterministisch) —
   // Client-Zahlen werden nicht übernommen, sonst ließen sich per curl

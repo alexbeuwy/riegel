@@ -59,6 +59,13 @@ const PAGES = 5;
 const eur = (n: number) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
+/** Der Bodenrichtwert fließt nur bei Grundstück/Haus in mid/pricePerSqm ein
+ * (s. estimateValue in lib/valuation.ts) — bei Wohnung/Gewerbe ist er im
+ * Report rein informativ, die Kennzahlen-Zeile muss das kennzeichnen. */
+function brwPriceRelevant(objektartLabel?: string): boolean {
+  return objektartLabel === "Haus" || objektartLabel === "Grundstück";
+}
+
 // Helvetica arbeitet mit WinAnsi — Zeichen außerhalb Latin-1 (ą, ł, Emoji …)
 // lassen drawText werfen und das GANZE PDF scheitern. Nutzereingaben deshalb
 // transliterieren (NFKD) bzw. unbekannte Zeichen still verwerfen.
@@ -345,7 +352,11 @@ function drawValuation(ctx: Ctx, d: ReportData) {
     ["chart", "Daten-Konfidenz", d.value.confidence != null ? `${d.value.confidence} %` : "–"],
     // Leerstring statt "–": section() überspringt die Zeile komplett, wenn
     // für die Koordinaten kein amtlicher Wert ermittelt werden konnte.
-    ["tree", "Bodenrichtwert (amtl.)", d.bodenrichtwert ? `${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}` : ""],
+    [
+      "tree",
+      brwPriceRelevant(d.objektartLabel) ? "Bodenrichtwert (amtl.)" : "Bodenrichtwert (amtl., informativ)",
+      d.bodenrichtwert ? `${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}` : "",
+    ],
   ], M + colW + 24);
 
   let yy = Math.min(a, b) - 8;

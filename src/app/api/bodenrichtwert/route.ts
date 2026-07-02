@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { fetchBodenrichtwert, BORIS_ATTRIBUTION } from "@/lib/boris";
+import { fetchBodenrichtwertWithStatus, isInRlpBbox, BORIS_ATTRIBUTION } from "@/lib/boris";
 
 /**
  * Server-Proxy für den amtlichen Bodenrichtwert (VBORIS RLP) — der Rechner
@@ -8,10 +8,11 @@ import { fetchBodenrichtwert, BORIS_ATTRIBUTION } from "@/lib/boris";
  * (keine Nutzer-IP an Dritte, zentrale Drossel, ein gemeinsamer Cache in
  * lib/boris.ts für Client- und Server-Rechnung/PDF).
  *
- * Grobe RLP-BBox (Land inkl. Toleranzrand) filtert offensichtlichen Unsinn
- * aus, bevor überhaupt der externe Dienst kontaktiert wird.
+ * Grobe RLP-BBox (Land inkl. Toleranzrand, s. lib/boris.ts) filtert
+ * offensichtlichen Unsinn aus, bevor überhaupt der externe Dienst
+ * kontaktiert wird — liefert hier zusätzlich eine explizite 422 statt der
+ * stillen `null`-Ablehnung in fetchBodenrichtwert().
  */
-const RLP_BBOX = { lngMin: 6.1, lngMax: 8.6, latMin: 48.9, latMax: 50.9 };
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -21,17 +22,26 @@ export async function GET(req: Request) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
-  if (lat < RLP_BBOX.latMin || lat > RLP_BBOX.latMax || lng < RLP_BBOX.lngMin || lng > RLP_BBOX.lngMax) {
+  if (!isInRlpBbox(lat, lng)) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
   if (!rateLimit(`boris:${clientIp(req)}`, 30, 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
   }
 
-  const data = await fetchBodenrichtwert(lat, lng);
+  // `confirmed` unterscheidet ein bestätigtes „außerhalb der Zone" (24 h
+  // cachebar) von einem transienten Fehler (Timeout/Netzwerk, NICHT cachen —
+  // sonst friert ein einzelner Ausfall die Zone fälschlich auf null ein).
+  const { value: data, confirmed } = await fetchBodenrichtwertWithStatus(lat, lng);
 
   return NextResponse.json(
     { ok: true, data, attribution: BORIS_ATTRIBUTION },
-    { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } },
+    {
+      headers: {
+        "Cache-Control": confirmed
+          ? "public, s-maxage=86400, stale-while-revalidate=604800"
+          : "no-store",
+      },
+    },
   );
 }

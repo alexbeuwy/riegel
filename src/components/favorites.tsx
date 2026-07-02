@@ -135,7 +135,7 @@ export function FavoritesLink() {
     <Link
       href="/merkliste"
       aria-label={`Merkliste${ready && count ? ` (${count})` : ""}`}
-      className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
+      className="relative flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
     >
       <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
         {HeartPath}
