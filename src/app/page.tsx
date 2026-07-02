@@ -298,74 +298,102 @@ export default async function HomePage() {
       </section>
 
       {/* ───────── Block · Begleitung (Fotos + starkes Trust-Signal) ───────── */}
-      <section className="py-20 sm:py-28">
-        <Container>
+      <section className="relative overflow-hidden py-20 sm:py-28">
+        {/* Akzent-Glow im Hintergrund — gibt der Sektion etwas Tiefe statt Flachheit. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-40 top-1/3 h-[26rem] w-[26rem] rounded-full bg-accent/[0.07] blur-3xl"
+        />
+        <Container className="relative">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <Reveal>
-              <h2 className="text-2xl font-semibold sm:text-3xl">
-                Persönlich begleitet — von der Bewertung bis zur Übergabe
-              </h2>
+            <div>
+              <Reveal>
+                <h2 className="text-2xl font-semibold sm:text-3xl">
+                  Persönlich begleitet — von der Bewertung bis zur Übergabe
+                </h2>
+              </Reveal>
               {/* Echtes Testimonial, groß & sichtbar — dieses Vertrauens-Signal
                   ist stark, daher hier zusätzlich zur Kundenstimmen-Sektion
-                  prominent herausgestellt. */}
-              <blockquote className="mt-8 border-l-2 border-accent pl-5">
-                <p className="text-xl font-medium leading-snug text-fg sm:text-2xl">
-                  „{TESTIMONIALS[0].text}&rdquo;
-                </p>
-                <footer className="mt-3 text-sm text-muted">
-                  <span className="font-medium text-fg">{TESTIMONIALS[0].autor}</span>
-                  <span className="text-faint"> · {TESTIMONIALS[0].plattform}-Bewertung</span>
-                </footer>
-              </blockquote>
+                  prominent herausgestellt. Dezentes Anführungszeichen-Glyph im
+                  Hintergrund für einen redaktionellen, hochwertigen Touch. */}
+              <Reveal delay={90}>
+                <blockquote className="relative mt-8 overflow-hidden rounded-2xl border-l-2 border-accent bg-surface/40 py-5 pl-6 pr-5">
+                  <span
+                    aria-hidden
+                    className="akira pointer-events-none absolute -right-1 -top-6 select-none text-8xl text-accent/[0.08]"
+                  >
+                    &rdquo;
+                  </span>
+                  <p className="relative text-xl font-medium leading-snug text-fg sm:text-2xl">
+                    „{TESTIMONIALS[0].text}&rdquo;
+                  </p>
+                  <footer className="relative mt-3 text-sm text-muted">
+                    <span className="font-medium text-fg">{TESTIMONIALS[0].autor}</span>
+                    <span className="text-faint"> · {TESTIMONIALS[0].plattform}-Bewertung</span>
+                  </footer>
+                </blockquote>
+              </Reveal>
               {/* Kompakte Bewertungs-Liste — wie gut Riegel überall bewertet ist. */}
-              <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2.5">
-                {TRUST_PLATFORMS.map((p) => (
-                  <li key={p.key} className="flex items-center gap-1.5 text-sm">
-                    <Icon name="star" size={14} className="text-accent" fill="currentColor" />
-                    <span className="text-fg">{p.name}</span>
-                    <span className="text-faint">
-                      {p.rating.toLocaleString("de-DE")}/{p.scaleMax}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-            <Reveal>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="relative overflow-hidden rounded-3xl border border-border">
+              <Reveal delay={160}>
+                <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2.5">
+                  {TRUST_PLATFORMS.map((p) => (
+                    <li key={p.key} className="flex items-center gap-1.5 text-sm">
+                      <Icon name="star" size={14} className="text-accent" fill="currentColor" />
+                      <span className="text-fg">{p.name}</span>
+                      <span className="tabular-nums text-faint">
+                        {p.rating.toLocaleString("de-DE")}/{p.scaleMax}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Reveal>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Reveal delay={80} className="relative">
+                <div className="group relative overflow-hidden rounded-3xl border border-border transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_24px_48px_-20px_rgba(1,92,255,0.35)]">
                   <Image
                     src={photos.wertReport2}
                     alt="Beratungsgespräch mit Riegel Immobilien"
                     width={1100}
                     height={1300}
                     sizes="(max-width: 1024px) 50vw, 28vw"
-                    className="h-[300px] w-full object-cover md:h-[420px]"
+                    className="h-[300px] w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 md:h-[420px]"
                   />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/50 via-transparent to-transparent" />
+                  {/* Vertrauens-Badge, überlappt die Foto-Ecke — verbindet Bild und Botschaft. */}
+                  <span className="pointer-events-none absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-border bg-bg/60 px-3.5 py-1.5 text-xs text-fg backdrop-blur">
+                    <Icon name="calendar" size={13} className="text-accent" />
+                    Familienunternehmen seit über 20 Jahren
+                  </span>
                 </div>
-                <div className="grid gap-4">
-                  <div className="relative overflow-hidden rounded-3xl border border-border">
+              </Reveal>
+              <div className="grid gap-4">
+                <Reveal delay={160}>
+                  <div className="group relative overflow-hidden rounded-3xl border border-border transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-18px_rgba(1,92,255,0.3)]">
                     <Image
                       src={photos.analyse3}
                       alt="Digitale Immobilienanalyse beim Kunden"
                       width={1100}
                       height={620}
                       sizes="(max-width: 1024px) 50vw, 28vw"
-                      className="h-[140px] w-full object-cover md:h-[198px]"
+                      className="h-[140px] w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 md:h-[198px]"
                     />
                   </div>
-                  <div className="relative overflow-hidden rounded-3xl border border-border">
+                </Reveal>
+                <Reveal delay={240}>
+                  <div className="group relative overflow-hidden rounded-3xl border border-border transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-18px_rgba(1,92,255,0.3)]">
                     <Image
                       src={photos.wertReport5}
                       alt="Marktwert-Report mit Blick auf Speyer"
                       width={1100}
                       height={620}
                       sizes="(max-width: 1024px) 50vw, 28vw"
-                      className="h-[140px] w-full object-cover md:h-[198px]"
+                      className="h-[140px] w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 md:h-[198px]"
                     />
                   </div>
-                </div>
+                </Reveal>
               </div>
-            </Reveal>
+            </div>
           </div>
         </Container>
       </section>
