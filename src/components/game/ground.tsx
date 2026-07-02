@@ -9,7 +9,8 @@ import * as THREE from "three";
  * (Shadertoy lfsBzB, RIEGEL-Blau) — deutlich dezenter (35% Mix statt voll),
  * damit der Boden nicht blendet, aber optisch klar zur restlichen Seite
  * ("Waves"-Ästhetik, siehe icon.tsx) gehört statt wie ein generisches
- * Grid auszusehen.
+ * Grid auszusehen. In der Bahnmitte liegt zusätzlich eine dezente dunkle
+ * "Straße" (reine Shader-Maske über vUv.x, kein zweites Mesh).
  */
 const VERT = /* glsl */ `
   varying vec2 vUv;
@@ -40,6 +41,17 @@ const FRAG = /* glsl */ `
     mask = clamp(mask, 0.0, 1.0);
 
     vec3 col = mix(fg, bg, mask * 0.35);
+
+    // Dezente "Straße" in Bahnmitte — direkt als vUv.x-Maske im selben Shader
+    // statt als zweites Mesh (spart Drawcall + Z-Fighting). Der dunkle
+    // Asphalt-Streifen gibt der Flugbahn eine Leserichtung; die hauchdünnen
+    // blauen Randlinien binden ihn ans RIEGEL-Blau, ohne vom Zielen abzulenken.
+    float dx = abs(vUv.x - 0.5);
+    float road = 1.0 - smoothstep(0.05, 0.085, dx);
+    col = mix(col, vec3(0.014, 0.014, 0.018), road * 0.8);
+    float edge = 1.0 - smoothstep(0.0, 0.012, abs(dx - 0.072));
+    col += bg * edge * 0.08;
+
     gl_FragColor = vec4(col, 1.0);
   }
 `;

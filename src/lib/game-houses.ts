@@ -16,6 +16,12 @@ export interface GameHouse {
   variant: 0 | 1 | 2;
 }
 
+/** Kamera-Fluggeschwindigkeit in Einheiten/Sekunde — bewusst die EINZIGE Quelle:
+    blitzverkauf-game leitet daraus die Länge des Häuserfelds ab, game-canvas den
+    tatsächlichen Kameraflug. Zwei getrennte Konstanten würden Strecke und
+    Häuserfeld bei einem späteren Edit lautlos auseinanderlaufen lassen. */
+export const FLIGHT_SPEED = 13;
+
 const LANES = [-7, -3.5, 0, 3.5, 7];
 
 export function generateHouses(durationSec: number, flightSpeed: number, rowSpacing = 16): GameHouse[] {

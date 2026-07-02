@@ -406,8 +406,41 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   oder mit Verweis auf die Registereintragung „seit 2005". Vor einer festen Jahreszahl auf
   der Website am besten kurz bei Manfred/Sylwia Riegel direkt nachfragen.
 
+## Update — „RIEGEL Blitzverkauf": Three.js-3D-Spiel auf /spiel (Easter Egg) ✅
+
+- **Idee (Alex)**: „Mit einer Kanone Würfel auf Häuser schießen beim Vorbeifliegen —
+  bei Treffer steht das Haus verkauft, +500.000 € — lustig, aber visuell super cool und
+  nahtlos im Seiten-Stil." Umgesetzt als 45s-Arcade unter `/spiel` (noindex, Footer-Link
+  „Blitzverkauf (Spiel)"), Endscreen verlinkt augenzwinkernd auf `/verkaufen`.
+- **Stack**: three ^0.185 + @react-three/fiber ^9.6 (React-19-kompatibel), bewusst OHNE
+  drei/postprocessing/Physik-Engine — alles pure Geometrie + eigene Shader, kein Asset-Load.
+- **Gameplay**: Kameraflug auf Schienen über nächtliche Vorderpfalz; sichtbare Kanone
+  unten im Bild folgt dem Fadenkreuz (geglättet), schießt RIEGEL-blaue **Würfel** in
+  ballistischer Parabel (Raycast-Hitscan beim Klick entscheidet, Würfelflug ist visuell;
+  onHit erst beim Einschlag, claimedIds verhindert Doppel-Beschuss). Treffer: Haus bleibt
+  stehen, **VERKAUFT-Makler-Schild** (CanvasTexture, geteilt) federt ein, Trümmer-Burst
+  (InstancedMesh), Emissive-Blitz mit Rest-Glühen, Fenster dimmen. **Hauswerte kommen aus
+  den echten regionalen €/m²-Spannen** (marktdaten.ts) — Datenbezug wie gewünscht.
+- **Game-Feel**: 3-2-1-LOS-Countdown, Combo-Multiplikator ×2–×5 (2,5s-Fenster),
+  Highscore in localStorage („Neuer Rekord!" + Konfetti), 2px-Timer-Bar, Score-Count-up im
+  Endscreen, WebAudio-Synth-Sounds (Shot/Hit/Miss, mutebar+persistiert, kein Asset),
+  Touch-Support (Fadenkreuz nur bei Maus). prefers-reduced-motion überall respektiert.
+- **Umgebung**: 70 Bäume + 24 Laternen als InstancedMeshes, 350-Sterne-Band, Stadt-
+  Silhouette mit stilisiertem Speyerer Dom, die per Kamera-Sync dauerhaft im Fog-Horizont
+  steht; Boden-Shader = gedämpfte wave-shader-Formel + dunkle Straße. Keine PointLights.
+- **Prozess**: v1-Fundament direkt gebaut & committed, dann Workflow mit 4 parallelen
+  Bau-Agenten auf disjunkten Dateien (eingefrorene Interfaces), 2 Verify-Agenten
+  (Build-Check + Integrations-Review) und 1 Fix-Agent. Review fand 6 echte Findings
+  (u. a. Kamera-Ruck beim Rundenstart, doppelt definierte FLIGHT_SPEED, Canvas rendert
+  im Endscreen weiter) — alle 6 gefixt. Eigene End-Verifikation: tsc 0 Fehler, Lint clean,
+  Build 76 Seiten grün, Startscreen-Screenshot bestätigt.
+- **Wichtig fürs Testen**: WebGL ist in der Sandbox nicht darstellbar (headless-Limit) —
+  die 3D-Szene selbst bitte einmal im echten Browser auf Vercel gegenspielen.
+
 ## Offen 🔧
 
+- **Blitzverkauf einmal im echten Browser testen** (WebGL in Sandbox nicht prüfbar):
+  Kanonen-Gefühl, Trefferzonen-Größe, Sound-Lautstärke, Mobile-Performance.
 - **Gründungsjahr-Entscheidung**: s. o. — Alex/Familie Riegel sollte final entscheiden,
   ob „seit über 20 Jahren" (unscharf, sicher) oder „seit 2005" (Registereintragung) auf die
   Seite kommt, bevor eine Jahreszahl live geht.

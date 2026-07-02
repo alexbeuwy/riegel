@@ -774,7 +774,7 @@
   .geo-in { animation: none; }
 }
 
-/* ── Blitzverkauf-Spiel (/spiel): Treffer-Popup + Miss-Ring ── */
+/* ── Blitzverkauf-Spiel (/spiel): Treffer-Popup, Miss-Ring, Countdown, Combo & Timer ── */
 @keyframes game-float-up {
   from { transform: translate(-50%, 0) scale(0.85); opacity: 0; }
   15%  { transform: translate(-50%, -8px) scale(1.05); opacity: 1; }
@@ -788,7 +788,44 @@
 }
 .game-miss-ring { animation: game-miss-ring 0.35s ease-out both; }
 
+/* Countdown-Ziffer: Pop rein, kurz stehen, raus — der key-Wechsel im Markup
+   remountet die Ziffer pro Stufe, dadurch startet die Animation jedes Mal neu. */
+@keyframes game-countdown-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  30%  { transform: scale(1.06); opacity: 1; }
+  70%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+.game-countdown-pop { animation: game-countdown-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Combo-Chip: dezenter Puls mit auslaufendem Akzent-Ring — auffällig genug
+   fürs Auge im Spielfluss, ohne aus dem Markensystem auszubrechen. */
+@keyframes game-combo-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(1, 92, 255, 0.4); }
+  50%      { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(1, 92, 255, 0); }
+}
+.game-combo-chip { animation: game-combo-pulse 0.9s ease-in-out infinite; }
+
+/* Timer-Chip in den letzten 10 Sekunden: Puls statt Warnrot — Dringlichkeit
+   über Bewegung, die Farbwelt bleibt beim RIEGEL-Blau. */
+@keyframes game-timer-urgent {
+  0%, 100% { transform: scale(1); border-color: var(--color-border); }
+  50%      { transform: scale(1.06); border-color: var(--color-accent); }
+}
+.game-timer-urgent { animation: game-timer-urgent 1s ease-in-out infinite; }
+
+/* Timer-Bar: State tickt nur sekündlich — der 1s-linear-Übergang macht daraus
+   einen durchgehend glatten Ablauf ohne rAF-Aufwand. */
+.game-timer-bar { transition: width 1s linear; }
+
 @media (prefers-reduced-motion: reduce) {
   .game-hit-label { animation-duration: 0.01ms; }
-  .game-miss-ring { animation: none; }
+  /* Bewusst KEIN `animation: none`: der Ring wird nur übers Animationsende unsichtbar
+     (fill-mode both, endet bei opacity 0) — ohne Animation bliebe nach dem ersten
+     Fehlschuss dauerhaft ein statischer zweiter Ring auf dem Fadenkreuz stehen. */
+  .game-miss-ring { animation-duration: 0.01ms; }
+  .game-countdown-pop,
+  .game-combo-chip,
+  .game-timer-urgent { animation: none; }
+  .game-timer-bar { transition: none; }
 }
