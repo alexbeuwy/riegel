@@ -187,3 +187,67 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   (u. a. Bento-Grid-Lücke auf der Home, Kontraste, Token-Dauern statt Hardcodes,
   aria-live beim Panelwechsel). tsc 0 Fehler, Lint auf Baseline, Build 73 Seiten grün,
   Desktop + Mobil per Screenshot verifiziert.
+
+## Update — BORIS live im Rechner, systematischer Mobile-Pass, Trust-Elemente, Hero-Wave-Shader ✅
+
+- **Amtliche Bodenrichtwerte live** (`src/lib/boris.ts`, `/api/bodenrichtwert`): Rechner holt
+  während der Analyzing-Animation den echten VBORIS-RLP-Wert der eingegebenen Adresse
+  (WMS GetFeatureInfo, HTML-Parse, 24h-Cache, fail-soft mit Timeout) — SOURCES-Zeile zeigt
+  bei Erfolg den echten Wert + „amtlich"-Pill, sonst unverändert den Modellwert. Fließt in
+  `estimateValue()` (neuer optionaler `bodenrichtwert`-Override) und in die **Server-
+  Nachrechnung** im Report ein — Client und PDF nutzen denselben amtlichen Wert. PDF +
+  Datenschutzerklärung (§13) entsprechend ergänzt. Weitere SOURCES-Zeilen (Vergleichspreise,
+  Trend, Nachfrage) personalisiert aus `marktdaten.ts` je Stadt statt Zufallszahl.
+  **Deckung: nur Rheinland-Pfalz** (VBORIS-Dienst) — außerhalb (z. B. Mannheim/Heidelberg,
+  Baden-Württemberg) bewusst stiller Fallback auf den Modellwert.
+- **Systematischer Mobile-Pass**: Root-Cause des Akira-H1-Overflows (lange Ratgeber-/
+  Standort-Headlines sprengten den Viewport, siehe User-Screenshots) behoben; 390px-Audit
+  über alle Kernrouten via CDP-Screenshots (echte Mobile-Emulation, `--window-size` allein
+  reicht bei diesem Chromium-Build nicht — Erkenntnis dokumentiert), mehrere Fixes verifiziert.
+- **Trust-Elemente** (`trust-data.ts`, `trust-strip.tsx`, `testimonials.tsx`): recherchierte,
+  kreuzverifizierte Bewertungen (ImmoScout24 4,7/148, Trustpilot 4,6/34, Trustlocal 8,6/10/30,
+  golocal 4,5/17) als endlos laufender Marquee-Streifen (Home + `/verkaufen`) + echte,
+  öffentlich einsehbare Kundenzitate als Kartensektion. **IVD bewusst nicht enthalten**
+  (nicht belegbar); Kununu nicht enthalten (kein Profil auffindbar).
+- **Echte Auszeichnungs-Siegel** (`awards-grid.tsx`): Original-Grafiken direkt von
+  riegel-immobilien.de geholt (BVFI, ImmoScout24 Verkaufsprofi 2021/Premium Partner
+  2013–2021/Experte seit 2009, IDA-Siegel 2022, Bellevue 2022) — unverändert wie live
+  geführt; zwei Badges sind datiert und mehrere Jahre alt (Hinweis an Alex gegeben).
+- **JSON-LD erweitert**: `sameAs` um alle Bewertungsprofile, `Person`-Entities für die
+  Familie Riegel (E-E-A-T) — bewusst **kein** `aggregateRating` (Google wertet
+  Fremdplattform-Zahlen sonst als self-serving).
+- **Hero-Redesign**: `WaveShader` (Shadertoy lfsBzB, wie in der Sofort-Bewertung-CTA-Box)
+  ersetzt den flachen Mesh-Gradient im echten Homepage-Hero — Feedback: der Wave-Look sollte
+  auch oben stehen. Rechner-/Preisatlas-Analyzing-Screens bleiben bewusst beim ruhigen
+  `HeroBackdrop` (andere Nutzungskontexte, noch nicht umgestellt — offen, s. u.).
+- **Report-CTA psychologisch verstärkt** (`report-request.tsx`): Nutzenargumente (Was der
+  Report enthält, häufigster Preis-Fehler, Datenexklusivität ggü. Portalen) bleiben immer
+  sichtbar; Formular öffnet jetzt über `.t-collapse` (grid-template-rows) statt hartem Pop.
+- **Reels auf BunnyCDN umgezogen**: `riegel.b-cdn.net` statt `beuwy.com` (Alex hat die 5 MP4s
+  dort neu hochgeladen) — kein Fremddomain-Traffic mehr; `next.config.ts`-remotePattern für
+  `beuwy.com` entfernt.
+- **Verifiziert**: tsc 0 Fehler, ESLint exakt auf Vor-Stand (25 Probleme, alles Altlasten),
+  Build grün, BORIS-API live getestet (Speyer → 540 €/m², außerhalb RLP → saubere 422),
+  Awards-Bilder + Testimonial-Inhalte im gerenderten HTML verifiziert.
+
+## Offen aus diesem Update 🔧
+
+- **CTA-Boxen vereinheitlichen**: `cta-band.tsx` (sitewide Pre-Footer) nutzt noch ein
+  statisches `wave-2.svg`-Bild (12 % Deckkraft) statt des `WaveShader` — soll ersetzt werden,
+  ebenso die Preisatlas-CTA-Sektion (aktuell `HeroBackdrop`).
+- **Preisatlas-Politur**: Preis-Marker überdecken die Ortsnamen der CARTO-Basiskarte (Fix:
+  `dark-matter-nolabels`-Style + eigenes Label je Marker); fehlende Such-Eingabe für Städte
+  außerhalb der 18 abgedeckten Orte (ehrlicher „keine Marktdaten"-Fallback nötig);
+  transitions-dev-Hover-Politur/Paddings nachziehen.
+- **Preisatlas-Homepage-Teaser**: aktuell nur eine Bento-Kachel — soll ein prominenter,
+  eigenständiger Content-Block werden.
+- **Navigation**: bei der wachsenden Feature-Zahl (Preisatlas, Rechner, Standortguide,
+  Ratgeber) ein Mega-Menü für „Immobilienbewertung" statt Einzellinks/Footer-Verstecken.
+- **Mehrfamilienhaus** als eigener Objekttyp im Rechner (Jahresnettokaltmiete, Einheiten-/
+  Gewerbeanzahl, Ertragswert-Berechnung) — fehlt komplett, Verkäufer von MFH aktuell schlecht
+  bedient.
+- **Kontakt-Seite**: prominenter CTA zur Direktbuchung (`/termin`) unter der Headline fehlt
+  — Calendly-Klon ist aktuell zu versteckt.
+- **BW-Bodenrichtwerte**: kurze Prüfung, ob es für Baden-Württemberg (Mannheim/Heidelberg-
+  Nähe) einen vergleichbar freien Dienst gibt; sonst bleibt der Modell-Fallback (laut Alex
+  „Annäherung reicht, vor Ort wird ohnehin exakt bewertet").
