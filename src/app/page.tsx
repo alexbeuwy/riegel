@@ -60,11 +60,11 @@ export const metadata = {
   alternates: { canonical: "/" },
 };
 
-const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
-  { value: "20+ Jahre", label: "Erfahrung als Familienunternehmen in der Region", icon: "calendar" },
-  { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
-  { value: "Ø ~4 Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
-  { value: "Top 21", label: "von über 25.000 Maklern bundesweit · ImmoAward 2025", icon: "star" },
+const stats: { prefix?: string; value: string; suffix?: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
+  { value: "20", suffix: "+ Jahre", label: "Erfahrung als Familienunternehmen in der Region", icon: "calendar" },
+  { prefix: "Ø", value: "90", suffix: "Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
+  { prefix: "Ø ~", value: "4", suffix: "Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
+  { prefix: "Top", value: "21", label: "von über 25.000 Maklern bundesweit · ImmoAward 2025", icon: "star" },
   { value: "2", label: "Standorte — Speyer & Ludwigshafen", icon: "pin" },
 ];
 
@@ -276,7 +276,15 @@ export default async function HomePage() {
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/[0.08] text-accent transition-transform duration-300 group-hover:-translate-y-0.5">
                     <Icon name={s.icon} size={20} />
                   </span>
-                  <span className="akira text-2xl text-fg sm:text-4xl">{s.value}</span>
+                  <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+                    {s.prefix && (
+                      <span className="text-sm font-medium text-accent sm:text-base">{s.prefix}</span>
+                    )}
+                    <span className="akira text-2xl text-fg sm:text-4xl">{s.value}</span>
+                    {s.suffix && (
+                      <span className="text-sm font-medium text-accent sm:text-base">{s.suffix}</span>
+                    )}
+                  </span>
                   <span className="text-sm leading-snug text-muted">{s.label}</span>
                 </div>
               ))}
