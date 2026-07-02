@@ -65,7 +65,7 @@ function CitySelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-border bg-bg px-4 py-2.5 text-sm text-fg outline-none transition-colors focus:border-accent"
+        className="w-full rounded-lg border border-border bg-bg px-4 py-2.5 text-sm text-fg outline-none transition-colors hover:border-accent/50 focus:border-accent"
       >
         {orte.map((o) => (
           <option key={o.slug} value={o.slug}>
@@ -92,7 +92,10 @@ function CompareCard({ label, ort, other }: { label: string; ort: MarktOrt; othe
           const pct = Math.round((v / denom) * 100);
           const winner = v > vOther;
           return (
-            <div key={m.key}>
+            <div
+              key={m.key}
+              className="-mx-2 rounded-lg px-2 py-1 transition-colors duration-300 hover:bg-surface-2/60"
+            >
               <div className="flex items-baseline justify-between gap-2 text-sm">
                 <span className="text-muted">{m.label}</span>
                 {/* text-accent-strong statt text-accent: reicht bei dieser Textgröße

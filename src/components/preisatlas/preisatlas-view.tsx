@@ -6,9 +6,9 @@ import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon } from "@/components/icon";
 import { MapConsentGate } from "@/components/consent";
-import { HeroBackdrop } from "@/components/hero-backdrop";
+import { WaveShader } from "@/components/wave-shader";
 import { HeroAddressSearch } from "@/components/hero-address-search";
-import { OrtsChips } from "@/components/preisatlas/orts-chips";
+import { OrtsChips, OrtsSuche } from "@/components/preisatlas/orts-chips";
 import { MarktPanel } from "@/components/preisatlas/markt-panel";
 import { MarktVergleich } from "@/components/preisatlas/markt-vergleich";
 import { MARKT_STAND, PREIS_DISCLAIMER, type MarktOrt } from "@/lib/marktdaten";
@@ -58,7 +58,8 @@ export function PreisatlasView({ orte, initialSlug }: PreisatlasViewProps) {
     <>
       <section className="py-16 sm:py-20">
         <Container className="space-y-8">
-          <Reveal>
+          <Reveal className="space-y-4">
+            <OrtsSuche orte={orte} onSelect={select} />
             <OrtsChips orte={orte} selectedSlug={selectedSlug} onSelect={select} ariaLabel="Standort wählen" />
           </Reveal>
 
@@ -107,8 +108,18 @@ export function PreisatlasView({ orte, initialSlug }: PreisatlasViewProps) {
       <section className="border-t border-border py-16 sm:py-20">
         <Container>
           <Reveal>
-            <div className="relative overflow-hidden rounded-3xl border border-border">
-              <HeroBackdrop />
+            <div className="relative overflow-hidden rounded-3xl border border-accent/30">
+              <WaveShader />
+              {/* Lesbarkeits-Overlay wie in ShaderCta/CtaBand: hier zentrierter Text
+                  statt links ausgerichtet, daher Abdunklung zur Mitte statt seitlich. */}
+              <div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(65% 75% at 50% 45%, color-mix(in srgb, var(--color-bg) 88%, transparent) 0%, color-mix(in srgb, var(--color-bg) 55%, transparent) 55%, transparent 85%)",
+                }}
+              />
               <div className="relative z-10 flex flex-col items-center gap-6 px-6 py-16 text-center sm:px-12 sm:py-20">
                 <h2 className="akira max-w-xl text-3xl leading-[0.95] sm:text-5xl">
                   Und was ist <span className="text-accent-strong">Ihre</span> Immobilie wert?

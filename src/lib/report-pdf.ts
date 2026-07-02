@@ -28,7 +28,22 @@ export interface ReportData {
   zustand?: string;
   qualitaet?: string;
   energieklasse?: string;
-  value: { low: number; mid: number; high: number; pricePerSqm?: number; comparables?: number; trendPct?: number; mikrolage?: number; confidence?: number };
+  /** Nur bei objektartLabel === "Mehrfamilienhaus" (Ertragswert-Ansatz). */
+  jahresnettokaltmiete?: string | number;
+  wohneinheiten?: string | number;
+  gewerbeeinheiten?: string | number;
+  value: {
+    low: number;
+    mid: number;
+    high: number;
+    pricePerSqm?: number;
+    comparables?: number;
+    trendPct?: number;
+    mikrolage?: number;
+    confidence?: number;
+    /** Ertragswert-Vervielfältiger — nur bei Mehrfamilienhaus gesetzt. */
+    vervielfaeltiger?: number;
+  };
   dateLabel: string;
   /** Luftbild des Objekts (Base64-JPEG, Esri World Imagery an den Rechner-Koordinaten). */
   satelliteB64?: string;
@@ -343,6 +358,11 @@ function drawValuation(ctx: Ctx, d: ReportData) {
     ["sparkle", "Zustand", d.zustand || "–"],
     ["star", "Qualität", d.qualitaet || "–"],
     ["bolt", "Energieklasse", d.energieklasse || "–"],
+    // Leerstring statt "–": nur bei Mehrfamilienhaus (Ertragswert-Ansatz)
+    // gesetzt, section() blendet die Zeile für alle anderen Objektarten aus.
+    ["euro", "Jahresnettokaltmiete", d.jahresnettokaltmiete ? `${eur(Number(d.jahresnettokaltmiete))}/Jahr` : ""],
+    ["layers", "Wohneinheiten", d.wohneinheiten ? String(d.wohneinheiten) : ""],
+    ["building", "Gewerbeeinheiten", d.gewerbeeinheiten ? String(d.gewerbeeinheiten) : ""],
   ], M);
   const b = section("Kennzahlen", [
     ["euro", "Preis / m²", d.value.pricePerSqm ? eur(d.value.pricePerSqm) : "–"],
@@ -350,6 +370,9 @@ function drawValuation(ctx: Ctx, d: ReportData) {
     ["trend", "Markttrend (Lage)", d.value.trendPct != null ? `+${d.value.trendPct} % p.a.` : "–"],
     ["pin", "Mikrolage", d.value.mikrolage != null ? `${d.value.mikrolage}/10` : "–"],
     ["chart", "Daten-Konfidenz", d.value.confidence != null ? `${d.value.confidence} %` : "–"],
+    // Leerstring statt "–": nur bei Mehrfamilienhaus gesetzt (Ertragswert-
+    // Vervielfältiger), Zeile entfällt sonst komplett.
+    ["euro", "Vervielfältiger (Ertragswert)", d.value.vervielfaeltiger != null ? `${d.value.vervielfaeltiger}×` : ""],
     // Leerstring statt "–": section() überspringt die Zeile komplett, wenn
     // für die Koordinaten kein amtlicher Wert ermittelt werden konnte.
     [

@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth";
 import { supabase } from "@/lib/supabase";
 
 type Rolle = "eigennutzer" | "kapitalanlage" | "verkauf";
-const OBJEKTARTEN = ["Wohnung", "Haus", "Grundstück", "Gewerbe"];
+const OBJEKTARTEN = ["Wohnung", "Haus", "Mehrfamilienhaus", "Grundstück", "Gewerbe"];
 const REGIONEN = [
   "Speyer", "Ludwigshafen", "Schifferstadt", "Frankenthal", "Neustadt",
   "Germersheim", "Mannheim", "Worms", "Landau", "Vorderpfalz (Umgebung)",

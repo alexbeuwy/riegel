@@ -1,3 +1,20 @@
+import type { IconName } from "@/components/icon";
+
+/** Ein Mega-Menü-Eintrag (Icon-Kachel + Titel + 1-Zeilen-Beschreibung). */
+export interface NavChild {
+  readonly href: string;
+  readonly label: string;
+  readonly desc: string;
+  readonly icon: IconName;
+}
+
+/** Primär-Nav-Punkt — optional mit Kindern (→ Mega-Menü statt Direktlink). */
+export interface NavItem {
+  readonly href: string;
+  readonly label: string;
+  readonly children?: ReadonlyArray<NavChild>;
+}
+
 /**
  * Zentrale Seiten-Konfiguration. TODO-Felder brauchen echte Daten von Sissy/Alex
  * (siehe RELAUNCH-LOG "Nächste Schritte").
@@ -17,10 +34,40 @@ export const site = {
   nav: [
     { href: "/immobilien", label: "Immobilien" },
     { href: "/verkaufen", label: "Verkaufen" },
-    { href: "/rechner", label: "Immobilienbewertung" },
+    {
+      href: "/rechner",
+      label: "Immobilienbewertung",
+      // Mega-Menü: 4 Einstiege statt Direktlink (siehe SiteHeader-Dropdown)
+      children: [
+        {
+          href: "/rechner",
+          label: "Immorechner",
+          desc: "Sofort-Bewertung Ihrer Immobilie in 60 Sekunden",
+          icon: "calculator",
+        },
+        {
+          href: "/preisatlas",
+          label: "Preisatlas Vorderpfalz",
+          desc: "Preise, Bodenwerte & Trends für 18 Städte",
+          icon: "trend",
+        },
+        {
+          href: "/standorte",
+          label: "Standort-Guide",
+          desc: "Immobilienmarkt & Leben in Ihrer Stadt",
+          icon: "pin",
+        },
+        {
+          href: "/ratgeber",
+          label: "Ratgeber",
+          desc: "Wissen rund um Verkauf, Steuer & Finanzierung",
+          icon: "doc",
+        },
+      ],
+    },
     { href: "/ueber-uns", label: "Über uns" },
     { href: "/kontakt", label: "Kontakt" },
-  ],
+  ] satisfies readonly NavItem[],
 
   // Aus Live-Seiten-Audit übernommen (verifiziert vorhanden):
   socials: {

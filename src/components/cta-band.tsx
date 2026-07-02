@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
+import { WaveShader } from "@/components/wave-shader";
 
 // Auf reinen Conversion-/Rechtsseiten würde der Band nur doppeln → ausblenden.
 const HIDE_ON = ["/rechner", "/termin", "/kontakt", "/merkliste", "/impressum", "/datenschutz", "/widerruf"];
@@ -19,19 +20,18 @@ export function CtaBand() {
 
   return (
     <section className="relative overflow-hidden border-t border-border bg-surface">
-      {/* Akzent-Glow + Waves */}
+      {/* Akzent-Glow */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 top-1/2 h-[28rem] w-[28rem] -translate-y-1/2 rounded-full bg-accent/10 blur-3xl"
+        className="pointer-events-none absolute -left-32 top-1/2 z-0 h-[28rem] w-[28rem] -translate-y-1/2 rounded-full bg-accent/10 blur-3xl"
       />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/wave-2.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 bottom-0 hidden h-[120%] w-auto opacity-[0.12] mix-blend-screen lg:block"
-      />
-      <Container className="relative py-20 sm:py-28">
+      {/* Animierter Shader-Hintergrund statt statischem Wave-SVG */}
+      <div className="absolute inset-0 z-0" aria-hidden>
+        <WaveShader />
+        {/* Lesbarkeits-Overlay: links deckend, Waves rechts sichtbar */}
+        <div className="absolute inset-0 bg-gradient-to-r from-surface via-surface/85 to-surface/25" />
+      </div>
+      <Container className="relative z-10 py-20 sm:py-28">
         <div className="max-w-2xl">
           <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
             Nächster Schritt

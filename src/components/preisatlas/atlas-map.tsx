@@ -5,8 +5,11 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { MarktOrt } from "@/lib/marktdaten";
 
-// Freier dunkler Vektor-Style (CARTO dark-matter, kein API-Key) — wie geo-map.tsx.
-const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+// Freier dunkler Vektor-Style (CARTO dark-matter, kein API-Key) — wie geo-map.tsx,
+// aber LABELFREI: bei 18 dicht stehenden Marktorten überdeckten unsere Preis-Punkte
+// sonst die Ortsnamen der Basiskarte. Wir beschriften die Orte stattdessen selbst
+// (siehe Label-Chip je Marker unten) — keine doppelten/kollidierenden Namen mehr.
+const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
 
 const nf = new Intl.NumberFormat("de-DE");
 
@@ -35,7 +38,10 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<
-    Record<string, { marker: maplibregl.Marker; el: HTMLButtonElement; dot: HTMLSpanElement; ring: HTMLSpanElement }>
+    Record<
+      string,
+      { marker: maplibregl.Marker; el: HTMLButtonElement; dot: HTMLSpanElement; ring: HTMLSpanElement; label: HTMLSpanElement }
+    >
   >({});
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const onSelectRef = useRef(onSelect);
@@ -123,7 +129,31 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
       ring.style.display = "none";
       if (!reduceMotion) ring.className = "animate-ping";
 
-      el.append(ring, dot);
+      // Eigenes Ortsnamen-Label statt der (jetzt ausgeblendeten) Basiskarten-Labels —
+      // dezenter dunkler Chip unter dem Punkt, damit der Name auf jedem Kartenbereich
+      // lesbar bleibt. pointer-events:none: der Chip darf die Klick-Hitbox nicht stören.
+      const label = document.createElement("span");
+      label.textContent = ort.name;
+      label.setAttribute("aria-hidden", "true"); // Name steckt schon im aria-label des Buttons
+      label.style.position = "absolute";
+      label.style.top = "100%";
+      label.style.left = "50%";
+      label.style.transform = "translate(-50%, 4px)";
+      label.style.whiteSpace = "nowrap";
+      label.style.pointerEvents = "none";
+      label.style.fontSize = "11px";
+      label.style.fontWeight = "500";
+      label.style.lineHeight = "1";
+      label.style.letterSpacing = "0.01em";
+      label.style.padding = "3px 8px";
+      label.style.borderRadius = "9999px";
+      label.style.color = "var(--color-fg)";
+      label.style.background = "color-mix(in srgb, var(--color-bg) 78%, transparent)";
+      label.style.border = "1px solid color-mix(in srgb, var(--color-border) 92%, transparent)";
+      label.style.boxShadow = "0 2px 6px rgba(0,0,0,0.35)";
+      label.style.transition = `color var(--duration-fast) var(--ease-smooth-out), border-color var(--duration-fast) var(--ease-smooth-out), background-color var(--duration-fast) var(--ease-smooth-out)`;
+
+      el.append(ring, dot, label);
 
       el.addEventListener("mouseenter", () => {
         dot.style.transform = "scale(1.25)";
@@ -140,7 +170,7 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
       });
 
       const marker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([ort.lng, ort.lat]).addTo(map);
-      markersRef.current[ort.slug] = { marker, el, dot, ring };
+      markersRef.current[ort.slug] = { marker, el, dot, ring, label };
       bounds.extend([ort.lng, ort.lat]);
     }
     map.fitBounds(bounds, { padding: 56, maxZoom: 11, duration: 0 });
@@ -157,13 +187,24 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
   // Auswahl visuell hervorheben: Halo-Ring (zwei Tokens statt Alpha-Hex) + Puls.
   useEffect(() => {
     const map = mapRef.current;
-    for (const [slug, { el, dot, ring, marker }] of Object.entries(markersRef.current)) {
+    for (const [slug, { el, dot, ring, label, marker }] of Object.entries(markersRef.current)) {
       const active = slug === selectedSlug;
       dot.style.boxShadow = active
         ? "0 0 0 3px var(--color-bg), 0 0 0 6px var(--color-accent), 0 2px 8px rgba(0,0,0,0.5)"
         : "0 2px 8px rgba(0,0,0,0.5)";
       dot.style.transform = active ? "scale(1.2)" : "scale(1)";
+      // Ausgewählter Ort: Label optisch hervorheben (Akzent-Rand/-Text, höheres
+      // Gewicht) UND per z-index vor benachbarte Chips heben — sonst würde ein
+      // dichter stehender Nachbar-Ort den hervorgehobenen Namen überdecken.
       el.style.zIndex = active ? "5" : "0";
+      label.style.color = active ? "var(--color-accent-strong)" : "var(--color-fg)";
+      label.style.borderColor = active
+        ? "var(--color-accent)"
+        : "color-mix(in srgb, var(--color-border) 92%, transparent)";
+      label.style.background = active
+        ? "color-mix(in srgb, var(--color-bg) 92%, transparent)"
+        : "color-mix(in srgb, var(--color-bg) 78%, transparent)";
+      label.style.fontWeight = active ? "600" : "500";
       ring.style.display = active ? "block" : "none";
       if (active && map) {
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

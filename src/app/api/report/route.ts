@@ -33,7 +33,7 @@ const bounded = (v: unknown, min: number, max: number): number | undefined => {
   return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
 };
 
-const OBJEKTARTEN = new Set<Objektart>(["wohnung", "haus", "grundstueck", "gewerbe"]);
+const OBJEKTARTEN = new Set<Objektart>(["wohnung", "haus", "grundstueck", "gewerbe", "mehrfamilienhaus"]);
 const ZUSTAENDE = new Set<Zustand>(["neuwertig", "gepflegt", "renovierungsbeduerftig"]);
 const QUALITAETEN = new Set<Qualitaet>(["einfach", "normal", "gehoben", "luxus"]);
 
@@ -42,6 +42,7 @@ const OBJEKTART_LABEL: Record<string, string> = {
   haus: "Haus",
   grundstueck: "Grundstück",
   gewerbe: "Gewerbe",
+  mehrfamilienhaus: "Mehrfamilienhaus",
 };
 
 /**
@@ -73,7 +74,7 @@ async function fetchSatellite(lat: number | null, lng: number | null): Promise<s
 }
 
 /** Bewertungs-Hero (große Zahl + Spanne) als email-sichere Tabelle. */
-function valueHero(mid: number, low: number, high: number, perSqm: number) {
+function valueHero(mid: number, low: number, high: number, perSqm: number | undefined) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#0f1117;border:1px solid #2a2a30;border-radius:12px;">
 <tr><td style="padding:22px 24px;text-align:center;">
 <div style="color:#7c7a75;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
@@ -132,6 +133,15 @@ export async function POST(req: Request) {
   const lat = num(b.lat);
   const lng = num(b.lng);
 
+  // Mehrfamilienhaus: Ertragswert-Ansatz statt Flächen-Rechnung — die
+  // Jahresnettokaltmiete ist hier die Pflichtangabe (s. calculator.tsx).
+  const jahresnettokaltmiete = bounded(b.jahresnettokaltmiete, 100, 20_000_000);
+  const wohneinheiten = bounded(b.wohneinheiten, 1, 500);
+  const gewerbeeinheiten = bounded(b.gewerbeeinheiten, 0, 200);
+  if (objektart === "mehrfamilienhaus" && jahresnettokaltmiete == null) {
+    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  }
+
   // Amtlichen Bodenrichtwert VOR der Nachrechnung laden (gleicher Cache wie
   // /api/bodenrichtwert) — Client und Server nutzen dadurch dieselbe Zahl,
   // PDF und Anzeige im Rechner widersprechen sich also nie. Fail-soft: bei
@@ -158,10 +168,13 @@ export async function POST(req: Request) {
       qualitaet,
       energieklasse: energieklasse || undefined,
       ausstattung,
+      jahresnettokaltmiete,
+      wohneinheiten,
+      gewerbeeinheiten,
     },
     { bodenrichtwert: boris?.brw ?? undefined },
   );
-  const { low, mid, high, pricePerSqm: perSqm } = calc;
+  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger } = calc;
   if (!mid || mid <= 0) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
@@ -184,6 +197,9 @@ export async function POST(req: Request) {
     { label: "Zustand", value: esc(zustand) },
     { label: "Qualität", value: esc(qualitaet) },
     { label: "Energieklasse", value: esc(energieklasse) },
+    { label: "Jahresnettokaltmiete", value: jahresnettokaltmiete ? `${eur(jahresnettokaltmiete)}/Jahr` : "" },
+    { label: "Wohneinheiten", value: wohneinheiten ? String(wohneinheiten) : "" },
+    { label: "Gewerbeeinheiten", value: gewerbeeinheiten ? String(gewerbeeinheiten) : "" },
   ]);
 
   const kennzahlen = emailRows([
@@ -192,6 +208,7 @@ export async function POST(req: Request) {
     { label: "Markttrend", value: `+${trendPct} % p.a.` },
     { label: "Mikrolage", value: `${mikrolage}/10` },
     { label: "Konfidenz", value: `${confidence} %` },
+    { label: "Vervielfältiger (Ertragswert)", value: vervielfaeltiger != null ? `${vervielfaeltiger}×` : "" },
   ]);
 
   const disclaimer = `<p style="margin:18px 0 0;color:#7c7a75;font-size:12px;line-height:1.6;">
@@ -222,6 +239,9 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       zustand,
       qualitaet,
       energieklasse,
+      jahresnettokaltmiete,
+      wohneinheiten,
+      gewerbeeinheiten,
       value: {
         low,
         mid,
@@ -231,6 +251,7 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
         trendPct,
         mikrolage,
         confidence,
+        vervielfaeltiger,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
       bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,

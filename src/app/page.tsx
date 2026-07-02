@@ -18,6 +18,7 @@ import { AwardsGrid } from "@/components/awards-grid";
 import { ReelsGrid } from "@/components/reels-grid";
 import { TrustStrip } from "@/components/trust-strip";
 import { Testimonials } from "@/components/testimonials";
+import { PreisatlasTeaser } from "@/components/preisatlas-teaser";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -248,6 +249,9 @@ export default function HomePage() {
           </Reveal>
         </Container>
       </section>
+
+      {/* ───────── Block · Preisatlas-Teaser ───────── */}
+      <PreisatlasTeaser />
 
       {/* ───────── Block · Kennzahlen ───────── */}
       <section className="py-16 sm:py-20">

@@ -69,6 +69,7 @@ const OBJEKTART_LABEL: Record<string, string> = {
   haus: "Haus",
   grundstueck: "Grundstück",
   gewerbe: "Gewerbe",
+  mehrfamilienhaus: "Mehrfamilienhaus",
 };
 
 const norm = (s: string) =>

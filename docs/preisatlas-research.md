@@ -163,3 +163,68 @@ Lead→Abschluss ist proprietär; jede präzise Zahl wäre Spekulation.
 
 **Pitch-Line:** „Eigene Bewertung, eigene Leads, eigene Regeln — statt 35 % Provision an HomeDay und
 Eigentümerdaten an fremde Makler."
+
+
+---
+
+## Bodenrichtwerte Baden-Württemberg (Mannheim/Heidelberg/Weinheim) — Befund & Entscheidung gegen Anbindung
+
+**Frage:** Gibt es für BW einen zu VBORIS-RLP vergleichbar freien, loginfreien, dokumentierten
+Bodenrichtwert-Dienst (WMS/WFS/API)? Geprüft: BORIS-BW (`gutachterausschuesse-bw.de/borisbw`),
+`geoportal-bw.de`, LGL-BW Open GeoData (`opengeodata.lgl-bw.de`), `owsproxy.lgl-bw.de`.
+
+**Technischer Befund (per curl verifiziert, 2026-07-02):** BORIS-BW ist eine map.apps-Anwendung
+(con terra), die clientseitig einen ArcGIS-REST-MapServer unter
+`https://www.gis.nrw.de/arcgis/rest/services/immobilien/boris_bw_bodenrichtwerte_current/MapServer`
+abfragt — betrieben von IT.NRW, offenbar als Whitelabel-Backend für mehrere Bundesländer (dieselbe
+Infrastruktur hostet auch BORIS-NRW-Layer im selben Service-Ordner). Mit einem `Referer`-Header
+(`https://www.gutachterausschuesse-bw.de/borisbw/`) liefert die `identify`-Operation saubere,
+strukturierte JSON-Treffer (`BRW`, `STAG`, `GENA`, `NUTA`, `GESL` …) — technisch sogar einfacher
+parsebar als RLPs HTML-Tabelle.
+
+- **Test 1 — Mannheim** (lat 49.4875, lng 8.4660): Treffer, `BRW: 5600 €/m²`, `NUTA: MK`, Stichtag
+  01.01.2025, `JAHR: 2026`. Funktioniert.
+- **Test 2 — Heidelberg** (Bahnstadt, lat 49.3988, lng 8.6724) und **Weinheim** (lat 49.5490,
+  lng 8.6720) im `_current`-Dienst: **beide liefern `brw_available: false`** — der jeweils
+  zuständige (dezentrale) Gutachterausschuss hat für den aktuellen Jahrgang schlicht noch nichts
+  veröffentlicht. Erst im historischen Dienst (`boris_bw_bodenrichtwerte`, ohne `_current`) taucht
+  für die Heidelberg-Zone überhaupt ein Wert auf — aber nur für die Jahrgänge 2022 und 2024;
+  2016–2021, 2023, 2025 und 2026 sind für exakt diese Zone als „nicht verfügbar" markiert.
+
+**Warum das trotz technisch funktionierendem Zugriff NICHT übernommen wird:**
+
+1. **Kein dokumentierter API-Vertrag.** Einzige „Zugangskontrolle" ist ein trivial spoofbarer
+   `Referer`-Header — der Endpunkt ist nirgends als Integrationsschnittstelle für Dritte beworben
+   oder dokumentiert, anders als VBORIS-RLP (explizit als Open-Data-WMS mit fester URL und
+   dl-de/by-2.0-Lizenz veröffentlicht, s. LVermGeo Open Data). Der `Nutzungsbedingungen`-Link der
+   BORIS-BW-App selbst war per direktem Abruf nicht auflösbar (404) — keine belastbare
+   Lizenzzusage für maschinellen/kommerziellen Zugriff auffindbar.
+2. **Fragmentierte, unzuverlässige Abdeckung statt einer zentralen Landesstelle.** RLP hat mit
+   LVermGeo eine zentrale Stelle mit einheitlichem Jahrgang. BW organisiert Bodenrichtwerte über
+   **~44 unabhängige, dezentrale Gutachterausschüsse**, jeder mit eigenem Veröffentlichungsturnus.
+   Das zeigt sich exakt an der für uns relevanten RLP-Grenze: Mannheim aktuell verfügbar,
+   Heidelberg/Weinheim nicht. Ein Produktionsdienst müsste pro Koordinate über mehrere
+   Jahrgangs-Layer/-Services raten und hätte trotzdem keine Garantie, überhaupt einen Wert zu
+   finden — das ist kein amtlicher Flächen-Layer, sondern ein löchriger Reverse-Engineering-Zugriff
+   auf einer fremden Landes-IT-Infrastruktur (IT.NRW statt LGL-BW/ZGG-BW).
+3. **Bricht ohne Vorwarnung.** Da der Zugriffsweg nirgends öffentlich spezifiziert ist, kann sich
+   Format, Pfad oder Zugriffsschutz jederzeit ändern, ohne dass wir es vorher erfahren — anders als
+   bei einem publizierten Open-Data-Endpunkt.
+
+**Entscheidung:** Kein Code geändert. `boris.ts` / `route.ts` bleiben strikt auf RLP (VBORIS)
+begrenzt (`RLP_BBOX`); BW-Koordinaten laufen weiterhin durch den Modell-Fallback des Rechners. Für
+den Kunden reicht das ausdrücklich („Annäherung reicht, vor Ort wird exakt bewertet") — eine
+fragile, undokumentierte Abhängigkeit von einer fremden Landes-IT-Infrastruktur mit lückenhafter
+BW-Abdeckung wäre das falsche Aufwand/Nutzen/Risiko-Verhältnis für ein Feature, das ohnehin nur eine
+Näherung liefern soll.
+
+**Falls sich das später ändert:** Bei schriftlicher Nutzungszusage von LGL-BW/ZGG-BW für
+programmatischen Zugriff und belastbar vollständiger BW-Abdeckung ließe sich dieselbe fail-soft-
+Architektur wie in `boris.ts` (Cache, Timeout, `confirmed`-Flag, `warnOnce`) um einen zweiten,
+per BBox gerouteten Provider erweitern.
+
+**Quellen:**
+- BORIS-BW (Anwendung): <https://www.gutachterausschuesse-bw.de/borisbw/>
+- ArcGIS REST (technisch, undokumentiert, per curl verifiziert): <https://www.gis.nrw.de/arcgis/rest/services/immobilien/boris_bw_bodenrichtwerte_current/MapServer>
+- LGL-BW Open Data: <https://www.lgl-bw.de/Produkte/Open-Data/index.html> · <https://opengeodata.lgl-bw.de/>
+- ZGG-BW (Zentrale Geschäftsstelle Gutachterausschüsse BW): <https://www.zgg-bw.de/BORIS-BW/index.html>

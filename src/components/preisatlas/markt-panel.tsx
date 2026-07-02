@@ -104,7 +104,7 @@ export function MarktPanel({ ort }: MarktPanelProps) {
 
 function StatSpanne({ label, min, max }: { label: string; min: number; max: number }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-2 p-5">
+    <div className="rounded-xl border border-border bg-surface-2 p-5 transition-[transform,border-color] duration-500 hover:-translate-y-0.5 hover:border-accent/40">
       <div className="text-xs uppercase tracking-widest text-faint">{label}</div>
       <div className="mt-2 flex items-baseline gap-2 text-2xl font-semibold text-fg tabular-nums sm:text-3xl">
         <span>{nf.format(min)}</span>
@@ -127,7 +127,7 @@ function SecondaryStat({
   tooltipId?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-2 p-4">
+    <div className="rounded-xl border border-border bg-surface-2 p-5 transition-[transform,border-color] duration-500 hover:-translate-y-0.5 hover:border-accent/40">
       <div className="flex items-center gap-1.5 text-[0.7rem] uppercase tracking-widest text-faint">
         <span>{label}</span>
         {tooltip && tooltipId && (

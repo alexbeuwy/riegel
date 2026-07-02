@@ -19,7 +19,38 @@ export default function KontaktPage() {
         Ob Verkauf, Bewertung oder Besichtigung — wir freuen uns auf Ihre
         Nachricht und melden uns in der Regel innerhalb eines Werktages.
       </PageIntro>
-      <section className="py-20">
+      {/* Prominenter Terminbuchungs-CTA — spart dem Nutzer das Formular */}
+      <section className="pt-2">
+        <Container>
+          <div className="flex flex-col items-start gap-5 rounded-2xl bg-accent px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <p className="max-w-md text-sm text-on-accent/90">
+              Schneller geht&apos;s kaum: Wählen Sie direkt einen freien
+              Termin — ganz ohne Formular ausfüllen.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link
+                href="/termin"
+                className="press group inline-flex items-center gap-2.5 rounded-full bg-on-accent px-6 py-3.5 text-sm font-medium text-accent shadow-sm transition-colors hover:bg-on-accent/90"
+              >
+                <Icon name="calendar" size={18} />
+                Direkt zur Terminbuchung — ohne Formular
+                <Icon
+                  name="arrowRight"
+                  size={18}
+                  className="transition-transform duration-300 group-hover:translate-x-0.5"
+                />
+              </Link>
+              <a
+                href="#kontaktformular"
+                className="text-sm text-on-accent/80 underline-offset-4 transition-colors hover:text-on-accent hover:underline"
+              >
+                oder Formular unten ausfüllen
+              </a>
+            </div>
+          </div>
+        </Container>
+      </section>
+      <section id="kontaktformular" className="scroll-mt-24 py-20">
         <Container>
           <div className="mb-10 grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
             <ContactForm />

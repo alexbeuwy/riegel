@@ -19,6 +19,11 @@ export interface ReportSource {
   qualitaet: Qualitaet;
   energieklasse: string;
   ausstattung: string[];
+  /** Nur für objektart === "mehrfamilienhaus" — reiner Durchreich-Wert
+   * an /api/report, das den Wert serverseitig neu berechnet (s. dort). */
+  jahresnettokaltmiete: string;
+  wohneinheiten: string;
+  gewerbeeinheiten: string;
 }
 
 export function ReportRequest({
@@ -83,6 +88,9 @@ export function ReportRequest({
       zustand: f.zustand,
       qualitaet: f.qualitaet,
       energieklasse: f.energieklasse,
+      jahresnettokaltmiete: f.jahresnettokaltmiete,
+      wohneinheiten: f.wohneinheiten,
+      gewerbeeinheiten: f.gewerbeeinheiten,
       valuation: {
         low: result.low,
         mid: result.mid,

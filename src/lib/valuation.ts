@@ -3,7 +3,7 @@
  * Bewusst leicht höher angesetzt (Verkaufsargument); klar als Schätzung
  * deklariert — KEIN Verkehrswertgutachten. Client-seitig.
  */
-export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe";
+export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
 export type Zustand = "neuwertig" | "gepflegt" | "renovierungsbeduerftig";
 export type Qualitaet = "einfach" | "normal" | "gehoben" | "luxus";
 
@@ -23,6 +23,13 @@ export interface ValuationInput {
   qualitaet: Qualitaet;
   energieklasse?: string;
   ausstattung: string[];
+  /**
+   * Nur für objektart === "mehrfamilienhaus" (Zinshaus/Mehrparteienhaus):
+   * Ertragswert-Eingaben statt reiner Flächen-Rechnung — s. estimateValue.
+   */
+  jahresnettokaltmiete?: number;
+  wohneinheiten?: number;
+  gewerbeeinheiten?: number;
 }
 
 export interface ValuationFactor {
@@ -34,13 +41,18 @@ export interface ValuationResult {
   low: number;
   mid: number;
   high: number;
-  pricePerSqm: number;
+  /** Bei "mehrfamilienhaus" nur gesetzt, wenn wohnflaeche vorliegt (mid / wohnflaeche) —
+   * ein Ertragswert hat keinen zwingenden €/m²-Bezug. Sonst immer gesetzt. */
+  pricePerSqm?: number;
   comparables: number;
   confidence: number;
   trendPct: number;
   bodenrichtwert: number;
   mikrolage: number;
   rentYieldPct: number;
+  /** Ertragswert-Vervielfältiger (Jahresnettokaltmiete × Vervielfältiger = Ertragswert),
+   * nur bei objektart === "mehrfamilienhaus" gesetzt — s. mfhVervielfaeltiger(). */
+  vervielfaeltiger?: number;
   factors: ValuationFactor[];
 }
 
@@ -82,6 +94,30 @@ function baujahrFactor(y?: number): number {
 
 const OPTIMISM = 1.06;
 
+/**
+ * Deterministischer Regio-Ansatz für die Mietrendite (Basis für den
+ * Ertragswert-Vervielfältiger bei Mehrfamilienhäusern) — sinkt mit
+ * steigendem €/m²-Wohnungs-Niveau der Region, dasselbe Muster wie
+ * yieldFor() in lib/marktdaten.ts. Bewusst hier lokal nachgebildet statt
+ * importiert: marktdaten.ts importiert bereits regionKey() von hier, ein
+ * Rückimport würde einen Zirkelbezug erzeugen.
+ */
+function regionalRentYieldPct(basisWohnung: number): number {
+  const raw = 6.4 - (basisWohnung / 1000) * 0.62;
+  return Math.min(5.2, Math.max(2.6, raw));
+}
+
+/**
+ * Ertragswert-Vervielfältiger (Jahresnettokaltmiete × Vervielfältiger ≈
+ * Ertragswert) — grobe Heuristik aus 100 / Mietrendite, auf eine für
+ * Zinshäuser plausible Bandbreite gedeckelt. Ersetzt KEINE echte
+ * Ertragswertermittlung (Bewirtschaftungskosten, Liegenschaftszins etc.).
+ */
+function mfhVervielfaeltiger(basisWohnung: number): number {
+  const v = 100 / regionalRentYieldPct(basisWohnung);
+  return Math.round(Math.min(30, Math.max(18, v)) * 10) / 10;
+}
+
 export function regionKey(ort: string): string {
   const o = (ort || "").toLowerCase();
   for (const k of Object.keys(REGIONS)) if (o.includes(k)) return k;
@@ -108,12 +144,24 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   const qf = QUALITAET_FACTOR[input.qualitaet];
   const ef = input.energieklasse ? ENERGIE_FACTOR[input.energieklasse] ?? 1.0 : 1.0;
 
-  let pricePerSqm: number;
+  let pricePerSqm: number | undefined;
   let mid: number;
+  let vervielfaeltiger: number | undefined;
 
   if (input.objektart === "grundstueck") {
     pricePerSqm = Math.round(boden * (1 + ausstBonus) * OPTIMISM);
     mid = pricePerSqm * (input.grundflaeche ?? 0);
+  } else if (input.objektart === "mehrfamilienhaus") {
+    // Ertragswert-Ansatz statt Flächen-Rechnung: Jahresnettokaltmiete ×
+    // Vervielfältiger (~ 100 / regionale Mietrendite, gedeckelt 18–30) — s.
+    // mfhVervielfaeltiger(). Zustand/Qualität/Energie fließen bewusst NICHT
+    // ein (kein Schein-Präzisions-Zuschlag auf eine Ertragswertschätzung,
+    // die primär mietbasiert ist); die Werttreiber-Faktoren unten bleiben
+    // deshalb für diesen Objekttyp leer.
+    const miete = Math.max(0, input.jahresnettokaltmiete ?? 0);
+    vervielfaeltiger = mfhVervielfaeltiger(r.wohnung);
+    mid = miete * vervielfaeltiger;
+    pricePerSqm = input.wohnflaeche ? Math.round(mid / input.wohnflaeche) : undefined;
   } else {
     const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
     pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM);
@@ -126,14 +174,17 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   const round = (n: number) => Math.round(n / 1000) * 1000;
   const pct = (x: number) => Math.round((x - 1) * 100);
 
-  const factors: ValuationFactor[] = [
-    { label: "Zustand", effectPct: pct(zf) },
-    { label: "Ausstattungsqualität", effectPct: pct(qf) },
-    { label: "Baujahr", effectPct: pct(bf) },
-    { label: "Energieeffizienz", effectPct: pct(ef) },
-    { label: "Ausstattung", effectPct: Math.round(ausstBonus * 100) },
-    { label: "Marktoptimismus", effectPct: pct(OPTIMISM) },
-  ].filter((x) => x.effectPct !== 0);
+  const factors: ValuationFactor[] =
+    input.objektart === "mehrfamilienhaus"
+      ? []
+      : [
+          { label: "Zustand", effectPct: pct(zf) },
+          { label: "Ausstattungsqualität", effectPct: pct(qf) },
+          { label: "Baujahr", effectPct: pct(bf) },
+          { label: "Energieeffizienz", effectPct: pct(ef) },
+          { label: "Ausstattung", effectPct: Math.round(ausstBonus * 100) },
+          { label: "Marktoptimismus", effectPct: pct(OPTIMISM) },
+        ].filter((x) => x.effectPct !== 0);
 
   return {
     low: round(mid * 0.93),
@@ -146,6 +197,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     bodenrichtwert: boden,
     mikrolage: Math.round((7.2 + Math.random() * 2.4) * 10) / 10,
     rentYieldPct: Math.round((2.8 + Math.random() * 1.6) * 10) / 10,
+    vervielfaeltiger,
     factors,
   };
 }

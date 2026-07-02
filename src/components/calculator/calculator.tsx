@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { HeroBackdrop } from "@/components/hero-backdrop";
-import { Icon } from "@/components/icon";
+import { Icon, type IconName } from "@/components/icon";
 import { MapConsentGate } from "@/components/consent";
 import { formatEUR } from "@/lib/format";
 import { searchAddress, type GeoResult } from "@/lib/geocode";
@@ -64,6 +64,10 @@ interface FormState {
   qualitaet: Qualitaet;
   energieklasse: string;
   ausstattung: string[];
+  /** Nur für objektart === "mehrfamilienhaus" — Ertragswert-Eingaben. */
+  jahresnettokaltmiete: string;
+  wohneinheiten: string;
+  gewerbeeinheiten: string;
 }
 
 const EMPTY: FormState = {
@@ -79,11 +83,27 @@ const EMPTY: FormState = {
   qualitaet: "normal",
   energieklasse: "",
   ausstattung: [],
+  jahresnettokaltmiete: "",
+  wohneinheiten: "",
+  gewerbeeinheiten: "",
 };
 
+// "building"-Icon aus components/icon.tsx (Pfaddaten 1:1 übernommen, keine
+// neue Glyph erfunden) — dieser Auswahl-Button rendert sein <svg> selbst
+// (eigene Strichstärke 1.25 für die größere Kachel), daher kein <Icon />.
 const OBJEKTARTEN: { key: Objektart; label: string; icon: React.ReactNode }[] = [
   { key: "wohnung", label: "Wohnung", icon: <path d="M4 21V7l8-4 8 4v14M9 21v-6h6v6" /> },
   { key: "haus", label: "Haus", icon: <path d="M3 11.5 12 4l9 7.5M5 10v11h14V10M10 21v-6h4v6" /> },
+  {
+    key: "mehrfamilienhaus",
+    label: "Mehrfamilienhaus",
+    icon: (
+      <>
+        <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 21V9h4a1 1 0 0 1 1 1v11M3 21h18" />
+        <path d="M7.5 8h3M7.5 12h3M7.5 16h3" />
+      </>
+    ),
+  },
   { key: "grundstueck", label: "Grundstück", icon: <path d="M3 20h18M5 20V9l7-4 7 4v11M9 20v-4h2v4" /> },
   { key: "gewerbe", label: "Gewerbe", icon: <path d="M3 21V8l6-3v4l6-3v4l6-3v14M8 21v-4M16 21v-4" /> },
 ];
@@ -101,8 +121,9 @@ interface SourceCtx {
 
 /** Bodenrichtwert fließt nur bei Grundstück (voll) und Haus (Grundstücksanteil)
  * tatsächlich in mid/pricePerSqm ein (s. estimateValue in lib/valuation.ts) —
- * bei Wohnung/Gewerbe ist er rein informativ, der "amtlich"-Badge muss das
- * kennzeichnen statt fälschlich einen Preiseinfluss zu suggerieren. */
+ * bei Wohnung/Gewerbe/Mehrfamilienhaus (Ertragswert-Ansatz, mietbasiert) ist
+ * er rein informativ, der "amtlich"-Badge muss das kennzeichnen statt
+ * fälschlich einen Preiseinfluss zu suggerieren. */
 function borisPriceRelevant(objektart: Objektart): boolean {
   return objektart === "grundstueck" || objektart === "haus";
 }
@@ -164,6 +185,26 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
   { label: "Objekt-Faktoren", sub: "Baujahr, Zustand, Qualität", value: (_r, f) => f.qualitaet },
   { label: "Eigene Transaktionsdatenbank", sub: "Riegel-Referenzobjekte", value: (r) => `${Math.round(r.comparables * 0.6)} Datensätze` },
 ];
+
+/**
+ * Kennzahlen-Kacheln im Ergebnis — pricePerSqm ist bei Mehrfamilienhäusern
+ * optional (Ertragswert hat keinen zwingenden €/m²-Bezug, s. valuation.ts),
+ * daher hier "–" statt "NaN €" bei fehlendem Wert. Der Vervielfältiger wird
+ * nur angezeigt, wenn estimateValue ihn geliefert hat (Ertragswert-Fälle).
+ */
+function statTiles(result: ValuationResult): { k: string; v: string; icon: IconName }[] {
+  const tiles: { k: string; v: string; icon: IconName }[] = [
+    { k: "Preis / m²", v: result.pricePerSqm != null ? formatEUR(result.pricePerSqm) : "–", icon: "euro" },
+    { k: "Vergleichsobjekte", v: `${result.comparables}`, icon: "layers" },
+    { k: "Markttrend", v: `+${result.trendPct} %`, icon: "trend" },
+    { k: "Mikrolage", v: `${result.mikrolage}/10`, icon: "compass" },
+    { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
+  ];
+  if (result.vervielfaeltiger != null) {
+    tiles.push({ k: "Vervielfältiger", v: `${result.vervielfaeltiger}×`, icon: "calculator" });
+  }
+  return tiles;
+}
 
 function useCountUp(target: number, run: boolean, dur = 1900) {
   const [val, setVal] = useState(0);
@@ -306,7 +347,11 @@ export function Calculator() {
     if (s === 1 && !f.address) return "Bitte eine Adresse aus den Vorschlägen wählen.";
     if (s === 2) {
       if (f.objektart === "grundstueck" && !f.grundflaeche) return "Bitte die Grundstücksfläche angeben.";
-      if (f.objektart !== "grundstueck" && !f.wohnflaeche) return "Bitte die Wohnfläche angeben.";
+      // Mehrfamilienhaus: Ertragswert-Ansatz braucht die Jahresnettokaltmiete
+      // statt der Wohnfläche (die bleibt hier optional, nur für den €/m²-Wert).
+      if (f.objektart === "mehrfamilienhaus" && !f.jahresnettokaltmiete) return "Bitte die Jahresnettokaltmiete angeben.";
+      if (f.objektart !== "grundstueck" && f.objektart !== "mehrfamilienhaus" && !f.wohnflaeche)
+        return "Bitte die Wohnfläche angeben.";
     }
     return null;
   }
@@ -342,6 +387,9 @@ export function Calculator() {
       qualitaet: f.qualitaet,
       energieklasse: f.energieklasse || undefined,
       ausstattung: f.ausstattung,
+      jahresnettokaltmiete: f.jahresnettokaltmiete ? Number(f.jahresnettokaltmiete) : undefined,
+      wohneinheiten: f.wohneinheiten ? Number(f.wohneinheiten) : undefined,
+      gewerbeeinheiten: f.gewerbeeinheiten ? Number(f.gewerbeeinheiten) : undefined,
     };
     lastInputRef.current = input;
     setResult(estimateValue(input));
@@ -423,7 +471,7 @@ export function Calculator() {
         {step === 0 && (
           <div className="space-y-6">
             <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Was möchten Sie bewerten?</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {OBJEKTARTEN.map((o) => (
                 <button
                   key={o.key}
@@ -554,6 +602,39 @@ export function Calculator() {
                   <input className={inputCls} inputMode="numeric" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
                 </Field>
               )}
+              {f.objektart === "mehrfamilienhaus" && (
+                <>
+                  {/* Ertragswert-Ansatz: Jahresnettokaltmiete ist die zentrale
+                      Eingabe (Pflicht), Wohn-/Gewerbeeinheiten nur Kontext. */}
+                  <Field label="Jahresnettokaltmiete (€/Jahr)">
+                    <input
+                      className={inputCls}
+                      inputMode="numeric"
+                      value={f.jahresnettokaltmiete}
+                      onChange={(e) => set("jahresnettokaltmiete", e.target.value)}
+                      placeholder="z. B. 48000"
+                    />
+                  </Field>
+                  <Field label="Wohneinheiten">
+                    <input
+                      className={inputCls}
+                      inputMode="numeric"
+                      value={f.wohneinheiten}
+                      onChange={(e) => set("wohneinheiten", e.target.value)}
+                      placeholder="z. B. 6"
+                    />
+                  </Field>
+                  <Field label="Gewerbeeinheiten (optional)">
+                    <input
+                      className={inputCls}
+                      inputMode="numeric"
+                      value={f.gewerbeeinheiten}
+                      onChange={(e) => set("gewerbeeinheiten", e.target.value)}
+                      placeholder="z. B. 1"
+                    />
+                  </Field>
+                </>
+              )}
               {f.objektart !== "grundstueck" && (
                 <>
                   <Field label="Zimmer">
@@ -609,6 +690,12 @@ export function Calculator() {
                   ))}
                 </div>
               </div>
+            )}
+            {f.objektart === "mehrfamilienhaus" && (
+              <p className="text-xs text-faint">
+                Ertragswert-Ansatz: Wir schätzen aus Ihrer Jahresnettokaltmiete und einem regionalen
+                Vervielfältiger — eine grobe Heuristik, kein Ertragswertgutachten.
+              </p>
             )}
           </div>
         )}
@@ -745,16 +832,22 @@ function Result({ f, result, onReset, boris }: { f: FormState; result: Valuation
               </span>
             </div>
           )}
+          {f.objektart === "mehrfamilienhaus" && result.vervielfaeltiger != null && (
+            // .t-num-d nur auf dem Text-Span (s. Kommentar oben) — der äußere
+            // Flex-Wrapper bleibt unangetastet.
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted">
+              <span key={result.vervielfaeltiger} className="t-num-d">
+                Ertragswert: Jahresnettokaltmiete × {result.vervielfaeltiger}
+              </span>
+              <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                heuristische Schätzung
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {([
-            { k: "Preis / m²", v: formatEUR(result.pricePerSqm), icon: "euro" },
-            { k: "Vergleichsobjekte", v: `${result.comparables}`, icon: "layers" },
-            { k: "Markttrend", v: `+${result.trendPct} %`, icon: "trend" },
-            { k: "Mikrolage", v: `${result.mikrolage}/10`, icon: "compass" },
-            { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
-          ] as const).map((s) => (
+          {statTiles(result).map((s) => (
             <div key={s.k} className="rounded-xl border border-border bg-surface p-4 text-center">
               <div className="mb-2 flex justify-center text-accent">
                 <Icon name={s.icon} size={20} />
