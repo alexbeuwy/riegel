@@ -4,6 +4,7 @@ import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
 import { COVER_JPG_B64 } from "@/lib/report-assets/cover";
 import { HERO_RAYS_B64, GAUGE_B64, ICONS } from "@/lib/report-assets/visuals";
+import { BORIS_ATTRIBUTION } from "@/lib/boris";
 
 /**
  * Mehrseitiger RIEGEL-Marktwert-Report als PDF — als echtes Dokument aufgebaut:
@@ -31,6 +32,13 @@ export interface ReportData {
   dateLabel: string;
   /** Luftbild des Objekts (Base64-JPEG, Esri World Imagery an den Rechner-Koordinaten). */
   satelliteB64?: string;
+  /**
+   * Amtlicher Bodenrichtwert (BORIS-RLP) für die Objekt-Koordinaten, falls
+   * ermittelt (s. lib/boris.ts) — optional, da außerhalb RLP/bebauter Zonen
+   * kein Wert vorliegt (fail-soft). Rohwerte; `brw` bleibt Zahl, Zone/Stichtag
+   * laufen wie andere Freitextfelder durch den WinAnsi-Sanitizer.
+   */
+  bodenrichtwert?: { brw: number; stichtag: string; zone: string };
 }
 
 const BG = rgb(0.043, 0.043, 0.051);
@@ -94,6 +102,9 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
     city: input.city ? toWinAnsi(input.city) : input.city,
     postcode: input.postcode ? toWinAnsi(input.postcode) : input.postcode,
     objektartLabel: input.objektartLabel ? toWinAnsi(input.objektartLabel) : input.objektartLabel,
+    bodenrichtwert: input.bodenrichtwert
+      ? { ...input.bodenrichtwert, stichtag: toWinAnsi(input.bodenrichtwert.stichtag), zone: toWinAnsi(input.bodenrichtwert.zone) }
+      : input.bodenrichtwert,
   };
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
@@ -332,6 +343,9 @@ function drawValuation(ctx: Ctx, d: ReportData) {
     ["trend", "Markttrend (Lage)", d.value.trendPct != null ? `+${d.value.trendPct} % p.a.` : "–"],
     ["pin", "Mikrolage", d.value.mikrolage != null ? `${d.value.mikrolage}/10` : "–"],
     ["chart", "Daten-Konfidenz", d.value.confidence != null ? `${d.value.confidence} %` : "–"],
+    // Leerstring statt "–": section() überspringt die Zeile komplett, wenn
+    // für die Koordinaten kein amtlicher Wert ermittelt werden konnte.
+    ["tree", "Bodenrichtwert (amtl.)", d.bodenrichtwert ? `${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}` : ""],
   ], M + colW + 24);
 
   let yy = Math.min(a, b) - 8;
@@ -505,6 +519,12 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string) {
     "Dieser Marktwert-Report ist eine unverbindliche, datenbasierte Sofort-Einschätzung und stellt KEIN Verkehrswertgutachten im Sinne des § 194 BauGB und keine Rechts-, Steuer- oder Finanzierungsberatung dar. Die Berechnung beruht auf amtlichen Bodenrichtwerten, regionalen Vergleichsdaten und Erfahrungswerten; tatsächlich erzielbare Preise können — abhängig von Objektzustand, Ausstattung, Markt- und Verhandlungslage — abweichen. Eine Haftung für die Richtigkeit und Vollständigkeit der Angaben ist ausgeschlossen.",
     "Das dargestellte Luftbild stammt aus Esri World Imagery (u. a. Maxar) und dient ausschließlich der Veranschaulichung der Lage. Die im Report verarbeiteten Angaben wurden von Ihnen über den Online-Rechner bereitgestellt und werden gemäß unserer Datenschutzerklärung (riegel-immobilien.de/datenschutz) ausschließlich zur Bearbeitung Ihrer Anfrage verwendet. Sie können der Verarbeitung jederzeit widersprechen.",
   ];
+  if (d.bodenrichtwert) {
+    const stichtag = d.bodenrichtwert.stichtag ? `, Stichtag ${d.bodenrichtwert.stichtag}` : "";
+    disc.push(
+      `Bodenrichtwert (amtlich, BORIS-RLP${stichtag}): ${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"} — ein amtlicher Bodenwert des Gutachterausschusses, kein Objektpreis. ${BORIS_ATTRIBUTION}.`,
+    );
+  }
   for (const para of disc) {
     for (const l of wrap(para, ctx.reg, 8.5, w - 2 * M)) {
       t(l, M, y, 8.5, ctx.reg, FAINT);

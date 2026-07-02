@@ -269,7 +269,13 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
           <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-accent/30 bg-accent/[0.08] text-accent">
             <Icon name={heroIcon} size={22} />
           </span>
-          <h1 className="akira mt-5 text-3xl leading-[1.05] sm:text-5xl">{article.h1}</h1>
+          {/* Lange Komposita (Akira Expanded ist ein breiter Schriftschnitt) sprengen bei
+              fester text-3xl sonst den 390px-Viewport → clamp() statt Fixgröße + Silbentrennung
+              (lang="de" ist auf <html> gesetzt, s. layout.tsx) mit break-words als Fallback,
+              falls der Browser für ein Wort keine Trennstelle findet. */}
+          <h1 className="akira mt-5 text-[clamp(1.5rem,7.5vw,1.875rem)] leading-[1.05] hyphens-auto break-words sm:text-5xl">
+            {article.h1}
+          </h1>
           <p className="mt-6 text-lg leading-relaxed text-fg/90">{article.intro}</p>
 
           {facts.length >= 2 && (
@@ -284,7 +290,11 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
           )}
         </div>
 
-        <div className="mt-10 grid gap-12 lg:grid-cols-[1fr_280px]">
+        {/* grid-cols-1 (= minmax(0,1fr)) statt der impliziten auto-Spalte: sonst
+            zieht ein breites Kind (z. B. Tabellen mit min-w-[480px] weiter unten,
+            trotz ihres eigenen overflow-x-auto-Wrappers) die ganze Spalte und damit
+            den kompletten Viewport auf Mobile in die Breite (CSS-Grid-„Blowout"). */}
+        <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[1fr_280px]">
           <div className="max-w-[68ch]">
             {article.sections.map((s, i) => (
               <section key={i} id={`abschnitt-${i}`} className="mt-10 scroll-mt-24 first:mt-0">
@@ -326,7 +336,10 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
                   <span className="text-accent"><Icon name="layers" size={20} /></span>
                   {article.kind === "standort" ? "Standorte in der Nähe" : "Passende Ratgeber"}
                 </h2>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {/* grid-cols-1 explizit (statt impliziter auto-Spalte) — sonst zieht der
+                    ungetrunkierte Flex-Link-Titel (s. u.) die ganze Spalte/den Viewport
+                    in die Breite (identisches Grid-Blowout-Muster wie oben). */}
+                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {related.map((a) => {
                     const isStandort = a.kind === "standort";
                     const label = isStandort

@@ -4,6 +4,7 @@ import { buildReportPdf } from "@/lib/report-pdf";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
+import { fetchBodenrichtwert } from "@/lib/boris";
 
 // Nur beim HTML-Rendern escapen — PDF, DB, to/replyTo bekommen Rohwerte
 // (sonst landet „Müller &amp; Söhne" im Report und im CSV-Export).
@@ -128,23 +129,34 @@ export async function POST(req: Request) {
   const grundflaeche = bounded(b.grundflaeche, 20, 200000);
   const zimmer = bounded(b.zimmer, 1, 50);
   const baujahr = bounded(b.baujahr, 1800, 2030);
+  const lat = num(b.lat);
+  const lng = num(b.lng);
+
+  // Amtlichen Bodenrichtwert VOR der Nachrechnung laden (gleicher Cache wie
+  // /api/bodenrichtwert) — Client und Server nutzen dadurch dieselbe Zahl,
+  // PDF und Anzeige im Rechner widersprechen sich also nie. Fail-soft: bei
+  // null (Timeout, außerhalb RLP, …) rechnet estimateValue mit dem Modellwert.
+  const boris = lat != null && lng != null ? await fetchBodenrichtwert(lat, lng) : null;
 
   // Wert SERVERSEITIG nachrechnen (Kern der Engine ist deterministisch) —
   // Client-Zahlen werden nicht übernommen, sonst ließen sich per curl
   // offiziell aussehende RIEGEL-PDFs mit Fantasiewerten erzeugen.
-  const calc = estimateValue({
-    objektart,
-    ort: city,
-    plz: postcode,
-    wohnflaeche,
-    grundflaeche,
-    zimmer,
-    baujahr,
-    zustand,
-    qualitaet,
-    energieklasse: energieklasse || undefined,
-    ausstattung,
-  });
+  const calc = estimateValue(
+    {
+      objektart,
+      ort: city,
+      plz: postcode,
+      wohnflaeche,
+      grundflaeche,
+      zimmer,
+      baujahr,
+      zustand,
+      qualitaet,
+      energieklasse: energieklasse || undefined,
+      ausstattung,
+    },
+    { bodenrichtwert: boris?.brw ?? undefined },
+  );
   const { low, mid, high, pricePerSqm: perSqm } = calc;
   if (!mid || mid <= 0) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
@@ -187,7 +199,7 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
 </tr></table>`;
 
   // Luftbild des EINGEGEBENEN Objekts holen (Esri World Imagery, wie im Rechner).
-  const satelliteB64 = await fetchSatellite(num(b.lat), num(b.lng));
+  const satelliteB64 = await fetchSatellite(lat, lng);
 
   // PDF-Report bauen (markenkonform, dark) — als Anhang an Kunde & RIEGEL.
   let pdfBase64: string | null = null;
@@ -217,6 +229,7 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
         confidence,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
+      bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,
     });
   } catch (e) {
     console.error("[report] PDF-Erstellung fehlgeschlagen:", e);
@@ -272,8 +285,8 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       address: address || null,
       city: city || null,
       postcode: postcode || null,
-      lat: num(b.lat),
-      lng: num(b.lng),
+      lat,
+      lng,
       objektart,
       wohnflaeche: wohnflaeche ?? null,
       grundflaeche: grundflaeche ?? null,

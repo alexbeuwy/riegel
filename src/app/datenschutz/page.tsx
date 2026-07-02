@@ -240,6 +240,15 @@ export default function DatenschutzPage() {
               <strong>nicht</strong> an den Anbieter übermittelt. Rechtsgrundlage ist unser
               berechtigtes Interesse an einer funktionalen Adresssuche (Art. 6 Abs. 1 lit. f DSGVO).
             </p>
+            <p>
+              Für den Bewertungsrechner rufen wir zusätzlich den amtlichen Bodenrichtwert zur
+              bestätigten Objekt-Adresse beim Landesamt für Vermessung und Geobasisinformation
+              Rheinland-Pfalz (LVermGeo, Dienst „VBORIS") ab. Auch diese Abfrage läuft
+              ausschließlich serverseitig: Übermittelt werden nur die Objekt-Koordinaten, Ihre
+              IP-Adresse wird dabei <strong>nicht</strong> an den Anbieter weitergegeben.
+              Rechtsgrundlage ist unser berechtigtes Interesse an einer datenbasierten
+              Sofort-Einschätzung (Art. 6 Abs. 1 lit. f DSGVO).
+            </p>
 
             <h2 id="karten">14. Kartendarstellung (CARTO & Esri)</h2>
             <p>

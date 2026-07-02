@@ -204,3 +204,19 @@ export function alleMarktorte(): MarktOrt[] {
 export function marktort(slug: string): MarktOrt | undefined {
   return alleMarktorte().find((m) => m.slug === slug);
 }
+
+/**
+ * Marktort per Stadtnamen finden (z. B. `f.address.city` aus der
+ * OSM-Geokodierung im Rechner) — tolerant per Kleinschreibung/`includes` in
+ * beide Richtungen, da city-Strings aus der Adresssuche nicht immer exakt
+ * dem `ort`-Feld der Standort-Artikel entsprechen (z. B. Ortsteile). Ohne
+ * Treffer `undefined` → Aufrufer fällt auf sein bisheriges Verhalten zurück.
+ */
+export function marktortByOrt(city: string): MarktOrt | undefined {
+  const c = city.trim().toLowerCase();
+  if (!c) return undefined;
+  return alleMarktorte().find((m) => {
+    const name = m.name.toLowerCase();
+    return name === c || name.includes(c) || c.includes(name);
+  });
+}

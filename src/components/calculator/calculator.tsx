@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { Icon } from "@/components/icon";
@@ -17,6 +17,11 @@ import {
   type ValuationResult,
   type Zustand,
 } from "@/lib/valuation";
+import { marktortByOrt, type MarktOrt } from "@/lib/marktdaten";
+// Nur der Typ — der Client ruft NIE lib/boris.ts direkt, sondern immer den
+// Server-Proxy /api/bodenrichtwert (s. u.). Type-only Import fällt beim
+// Build komplett weg, zieht also kein Server-Modul ins Client-Bundle.
+import type { Bodenrichtwert } from "@/lib/boris";
 import { ReportRequest } from "@/components/calculator/report-request";
 
 const LocationMap = dynamic(
@@ -27,6 +32,24 @@ const LocationMap = dynamic(
 type Phase = "form" | "analyzing" | "result";
 const ENERGIE = ["A+", "A", "B", "C", "D", "E", "F", "G", "H"];
 const STEP_LABELS = ["Objektart", "Standort", "Eckdaten"];
+
+/** Ladezustand der amtlichen Bodenrichtwert-Abfrage (/api/bodenrichtwert). */
+interface BorisState {
+  loading: boolean;
+  data: Bodenrichtwert | null;
+  attribution: string | null;
+}
+const BORIS_EMPTY: BorisState = { loading: false, data: null, attribution: null };
+
+const nfDE = new Intl.NumberFormat("de-DE");
+
+/** Textstufe der Nachfrage aus dem 1–10-Score in marktdaten.ts. */
+function nachfrageLabel(score: number): string {
+  if (score >= 8) return "sehr hohe Nachfrage";
+  if (score >= 6) return "hohe Nachfrage";
+  if (score >= 4) return "moderate Nachfrage";
+  return "verhaltene Nachfrage";
+}
 
 interface FormState {
   objektart: Objektart;
@@ -65,14 +88,70 @@ const OBJEKTARTEN: { key: Objektart; label: string; icon: React.ReactNode }[] = 
   { key: "gewerbe", label: "Gewerbe", icon: <path d="M3 21V8l6-3v4l6-3v4l6-3v14M8 21v-4M16 21v-4" /> },
 ];
 
-const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: FormState) => string }[] = [
+/**
+ * Zusatz-Kontext für die SOURCES-Zeilen: amtlicher BORIS-Ladezustand +
+ * passender Marktort (falls die eingegebene Stadt einen unserer
+ * Preisatlas-Standorte trifft — s. marktortByOrt in lib/marktdaten.ts).
+ * Ohne Treffer/Daten fällt jede Zeile auf ihr bisheriges Verhalten zurück.
+ */
+interface SourceCtx {
+  boris: BorisState;
+  markt?: MarktOrt;
+}
+
+const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: FormState, ctx: SourceCtx) => React.ReactNode }[] = [
   { label: "Adresse & Mikrolage", sub: "Geokoordinaten werden lokalisiert", value: (_r, f) => f.address?.city || "bestätigt" },
-  { label: "Amtliche Bodenrichtwerte (BORIS)", sub: "Zonenwerte werden abgeglichen", value: (r) => `${r.bodenrichtwert} €/m²` },
-  { label: "Vergleichspreise (Kaufpreissammlung)", sub: "Transaktionen werden gewichtet", value: (r) => `${r.comparables} Objekte` },
+  {
+    label: "Amtliche Bodenrichtwerte (BORIS)",
+    sub: "Zonenwerte werden abgeglichen",
+    value: (r, _f, ctx) => {
+      const b = ctx.boris.data;
+      if (!b) return `${r.bodenrichtwert} €/m²`;
+      // .t-num-d ist unlayered CSS und überschreibt `display` von Flex-Utilities
+      // (s. Kommentar bei .t-success-check) — daher nur auf den Text-Span,
+      // nicht auf den Flex-Wrapper, der Text + Badge nebeneinander hält.
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          <span key={`${b.brw}-${b.zone}`} className="t-num-d">
+            {`${b.brw} €/m²${b.zone ? ` · Zone ${b.zone}` : ""}`}
+          </span>
+          <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+            amtlich
+          </span>
+        </span>
+      );
+    },
+  },
+  {
+    label: "Vergleichspreise (Kaufpreissammlung)",
+    sub: "Transaktionen werden gewichtet",
+    // Bei Treffer: reale Preisspanne des Marktorts (Wohnung/Haus) statt der
+    // zufälligen Objektzahl aus dem Ergebnis.
+    value: (r, f, ctx) => {
+      const m = ctx.markt;
+      if (!m) return `${r.comparables} Objekte`;
+      const spanne = f.objektart === "haus" ? m.haus : m.wohnung;
+      return `${nfDE.format(spanne.min)}–${nfDE.format(spanne.max)} €/m²`;
+    },
+  },
   { label: "Aktuelle Angebotspreise", sub: "Portale werden ausgewertet", value: (r) => `${r.comparables * 2} Inserate` },
-  { label: "Marktpreis-Index (12 Monate)", sub: "Preistrend wird berechnet", value: (r) => `+${r.trendPct} % p.a.` },
-  { label: "Lage- & Infrastruktur-Score", sub: "Schulen, ÖPNV, Versorgung", value: (r) => `${r.mikrolage}/10` },
-  { label: "Demografie & Nachfrage", sub: "Nachfrageindex der Region", value: () => "hohe Nachfrage" },
+  {
+    label: "Marktpreis-Index (12 Monate)",
+    sub: "Preistrend wird berechnet",
+    value: (r, _f, ctx) => `+${ctx.markt ? ctx.markt.trendYoyPct : r.trendPct} % p.a.`,
+  },
+  {
+    label: "Lage- & Infrastruktur-Score",
+    sub: "Schulen, ÖPNV, Versorgung",
+    // marktdaten führt keinen eigenen Mikrolage-Wert — der Nachfrage-Score
+    // (1–10, ebenfalls lage-getrieben) ist der nächstliegende Stellvertreter.
+    value: (r, _f, ctx) => `${ctx.markt ? ctx.markt.nachfrage : r.mikrolage}/10`,
+  },
+  {
+    label: "Demografie & Nachfrage",
+    sub: "Nachfrageindex der Region",
+    value: (_r, _f, ctx) => (ctx.markt ? nachfrageLabel(ctx.markt.nachfrage) : "hohe Nachfrage"),
+  },
   { label: "Zins- & Renditeumfeld", sub: "Finanzierungskonditionen", value: (r) => `${r.rentYieldPct} % Rendite` },
   { label: "Objekt-Faktoren", sub: "Baujahr, Zustand, Qualität", value: (_r, f) => f.qualitaet },
   { label: "Eigene Transaktionsdatenbank", sub: "Riegel-Referenzobjekte", value: (r) => `${Math.round(r.comparables * 0.6)} Datensätze` },
@@ -120,6 +199,28 @@ export function Calculator() {
   const [errorNonce, setErrorNonce] = useState(0);
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [revealed, setRevealed] = useState(0);
+  const [boris, setBoris] = useState<BorisState>(BORIS_EMPTY);
+  // Läuft parallel zur Analyzing-Animation; bei Unmount/Reset/neuer Analyse
+  // wird die jeweils vorherige Abfrage abgebrochen.
+  const borisAbort = useRef<AbortController | null>(null);
+  // Für den Override-Merge, sobald der amtliche Wert eintrifft (s. u.).
+  const lastInputRef = useRef<ValuationInput | null>(null);
+
+  useEffect(() => () => borisAbort.current?.abort(), []);
+
+  // Amtlicher BORIS-Wert trifft (ggf. erst nach der Analyzing-Phase) ein:
+  // NUR die bodenwertabhängigen Felder neu berechnen und einmischen — die
+  // übrigen (zufälligen) Kennzahlen bleiben unverändert, sonst „springt"
+  // das Ergebnis beim Nachladen unnötig.
+  useEffect(() => {
+    if (!boris.data || !lastInputRef.current) return;
+    const override = estimateValue(lastInputRef.current, { bodenrichtwert: boris.data.brw });
+    setResult((prev) =>
+      prev
+        ? { ...prev, low: override.low, mid: override.mid, high: override.high, pricePerSqm: override.pricePerSqm, bodenrichtwert: override.bodenrichtwert }
+        : prev,
+    );
+  }, [boris.data]);
 
   // Adresse aus der URL übernehmen (Hero-Schnelleinstieg → direkt mit Satellit).
   useEffect(() => {
@@ -234,9 +335,29 @@ export function Calculator() {
       energieklasse: f.energieklasse || undefined,
       ausstattung: f.ausstattung,
     };
+    lastInputRef.current = input;
     setResult(estimateValue(input));
     setRevealed(0);
     setPhase("analyzing");
+
+    // Amtlichen Bodenrichtwert parallel zur Analyse-Animation laden — nur
+    // mit Koordinaten möglich, sonst bleibt es beim Modellwert.
+    borisAbort.current?.abort();
+    if (input.lat != null && input.lng != null) {
+      const ctrl = new AbortController();
+      borisAbort.current = ctrl;
+      setBoris({ loading: true, data: null, attribution: null });
+      fetch(`/api/bodenrichtwert?lat=${input.lat}&lng=${input.lng}`, { signal: ctrl.signal })
+        .then((res) => res.json())
+        .then((json: { ok?: boolean; data?: Bodenrichtwert | null; attribution?: string }) => {
+          setBoris({ loading: false, data: json?.data ?? null, attribution: json?.attribution ?? null });
+        })
+        .catch(() => {
+          if (!ctrl.signal.aborted) setBoris({ loading: false, data: null, attribution: null });
+        });
+    } else {
+      setBoris(BORIS_EMPTY);
+    }
   }
 
   useEffect(() => {
@@ -256,6 +377,9 @@ export function Calculator() {
   }, [phase]);
 
   function reset() {
+    borisAbort.current?.abort();
+    lastInputRef.current = null;
+    setBoris(BORIS_EMPTY);
     setF(EMPTY);
     setStep(0);
     setResult(null);
@@ -264,8 +388,8 @@ export function Calculator() {
     setPhase("form");
   }
 
-  if (phase === "analyzing") return <Analyzing f={f} result={result} revealed={revealed} />;
-  if (phase === "result" && result) return <Result f={f} result={result} onReset={reset} />;
+  if (phase === "analyzing") return <Analyzing f={f} result={result} revealed={revealed} boris={boris} />;
+  if (phase === "result" && result) return <Result f={f} result={result} onReset={reset} boris={boris} />;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -509,8 +633,12 @@ export function Calculator() {
   );
 }
 
-function Analyzing({ f, result, revealed }: { f: FormState; result: ValuationResult | null; revealed: number }) {
+function Analyzing({ f, result, revealed, boris }: { f: FormState; result: ValuationResult | null; revealed: number; boris: BorisState }) {
   const pct = Math.round((revealed / SOURCES.length) * 100);
+  // Passenden Preisatlas-Standort einmal pro Adresse ermitteln (statt in
+  // jeder SOURCES-Zeile neu) — s. marktortByOrt in lib/marktdaten.ts.
+  const markt = useMemo(() => marktortByOrt(f.address?.city ?? ""), [f.address?.city]);
+  const ctx: SourceCtx = { boris, markt };
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border" role="status" aria-live="polite" aria-busy={pct < 100}>
       {/* Eine aggregierte Live-Ansage statt jeder einzelnen Quelle (nicht zu gesprächig). */}
@@ -545,7 +673,7 @@ function Analyzing({ f, result, revealed }: { f: FormState; result: ValuationRes
                     {active && <div className="text-xs text-faint">{s.sub} …</div>}
                   </div>
                 </div>
-                {done && result && <span className="text-sm text-accent">{s.value(result, f)}</span>}
+                {done && result && <span className="text-sm text-accent">{s.value(result, f, ctx)}</span>}
               </div>
             );
           })}
@@ -560,9 +688,10 @@ function Analyzing({ f, result, revealed }: { f: FormState; result: ValuationRes
   );
 }
 
-function Result({ f, result, onReset }: { f: FormState; result: ValuationResult; onReset: () => void }) {
+function Result({ f, result, onReset, boris }: { f: FormState; result: ValuationResult; onReset: () => void; boris: BorisState }) {
   const mid = useCountUp(result.mid, true);
   const rangePos = result.high > result.low ? ((result.mid - result.low) / (result.high - result.low)) * 100 : 50;
+  const b = boris.data;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border">
@@ -593,6 +722,18 @@ function Result({ f, result, onReset }: { f: FormState; result: ValuationResult;
               style={{ left: `${8 + rangePos * 0.84}%` }}
             />
           </div>
+          {b && (
+            // .t-num-d nur auf dem Text-Span (s. Kommentar in SOURCES oben) —
+            // der äußere Flex-Wrapper bleibt unangetastet.
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted">
+              <span key={`${b.brw}-${b.zone}`} className="t-num-d">
+                Bodenrichtwert {b.brw} €/m²{b.zone ? ` · Zone ${b.zone}` : ""}
+              </span>
+              <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                amtlich · BORIS-RLP
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -635,6 +776,7 @@ function Result({ f, result, onReset }: { f: FormState; result: ValuationResult;
         <p className="mt-6 text-center text-xs text-faint">
           Unverbindliche, datenbasierte Schätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
           Satellit © Esri · Adressdaten © OpenStreetMap.
+          {b && boris.attribution ? ` · ${boris.attribution}` : ""}
         </p>
       </div>
     </div>

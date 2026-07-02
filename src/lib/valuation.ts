@@ -89,8 +89,19 @@ export function regionKey(ort: string): string {
   return "";
 }
 
-export function estimateValue(input: ValuationInput): ValuationResult {
+export interface EstimateOptions {
+  /**
+   * Amtlicher Bodenrichtwert (€/m², z. B. von BORIS-RLP), ersetzt den
+   * regionalen Modellwert `r.boden` in der Grundstücks-/Haus-Bodenanteil-
+   * Rechnung UND im zurückgegebenen `bodenrichtwert`-Feld. Optional —
+   * bestehende Aufrufe ohne `opts` bleiben unverändert gültig.
+   */
+  bodenrichtwert?: number;
+}
+
+export function estimateValue(input: ValuationInput, opts?: EstimateOptions): ValuationResult {
   const r = REGIONS[regionKey(input.ort)] ?? DEFAULT_REGION;
+  const boden = opts?.bodenrichtwert ?? r.boden;
   const ausstBonus = Math.min(input.ausstattung.length * 0.012, 0.08);
   const bf = baujahrFactor(input.baujahr);
   const zf = ZUSTAND_FACTOR[input.zustand];
@@ -101,14 +112,14 @@ export function estimateValue(input: ValuationInput): ValuationResult {
   let mid: number;
 
   if (input.objektart === "grundstueck") {
-    pricePerSqm = Math.round(r.boden * (1 + ausstBonus) * OPTIMISM);
+    pricePerSqm = Math.round(boden * (1 + ausstBonus) * OPTIMISM);
     mid = pricePerSqm * (input.grundflaeche ?? 0);
   } else {
     const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
     pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM);
     mid = pricePerSqm * (input.wohnflaeche ?? 0);
     if (input.objektart === "haus" && input.grundflaeche) {
-      mid += Math.round(r.boden * 0.6 * input.grundflaeche);
+      mid += Math.round(boden * 0.6 * input.grundflaeche);
     }
   }
 
@@ -132,7 +143,7 @@ export function estimateValue(input: ValuationInput): ValuationResult {
     comparables: 48 + Math.floor(Math.random() * 110),
     confidence: 85 + Math.floor(Math.random() * 11),
     trendPct: Math.round((3 + Math.random() * 3.6) * 10) / 10,
-    bodenrichtwert: r.boden,
+    bodenrichtwert: boden,
     mikrolage: Math.round((7.2 + Math.random() * 2.4) * 10) / 10,
     rentYieldPct: Math.round((2.8 + Math.random() * 1.6) * 10) / 10,
     factors,

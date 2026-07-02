@@ -44,6 +44,13 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     line-height: 1.6;
+    /* Sicherheitsnetz gegen horizontalen Mobile-Overflow (z. B. ein einzelnes
+       nicht umbrechbares Wort oder ein zu breiter Tooltip): clip statt hidden,
+       weil clip keinen eigenen Scroll-Container erzeugt und dadurch sticky
+       (Header) sowie fixed (WhatsApp-FAB, Consent-Banner) unangetastet lässt
+       (verifiziert per Screenshot). Ersetzt NICHT die Root-Cause-Fixes an den
+       einzelnen Komponenten, fängt nur unbekannte Restfälle ab. */
+    overflow-x: clip;
   }
   ::selection {
     background: var(--color-accent);
@@ -321,7 +328,14 @@
   background: var(--tt-bg);
   color: var(--tt-fg);
   font-size: 0.75rem;
-  white-space: nowrap;
+  /* white-space:nowrap (Skill-Default) passt nur für Ein-Wort-Tooltips (z. B.
+     Footer-Social-Icons). Für längere Hinweistexte (z. B. Bodenrichtwert-Tooltip
+     im Preisatlas) sonst ungebremste Breite → sprengt auf 390px selbst dann den
+     Viewport, wenn der Tooltip unsichtbar ist (opacity:0 hat weiter reale Geometrie).
+     Deshalb Umbruch + Deckel statt fixer nowrap-Breite. */
+  max-width: min(16rem, calc(100vw - 2rem));
+  white-space: normal;
+  text-align: center;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 4px 24px 0 rgba(0, 0, 0, 0.5);
