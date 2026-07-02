@@ -111,3 +111,17 @@ end; $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users for each row execute function public.handle_new_user();
+
+-- 6) Site-Settings (Key-Value) — z. B. austauschbares Hero-Bild über /intern.
+-- Öffentlich LESBAR (enthält nur CDN-URLs, keine sensiblen Daten), aber NUR
+-- service_role darf schreiben (keine insert/update-Policy für anon/authenticated
+-- → /api/intern/hero-image ist der einzige Schreibweg, hinter dem Admin-Passwort).
+create table if not exists public.site_settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz default now()
+);
+alter table public.site_settings enable row level security;
+drop policy if exists "read site settings" on public.site_settings;
+create policy "read site settings" on public.site_settings
+  for select using (true);

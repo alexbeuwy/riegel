@@ -20,6 +20,8 @@ import { TrustStrip } from "@/components/trust-strip";
 import { Testimonials } from "@/components/testimonials";
 import { PreisatlasTeaser } from "@/components/preisatlas-teaser";
 import { TESTIMONIALS, TRUST_PLATFORMS } from "@/lib/trust-data";
+import { getSiteSetting } from "@/lib/site-settings";
+import { HERO_IMAGE_KEY } from "@/lib/site-settings-keys";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -65,7 +67,12 @@ const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["n
   { value: "2", label: "Standorte — Speyer & Ludwigshafen", icon: "pin" },
 ];
 
-export default function HomePage() {
+// ISR-Fallback: falls revalidatePath() aus /api/intern/hero-image ausnahmsweise
+// nicht durchkommt, veraltet die Seite trotzdem nach spätestens 5 Minuten nicht dauerhaft.
+export const revalidate = 300;
+
+export default async function HomePage() {
+  const heroImage = await getSiteSetting(HERO_IMAGE_KEY, photos.heroKitchenDark);
   return (
     <>
       <script
@@ -82,22 +89,20 @@ export default function HomePage() {
           }),
         }}
       />
-      {/* ───────── Block 1 · Hero (Foto: Model in Wohnung, blaues Licht) ───────── */}
+      {/* ───────── Block 1 · Hero (Foto: Mann mit iPad, Küche, abgedunkelte Fassung) ───────── */}
       <section className="relative flex min-h-[88svh] items-center overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <Image
-            src={photos.modelWohnung}
-            alt="Premium-Wohnraum mit blauem Lichtakzent — RIEGEL Immobilien"
+            src={heroImage}
+            alt="Immobilienberatung mit iPad in der Küche, blaues Licht — RIEGEL Immobilien"
             fill
             priority
             sizes="100vw"
-            className="object-cover object-[75%_center]"
+            className="object-cover object-center"
           />
-          {/* Motiv ist links bereits natürlich dunkel/leer (Textspalte) und
-              rechts das Subjekt/der Raum — Gradienten daher dezenter als bei
-              helleren Motiven. Unten weicher Übergang in die Folge-Sektion. */}
-          <div className="absolute inset-0 bg-gradient-to-r from-bg/80 via-bg/25 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-bg/70 via-transparent to-bg/20" />
+          {/* Foto ist bereits vorab abgedunkelt — Overlay bewusst leicht. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-bg/70 via-bg/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-bg/65 via-transparent to-bg/15" />
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent" />
         </div>
         <Container className="relative z-10 py-24 sm:py-28">

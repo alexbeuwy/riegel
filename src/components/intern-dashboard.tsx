@@ -37,7 +37,13 @@ interface LeadRow {
   message?: string;
 }
 
-type Tab = "overview" | "reports" | "leads" | "objekte";
+type Tab = "overview" | "reports" | "leads" | "objekte" | "medien";
+
+interface BunnyImage {
+  name: string;
+  url: string;
+  lastChanged?: string;
+}
 
 const fmtDate = (iso: string) => {
   try {
@@ -213,6 +219,75 @@ export function InternDashboard() {
   const [lQuery, setLQuery] = useState("");
   const [lKind, setLKind] = useState("all");
 
+  const [heroImages, setHeroImages] = useState<BunnyImage[] | null>(null);
+  const [heroCurrent, setHeroCurrent] = useState<string>("");
+  const [heroBusy, setHeroBusy] = useState(false);
+  const [heroError, setHeroError] = useState<string | null>(null);
+  const [heroMsg, setHeroMsg] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  async function loadHeroImages() {
+    setHeroBusy(true);
+    setHeroError(null);
+    try {
+      const res = await fetch("/api/intern/hero-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "list" }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setHeroImages(json.images ?? []);
+      setHeroCurrent(json.current ?? "");
+    } catch (e) {
+      setHeroError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setHeroBusy(false);
+    }
+  }
+
+  async function selectHeroImage(url: string) {
+    setHeroBusy(true);
+    setHeroError(null);
+    setHeroMsg(null);
+    try {
+      const res = await fetch("/api/intern/hero-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "select", url }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setHeroCurrent(url);
+      setHeroMsg("Hero-Bild aktualisiert — die Startseite zeigt es jetzt live.");
+    } catch (e) {
+      setHeroError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setHeroBusy(false);
+    }
+  }
+
+  async function uploadHeroFile(file: File) {
+    setHeroBusy(true);
+    setHeroError(null);
+    setHeroMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("password", password);
+      fd.append("file", file);
+      const res = await fetch("/api/intern/hero-image", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setHeroCurrent(json.image.url);
+      setHeroImages((prev) => [json.image, ...(prev ?? [])]);
+      setHeroMsg("Bild hochgeladen und als Hero-Bild aktiviert — die Startseite zeigt es jetzt live.");
+    } catch (e) {
+      setHeroError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setHeroBusy(false);
+    }
+  }
+
   async function load() {
     if (!password.trim()) {
       setError("Bitte Passwort eingeben.");
@@ -327,6 +402,7 @@ export function InternDashboard() {
     { key: "reports", label: "Reports", icon: "doc", n: stats?.reports },
     { key: "leads", label: "Anfragen", icon: "calendar", n: stats?.leads },
     { key: "objekte", label: "Objekte", icon: "building" },
+    { key: "medien", label: "Medien", icon: "layers" },
   ];
 
   return (
@@ -654,6 +730,116 @@ export function InternDashboard() {
               </div>
             </div>
             <p className="text-xs text-faint">Beispielhafte Vorschau — echte Objekte erscheinen nach Anbindung der OnOffice-API.</p>
+          </div>
+        )}
+
+        {/* ── Medien: Hero-Bild der Startseite per Klick oder Drag & Drop tauschen ── */}
+        {tab === "medien" && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 p-6">
+              <div>
+                <h2 className="text-lg font-semibold text-fg">Hero-Bild der Startseite</h2>
+                <p className="mt-1 max-w-2xl text-sm text-muted">
+                  Bild per Klick aus dem BunnyCDN-Storage auswählen oder eine neue Datei per
+                  Drag &amp; Drop hochladen. Die Änderung ist sofort auf der Startseite live.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadHeroImages}
+                disabled={heroBusy}
+                className="press inline-flex shrink-0 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-fg hover:border-accent hover:text-accent disabled:opacity-60"
+              >
+                <Icon name="search" size={15} /> {heroImages ? "Aktualisieren" : "Bilder laden"}
+              </button>
+            </div>
+
+            {heroError && (
+              <p className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
+                {heroError}
+              </p>
+            )}
+            {heroMsg && (
+              <p className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-fg">{heroMsg}</p>
+            )}
+
+            {/* Drag & Drop-Zone */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) uploadHeroFile(file);
+              }}
+              className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+                dragOver ? "border-accent bg-accent/5" : "border-border"
+              }`}
+            >
+              <Icon name="layers" size={28} className={dragOver ? "text-accent" : "text-faint"} />
+              <p className="text-sm text-muted">
+                Bild hierher ziehen — oder{" "}
+                <label className="cursor-pointer text-accent hover:underline">
+                  Datei auswählen
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadHeroFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </p>
+              <p className="text-xs text-faint">JPG, PNG oder WebP · max. 20 MB</p>
+              {heroBusy && <p className="text-xs text-accent">Wird verarbeitet …</p>}
+            </div>
+
+            {/* Vorhandene Bilder zum Auswählen */}
+            {heroImages && (
+              <div>
+                <div className="mb-3 text-xs uppercase tracking-wide text-faint">
+                  Vorhandene Bilder ({heroImages.length}) — anklicken zum Übernehmen
+                </div>
+                {heroImages.length === 0 ? (
+                  <p className="text-sm text-muted">Keine Bilder im Storage gefunden.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    {heroImages.map((img) => {
+                      const active = img.url === heroCurrent;
+                      return (
+                        <button
+                          key={img.name}
+                          type="button"
+                          onClick={() => selectHeroImage(img.url)}
+                          disabled={heroBusy}
+                          className={`group relative aspect-[4/3] overflow-hidden rounded-xl border-2 text-left transition-colors disabled:opacity-60 ${
+                            active ? "border-accent" : "border-border hover:border-accent/50"
+                          }`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- Admin-Vorschau, dynamische Fremd-Liste, next/image lohnt hier nicht */}
+                          <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
+                          <span className="absolute inset-x-0 bottom-0 truncate bg-bg/80 px-2 py-1 text-[0.65rem] text-fg">
+                            {img.name}
+                          </span>
+                          {active && (
+                            <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-on-accent">
+                              <Icon name="check" size={13} />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Container>

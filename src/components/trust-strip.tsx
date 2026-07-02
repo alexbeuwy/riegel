@@ -10,9 +10,13 @@ function Stars({ rating, max }: { rating: number; max: number }) {
   const pct = Math.round((rating / max) * 5 * 20); // auf 5-Sterne-Skala normiert, in %
   return (
     <span className="relative inline-flex" aria-hidden>
+      {/* Beide Ebenen MÜSSEN denselben fill-Stil haben (hier: beide gefüllt) —
+          sonst hat die Outline-Ebene eine andere Silhouette als die gefüllte
+          Ebene (Stroke+Fill wirkt kräftiger/breiter als Stroke allein) und
+          beide liegen sichtbar nicht bündig übereinander. */}
       <span className="flex text-faint">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Icon key={i} name="star" size={13} />
+          <Icon key={i} name="star" size={13} fill="currentColor" />
         ))}
       </span>
       <span

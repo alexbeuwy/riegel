@@ -44,24 +44,69 @@ function inline(text: string, keyBase: string): React.ReactNode[] {
   return out;
 }
 
-/* Deutsche Zahl(en) aus einer Tabellenzelle → Mittelwert (für Balken-Chart). */
-function cellNumber(cell: string): number | null {
+/* ---------- Tabelle (Pipe-Markdown) → Premium-Tabelle + optionaler Balken-Chart ----------
+   Der Chart braucht eine SPALTE mit einer einzigen, eindeutigen Einheit (€, %, m² oder
+   einer Zeitdauer) — sonst entstehen Geister-Werte: eine Telefonnummer oder ein "Q1 2026"
+   ergeben durchs bloße Ziffern-Regex einen Zahlenwert, der aber nichts Vergleichbares misst.
+   Daher: cellMetric() akzeptiert eine Zelle NUR mit erkennbarem Einheiten-Signal, und
+   pickChartColumn() wählt die best-geeignete Spalte statt blind die letzte zu nehmen. */
+type Unit = "eur" | "pct" | "m2" | "days";
+
+const DURATION_UNITS: [RegExp, number][] = [
+  [/\bstd\.?\b|\bstunden?\b/i, 1 / 24],
+  [/\btage?\b/i, 1],
+  [/\bwochen?\b/i, 7],
+  [/\bmonate?\b/i, 30],
+  [/\bjahre?\b/i, 365],
+];
+
+function cellMetric(cell: string): { val: number; unit: Unit } | null {
   const nums = cell.match(/\d[\d.]*(?:,\d+)?/g);
   if (!nums) return null;
   const vals = nums.map((n) => Number(n.replace(/\./g, "").replace(",", "."))).filter((v) => Number.isFinite(v) && v > 0);
   if (!vals.length) return null;
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length; // Range-Zelle ("2.700–3.000 €") → Mittelwert
+  if (/€/.test(cell)) return { val: avg, unit: "eur" };
+  if (/%/.test(cell)) return { val: avg, unit: "pct" };
+  if (/m²/.test(cell)) return { val: avg, unit: "m2" };
+  for (const [re, factor] of DURATION_UNITS) {
+    if (re.test(cell)) return { val: avg * factor, unit: "days" }; // auf Tage normiert, sonst sind "3 Wochen" vs. "75 Tage" nicht vergleichbar
+  }
+  return null; // kein Einheiten-Signal → keine Chart-Zahl (verhindert Telefonnummern/Jahreszahlen/Quartale als Werte)
 }
+
 const splitRow = (line: string) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
 
-/* ---------- Tabelle (Pipe-Markdown) → Premium-Tabelle + optionaler Balken-Chart ---------- */
+/** Wählt die am besten geeignete Wertespalte (nicht blind die letzte): mind. 2 Werte,
+ *  mind. 60 % der Zeilen abgedeckt, eine einzige Einheit — sonst kein Chart statt eines
+ *  falschen/lückenhaften. */
+function pickChartColumn(
+  header: string[],
+  rows: string[][],
+): { colIdx: number; unitLabel: string; chart: { label: string; val: number }[] } | null {
+  let best: { colIdx: number; unitLabel: string; chart: { label: string; val: number }[] } | null = null;
+  for (let col = 1; col < header.length; col++) {
+    const parsed = rows.map((r) => ({ label: r[0], metric: cellMetric(r[col] ?? "") }));
+    const withVal = parsed.filter((p) => p.metric != null) as { label: string; metric: { val: number; unit: Unit } }[];
+    if (withVal.length < 2 || withVal.length / rows.length < 0.6) continue;
+    const units = new Set(withVal.map((p) => p.metric.unit));
+    if (units.size > 1) continue; // gemischte Einheiten in derselben Spalte → nicht vergleichbar
+    if (!best || withVal.length >= best.chart.length) {
+      best = { colIdx: col, unitLabel: header[col], chart: withVal.map((p) => ({ label: p.label, val: p.metric.val })) };
+    }
+  }
+  return best;
+}
+
 function TableBlock({ lines, kb }: { lines: string[]; kb: string }) {
   const header = splitRow(lines[0]);
   const rows = lines.slice(2).map(splitRow).filter((r) => r.some((c) => c.length > 0));
-  const lastIdx = header.length - 1;
-  const chart = rows
-    .map((r) => ({ label: r[0], val: cellNumber(r[lastIdx] ?? "") }))
-    .filter((x) => x.val != null) as { label: string; val: number }[];
+  // Rechenschritt-Tabellen (Zeilen mit −/=/+-Präfix, z. B. Verkaufspreis − Kosten = Gewinn):
+  // ein flacher Größenvergleichs-Balken ist hier irreführend (die Tabelle selbst erklärt die
+  // Rechnung bereits klar) — deshalb bewusst kein Chart für dieses Muster.
+  const isWaterfall = rows.filter((r) => /^[−\-=+]/.test(r[0]?.trim() ?? "")).length >= 2;
+  const picked = isWaterfall ? null : pickChartColumn(header, rows);
+  const chart = picked?.chart ?? [];
   const max = chart.length ? Math.max(...chart.map((c) => c.val)) : 0;
 
   return (
@@ -91,7 +136,7 @@ function TableBlock({ lines, kb }: { lines: string[]; kb: string }) {
         <div className="mt-4 rounded-xl border border-border bg-surface p-5">
           <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-faint">
             <Icon name="chart" size={14} className="text-accent" />
-            {header[lastIdx]}
+            {picked!.unitLabel}
           </div>
           <div className="space-y-2.5">
             {chart.map((c, ci) => (

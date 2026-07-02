@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createHash, timingSafeEqual } from "crypto";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { checkAdminPassword } from "@/lib/admin-auth";
 
 /**
  * Internes Lead-Dashboard-Backend. Liest Bewertungs-Reports + Termin-/Kontakt-Leads
@@ -10,9 +10,6 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
  * plus NEXT_PUBLIC_SUPABASE_URL.
  * Fehlermeldungen bleiben nach außen generisch — Details nur in den Logs.
  */
-
-// SHA-256 beider Seiten → gleiche Länge, damit timingSafeEqual nutzbar ist.
-const sha256 = (s: string) => createHash("sha256").update(s).digest();
 
 export async function POST(req: Request) {
   if (!rateLimit(`intern:${clientIp(req)}`, 10, 10 * 60_000)) {
@@ -29,15 +26,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
 
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) {
-    console.error("[intern] ADMIN_PASSWORD ist nicht gesetzt.");
-    return NextResponse.json({ ok: false, error: "Zugriff derzeit nicht möglich." }, { status: 503 });
-  }
-  const given = String(b.password ?? "");
-  if (!given || !timingSafeEqual(sha256(given), sha256(expected))) {
-    return NextResponse.json({ ok: false, error: "Zugriff verweigert." }, { status: 401 });
-  }
+  const auth = checkAdminPassword(b.password);
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

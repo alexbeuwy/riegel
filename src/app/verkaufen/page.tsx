@@ -51,18 +51,18 @@ const steps: { n: string; icon: IconName; title: string; text: string }[] = [
 export default function VerkaufenPage() {
   return (
     <>
-      {/* Hero — Foto-Hintergrund (Mann mit iPad, Küche, abgedunkelte Fassung) */}
+      {/* Hero — Foto-Hintergrund (Model in Wohnung, blaues Licht) */}
       <section className="relative overflow-hidden border-b border-border pb-16 pt-36">
         <div className="absolute inset-0 -z-10">
           <Image
-            src={photos.heroKitchenDark}
-            alt="Immobilienberatung mit iPad — Riegel Immobilien"
+            src={photos.modelWohnung}
+            alt="Premium-Wohnraum mit blauem Lichtakzent — Riegel Immobilien"
             fill
             priority
             sizes="100vw"
-            className="object-cover object-center"
+            className="object-cover object-[75%_center]"
           />
-          {/* Foto ist bereits abgedunkelt — Overlay bewusst leicht. */}
+          {/* Foto ist bereits dunkel — Overlay bewusst leicht. */}
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/50 to-bg/15" />
           <div className="absolute inset-0 bg-gradient-to-r from-bg/55 via-bg/10 to-transparent" />
         </div>
