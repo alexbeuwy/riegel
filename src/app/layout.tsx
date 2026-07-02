@@ -9,6 +9,7 @@ import { FavoritesProvider } from "@/components/favorites";
 import { SavedSearchesProvider } from "@/components/saved-searches";
 import { AuthProvider } from "@/components/auth";
 import { ConsentProvider } from "@/components/consent";
+import { TRUST_PLATFORMS } from "@/lib/trust-data";
 import "./globals.css";
 
 // Money-Keyword in den Default-Title (Startseite); Unterseiten via Template.
@@ -88,7 +89,26 @@ const orgJsonLd = {
       longitude: i === 0 ? 8.4313 : 8.4453,
     },
   })),
-  sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube, site.socials.linkedin].filter(Boolean),
+  // Bewertungsprofile als Entity-Verknüpfung (sameAs) — bewusst KEIN aggregateRating-
+  // Markup mit Fremdplattform-Zahlen: das stuft Google als self-serving ein (kein
+  // Sterne-Snippet, Abstrafungsrisiko). Sterne stehen visuell im TrustStrip, hier
+  // nur die Verknüpfung für KI-Zitierbarkeit/E-E-A-T.
+  sameAs: [
+    site.socials.instagram,
+    site.socials.facebook,
+    site.socials.youtube,
+    site.socials.linkedin,
+    ...TRUST_PLATFORMS.map((p) => p.url),
+  ].filter(Boolean),
+  // Echte Personen mit Rolle/Entität (E-E-A-T) — Klarnamen aus /ueber-uns.
+  founder: [
+    { "@type": "Person", name: "Manfred Riegel", jobTitle: "Gründer · Regionaldirektor BVFI" },
+    { "@type": "Person", name: "Sylwia Riegel", jobTitle: "Geschäftsleitung" },
+  ],
+  employee: [
+    { "@type": "Person", name: "Sissy Riegel", jobTitle: "Marketing" },
+    { "@type": "Person", name: "Christoph Riegel", jobTitle: "Verkauf" },
+  ],
 };
 
 export default function RootLayout({

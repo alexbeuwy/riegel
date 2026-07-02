@@ -16,6 +16,8 @@ import { HeroBackdrop } from "@/components/hero-backdrop";
 import { ShaderCta } from "@/components/shader-cta";
 import { AwardHighlight } from "@/components/award-highlight";
 import { ReelsGrid } from "@/components/reels-grid";
+import { TrustStrip } from "@/components/trust-strip";
+import { Testimonials } from "@/components/testimonials";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -127,6 +129,9 @@ export default function HomePage() {
         </Container>
       </section>
 
+      {/* ───────── Trust-Streifen (Bewertungen, Auszeichnungen) ───────── */}
+      <TrustStrip />
+
       {/* ───────── Block 2 · Leistungen (Bento) ───────── */}
       <section className="py-24 sm:py-32">
         <Container>
@@ -208,7 +213,7 @@ export default function HomePage() {
                 cta="Zum Portal"
               >
                 Alle Objekte durchsuchen, filtern und auf der Karte entdecken —
-                Zillow-Style, mit teilbaren Suchen.
+                modern, übersichtlich, mit teilbaren Suchen.
               </BentoTile>
 
               <BentoTile
@@ -331,6 +336,9 @@ export default function HomePage() {
           </p>
         </Container>
       </section>
+
+      {/* ───────── Block · Kundenstimmen ───────── */}
+      <Testimonials />
 
       {/* ───────── Block · ImmoAward 2025 ───────── */}
       <AwardHighlight />

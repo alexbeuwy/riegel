@@ -6,6 +6,7 @@ import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
 import { BentoGrid, BentoTile } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
+import { TrustStrip } from "@/components/trust-strip";
 import { photos } from "@/lib/photos";
 
 export const metadata = {
@@ -55,6 +56,8 @@ export default function VerkaufenPage() {
         Wir verkaufen Ihre Immobilie zum bestmöglichen Preis — mit regionaler
         Marktkenntnis, professioneller Vermarktung und persönlicher Begleitung.
       </PageIntro>
+
+      <TrustStrip />
 
       {/* Asymmetrischer Auftakt — echtes Beratungsfoto */}
       <section className="pt-2">
