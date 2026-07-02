@@ -186,8 +186,16 @@ export default function HomePage() {
                 Begleitung bei Kauf, Verkauf und Finanzierung — auf Augenhöhe.
               </BentoTile>
 
-              <BentoTile icon="home" eyebrow="Für Eigentümer" title="Vermietung">
-                Bonitätsgeprüfte Mieter, rechtssichere Verträge, weniger Aufwand.
+              <BentoTile
+                icon="chart"
+                eyebrow="Markt-Transparenz"
+                title="Preisatlas Vorderpfalz"
+                cols="2"
+                href="/preisatlas"
+                cta="Preise & Trends ansehen"
+              >
+                Preisspannen, Bodenwerte und Trends für 18 Städte der Region — auf einen
+                Blick, direkt vom Makler vor Ort.
               </BentoTile>
 
               <BentoTile
@@ -213,6 +221,10 @@ export default function HomePage() {
               >
                 Beratungs- oder Besichtigungstermin in wenigen Klicks — inkl.
                 Kalendereintrag zum Download.
+              </BentoTile>
+
+              <BentoTile icon="home" eyebrow="Für Eigentümer" title="Vermietung" cols="2">
+                Bonitätsgeprüfte Mieter, rechtssichere Verträge, weniger Aufwand.
               </BentoTile>
             </BentoGrid>
           </Reveal>

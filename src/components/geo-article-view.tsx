@@ -11,6 +11,10 @@ import {
   ratgeberCategory,
   ratgeberCategoryLabel,
 } from "@/lib/geo-taxonomy";
+import { marktort } from "@/lib/marktdaten";
+
+const nf = new Intl.NumberFormat("de-DE");
+const fmtPct = (n: number) => n.toFixed(1).replace(".", ",");
 
 /** Verwandte Seiten: gleiche Region (Standort) bzw. Kategorie (Ratgeber) zuerst, dann auffüllen. */
 function relatedArticles(article: GeoArticle): GeoArticle[] {
@@ -194,6 +198,7 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
   const facts = keyFacts(article);
   const heroIcon: IconName = article.kind === "standort" ? "pin" : sectionIcon(article.h1);
   const related = relatedArticles(article);
+  const markt = article.kind === "standort" ? marktort(article.slug) : undefined;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -348,8 +353,47 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
             )}
           </div>
 
-          {/* Sidebar: Inhalt (bei langen Artikeln) + CTA */}
+          {/* Sidebar: Marktdaten (Standort-Seiten) + Inhalt (bei langen Artikeln) + CTA */}
           <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+            {markt && (
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <div className="flex items-center justify-between gap-2 text-[0.65rem] uppercase tracking-[0.25em] text-faint">
+                  <span>Marktdaten {markt.name}</span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium normal-case tracking-normal tabular-nums ${
+                      // text-accent-strong statt text-accent: reines Akzent-Blau liegt bei
+                      // dieser Textgröße auf Surface/BG unter dem WCAG-AA-Minimum 4,5:1.
+                      markt.trendYoyPct >= 0 ? "border-accent/40 text-accent-strong" : "border-border text-muted"
+                    }`}
+                  >
+                    <Icon name="trend" size={11} className={markt.trendYoyPct >= 0 ? "" : "rotate-180"} />
+                    {markt.trendYoyPct >= 0 ? "+" : ""}
+                    {fmtPct(markt.trendYoyPct)} %
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs text-muted">Wohnung, €/m²</div>
+                    <div className="mt-0.5 text-base font-semibold text-fg tabular-nums">
+                      {nf.format(markt.wohnung.min)}–{nf.format(markt.wohnung.max)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted">Haus, €/m²</div>
+                    <div className="mt-0.5 text-base font-semibold text-fg tabular-nums">
+                      {nf.format(markt.haus.min)}–{nf.format(markt.haus.max)}
+                    </div>
+                  </div>
+                </div>
+                <Link
+                  href={`/preisatlas?ort=${markt.slug}`}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+                >
+                  Zum Preisatlas
+                  <Icon name="arrowRight" size={14} />
+                </Link>
+              </div>
+            )}
             {article.sections.length >= 4 && (
               <nav aria-label="Inhalt" className="rounded-2xl border border-border bg-surface p-5">
                 <div className="text-[0.65rem] uppercase tracking-[0.25em] text-faint">Inhalt</div>

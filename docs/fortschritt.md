@@ -164,3 +164,26 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   (live statt „Ausbaustufe") — in `fortschritt.md`, `wachstum.md`, `strategie.md`.
 - Größere Doku-Überarbeitungen (architecture, build-plan, design-system, pitchdeck-README,
   instagram-integration, `betrieb.md` neu) → Backlog in `optimierung.md`.
+
+## Update — RIEGEL Preisatlas Vorderpfalz (`/preisatlas`) ✅
+
+- **Neues Lead-Asset im Rechner/Portal-Kaliber**: interaktiver Markt-Überblick für alle
+  18 GEO-Städte — €/m²-**Spannen** Wohnung/Haus (Count-up, tabular-nums), Bodenrichtwert
+  (immer als „Bodenwert, kein Objektpreis" gelabelt + Tooltip), 12-Monats-Trend als
+  animierte SVG-Sparkline, Rendite, Ø-Vermarktungszeit, Nachfrage-Badge.
+- **Karte**: MapLibre mit preis-eingefärbten Markern (CARTO, hinter MapConsentGate);
+  Seite funktioniert komplett ohne Karten-Consent (Orts-Chips als Fallback). Deep-Links
+  `?ort=slug` werden **serverseitig** aufgelöst (kein Content-Flash), URL teilbar.
+- **Städte-Vergleich** (2 Orte, animierte Balken, Tilt-Cards) + **CTA-Sektion mit
+  eingebetteter Hero-Adresssuche** → direkter Funnel in den Rechner.
+- **Integration**: Markt-Widget in der Sidebar jeder Standort-Seite (→ `/preisatlas?ort=`),
+  Bento-Tile auf der Home, Footer-Link, Sitemap, CollectionPage/Breadcrumb-JSON-LD.
+- **Daten**: `src/lib/marktdaten.ts` — deterministisch aus der Rechner-Engine abgeleitet
+  (Spannen rahmen die valuation.ts-Basiswerte ein), kein Math.random, Pflicht-Disclaimer
+  (§ 194 BauGB) auf Seite + Panel. **Kein Scraping, kein BORIS-WFS** — bewusst gemäß
+  `preisatlas-research.md`; BORIS-Choropleth bleibt Ausbaustufe nach LVermGeo-Freigabe.
+- **Qualität**: 3 Bau- + 3 Review-Agenten (Build/Runtime · UX gegen
+  make-interfaces-feel-better/transitions-dev · Code) + Fix-Runde — 16 Findings gefixt
+  (u. a. Bento-Grid-Lücke auf der Home, Kontraste, Token-Dauern statt Hardcodes,
+  aria-live beim Panelwechsel). tsc 0 Fehler, Lint auf Baseline, Build 73 Seiten grün,
+  Desktop + Mobil per Screenshot verifiziert.

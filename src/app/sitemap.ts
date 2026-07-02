@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/immobilien",
     "/rechner",
+    "/preisatlas",
     "/verkaufen",
     "/standorte",
     "/ratgeber",

@@ -41,6 +41,11 @@ Selbst konservativ **:3 geteilt** bleiben ~8.000 € Provision je 1.000 € Spen
 **Kosten/Mandat 500–2.000 € vs. Wert 15–30k €.** Dazu: Meta/IG-Retargeting auf das
 Reels-Publikum. Für beuwy: Ads-Betreuung = **monatlicher Retainer** (wiederkehrend, kündbar).
 
+**Neu gebaut als organischer Hebel + Ad-Landingpage: der `/preisatlas`** — friktionsfreier
+Markt-Überblick über 18 Städte (HomeDay-Gegenmodell, s. `preisatlas-research.md`) mit
+eingebetteter Adresssuche → Rechner. Ideal für „Immobilienpreise {Ort}"-Keywords,
+Social-Teaser und als Erst-Klick vor dem Bewertungs-Funnel.
+
 ## 4. Messung (ohne Attribution glaubt niemand den ROI)
 
 - Conversion-Events ab Tag 1: Bewertung abgeschlossen, Termin gebucht, Anruf-Klick.

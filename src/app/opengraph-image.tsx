@@ -26,7 +26,6 @@ export default async function Image() {
             "radial-gradient(circle at 78% 12%, rgba(1,92,255,0.45), transparent 55%), radial-gradient(circle at 8% 95%, rgba(1,92,255,0.22), transparent 45%)",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={RIEGEL_LOGO_DATAURI} width={300} height={60} alt="" />
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -2, lineHeight: 1.12, color: "#f4f3f0" }}>

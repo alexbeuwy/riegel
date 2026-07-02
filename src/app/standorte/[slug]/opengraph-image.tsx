@@ -29,7 +29,6 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             "radial-gradient(circle at 78% 12%, rgba(1,92,255,0.45), transparent 55%), radial-gradient(circle at 8% 95%, rgba(1,92,255,0.22), transparent 45%)",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={RIEGEL_LOGO_DATAURI} width={300} height={60} alt="" />
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <div style={{ display: "flex", fontSize: 42, color: "#a8a6a0" }}>
