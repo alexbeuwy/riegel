@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Icon, type IconName } from "@/components/icon";
 
 /** Bento-Grid: asymmetrisches Kachel-Layout, dark-first, Akzent-Glow beim Hover. */
@@ -124,4 +125,45 @@ export function BentoTile({
     );
   }
   return <div className={base}>{inner}</div>;
+}
+
+/**
+ * Reine Foto-Kachel — füllt Bento-Grid-Lücken mit einem RIEGEL-Foto statt
+ * Leerraum (wirkt hochwertiger). Optionales Label unten links, sanfter
+ * Zoom beim Hover (wie die Portal-/Objektkarten).
+ */
+export function BentoPhoto({
+  src,
+  alt,
+  label,
+  cols = "1",
+  rows = "1",
+  className = "",
+}: {
+  src: string;
+  alt: string;
+  label?: string;
+  cols?: Span;
+  rows?: Span;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`group relative min-h-[180px] overflow-hidden rounded-2xl border border-border ${colSpan[cols]} ${rowSpan[rows]} ${className}`}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+        className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-bg/10 to-transparent" />
+      {label ? (
+        <span className="absolute bottom-4 left-4 right-4 text-sm font-medium text-fg">
+          {label}
+        </span>
+      ) : null}
+    </div>
+  );
 }

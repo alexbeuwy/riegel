@@ -9,10 +9,9 @@ import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
 import { Faq } from "@/components/faq";
 import { faqs } from "@/lib/faq";
-import { BentoGrid, BentoTile } from "@/components/bento";
+import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { Icon } from "@/components/icon";
 import { HeroAddressSearch } from "@/components/hero-address-search";
-import { WaveShader } from "@/components/wave-shader";
 import { ShaderCta } from "@/components/shader-cta";
 import { AwardHighlight } from "@/components/award-highlight";
 import { AwardsGrid } from "@/components/awards-grid";
@@ -81,17 +80,23 @@ export default function HomePage() {
           }),
         }}
       />
-      {/* ───────── Block 1 · Hero (Wave-Shader, RIEGEL-Blau) ───────── */}
+      {/* ───────── Block 1 · Hero (Foto: Mann mit iPad, blaues Licht) ───────── */}
       <section className="relative flex min-h-[88svh] items-center overflow-hidden">
-        {/* „wavy blue"-Shader (Shadertoy lfsBzB) — derselbe Look wie die
-            Sofort-Bewertung-CTA-Box, jetzt auch im Hero. GPU-only, pausiert
-            offscreen, reduced-motion-fest (siehe wave-shader.tsx). */}
-        <WaveShader className="-z-10" />
-        {/* Kräftigere Abdunklung links für die breite Textspalte (mehr Inhalt
-            als in der CTA-Box) — Wellen bleiben rechts sichtbar. Unten weicher
-            Übergang in die Folge-Sektion. */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-bg/92 via-bg/55 to-bg/10" />
-        <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-bg to-transparent" />
+        <div className="absolute inset-0 -z-10">
+          <Image
+            src={photos.heroKitchen}
+            alt="Immobilienberatung mit iPad — RIEGEL Immobilien"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          {/* Dezente Gradienten (Foto ist bereits dunkel): links für die Text-
+              spalte abdunkeln, unten weicher Übergang in die Folge-Sektion. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-bg/85 via-bg/45 to-bg/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-bg/75 via-transparent to-bg/30" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent" />
+        </div>
         <Container className="relative z-10 py-24 sm:py-28">
           <div className="max-w-3xl">
             <div className="reveal-lcp" style={{ animationDelay: "0ms" }}>
@@ -193,6 +198,11 @@ export default function HomePage() {
               <BentoTile icon="handshake" eyebrow="Persönlich" title="Beratung">
                 Begleitung bei Kauf, Verkauf und Finanzierung — auf Augenhöhe.
               </BentoTile>
+
+              {/* Füllt die Grid-Lücke neben „Beratung" mit einem echten Foto
+                  statt Leerraum (wirkt hochwertiger). */}
+              <BentoPhoto src={photos.analyse1} alt="RIEGEL-Beratung vor Ort mit iPad" />
+
 
               <BentoTile
                 icon="chart"
