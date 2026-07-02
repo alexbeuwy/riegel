@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
 import { getArticle } from "@/lib/geo";
+import { RIEGEL_LOGO_DATAURI } from "@/lib/og-assets";
 
 /**
- * Ratgeber-spezifisches OG-Image (Artikel-Headline) im Hero-Look.
- * Default-Schrift statt Akira (defekte Space-Metriken in satori).
+ * Ratgeber-spezifisches OG-Image: echtes RIEGEL-Wordmark + Artikel-Headline
+ * in normaler Schreibweise (satori-Default-Schrift, keine Akira).
  */
 export const alt = "RIEGEL Immobilien — Ratgeber";
 export const size = { width: 1200, height: 630 };
@@ -25,25 +26,25 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           padding: "64px 72px",
           backgroundColor: "#0b0b0d",
           backgroundImage:
-            "radial-gradient(circle at 78% 12%, rgba(1,92,255,0.50), transparent 55%), radial-gradient(circle at 8% 95%, rgba(1,92,255,0.25), transparent 45%)",
+            "radial-gradient(circle at 78% 12%, rgba(1,92,255,0.45), transparent 55%), radial-gradient(circle at 8% 95%, rgba(1,92,255,0.22), transparent 45%)",
         }}
       >
-        <div style={{ display: "flex", fontSize: 26, fontWeight: 700, letterSpacing: 12, color: "#f4f3f0" }}>
-          RIEGEL IMMOBILIEN
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={RIEGEL_LOGO_DATAURI} width={300} height={60} alt="" />
         <div
           style={{
             display: "flex",
-            fontSize: title.length > 45 ? 56 : 68,
+            fontSize: title.length > 45 ? 52 : 62,
             fontWeight: 700,
-            lineHeight: 1.15,
+            letterSpacing: -1.5,
+            lineHeight: 1.18,
             color: "#f4f3f0",
             maxWidth: 1020,
           }}
         >
           {title}
         </div>
-        <div style={{ display: "flex", fontSize: 24, letterSpacing: 2, color: "#a8a6a0" }}>
+        <div style={{ display: "flex", fontSize: 26, color: "#a8a6a0" }}>
           Ratgeber · riegel-immobilien.de
         </div>
       </div>

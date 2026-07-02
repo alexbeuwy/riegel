@@ -18,8 +18,10 @@ bewussten Ausnahmen:
 - **Reels-Poster**: `preload="metadata"` statt echter Poster-JPEGs (Ausbau: Bunny-Thumbnails).
 - **CSP**: Basis-Security-Header gesetzt; vollwertige CSP bräuchte Nonces (Ausbau).
 - **WhatsApp/LinkedIn**: wartet weiter auf Daten (`site.ts`).
-- **OG-Images**: bewusst Default-Font statt Akira — Akiras defekte Space-Metriken lassen
-  satori Wörter kollabieren (Detail im Code-Kommentar).
+- **OG-Images (v2 nach Feedback Alex)**: echtes RIEGEL-Wordmark (SVG als Data-URI in
+  `src/lib/og-assets.ts`) + Inter-artige Default-Schrift in normaler Schreibweise —
+  bewusst KEINE Akira (defekte Space-Metriken lassen satori Wörter kollabieren) und
+  kein All-Caps.
 - Vorbestehende **ESLint-Altlasten** (20 Errors, u. a. `set-state-in-effect` in Alt-Komponenten)
   waren nicht Teil des Audits und bleiben unangetastet (Baseline unverändert).
 
