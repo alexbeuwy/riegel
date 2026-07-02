@@ -91,7 +91,7 @@ Regeln: Display-Scale per `clamp()`, Body `line-height: 1.6`, `h1–h3` mit `-0.
 ## 7. Fotografie (der größte Hebel für „edel")
 
 Echte RIEGEL-Assets sind im Einsatz (Team-/Beratungsfotos, Objekt-Reels als MP4) — gehostet auf
-BunnyCDN (`riegel.b-cdn.net`) bzw. `beuwy.com/riegel/` (siehe [bunny-cdn.md](./bunny-cdn.md) ·
+BunnyCDN (`riegel.b-cdn.net`) bzw. `riegel.b-cdn.net/` (siehe [bunny-cdn.md](./bunny-cdn.md) ·
 [foto-assets.md](./foto-assets.md)). Für Listings gilt weiter: professionelle, einheitlich
 farbkorrigierte Objektfotografie ist harte Abhängigkeit (Wunsch #3, Blocker B6).
 

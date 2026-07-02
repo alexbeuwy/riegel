@@ -37,7 +37,7 @@
 
 ### 3. Manueller MP4-Export  ⭐ **UMGESETZT** — sofort, ohne Abhängigkeit, 100 % smooth
 - Riegels eigene Reels (Eigentum) als MP4 exportiert und self-hosted eingebunden
-  (aktuell unter `https://beuwy.com/riegel/`, siehe unten).
+  (aktuell unter `https://riegel.b-cdn.net/`, siehe unten).
 
 ### 4. Offizielles oEmbed / embed.js (Blockquote-iFrame)  — Notlösung
 - Rendert den Original-Post als iFrame. **Kein** Autoplay, fremdes Styling,
@@ -50,7 +50,7 @@
 ## Aktueller Stand im Code ✅ (Option 3 umgesetzt)
 
 `src/components/reels-grid.tsx` zeigt **5 echte, selbst gehostete RIEGEL-Reels**
-(MP4s auf `https://beuwy.com/riegel/`: Doppelhaushälfte Schifferstadt, Einfamilienhaus,
+(MP4s auf `https://riegel.b-cdn.net/`: Doppelhaushälfte Schifferstadt, Einfamilienhaus,
 Wohnung Bad Dürkheim, Einfamilienhaus mit Carina, Miete Speyer mit Sissy):
 
 - **Autoplay-in-View, stumm**: `<video muted loop playsInline preload="none">` spielt nur,

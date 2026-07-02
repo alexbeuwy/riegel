@@ -165,70 +165,109 @@ export function ReportRequest({
           Persönlicher Marktwert-Report
         </div>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-          Erhalten Sie diese Einschätzung als <strong className="text-fg">übersichtlichen Report</strong> —
-          mit Wertspanne, Kennzahlen und Lage — direkt per E-Mail. Kostenlos &amp; unverbindlich.
+          Diese Sofort-Einschätzung ist nur der Anfang. Der vollständige Report zeigt,{" "}
+          <strong className="text-fg">worauf es beim Preis wirklich ankommt</strong> — kostenlos,
+          unverbindlich, direkt per E-Mail.
         </p>
       </div>
 
-      {!open ? (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="press inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
-          >
-            <Icon name="doc" size={17} />
-            Report als PDF anfordern
-          </button>
-          <button type="button" onClick={onReset} className="press rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
-            Neue Bewertung
-          </button>
-        </div>
-      ) : (
-        <div className="mt-6">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <input className={inputCls} aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" />
-            <input className={inputCls} aria-label="E-Mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
-            <input className={`${inputCls} sm:col-span-2`} aria-label="Telefon / Handy (optional)" type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy (optional)" />
-            {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
-            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />
-            <textarea className={`${inputCls} sm:col-span-2 resize-none`} aria-label="Nachricht (optional)" rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nachricht (optional)" />
-          </div>
+      {/* Psychologischer Nutzen-Block: WARUM sich das Ausfüllen lohnt — bleibt
+          immer sichtbar, auch wenn das Formular offen ist (kein Wegklappen von
+          Vertrauens-Argumenten genau dann, wenn sie am meisten wirken). */}
+      <ul className="mx-auto mt-6 grid max-w-md gap-2.5 text-left text-sm text-fg/90">
+        <li className="flex items-start gap-2.5">
+          <Icon name="chart" size={16} className="mt-0.5 shrink-0 text-accent" />
+          Alle Preis-Faktoren im Detail — was Ihren Wert erhöht und was ihn senkt
+        </li>
+        <li className="flex items-start gap-2.5">
+          <Icon name="pin" size={16} className="mt-0.5 shrink-0 text-accent" />
+          Satellitenbild &amp; Lage-Einschätzung Ihrer genauen Adresse
+        </li>
+        <li className="flex items-start gap-2.5">
+          <Icon name="users" size={16} className="mt-0.5 shrink-0 text-accent" />
+          Persönliche Einschätzung von RIEGEL vor Ort — kein anonymer Algorithmus
+        </li>
+      </ul>
 
-          <label className="mt-3 flex items-start gap-2.5 text-left text-xs text-muted">
-            <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); setError(null); }} className="mt-0.5 h-4 w-4 accent-accent" />
-            <span>
-              Ich willige ein, dass meine Angaben zur Erstellung des Reports und zur Kontaktaufnahme
-              verarbeitet werden. Jederzeit widerrufbar (siehe{" "}
-              <Link href="/datenschutz" className="text-accent hover:underline">Datenschutz</Link>).
-            </span>
-          </label>
+      <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-xl border border-border bg-bg/60 p-4 text-left">
+        <Icon name="shield" size={18} className="mt-0.5 shrink-0 text-accent" />
+        <p className="text-sm text-muted">
+          <strong className="text-fg">Der häufigste Fehler beim Verkauf:</strong> ein falsch
+          angesetzter Preis — zu hoch schreckt Interessenten ab, zu niedrig verschenkt Geld.
+          Der Report hilft, ihn von Anfang an richtig zu treffen.
+        </p>
+      </div>
 
-          <div className={`t-input-wrap mt-4 ${error ? "is-error" : ""}`}>
-            <p className="t-error-msg mb-3 text-sm text-accent" role="alert">{error ?? " "}</p>
+      <p className="mx-auto mt-4 max-w-md text-center text-xs text-faint">
+        <Icon name="lock" size={12} className="mb-0.5 mr-1 inline" />
+        Ihre Daten bleiben exklusiv bei RIEGEL — keine Weitergabe an andere Makler oder Portale.
+      </p>
+
+      {/* Beide Zustände bleiben gemountet und wechseln über .t-collapse
+          (grid-template-rows 0fr → 1fr) — kein abruptes Auf-/Zuklappen. */}
+      <div className="mt-6">
+        <div className={`t-collapse ${!open ? "is-open" : ""}`}>
+          <div className="t-collapse-inner flex flex-wrap items-center justify-center gap-3">
             <button
-              key={nonce}
               type="button"
-              onClick={submit}
-              disabled={busy}
-              className={`t-input ${error ? "is-shaking" : ""} press inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70`}
+              onClick={() => setOpen(true)}
+              className="press inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
             >
-              {busy ? (
-                <>
-                  <svg className="animate-spin" viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
-                    <path d="M21 12a9 9 0 0 1-9 9" />
-                  </svg>
-                  Report wird erstellt …
-                </>
-              ) : (
-                <>
-                  <Icon name="doc" size={17} /> Report jetzt zusenden
-                </>
-              )}
+              <Icon name="doc" size={17} />
+              Report als PDF anfordern
+            </button>
+            <button type="button" onClick={onReset} className="press rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
+              Neue Bewertung
             </button>
           </div>
         </div>
-      )}
+
+        <div className={`t-collapse ${open ? "is-open" : ""}`}>
+          <div className="t-collapse-inner">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input className={inputCls} aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" />
+              <input className={inputCls} aria-label="E-Mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
+              <input className={`${inputCls} sm:col-span-2`} aria-label="Telefon / Handy (optional)" type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy (optional)" />
+              {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />
+              <textarea className={`${inputCls} sm:col-span-2 resize-none`} aria-label="Nachricht (optional)" rows={2} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Nachricht (optional)" />
+            </div>
+
+            <label className="mt-3 flex items-start gap-2.5 text-left text-xs text-muted">
+              <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); setError(null); }} className="mt-0.5 h-4 w-4 accent-accent" />
+              <span>
+                Ich willige ein, dass meine Angaben zur Erstellung des Reports und zur Kontaktaufnahme
+                verarbeitet werden. Jederzeit widerrufbar (siehe{" "}
+                <Link href="/datenschutz" className="text-accent hover:underline">Datenschutz</Link>).
+              </span>
+            </label>
+
+            <div className={`t-input-wrap mt-4 ${error ? "is-error" : ""}`}>
+              <p className="t-error-msg mb-3 text-sm text-accent" role="alert">{error ?? " "}</p>
+              <button
+                key={nonce}
+                type="button"
+                onClick={submit}
+                disabled={busy}
+                className={`t-input ${error ? "is-shaking" : ""} press inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70`}
+              >
+                {busy ? (
+                  <>
+                    <svg className="animate-spin" viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
+                      <path d="M21 12a9 9 0 0 1-9 9" />
+                    </svg>
+                    Report wird erstellt …
+                  </>
+                ) : (
+                  <>
+                    <Icon name="doc" size={17} /> Report jetzt zusenden
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <p className="mt-5 text-center text-xs text-muted">
         Lieber direkt sprechen?{" "}

@@ -17,7 +17,10 @@ interface Reel {
   tag: string;
 }
 
-const BASE = "https://beuwy.com/riegel/";
+// Auf BunnyCDN umgezogen (lag zuvor auf beuwy.com — fremde Domain im
+// riegel-Traffic-/Bandbreitenpfad). Dateien liegen unter denselben Namen
+// in der Storage-Zone „riegel-immobilien" (siehe docs/bunny-cdn.md).
+const BASE = "https://riegel.b-cdn.net/";
 const REELS: Reel[] = [
   { src: "Doppelhaushaelfte-Schifferstadt.mp4", caption: "Doppelhaushälfte", tag: "Schifferstadt" },
   { src: "Einfamilienhaus1.mp4", caption: "Einfamilienhaus", tag: "Vorderpfalz" },

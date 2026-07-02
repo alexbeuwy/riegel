@@ -3,10 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: [
-      { protocol: "https", hostname: "riegel.b-cdn.net" },
-      { protocol: "https", hostname: "beuwy.com" },
-    ],
+    remotePatterns: [{ protocol: "https", hostname: "riegel.b-cdn.net" }],
   },
   // Basis-Security-Header. Bewusst ohne CSP: die Inline-JSON-LD-Skripte und
   // Next-Inline-Bootstrapping bräuchten Nonces — späterer Ausbau.

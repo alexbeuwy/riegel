@@ -22,7 +22,7 @@ Querverweise: [RELAUNCH-LOG.md](../RELAUNCH-LOG.md) · [betrieb.md](./betrieb.md
 | DB/Auth | **Supabase** (`@supabase/supabase-js`, EU Frankfurt, RLS an) | Konten/Login, Favoriten-Sync, Suchaufträge, `valuation_requests`, `leads`. Siehe §5. |
 | E-Mail | **Resend** (`src/lib/email.ts`) | Transaktionsmails (Kontakt, Termin, Report mit PDF-Anhang). Ohne `RESEND_API_KEY` wird „geskippt", kein Crash. |
 | Formulare/Validation | Eigene Client-Forms + manuelle Validierung in den Route-Handlern | **Kein zod, kein react-hook-form.** |
-| Bilder | **next/image**, AVIF→WebP; `remotePatterns`: `riegel.b-cdn.net` (BunnyCDN) + `beuwy.com` | Foto-Assets auf BunnyCDN, Reels-MP4s auf beuwy.com/riegel/. |
+| Bilder | **next/image**, AVIF→WebP; `remotePatterns`: `riegel.b-cdn.net` (BunnyCDN) + `beuwy.com` | Foto-Assets auf BunnyCDN, Reels-MP4s auf riegel.b-cdn.net/. |
 | Sprache | de only | `<html lang="de">`. |
 
 ---

@@ -32,4 +32,4 @@ Danach die Datei einfach in `src/lib/photos.ts` referenzieren (oder direkt per U
 - `RIEGEL_Broschuere_Portrait_01.webp` — Porträt (Verkaufen-Hero)
 - `RIEGEL_Home-Analyse-1..3.webp` — Beratung/Bewertung vor Ort
 - `Riegel-Wert-Report.webp` (+ `…3.webp` u. a.) — Wert-Report-Stimmungsbilder
-- Reels (MP4) liegen zusätzlich auf `beuwy.com/riegel/`
+- Reels (MP4) liegen zusätzlich auf `riegel.b-cdn.net/`

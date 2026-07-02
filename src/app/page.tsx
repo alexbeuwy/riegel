@@ -12,9 +12,10 @@ import { faqs } from "@/lib/faq";
 import { BentoGrid, BentoTile } from "@/components/bento";
 import { Icon } from "@/components/icon";
 import { HeroAddressSearch } from "@/components/hero-address-search";
-import { HeroBackdrop } from "@/components/hero-backdrop";
+import { WaveShader } from "@/components/wave-shader";
 import { ShaderCta } from "@/components/shader-cta";
 import { AwardHighlight } from "@/components/award-highlight";
+import { AwardsGrid } from "@/components/awards-grid";
 import { ReelsGrid } from "@/components/reels-grid";
 import { TrustStrip } from "@/components/trust-strip";
 import { Testimonials } from "@/components/testimonials";
@@ -80,14 +81,16 @@ export default function HomePage() {
           }),
         }}
       />
-      {/* ───────── Block 1 · Hero (WebGL-Gradient) ───────── */}
+      {/* ───────── Block 1 · Hero (Wave-Shader, RIEGEL-Blau) ───────── */}
       <section className="relative flex min-h-[88svh] items-center overflow-hidden">
-        {/* Animierter Mesh-Gradient (Near-Black → RIEGEL-Blau), GPU-only,
-            mit CSS- & reduced-motion-Fallback. Kein Stockfoto mehr. */}
-        <HeroBackdrop />
-        {/* Dezente Abdunklung links für die Textspalte; der blaue Glow oben
-            rechts bleibt sichtbar. Unten weicher Übergang in die Folge-Sektion. */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-bg/70 via-bg/20 to-transparent" />
+        {/* „wavy blue"-Shader (Shadertoy lfsBzB) — derselbe Look wie die
+            Sofort-Bewertung-CTA-Box, jetzt auch im Hero. GPU-only, pausiert
+            offscreen, reduced-motion-fest (siehe wave-shader.tsx). */}
+        <WaveShader className="-z-10" />
+        {/* Kräftigere Abdunklung links für die breite Textspalte (mehr Inhalt
+            als in der CTA-Box) — Wellen bleiben rechts sichtbar. Unten weicher
+            Übergang in die Folge-Sektion. */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-bg/92 via-bg/55 to-bg/10" />
         <div className="absolute inset-x-0 bottom-0 -z-10 h-40 bg-gradient-to-t from-bg to-transparent" />
         <Container className="relative z-10 py-24 sm:py-28">
           <div className="max-w-3xl">
@@ -342,6 +345,9 @@ export default function HomePage() {
 
       {/* ───────── Block · ImmoAward 2025 ───────── */}
       <AwardHighlight />
+
+      {/* ───────── Block · Weitere Auszeichnungen & Mitgliedschaften ───────── */}
+      <AwardsGrid />
 
       {/* ───────── Block · Instagram-Reels ───────── */}
       <ReelsGrid />
