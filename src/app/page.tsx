@@ -61,6 +61,7 @@ export const metadata = {
 };
 
 const stats: { value: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
+  { value: "20+ Jahre", label: "Erfahrung als Familienunternehmen in der Region", icon: "calendar" },
   { value: "Ø 90 Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
   { value: "Ø ~4 Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
   { value: "Top 21", label: "von über 25.000 Maklern bundesweit · ImmoAward 2025", icon: "star" },
@@ -264,7 +265,7 @@ export default async function HomePage() {
       <section className="py-16 sm:py-20">
         <Container>
           <Reveal>
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-5">
               {stats.map((s) => (
                 <div
                   key={s.label}

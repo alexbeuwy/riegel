@@ -84,7 +84,7 @@ export default function UeberUnsPage() {
   return (
     <>
       <PageIntro eyebrow="Über uns" title="Die Familie Riegel — und ein Team, das Ihre Region kennt">
-        Riegel Immobilien ist inhabergeführt und seit Jahren in Speyer,
+        Riegel Immobilien ist inhabergeführt und seit über 20&nbsp;Jahren in Speyer,
         Ludwigshafen und der Vorderpfalz verwurzelt. Als Familienunternehmen mit
         18&nbsp;Expert:innen an zwei Standorten verbinden wir persönliche
         Betreuung mit echter Marktkenntnis.
