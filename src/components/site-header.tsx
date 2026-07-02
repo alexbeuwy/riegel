@@ -38,22 +38,35 @@ function DesktopNavItem({ item }: { item: NavItem }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverOutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openMenu = useCallback(() => {
+    if (hoverOutTimer.current) clearTimeout(hoverOutTimer.current);
     if (timer.current) clearTimeout(timer.current);
     setClosing(false);
     setOpen(true);
   }, []);
 
   const closeMenu = useCallback(() => {
+    if (hoverOutTimer.current) clearTimeout(hoverOutTimer.current);
     setOpen(false);
     setClosing(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setClosing(false), closeMs());
   }, []);
 
+  // Kurze Verzögerung vor dem tatsächlichen Schließen bei Mouse-Leave: das
+  // Panel sitzt mt-3 unterhalb des Buttons — beim Runterfahren verlässt der
+  // Cursor dabei kurz jede Hover-Fläche (Lücke zwischen Button und Panel).
+  // Ohne Grace-Period klappt das Menü dann fälschlich sofort wieder ein.
+  const scheduleClose = useCallback(() => {
+    if (hoverOutTimer.current) clearTimeout(hoverOutTimer.current);
+    hoverOutTimer.current = setTimeout(closeMenu, 200);
+  }, [closeMenu]);
+
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
+    if (hoverOutTimer.current) clearTimeout(hoverOutTimer.current);
   }, []);
 
   useEffect(() => {
@@ -94,7 +107,7 @@ function DesktopNavItem({ item }: { item: NavItem }) {
       ref={wrapRef}
       className="relative"
       onMouseEnter={openMenu}
-      onMouseLeave={closeMenu}
+      onMouseLeave={scheduleClose}
       onFocus={openMenu}
       onBlur={(e) => {
         if (!wrapRef.current?.contains(e.relatedTarget as Node)) closeMenu();
