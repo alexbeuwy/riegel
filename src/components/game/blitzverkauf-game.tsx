@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { FLIGHT_SPEED, generateHouses, fmtEuro, type GameHouse } from "@/lib/game-houses";
 import { burstConfetti } from "@/lib/confetti";
-import { initAudio, isMuted, playHit, playMiss, playShot, setMuted } from "@/lib/game-audio";
+import { initAudio, isMuted, playHit, playMiss, playMusic, playShot, setMuted, stopMusic } from "@/lib/game-audio";
 import { useAuth } from "@/components/auth";
 import { Leaderboard } from "@/components/game/leaderboard";
 import type { LeaderboardEntry } from "@/lib/game-leaderboard";
@@ -323,6 +323,9 @@ export function BlitzverkaufGame() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
       if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+      // Sonst spielt der Loop weiter, während man längst auf einer anderen Seite ist —
+      // musicEl lebt als Modul-Singleton in game-audio.ts, nicht am Komponenten-Lifecycle.
+      stopMusic(0);
     },
     [],
   );
@@ -332,6 +335,7 @@ export function BlitzverkaufGame() {
     // beide feuern — Konfetti/Storage dürfen aber nur genau einmal laufen.
     if (finishedRef.current) return;
     finishedRef.current = true;
+    stopMusic();
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -413,6 +417,8 @@ export function BlitzverkaufGame() {
       countdownRef.current = null;
       setCountdown(null);
       setPhase("playing");
+      // Musik exakt beim Losfliegen starten — der Track deckt die Rundenlänge ab.
+      playMusic();
       // Sekunden-Timer erst ab "LOS" — die Countdown-Zeit zählt nicht als Spielzeit.
       timerRef.current = setInterval(() => {
         timeLeftRef.current = Math.max(0, timeLeftRef.current - 1);

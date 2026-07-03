@@ -11,11 +11,17 @@
 const MUTED_KEY = "riegel-blitzverkauf-muted";
 // Leise Beimischung — Spiel-Sound soll Feedback geben, nie aufdringlich sein.
 const MASTER_GAIN = 0.12;
+const MUSIC_SRC = "/audio/blitzverkauf-loop.mp3";
+// "Nicht allzu laut" (Alex) — bewusst leiser als übliche Loop-Lautstärke, damit
+// Schuss/Treffer-Blips klar durchkommen statt in der Musik unterzugehen.
+const MUSIC_VOLUME = 0.28;
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let muted = false;
 let mutedLoaded = false;
+let musicEl: HTMLAudioElement | null = null;
+let musicFadeTimer: ReturnType<typeof setInterval> | null = null;
 
 /** Lazy + try/catch, weil localStorage fehlen/werfen kann (Safari Private Mode). */
 function loadMuted() {
@@ -28,9 +34,28 @@ function loadMuted() {
   }
 }
 
+/** Erzeugt das <audio>-Element erst bei Bedarf (nicht beim Modul-Import). */
+function ensureMusicEl(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null;
+  if (!musicEl) {
+    try {
+      musicEl = new Audio(MUSIC_SRC);
+      musicEl.preload = "auto";
+      musicEl.volume = MUSIC_VOLUME;
+      musicEl.muted = muted;
+    } catch {
+      musicEl = null;
+    }
+  }
+  return musicEl;
+}
+
 /** Beim Start-Klick aufrufen — der Klick ist die User-Geste, die Audio freischaltet. */
 export function initAudio() {
   loadMuted();
+  // Früh anlegen (nicht abspielen) — beim "LOS!" ein paar Sekunden später soll
+  // der Track ohne Ladeverzögerung/Ruckler einsetzen.
+  ensureMusicEl();
   if (typeof window === "undefined" || ctx) {
     // Bereits initialisiert: nur ggf. aufwecken (Tab-Wechsel suspendiert Kontexte).
     if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => undefined);
@@ -92,9 +117,47 @@ export function playMiss() {
   tone("sine", 170, 90, 0.1, 0, 0.7);
 }
 
+/** Beim "LOS!" aufrufen — der ~45s-Track deckt eine komplette Runde ab (kein
+ *  loop=true nötig, Rundenlänge == Tracklänge), daher immer von vorn starten. */
+export function playMusic() {
+  loadMuted();
+  const el = ensureMusicEl();
+  if (!el || muted) return;
+  if (musicFadeTimer) {
+    clearInterval(musicFadeTimer);
+    musicFadeTimer = null;
+  }
+  el.currentTime = 0;
+  el.volume = MUSIC_VOLUME;
+  void el.play().catch(() => undefined);
+}
+
+/** Rundenende — kurzes Fade-out statt hartem Stopp, falls der 1s-Timer die
+ *  Rundenzeit auf die Sekunde genau trifft, aber der Track noch minimal läuft. */
+export function stopMusic(fadeMs = 250) {
+  const el = musicEl;
+  if (!el || el.paused) return;
+  if (musicFadeTimer) clearInterval(musicFadeTimer);
+  const steps = 8;
+  const startVol = el.volume;
+  let i = 0;
+  musicFadeTimer = setInterval(() => {
+    i += 1;
+    el.volume = Math.max(0, startVol * (1 - i / steps));
+    if (i >= steps) {
+      if (musicFadeTimer) clearInterval(musicFadeTimer);
+      musicFadeTimer = null;
+      el.pause();
+      el.currentTime = 0;
+      el.volume = MUSIC_VOLUME;
+    }
+  }, fadeMs / steps);
+}
+
 export function setMuted(value: boolean) {
   loadMuted();
   muted = value;
+  if (musicEl) musicEl.muted = value;
   try {
     window.localStorage.setItem(MUTED_KEY, value ? "1" : "0");
   } catch {

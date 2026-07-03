@@ -492,10 +492,28 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   (Teilnahmeberechtigung, Ausschluss Rechtsweg, Gewinnbenachrichtigung/-frist). Sag
   Bescheid, wenn ich einen Entwurf dafür schreiben soll.
 
+## Update — Blitzverkauf: Hintergrundmusik (ElevenLabs-Loop) ✅
+
+- Alex' generierter 45s-Loop (`Riegel_Arcade_Loop`) liegt als
+  `public/audio/blitzverkauf-loop.mp3` im Projekt (kein BunnyCDN nötig — einzelnes,
+  kleines Spiel-Asset, gleiche Behandlung wie die Logo-SVGs).
+  `src/lib/game-audio.ts` bekam dafür `playMusic()`/`stopMusic()`: Track startet exakt
+  beim „LOS!" (Rundenlänge == Tracklänge, kein `loop` nötig), Lautstärke bewusst auf `0.28`
+  gedeckelt („nicht allzu laut", Schuss/Treffer-Blips sollen durchkommen), Rundenende
+  faded ihn in 250ms sanft statt hart abzuschneiden. Der bestehende Mute-Button steuert
+  jetzt Musik + SFX gemeinsam; beim Verlassen der Seite wird der Track sofort gestoppt
+  (er lebt als Modul-Singleton, nicht am Komponenten-Lifecycle).
+- **Live per Playwright verifiziert** (nicht nur code-geprüft): `play()` feuert exakt
+  ~2,8 s nach Klick auf „Los geht's" (passt zum 3-2-1-LOS-Countdown), Lautstärke beim Start
+  `0.28`/unmuted, `pause()` nach dem Fade bei `currentTime≈45,04 s` — Musik und Rundenlänge
+  laufen praktisch deckungsgleich. Mute-Toggle mittendrin verifiziert: schaltet
+  `musicEl.muted` sofort um.
+- tsc/Lint/Build grün.
+
 ## Offen 🔧
 
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
-  Kanonen-Gefühl, Trefferzonen-Größe, Sound-Lautstärke, Mobile-Performance, und jetzt auch
+  Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
   der komplette Bestenlisten-Flow mit einem echten Account.
 - **`game_scores`-Migration in Supabase ausführen**: `docs/supabase-schema.sql` §7 im
   SQL-Editor einfügen — ohne die Tabelle antwortet `/api/game-scores` mit
