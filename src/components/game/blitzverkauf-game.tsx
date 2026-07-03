@@ -575,10 +575,17 @@ export function BlitzverkaufGame() {
           overflow-hidden schnitt Badge UND Start-Button weg (Spiel nicht
           startbar). Hochformat gibt dem Flug außerdem mehr Sicht nach vorn.
           touch-action: manipulation verhindert Doppeltipp-Zoom beim schnellen
-          Schießen auf iOS. */}
+          Schießen auf iOS.
+          Der Ergebnis-Screen (Formular + Bestenliste) bricht bewusst aus der
+          festen Höhe aus (kein aspect-* mehr, s. u.) — er braucht mehr Platz,
+          als in die feste Spielfläche passt. Statt einer eigenen, gefangen
+          wirkenden Mini-Scrollbar in einer Box fester Höhe wächst die Box
+          dann einfach mit dem Inhalt und die normale Seite scrollt. */}
       <div
         ref={containerRef}
-        className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl border border-border bg-bg shadow-[0_30px_60px_-30px_rgba(1,92,255,0.35)] sm:aspect-video"
+        className={`relative w-full overflow-hidden rounded-3xl border border-border bg-bg shadow-[0_30px_60px_-30px_rgba(1,92,255,0.35)] ${
+          phase === "over" ? "" : "aspect-[3/4] sm:aspect-video"
+        }`}
         onPointerMove={(e) => {
           markTouch(e.pointerType);
           // Auch während des Countdowns zielen lassen — das Rohr folgt schon mal mit.
@@ -753,13 +760,13 @@ export function BlitzverkaufGame() {
           </>
         )}
 
-        {/* ── Ergebnis-Screen — scrollt intern (overflow-y-auto): mit Namensformular
-            oder Bestenliste passt der Inhalt auf kleinen Screens oft nicht mehr in
-            die feste Spielfläche. justify-start statt justify-center, damit der
-            Anfang beim Scrollen nicht "oberhalb" des sichtbaren Bereichs landet. ── */}
+        {/* ── Ergebnis-Screen — normaler Fluss statt absolute inset-0: die Box hat
+            in dieser Phase keine feste Höhe mehr (s. Container-Klasse oben), wächst
+            also exakt mit dem Inhalt mit. Bei viel Inhalt (Formular/Bestenliste)
+            scrollt dann ganz normal die Seite statt einer gefangenen Mini-Scrollbar. ── */}
         {phase === "over" && (
-          <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-bg via-surface to-bg">
-            <div className="flex min-h-full flex-col items-center gap-4 px-5 py-8 text-center sm:gap-5 sm:py-10">
+          <div className="bg-gradient-to-b from-bg via-surface to-bg">
+            <div className="flex flex-col items-center gap-4 px-5 py-8 text-center sm:gap-5 sm:py-10">
               <span className="text-sm uppercase tracking-[0.25em] text-faint">Zeit abgelaufen</span>
               <div className="akira text-3xl tabular-nums text-fg sm:text-6xl">{fmtEuro(displayScore)}</div>
               {/* Karriere-Zeugnis — der Lacher fürs Weitererzählen */}

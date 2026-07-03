@@ -510,14 +510,30 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
   `musicEl.muted` sofort um.
 - tsc/Lint/Build grün.
 
+## Update — Blitzverkauf: Ergebnis-Screen ohne gefangene Mini-Scrollbar ✅
+
+- Alex' Live-Test: Formular + Bestenliste passten nicht mehr in die feste Spielfläche,
+  eine eigene `overflow-y-auto`-Box darin fühlte sich „gefangen" an. Fix: Die Box hat in
+  der Ergebnis-Phase gar keine feste Höhe mehr (`aspect-[3/4]`/`aspect-video` nur noch
+  während Countdown/Spiel aktiv) — sie wächst einfach mit dem Inhalt, und bei Bedarf
+  scrollt ganz normal die Seite statt einer kleinen Box-in-der-Box.
+- Ehrlich dazu: bei viel Inhalt (Name + optionale E-Mail + Info-Box + Bestenliste +
+  zwei Buttons) auf einem Handy-Bildschirm lässt sich Scrollen nicht komplett vermeiden —
+  aber jetzt ist es normales Seiten-Scrollen statt einer verwirrenden Mini-Scrollbar.
+- Live per Playwright verifiziert: Formular- und Bestenliste-Zustand wachsen sauber in
+  den Fluss, „Nochmal spielen" bleibt direkt darunter erreichbar.
+
 ## Offen 🔧
 
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
   Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
   der komplette Bestenlisten-Flow mit einem echten Account.
-- **`game_scores`-Migration in Supabase ausführen**: `docs/supabase-schema.sql` §7 im
-  SQL-Editor einfügen — ohne die Tabelle antwortet `/api/game-scores` mit
-  „Bestenliste derzeit nicht verfügbar" (getestet, Fallback greift sauber).
+- **`game_scores`-Migration in Supabase ausführen** — vermutlich die Ursache für Alex'
+  „Eintrag fehlgeschlagen" beim Live-Test: `docs/supabase-schema.sql` §7 im SQL-Editor
+  des RIEGEL-Supabase-Projekts einfügen und ausführen. Ich habe über die verbundene
+  Supabase-Integration geprüft, aber keines der dort sichtbaren Projekte gehört zu
+  riegel.de (nur zwei andere Kunden-Funnels) — die Migration muss daher manuell im
+  richtigen Projekt laufen.
 - **Bunny/Supabase-Env für das Hero-Bild-Feature**: siehe Update weiter oben — ohne
   `BUNNY_STORAGE_ZONE`/`BUNNY_STORAGE_ACCESS_KEY` in Vercel + die SQL-Migration bleibt der
   Medien-Tab in `/intern` funktionslos (zeigt Fehlermeldung, Startseite bleibt unverändert).
