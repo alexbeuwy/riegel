@@ -7,6 +7,9 @@ import { Icon } from "@/components/icon";
 import { FLIGHT_SPEED, generateHouses, fmtEuro, type GameHouse } from "@/lib/game-houses";
 import { burstConfetti } from "@/lib/confetti";
 import { initAudio, isMuted, playHit, playMiss, playShot, setMuted } from "@/lib/game-audio";
+import { useAuth } from "@/components/auth";
+import { Leaderboard } from "@/components/game/leaderboard";
+import type { LeaderboardEntry } from "@/lib/game-leaderboard";
 import type { FireRequest } from "@/components/game/game-canvas";
 
 const DURATION_SEC = 45;
@@ -15,6 +18,7 @@ const COMBO_WINDOW_MS = 2500;
 const MAX_MULTIPLIER = 5;
 const COUNTDOWN_STEP_MS = 700;
 const BEST_KEY = "riegel-blitzverkauf-best";
+const NAME_KEY = "riegel-blitzverkauf-name";
 
 const GameCanvas = dynamic(() => import("@/components/game/game-canvas").then((m) => m.GameCanvas), {
   ssr: false,
@@ -64,6 +68,182 @@ function rankFor(score: number, soldCount: number): { title: string; note: strin
   return { title: "Der Manfred™", note: "Out of the box. Über den Dächern. Ausverkauft." };
 }
 
+interface SubmitResult {
+  entries: LeaderboardEntry[];
+  monthLabel: string;
+  yourId: string | null;
+  rank: number;
+}
+
+/** Name-Eintrag fürs Rundenende — eigener State, damit ein Remount (neue Runde)
+ *  Formular/Fehler automatisch zurücksetzt, ohne den Eltern-State zu belasten. */
+function ScoreSubmitPanel({
+  score,
+  soldCount,
+  userEmail,
+  accessToken,
+  onSubmitted,
+  onSkip,
+}: {
+  score: number;
+  soldCount: number;
+  userEmail: string | null;
+  accessToken: string | null;
+  onSubmitted: (result: SubmitResult) => void;
+  onSkip: () => void;
+}) {
+  const [name, setName] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return window.localStorage.getItem(NAME_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    if (busy) return;
+    const trimmed = name.trim();
+    if (!trimmed) return setError("Bitte einen Namen angeben.");
+    const trimmedEmail = email.trim();
+    if (!userEmail && trimmedEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        return setError("Bitte eine gültige E-Mail angeben oder das Feld leer lassen.");
+      }
+      if (!consent) return setError("Bitte der Benachrichtigung zustimmen oder E-Mail leer lassen.");
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/game-scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerName: trimmed,
+          score,
+          soldCount,
+          email: !userEmail && trimmedEmail ? trimmedEmail : undefined,
+          accessToken: accessToken ?? undefined,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error("failed");
+      try {
+        window.localStorage.setItem(NAME_KEY, trimmed);
+      } catch {
+        // Name gilt dann nur für diese Session.
+      }
+      onSubmitted({
+        entries: data.entries ?? [],
+        monthLabel: data.monthLabel ?? "",
+        yourId: data.yourId ?? null,
+        rank: data.rank ?? 0,
+      });
+    } catch {
+      setError("Eintrag fehlgeschlagen — bitte erneut versuchen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const fieldCls =
+    "w-full rounded-lg border border-border bg-bg px-3.5 py-2.5 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
+
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-border bg-bg/60 p-4 text-left backdrop-blur">
+      <div className="flex items-center gap-2 text-sm text-fg">
+        <Icon name="star" size={15} className="text-accent" />
+        Auf die Bestenliste?
+      </div>
+      <input
+        className={`${fieldCls} mt-3`}
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setError(null);
+        }}
+        placeholder="Name oder Spielername"
+        maxLength={24}
+      />
+
+      {userEmail ? (
+        <p className="mt-2.5 text-xs text-faint">
+          Eingeloggt als <span className="text-fg">{userEmail}</span> — bei einem Top-5-Platz
+          melden wir uns dorthin.
+        </p>
+      ) : (
+        <>
+          <input
+            className={`${fieldCls} mt-2.5`}
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError(null);
+            }}
+            placeholder="E-Mail für Gewinn-Benachrichtigung (optional)"
+          />
+          <div className={`t-collapse ${email.trim() ? "is-open" : ""}`}>
+            <div className="t-collapse-inner">
+              <label className="mt-2 flex items-start gap-2 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => {
+                    setConsent(e.target.checked);
+                    setError(null);
+                  }}
+                  className="mt-0.5 h-3.5 w-3.5 accent-accent"
+                />
+                <span>
+                  Ich bin einverstanden, bei einer Platzierung unter den Top 5 per E-Mail
+                  kontaktiert zu werden.
+                </span>
+              </label>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-accent/30 bg-accent/[0.06] p-3">
+        <Icon name="calendar" size={15} className="mt-0.5 shrink-0 text-accent" />
+        <p className="text-xs leading-relaxed text-muted">
+          Die Bestenliste startet jeden Monat neu bei null.{" "}
+          <strong className="text-fg">Platz 1–5</strong> bekommen eine kleine Überraschung von
+          uns.
+        </p>
+      </div>
+
+      {error && (
+        <p className="mt-2.5 text-xs text-accent" role="alert">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={submit}
+        disabled={busy}
+        className="press mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70"
+      >
+        <Icon name="arrowRight" size={15} />
+        {busy ? "Wird gespeichert …" : "Eintragen"}
+      </button>
+      <button
+        type="button"
+        onClick={onSkip}
+        className="mt-2 w-full text-center text-xs text-faint transition-colors hover:text-muted"
+      >
+        Ohne Eintrag weiter
+      </button>
+    </div>
+  );
+}
+
 export function BlitzverkaufGame() {
   const [phase, setPhase] = useState<Phase>("start");
   const [houses, setHouses] = useState<GameHouse[]>([]);
@@ -84,6 +264,10 @@ export function BlitzverkaufGame() {
   const [runId, setRunId] = useState(0);
   // Bissiger Einzeiler unten im Bild (key erzwingt Animation-Restart pro Spruch)
   const [quip, setQuip] = useState<{ id: number; text: string } | null>(null);
+  // Bestenliste: "idle" zeigt das Namensformular, "done" die Liste, "skipped" nichts mehr.
+  const [submitPhase, setSubmitPhase] = useState<"idle" | "done" | "skipped">("idle");
+  const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
+  const { user, session } = useAuth();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const crosshairRef = useRef<HTMLDivElement>(null);
@@ -202,6 +386,8 @@ export function BlitzverkaufGame() {
     setDisplayScore(0);
     finishedRef.current = false;
     setQuip(null);
+    setSubmitPhase("idle");
+    setSubmitResult(null);
     lastQuipAtRef.current = 0;
     aimNdcRef.current.x = 0;
     aimNdcRef.current.y = -0.2;
@@ -561,58 +747,101 @@ export function BlitzverkaufGame() {
           </>
         )}
 
-        {/* ── Ergebnis-Screen ── */}
+        {/* ── Ergebnis-Screen — scrollt intern (overflow-y-auto): mit Namensformular
+            oder Bestenliste passt der Inhalt auf kleinen Screens oft nicht mehr in
+            die feste Spielfläche. justify-start statt justify-center, damit der
+            Anfang beim Scrollen nicht "oberhalb" des sichtbaren Bereichs landet. ── */}
         {phase === "over" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-bg via-surface to-bg px-5 text-center sm:gap-5 sm:px-6">
-            <span className="text-sm uppercase tracking-[0.25em] text-faint">Zeit abgelaufen</span>
-            <div className="akira text-3xl tabular-nums text-fg sm:text-6xl">{fmtEuro(displayScore)}</div>
-            {/* Karriere-Zeugnis — der Lacher fürs Weitererzählen */}
-            <div>
-              <div className="akira text-lg text-accent-strong sm:text-2xl">{rankFor(score, soldCount).title}</div>
-              <p className="mt-1 text-xs text-muted sm:text-sm">{rankFor(score, soldCount).note}</p>
-            </div>
-            <p className="text-sm text-muted sm:text-base">
-              <span className="tabular-nums text-fg">{soldCount}</span> Häuser verkauft
-              {soldCount > 0 && (
-                <>
-                  {" "}
-                  · Ø <span className="tabular-nums text-fg">{fmtEuro(resultsPerHouse)}</span>
-                </>
+          <div className="absolute inset-0 overflow-y-auto bg-gradient-to-b from-bg via-surface to-bg">
+            <div className="flex min-h-full flex-col items-center gap-4 px-5 py-8 text-center sm:gap-5 sm:py-10">
+              <span className="text-sm uppercase tracking-[0.25em] text-faint">Zeit abgelaufen</span>
+              <div className="akira text-3xl tabular-nums text-fg sm:text-6xl">{fmtEuro(displayScore)}</div>
+              {/* Karriere-Zeugnis — der Lacher fürs Weitererzählen */}
+              <div>
+                <div className="akira text-lg text-accent-strong sm:text-2xl">{rankFor(score, soldCount).title}</div>
+                <p className="mt-1 text-xs text-muted sm:text-sm">{rankFor(score, soldCount).note}</p>
+              </div>
+              <p className="text-sm text-muted sm:text-base">
+                <span className="tabular-nums text-fg">{soldCount}</span> Häuser verkauft
+                {soldCount > 0 && (
+                  <>
+                    {" "}
+                    · Ø <span className="tabular-nums text-fg">{fmtEuro(resultsPerHouse)}</span>
+                  </>
+                )}
+              </p>
+              {isNewBest ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-accent/60 bg-accent/15 px-4 py-1.5 text-sm font-medium text-accent-strong">
+                  <Icon name="star" size={15} />
+                  Neuer Rekord!
+                </span>
+              ) : (
+                best !== null && (
+                  <p className="text-sm text-faint">
+                    Rekord: <span className="tabular-nums text-muted">{fmtEuro(best)}</span>
+                  </p>
+                )
               )}
-            </p>
-            {isNewBest ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-accent/60 bg-accent/15 px-4 py-1.5 text-sm font-medium text-accent-strong">
-                <Icon name="star" size={15} />
-                Neuer Rekord!
-              </span>
-            ) : (
-              best !== null && (
-                <p className="text-sm text-faint">
-                  Rekord: <span className="tabular-nums text-muted">{fmtEuro(best)}</span>
-                </p>
-              )
-            )}
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={start}
-                className="press inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
-              >
-                <Icon name="arrowRight" size={16} className="rotate-180" />
-                Nochmal spielen
-              </button>
-              <Link
-                href="/verkaufen"
-                className="press inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
-              >
-                <Icon name="calculator" size={16} />
-                Echte Immobilie verkaufen
-              </Link>
+
+              {/* Bestenliste: Namensformular direkt nach der Runde, danach die Liste
+                  mit dem eigenen Eintrag hervorgehoben. Nur bei score > 0 — die API
+                  lehnt 0-Punkte-Einträge ohnehin ab, und ohne Treffer gibt's nichts
+                  einzutragen. */}
+              {score > 0 && submitPhase === "idle" && (
+                <ScoreSubmitPanel
+                  score={score}
+                  soldCount={soldCount}
+                  userEmail={user?.email ?? null}
+                  accessToken={session?.access_token ?? null}
+                  onSubmitted={(result) => {
+                    setSubmitResult(result);
+                    setSubmitPhase("done");
+                  }}
+                  onSkip={() => setSubmitPhase("skipped")}
+                />
+              )}
+              {submitPhase === "done" && submitResult && (
+                <div className="flex w-full max-w-sm flex-col items-center gap-2">
+                  {submitResult.rank > 0 ? (
+                    <p className="text-xs text-accent-strong">
+                      Platz <span className="tabular-nums">{submitResult.rank}</span> in{" "}
+                      {submitResult.monthLabel}!
+                    </p>
+                  ) : (
+                    <p className="text-xs text-faint">
+                      Knapp außerhalb der Top {submitResult.entries.length || 20} — nächstes Mal!
+                    </p>
+                  )}
+                  <Leaderboard
+                    entries={submitResult.entries}
+                    monthLabel={submitResult.monthLabel}
+                    highlightId={submitResult.yourId}
+                  />
+                </div>
+              )}
+
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={start}
+                  className="press inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+                >
+                  <Icon name="arrowRight" size={16} className="rotate-180" />
+                  Nochmal spielen
+                </button>
+                <Link
+                  href="/verkaufen"
+                  className="press inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+                >
+                  <Icon name="calculator" size={16} />
+                  Echte Immobilie verkaufen
+                </Link>
+              </div>
+              <p className="max-w-sm text-xs text-faint">
+                Nur zum Spaß — keine echten Angebote. Unsere echten Verkaufszahlen sind aber
+                auch ohne Kanone beeindruckend.
+              </p>
             </div>
-            <p className="max-w-sm text-xs text-faint">
-              Nur zum Spaß — keine echten Angebote. Unsere echten Verkaufszahlen sind aber
-              auch ohne Kanone beeindruckend.
-            </p>
           </div>
         )}
       </div>

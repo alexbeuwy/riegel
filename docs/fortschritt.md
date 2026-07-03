@@ -459,15 +459,48 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - tsc/Lint/Build grün; Mobile-Startscreen per CDP-Screenshot (echte Mobile-Emulation)
   verifiziert.
 
+## Update — Blitzverkauf: Bestenliste mit Namenseingabe & Monats-Reset ✅
+
+- **Neue Tabelle `game_scores`** (`docs/supabase-schema.sql` §7, RLS: nur `insert` für
+  anon, KEINE `select`-Policy) — Lesen läuft ausschließlich über `/api/game-scores` mit
+  dem service_role-Key, der die E-Mail nie in der Antwort mitschickt.
+- **`/api/game-scores`** (GET/POST): liefert die Top-20 des laufenden Monats (Reset rein
+  über `WHERE created_at >= Monatsanfang` — nichts wird gelöscht, Alex behält die volle
+  Historie für die Gewinner-Auswertung). Eingeloggte Spieler:innen verifizieren ihre
+  E-Mail server-seitig per `access_token` (`supabaseServer.auth.getUser`) — eine im Body
+  mitgeschickte E-Mail wird in dem Fall ignoriert, ganz nach „eingeloggt heißt schon
+  eingeloggt". Name-Sanitizing entfernt nur Steuerzeichen (`/[\x00-\x1F\x7F]/g`), Leer-
+  zeichen/Bindestriche in Namen wie „Anna-Lena" bleiben erhalten.
+- **Rundenende-Formular** (nur bei `score > 0`): Name/Spielername, optionales E-Mail-Feld
+  (nur wenn nicht eingeloggt — sonst Hinweistext mit der Konto-Mail), Consent-Checkbox
+  blendet sich erst per `.t-collapse` ein, sobald eine E-Mail eingetippt wird. Icon-Box
+  erklärt den monatlichen Reset und dass Platz 1–5 eine kleine Überraschung bekommen.
+  „Ohne Eintrag weiter" überspringt komplett.
+- **`Leaderboard`-Komponente** (`components/game/leaderboard.tsx`): Rangliste mit
+  Medaillen-Badges (Platz 1 solid, 2–3 akzentuiert, Rest outline), eigener Eintrag farblich
+  hervorgehoben, tabular-nums.
+- Der Endscreen ist jetzt intern scrollbar (`overflow-y-auto`, `justify-start` statt
+  `justify-center`) — mit Formular/Bestenliste passt der Inhalt auf kleinen Screens sonst
+  nicht mehr in die feste Spielfläche.
+- Anders als sonst in dieser Sandbox üblich **konnte WebGL diesmal per
+  `--use-gl=swiftshader` doch headless laufen** — der komplette Ablauf (Runde spielen,
+  Formular, Validierungsfehler, echte + gemockte Bestenlisten-Antwort) wurde live per
+  Playwright durchgespielt und screenshotet, nicht nur code-verifiziert.
+- tsc/Lint/Build grün.
+- **Für Alex/Familie Riegel zu klären, bevor die Migration live geht:** echte Preise für
+  Platz 1–5 sind ein Gewinnspiel — dafür braucht es i. d. R. kurze Teilnahmebedingungen
+  (Teilnahmeberechtigung, Ausschluss Rechtsweg, Gewinnbenachrichtigung/-frist). Sag
+  Bescheid, wenn ich einen Entwurf dafür schreiben soll.
+
 ## Offen 🔧
 
-- **Blitzverkauf einmal im echten Browser testen** (WebGL in Sandbox nicht prüfbar):
-  Kanonen-Gefühl, Trefferzonen-Größe, Sound-Lautstärke, Mobile-Performance — jetzt
-  inkl. Konkurrenz-Häuser/Quips/Ränge.
-- **Gründungsjahr-Entscheidung**: s. o. — Alex/Familie Riegel sollte final entscheiden,
-  ob „seit über 20 Jahren" (unscharf, sicher) oder „seit 2005" (Registereintragung) auf die
-  Seite kommt, bevor eine Jahreszahl live geht.
-- **Bunny/Supabase-Env für das neue Hero-Bild-Feature**: siehe Update oben — ohne
+- **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
+  Kanonen-Gefühl, Trefferzonen-Größe, Sound-Lautstärke, Mobile-Performance, und jetzt auch
+  der komplette Bestenlisten-Flow mit einem echten Account.
+- **`game_scores`-Migration in Supabase ausführen**: `docs/supabase-schema.sql` §7 im
+  SQL-Editor einfügen — ohne die Tabelle antwortet `/api/game-scores` mit
+  „Bestenliste derzeit nicht verfügbar" (getestet, Fallback greift sauber).
+- **Bunny/Supabase-Env für das Hero-Bild-Feature**: siehe Update weiter oben — ohne
   `BUNNY_STORAGE_ZONE`/`BUNNY_STORAGE_ACCESS_KEY` in Vercel + die SQL-Migration bleibt der
   Medien-Tab in `/intern` funktionslos (zeigt Fehlermeldung, Startseite bleibt unverändert).
 - **Portal-Filter**: `mehrfamilienhaus` ist noch keine wählbare Kategorie im Immobilien-Portal

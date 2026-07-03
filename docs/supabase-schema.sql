@@ -125,3 +125,23 @@ alter table public.site_settings enable row level security;
 drop policy if exists "read site settings" on public.site_settings;
 create policy "read site settings" on public.site_settings
   for select using (true);
+
+-- 7) Blitzverkauf-Bestenliste (/spiel) — monatlich "zurückgesetzt" durch reinen
+-- Zeitraum-Filter in der API-Route (WHERE created_at >= Monatsanfang), NICHT
+-- durch Löschen — Alex/Riegel behält damit die volle Historie fürs Auswerten
+-- der Gewinner. E-Mail ist bewusst OHNE public-select-Policy (nur INSERT für
+-- anon erlaubt) — die Bestenliste läuft ausschließlich über /api/game-scores
+-- mit dem service_role-Key, dessen Response die E-Mail NIE mit ausliefert.
+create table if not exists public.game_scores (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  player_name text not null,
+  score bigint not null,
+  sold_count int default 0,
+  email text,
+  user_id uuid references auth.users on delete set null
+);
+alter table public.game_scores enable row level security;
+drop policy if exists "insert game scores" on public.game_scores;
+create policy "insert game scores" on public.game_scores
+  for insert with check (true);
