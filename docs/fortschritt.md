@@ -437,10 +437,33 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Wichtig fürs Testen**: WebGL ist in der Sandbox nicht darstellbar (headless-Limit) —
   die 3D-Szene selbst bitte einmal im echten Browser auf Vercel gegenspielen.
 
+## Update — Blitzverkauf: Mobile-Fix + Humor-Paket (Manfred-Edition) ✅
+
+- **Mobile-Bug behoben** (Alex-Screenshot: Start-Button unsichtbar, Spiel nicht startbar):
+  `aspect-[4/3]` ergab auf schmalen Screens nur ~290px Container-Höhe, der zentrierte
+  Start-Inhalt war höher und `overflow-hidden` schnitt Badge UND Button ab. Fix:
+  Hochformat `aspect-[3/4]` auf Mobile (gibt dem Flug zugleich mehr Sicht nach vorn),
+  kompaktere Start-/Endscreen-Abstände, `touch-action: manipulation` gegen
+  Doppeltipp-Zoom. Programmatisch verifiziert (Button `fullyInside: true` bei 390×844).
+- **Konkurrenz-Ladenhüter** (~jedes 7. Haus, nie in den ersten Reihen): graues Haus,
+  dunkle Fenster, schiefes Schild „ZU VERKAUFEN · SEIT 379 TAGEN" (echte Ø-Standzeit
+  bei ~20 % Überpreisung aus dem Ratgeber — bewusst KEIN realer Konkurrenz-Name).
+  Abschuss = Rettung: doppelte Punkte, RIEGEL-Schild ersetzt das graue, Dach wird blau.
+- **Bissige Einzeiler** (Quips, unten eingeblendet): bei Fehlschuss gedrosselt rotierend
+  („Daneben — das verkauft jetzt die Konkurrenz. In 379 Tagen.", „Knapp vorbei. Passiert.
+  Uns halt selten."), bei Rettung („Ladenhüter gerettet — 379 Tage waren genug.") und bei
+  Combo-Meilensteinen („×5! Top 21 von 25.000 — man merkt's.").
+- **Karriere-Zeugnis im Endscreen**: Rang nach Score — Kaltakquise → Praktikum bestanden
+  → Junior-Makler:in → Verkaufsprofi → Top 21 von 25.000 → **„Der Manfred™"** („Out of
+  the box. Über den Dächern. Ausverkauft.") — der Familien-Lacher zum Weiterreichen.
+- tsc/Lint/Build grün; Mobile-Startscreen per CDP-Screenshot (echte Mobile-Emulation)
+  verifiziert.
+
 ## Offen 🔧
 
 - **Blitzverkauf einmal im echten Browser testen** (WebGL in Sandbox nicht prüfbar):
-  Kanonen-Gefühl, Trefferzonen-Größe, Sound-Lautstärke, Mobile-Performance.
+  Kanonen-Gefühl, Trefferzonen-Größe, Sound-Lautstärke, Mobile-Performance — jetzt
+  inkl. Konkurrenz-Häuser/Quips/Ränge.
 - **Gründungsjahr-Entscheidung**: s. o. — Alex/Familie Riegel sollte final entscheiden,
   ob „seit über 20 Jahren" (unscharf, sicher) oder „seit 2005" (Registereintragung) auf die
   Seite kommt, bevor eine Jahreszahl live geht.

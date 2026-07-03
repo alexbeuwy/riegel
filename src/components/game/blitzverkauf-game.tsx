@@ -35,6 +35,33 @@ interface HitLabel {
   gain: number;
   mult: number;
   ort: string;
+  /** Konkurrenz-Ladenhüter gerettet (doppelte Punkte). */
+  rescued: boolean;
+}
+
+/* ── Bissige Einzeiler — Manfreds Humor, rechtlich sauber generisch. ── */
+const MISS_QUIPS = [
+  "Daneben — das verkauft jetzt die Konkurrenz. In 379 Tagen.",
+  "Knapp vorbei. Passiert. Uns halt selten.",
+  "Ruhig atmen. Zielen. Verkaufen.",
+  "Der Markt verzeiht keine Streuschüsse.",
+];
+const RESCUE_QUIPS = [
+  "Ladenhüter gerettet — 379 Tage waren genug.",
+  "Endlich in guten Händen.",
+  "Übernommen. Ab jetzt geht's schnell.",
+];
+/** Mindestabstand zwischen zwei Miss-Sprüchen — sonst wird's Spam. */
+const QUIP_COOLDOWN_MS = 4000;
+
+/** Augenzwinkerndes Karriere-Zeugnis fürs Rundenende. */
+function rankFor(score: number, soldCount: number): { title: string; note: string } {
+  if (soldCount === 0) return { title: "Kaltakquise", note: "Kein einziges Haus — die Konkurrenz atmet auf." };
+  if (score < 5_000_000) return { title: "Praktikum bestanden", note: "Solide Runde. Der Kaffee geht auf uns." };
+  if (score < 12_000_000) return { title: "Junior-Makler:in", note: "Die ersten Provisionen sind drin." };
+  if (score < 22_000_000) return { title: "Verkaufsprofi", note: "Fast so schnell wie unser echtes Team — Ø 90 Tage." };
+  if (score < 32_000_000) return { title: "Top 21 von 25.000", note: "ImmoAward-Niveau. Respekt." };
+  return { title: "Der Manfred™", note: "Out of the box. Über den Dächern. Ausverkauft." };
 }
 
 export function BlitzverkaufGame() {
@@ -55,6 +82,8 @@ export function BlitzverkaufGame() {
   const [isTouch, setIsTouch] = useState(false);
   // key fürs Canvas: erzwingt pro Runde einen frischen Mount (Kamera/Uhr/verkaufte Häuser reset)
   const [runId, setRunId] = useState(0);
+  // Bissiger Einzeiler unten im Bild (key erzwingt Animation-Restart pro Spruch)
+  const [quip, setQuip] = useState<{ id: number; text: string } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const crosshairRef = useRef<HTMLDivElement>(null);
@@ -75,6 +104,10 @@ export function BlitzverkaufGame() {
   const lastHitAtRef = useRef(0);
   const finishedRef = useRef(false);
   const isTouchRef = useRef(false);
+  const quipIdRef = useRef(0);
+  const lastQuipAtRef = useRef(0);
+  const missQuipIdxRef = useRef(0);
+  const rescueQuipIdxRef = useRef(0);
 
   // Nur für Effekte genutzt (Count-up), nie im SSR-Markup — kein Hydration-Risiko.
   const reduceMotion = useMemo(
@@ -168,6 +201,8 @@ export function BlitzverkaufGame() {
     setIsNewBest(false);
     setDisplayScore(0);
     finishedRef.current = false;
+    setQuip(null);
+    lastQuipAtRef.current = 0;
     aimNdcRef.current.x = 0;
     aimNdcRef.current.y = -0.2;
     setRunId((r) => r + 1);
@@ -203,43 +238,66 @@ export function BlitzverkaufGame() {
     }, COUNTDOWN_STEP_MS);
   }, [endGame]);
 
-  const handleHit = useCallback((info: { x: number; y: number; house: GameHouse }) => {
-    // Einschläge von Würfeln, die noch nach Spielende landen, zählen nicht mehr —
-    // der Rekord ist zu dem Zeitpunkt bereits gespeichert.
-    if (finishedRef.current) return;
-
-    // Combo über Wanduhr statt Spielzeit — der Handler lebt außerhalb der Frame-Schleife.
-    const now = Date.now();
-    const inCombo = now - lastHitAtRef.current <= COMBO_WINDOW_MS;
-    lastHitAtRef.current = now;
-    const mult = inCombo ? Math.min(multRef.current + 1, MAX_MULTIPLIER) : 1;
-    multRef.current = mult;
-    setMultiplier(mult);
-    // Ablauf-Timeout statt Prüfung beim nächsten Treffer: der Combo-Chip soll
-    // sichtbar verschwinden, sobald das Fenster verstreicht — nicht erst irgendwann.
-    if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
-    comboTimeoutRef.current = setTimeout(() => {
-      multRef.current = 1;
-      setMultiplier(1);
-    }, COMBO_WINDOW_MS);
-
-    const gain = info.house.value * mult;
-    scoreRef.current += gain;
-    setScore(scoreRef.current);
-    setSoldCount((c) => c + 1);
-    setHitLabels((prev) => [
-      ...prev,
-      { id: labelIdRef.current++, x: info.x, y: info.y, gain, mult, ort: info.house.ort },
-    ]);
-    playHit();
-    burstConfetti(24);
+  const showQuip = useCallback((text: string) => {
+    lastQuipAtRef.current = Date.now();
+    setQuip({ id: quipIdRef.current++, text });
   }, []);
+
+  const handleHit = useCallback(
+    (info: { x: number; y: number; house: GameHouse }) => {
+      // Einschläge von Würfeln, die noch nach Spielende landen, zählen nicht mehr —
+      // der Rekord ist zu dem Zeitpunkt bereits gespeichert.
+      if (finishedRef.current) return;
+
+      // Combo über Wanduhr statt Spielzeit — der Handler lebt außerhalb der Frame-Schleife.
+      const now = Date.now();
+      const inCombo = now - lastHitAtRef.current <= COMBO_WINDOW_MS;
+      lastHitAtRef.current = now;
+      const mult = inCombo ? Math.min(multRef.current + 1, MAX_MULTIPLIER) : 1;
+      multRef.current = mult;
+      setMultiplier(mult);
+      // Ablauf-Timeout statt Prüfung beim nächsten Treffer: der Combo-Chip soll
+      // sichtbar verschwinden, sobald das Fenster verstreicht — nicht erst irgendwann.
+      if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+      comboTimeoutRef.current = setTimeout(() => {
+        multRef.current = 1;
+        setMultiplier(1);
+      }, COMBO_WINDOW_MS);
+
+      // Konkurrenz-Ladenhüter gerettet → Rettungsprämie: doppelte Punkte.
+      const rescued = info.house.konkurrenz;
+      const gain = info.house.value * mult * (rescued ? 2 : 1);
+      scoreRef.current += gain;
+      setScore(scoreRef.current);
+      setSoldCount((c) => c + 1);
+      setHitLabels((prev) => [
+        ...prev,
+        { id: labelIdRef.current++, x: info.x, y: info.y, gain, mult, ort: info.house.ort, rescued },
+      ]);
+      playHit();
+      burstConfetti(rescued ? 44 : 24);
+
+      // Sprüche: Rettung schlägt Combo-Meilenstein; beides ohne Cooldown-Prüfung
+      // (seltene, verdiente Momente) — nur Miss-Sprüche sind gedrosselt.
+      if (rescued) {
+        showQuip(RESCUE_QUIPS[rescueQuipIdxRef.current++ % RESCUE_QUIPS.length]);
+      } else if (mult === MAX_MULTIPLIER) {
+        showQuip("×5! Top 21 von 25.000 — man merkt's.");
+      } else if (mult === 3) {
+        showQuip("Läuft wie in Speyer-West.");
+      }
+    },
+    [showQuip],
+  );
 
   const handleMiss = useCallback(() => {
     if (finishedRef.current) return;
     playMiss();
     setMissFlash((v) => v + 1);
-  }, []);
+    if (Date.now() - lastQuipAtRef.current >= QUIP_COOLDOWN_MS) {
+      showQuip(MISS_QUIPS[missQuipIdxRef.current++ % MISS_QUIPS.length]);
+    }
+  }, [showQuip]);
 
   const removeLabel = useCallback((id: number) => {
     setHitLabels((prev) => prev.filter((l) => l.id !== id));
@@ -320,9 +378,15 @@ export function BlitzverkaufGame() {
 
   return (
     <div className="mx-auto max-w-4xl">
+      {/* Hochformat auf Mobile (aspect-3/4): aspect-4/3 ergab auf schmalen
+          Screens nur ~290px Höhe — der zentrierte Start-Inhalt war höher und
+          overflow-hidden schnitt Badge UND Start-Button weg (Spiel nicht
+          startbar). Hochformat gibt dem Flug außerdem mehr Sicht nach vorn.
+          touch-action: manipulation verhindert Doppeltipp-Zoom beim schnellen
+          Schießen auf iOS. */}
       <div
         ref={containerRef}
-        className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-border bg-bg shadow-[0_30px_60px_-30px_rgba(1,92,255,0.35)] sm:aspect-video"
+        className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl border border-border bg-bg shadow-[0_30px_60px_-30px_rgba(1,92,255,0.35)] sm:aspect-video"
         onPointerMove={(e) => {
           markTouch(e.pointerType);
           // Auch während des Countdowns zielen lassen — das Rohr folgt schon mal mit.
@@ -330,7 +394,7 @@ export function BlitzverkaufGame() {
         }}
         onPointerDown={(e) => markTouch(e.pointerType)}
         onClick={(e) => phase === "playing" && fire(e.clientX, e.clientY)}
-        style={{ cursor: phase === "playing" && !isTouch ? "none" : "default" }}
+        style={{ cursor: phase === "playing" && !isTouch ? "none" : "default", touchAction: "manipulation" }}
       >
         {/* Canvas nur während Countdown/Spiel — im Over-Screen (opak verdeckt) würde
             frameloop="always" die Szene sonst unsichtbar mit ~60 fps weiterrendern
@@ -359,21 +423,25 @@ export function BlitzverkaufGame() {
           </div>
         )}
 
-        {/* ── Start-Screen ── */}
+        {/* ── Start-Screen — kompakte Abstände/Größen, damit auch auf kleinen
+            Screens ALLES (inkl. Button) in die Spielfläche passt ── */}
         {phase === "start" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-bg via-surface to-bg px-6 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-bg via-surface to-bg px-5 text-center sm:gap-6 sm:px-6">
             <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/[0.08] px-3.5 py-1.5 text-[0.65rem] uppercase tracking-[0.25em] text-accent">
               <Icon name="sparkle" size={13} />
               Nur zum Spaß
             </span>
-            <h2 className="akira text-3xl leading-[0.95] sm:text-5xl">
+            <h2 className="akira text-2xl leading-[0.95] sm:text-5xl">
               RIEGEL <span className="text-accent">Blitzverkauf</span>
             </h2>
-            <p className="max-w-md text-muted">
+            <p className="max-w-md text-sm text-muted sm:text-base">
               Flieg über die Vorderpfalz und verkaufe Häuser aus der Luft — schneller
               geht&apos;s nicht. {DURATION_SEC} Sekunden, so viel Volumen wie möglich.
             </p>
-            <p className="text-sm text-faint">Maus/Finger zum Zielen · Klicken/Tippen zum Schießen</p>
+            <p className="max-w-md text-xs text-faint sm:text-sm">
+              Zielen &amp; Tippen zum Schießen · Graue Häuser? Ladenhüter der Konkurrenz —
+              <span className="text-accent-strong"> Rettung zählt doppelt.</span>
+            </p>
             {best !== null && (
               <span className={chipClass}>
                 <Icon name="star" size={14} className="text-accent" />
@@ -460,10 +528,23 @@ export function BlitzverkaufGame() {
                   {l.mult >= 2 && <span className="ml-1.5 align-middle text-sm text-fg/80">×{l.mult}</span>}
                 </div>
                 <div className="whitespace-nowrap text-[0.65rem] uppercase tracking-[0.2em] text-fg/80">
-                  Verkauft · {l.ort}
+                  {l.rescued ? "Gerettet ×2" : "Verkauft"} · {l.ort}
                 </div>
               </div>
             ))}
+
+            {/* Bissiger Einzeiler unten mittig — key erzwingt Restart der Fade-Animation */}
+            {quip && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center px-4 sm:bottom-6">
+                <span
+                  key={quip.id}
+                  className="game-quip max-w-[85%] rounded-full border border-border bg-bg/70 px-4 py-2 text-center text-xs text-fg/90 backdrop-blur sm:text-sm"
+                  onAnimationEnd={() => setQuip((q) => (q && q.id === quip.id ? null : q))}
+                >
+                  {quip.text}
+                </span>
+              </div>
+            )}
 
             {/* Mute — stopPropagation, damit der Klick keinen Schuss auslöst */}
             <button
@@ -482,10 +563,15 @@ export function BlitzverkaufGame() {
 
         {/* ── Ergebnis-Screen ── */}
         {phase === "over" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-gradient-to-b from-bg via-surface to-bg px-6 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-bg via-surface to-bg px-5 text-center sm:gap-5 sm:px-6">
             <span className="text-sm uppercase tracking-[0.25em] text-faint">Zeit abgelaufen</span>
-            <div className="akira text-4xl tabular-nums text-fg sm:text-6xl">{fmtEuro(displayScore)}</div>
-            <p className="text-muted">
+            <div className="akira text-3xl tabular-nums text-fg sm:text-6xl">{fmtEuro(displayScore)}</div>
+            {/* Karriere-Zeugnis — der Lacher fürs Weitererzählen */}
+            <div>
+              <div className="akira text-lg text-accent-strong sm:text-2xl">{rankFor(score, soldCount).title}</div>
+              <p className="mt-1 text-xs text-muted sm:text-sm">{rankFor(score, soldCount).note}</p>
+            </div>
+            <p className="text-sm text-muted sm:text-base">
               <span className="tabular-nums text-fg">{soldCount}</span> Häuser verkauft
               {soldCount > 0 && (
                 <>

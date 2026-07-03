@@ -14,6 +14,11 @@ export interface GameHouse {
   lane: number;
   z: number;
   variant: 0 | 1 | 2;
+  /** Ladenhüter der Konkurrenz: hängt seit 379 Tagen im Schaufenster (echte
+   *  Ø-Standzeit bei ~20 % Überpreisung, s. Ratgeber "immobilie-schnell-
+   *  verkaufen-speyer"). Grau, trauriges Schild — Abschuss = Rettung,
+   *  doppelte Punkte. */
+  konkurrenz: boolean;
 }
 
 /** Kamera-Fluggeschwindigkeit in Einheiten/Sekunde — bewusst die EINZIGE Quelle:
@@ -59,6 +64,9 @@ export function generateHouses(durationSec: number, flightSpeed: number, rowSpac
         lane: LANES[laneIdx] + (Math.random() - 0.5) * 1.2,
         z,
         variant: Math.floor(Math.random() * 3) as 0 | 1 | 2,
+        // ~jedes 7. Haus ist ein Konkurrenz-Ladenhüter (nie in den ersten
+        // Reihen — der Spieler soll erst das normale Schema lernen)
+        konkurrenz: row >= 3 && Math.random() < 0.15,
       });
     }
   }

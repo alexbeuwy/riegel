@@ -114,6 +114,10 @@ export function House({
 
   const roofHeight = 0.9 + house.variant * 0.15;
   const bodyHeight = 1.8 + house.variant * 0.25;
+  // Konkurrenz-Ladenhüter: entsättigt/grau statt RIEGEL-Blau, Fenster fast
+  // dunkel (steht ja seit 379 Tagen leer) — klar erkennbares Beute-Schema.
+  const kk = house.konkurrenz;
+  const windowIntensity = kk ? 0.25 : 0.9;
 
   return (
     <group ref={groupRef} position={[house.lane, 0, house.z]} userData={{ houseId: house.id }}>
@@ -124,10 +128,10 @@ export function House({
           <boxGeometry args={[2.1, bodyHeight, 2.1]} />
           <meshStandardMaterial
             ref={bodyMatRef}
-            color="#1c1c21"
+            color={kk ? "#232327" : "#1c1c21"}
             emissive="#015cff"
             emissiveIntensity={sold ? 2 : 0}
-            roughness={0.7}
+            roughness={kk ? 0.9 : 0.7}
           />
         </mesh>
         <mesh
@@ -136,20 +140,26 @@ export function House({
           userData={{ houseId: house.id }}
         >
           <coneGeometry args={[1.65, roofHeight, 4]} />
-          <meshStandardMaterial color="#015cff" roughness={0.4} />
+          {/* Nach dem Treffer wird auch das Konkurrenz-Dach RIEGEL-blau — übernommen. */}
+          <meshStandardMaterial color={kk && !sold ? "#3a3a41" : "#015cff"} roughness={0.4} />
         </mesh>
         {/* Fenster-Glow — zwei Seiten, damit aus mehreren Anflugwinkeln etwas zu sehen ist */}
         <mesh position={[0, bodyHeight * 0.55, 1.06]} userData={{ houseId: house.id }}>
           <planeGeometry args={[0.5, 0.5]} />
-          <meshStandardMaterial ref={winMatARef} color="#f4f3f0" emissive="#f4f3f0" emissiveIntensity={0.9} />
+          <meshStandardMaterial ref={winMatARef} color="#f4f3f0" emissive="#f4f3f0" emissiveIntensity={windowIntensity} />
         </mesh>
         <mesh position={[1.06, bodyHeight * 0.55, 0]} rotation={[0, Math.PI / 2, 0]} userData={{ houseId: house.id }}>
           <planeGeometry args={[0.5, 0.5]} />
-          <meshStandardMaterial ref={winMatBRef} color="#f4f3f0" emissive="#f4f3f0" emissiveIntensity={0.9} />
+          <meshStandardMaterial ref={winMatBRef} color="#f4f3f0" emissive="#f4f3f0" emissiveIntensity={windowIntensity} />
         </mesh>
       </group>
       {/* Schild & Trümmer tragen bewusst KEIN userData.houseId — der Raycast
           in game-canvas.tsx darf sie nicht als Haus einsammeln */}
+      {kk && !sold && (
+        // Ladenhüter-Schild steht von Anfang an schief im Vorgarten — die
+        // Pointe: nach dem Treffer ersetzt es das frische RIEGEL-Schild.
+        <SoldSign position={[0.95, 0, 1.8]} reduceMotion={reduceMotion} variant="konkurrenz" static />
+      )}
       {sold && (
         // seitlich versetzt vor der Front (+z = Kamera-Richtung), damit das
         // Schild nicht direkt vor dem Fenster steht — wie ein echtes

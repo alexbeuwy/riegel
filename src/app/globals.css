@@ -818,12 +818,24 @@
    einen durchgehend glatten Ablauf ohne rAF-Aufwand. */
 .game-timer-bar { transition: width 1s linear; }
 
+/* Bissiger Einzeiler: rein, kurz halten, raus — Ende räumt via onAnimationEnd auf */
+@keyframes game-quip {
+  0%   { opacity: 0; transform: translateY(8px); }
+  8%   { opacity: 1; transform: translateY(0); }
+  82%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.game-quip { animation: game-quip 2.6s ease-in-out both; }
+
 @media (prefers-reduced-motion: reduce) {
   .game-hit-label { animation-duration: 0.01ms; }
   /* Bewusst KEIN `animation: none`: der Ring wird nur übers Animationsende unsichtbar
      (fill-mode both, endet bei opacity 0) — ohne Animation bliebe nach dem ersten
      Fehlschuss dauerhaft ein statischer zweiter Ring auf dem Fadenkreuz stehen. */
   .game-miss-ring { animation-duration: 0.01ms; }
+  /* game-quip braucht sein Animationsende ebenfalls fürs Aufräumen (onAnimationEnd) —
+     0.01ms statt none, sonst stünde der Spruch dauerhaft. */
+  .game-quip { animation-duration: 0.01ms; }
   .game-countdown-pop,
   .game-combo-chip,
   .game-timer-urgent { animation: none; }
