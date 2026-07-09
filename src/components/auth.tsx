@@ -9,7 +9,13 @@ interface AuthState {
   ready: boolean;
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirm?: boolean }>;
+  signUp: (
+    email: string,
+    password: string,
+    /** Ziel-URL für den Bestätigungslink (z. B. /konto?next=/immobilien/…) —
+     *  sonst landet der Nutzer nach der E-Mail-Bestätigung im Nirgendwo. */
+    emailRedirectTo?: string,
+  ) => Promise<{ error: string | null; needsConfirm?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -35,9 +41,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string, emailRedirectTo?: string) => {
     if (!supabase) return { error: "Konten sind noch nicht aktiviert." };
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      ...(emailRedirectTo && { options: { emailRedirectTo } }),
+    });
     if (error) return { error: error.message };
     return { error: null, needsConfirm: !data.session };
   }, []);

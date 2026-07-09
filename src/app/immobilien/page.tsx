@@ -29,7 +29,8 @@ export default async function ImmobilienPage({
       <div className="border-b border-border bg-bg pt-6">
         <Container className="pb-5">
           <FilterBar filters={filters} orte={orte} />
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Zähler + „Suche speichern" auf einer sauberen horizontalen Achse (statt hängendem Einzel-Button) */}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <ActiveChips filters={filters} resultCount={results.length} />
             <SaveSearchButton />
           </div>

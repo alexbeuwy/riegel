@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icon";
 
 const ANLIEGEN = [
@@ -15,7 +17,17 @@ const ANLIEGEN = [
 const inputCls =
   "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
 
+// useSearchParams verlangt eine Suspense-Grenze (Next-Build-Regel für CSR-Bailout).
 export function ContactForm() {
+  return (
+    <Suspense>
+      <ContactFormInner />
+    </Suspense>
+  );
+}
+
+function ContactFormInner() {
+  const searchParams = useSearchParams();
   const [f, setF] = useState({
     name: "",
     email: "",
@@ -29,6 +41,16 @@ export function ContactForm() {
   const [errorNonce, setErrorNonce] = useState(0);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    // Objektbezug aus vorgelagerten Links (?objekt=…) — befüllt die
+    // Nachricht vor, aber nur solange sie noch leer ist (keine Nutzereingabe
+    // überschreiben).
+    const objekt = searchParams.get("objekt");
+    if (!objekt) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setF((s) => (s.message ? s : { ...s, message: `Ich interessiere mich für: ${objekt}` }));
+  }, [searchParams]);
 
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => {
     setError(null);
@@ -139,7 +161,8 @@ export function ContactForm() {
         />
         <span>
           Ich willige ein, dass meine Angaben zur Bearbeitung der Anfrage
-          verarbeitet werden. Jederzeit widerrufbar (siehe Datenschutz).
+          verarbeitet werden. Jederzeit widerrufbar (siehe{" "}
+          <Link href="/datenschutz" className="text-accent hover:underline">Datenschutz</Link>).
         </span>
       </label>
       <div className={`t-input-wrap mt-6 ${error ? "is-error" : ""}`}>

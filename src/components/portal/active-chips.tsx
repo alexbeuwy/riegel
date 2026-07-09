@@ -28,7 +28,7 @@ export function ActiveChips({
   };
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <span aria-live="polite" className="text-sm font-medium text-fg">
         <span key={resultCount} className="t-num-d">
           {resultCount}

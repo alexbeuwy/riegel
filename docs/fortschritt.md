@@ -559,13 +559,80 @@ ist, greift der oben beschriebene Fallback: Das Portal zeigt weiterhin die Mock-
 Deploy schaltet es auf Live um, sobald Sissy die Rechte in onOffice enterprise freischaltet
 (Details + To-do-Liste: [onoffice-integration.md](./onoffice-integration.md) §9).
 
+## Update — Portal LIVE mit 110 echten Objekten + Exposé-Flow + Filterleiste ✅
+
+Sissy hat die Objekt-Sichtbarkeit freigeschaltet — `estate read` liefert jetzt **110 echte
+Objekte** (92 Kauf / ~17 Miete, 41 Orte). Der komplette Live-Pfad läuft lokal verifiziert:
+
+- **Daten-Feinschliff nach Analyse aller 110 Datensätze**: `rooms` 0→null (Grundstücke zeigen
+  keine „0 Zi." mehr), **Ort-Normalisierung** („Ludwigshafen am Rhein / Rheingönheim" → Stadt
+  „Ludwigshafen" + Stadtteil als district; „Harthausen , Pfalz" → „Harthausen") — Filter-Dropdown
+  ist damit sauber (32 statt 41 wirre Einträge), `objektnr_extern` „2183 (1/2183)" → „2183",
+  `formatArea` de-DE mit max. 1 Nachkommastelle („108,8 m²" statt „108.79 m²").
+- **Titel-Präfix entfernt**: Jeder CRM-Titel beginnt mit „Sie hier? Wir auch!" — das ist
+  IS24-Konkurrenz-Marketing und auf der EIGENEN Website Redundanz auf jeder Karte. Wird beim
+  Mapping abgeschnitten (CRM unberührt). **Falls Manfred den Spruch auch auf riegel.de will:
+  eine Zeile in `onoffice.ts` — bitte Feedback.**
+- **PDF-Exposé-Flow (Konto-Anreiz)**: onOffice `pdf:get` mit Template „Exposé Riegel neu 2026"
+  live verifiziert (base64+zlib → echtes 4-MB-PDF). Neue Route `/api/expose` (Konto-Gate über
+  Supabase-Access-Token, Rate-Limit, **nur öffentlich gelistete Objekte** — keine Id-Enumeration
+  auf unveröffentlichte Exposés) + `ExposeCta` auf der Detailseite: eingeloggt = Download-Button,
+  ausgeloggt = „Konto erstellen & Exposé erhalten" mit `?next=`-Rücksprung nach Login
+  (Open-Redirect-sicher, nur interne Pfade).
+- **Filterleiste neu angeordnet** (Sonnet-Agent auf Sissys Feedback): Desktop — Pills links
+  sauber umbrechend, „Neueste" fest rechts oben, Zähler + „Suche speichern" auf einer
+  horizontalen Achse; Mobil — Swipe-Reihe + kompakte Zähler/Speichern-Zeile. Vorher/Nachher-
+  Screenshots im Scratchpad geprüft.
+- Ein separater QA/Journey-Workflow (Daten-Kreuzcheck gegen die IS24-Zweitquelle + 3
+  Journey-Linsen) lief parallel — Ergebnisse im nächsten Update.
+
+## Update — QA-/Journey-Orchestrierung: 14 Findings umgesetzt ✅
+
+Nach dem Live-Gang: 5 Sonnet-Agents (Daten-Kreuzcheck gegen unabhängige IS24-Zweitquelle,
+Render-Grenzfälle, Käufer-/Konto-/Trust-Journey) + 3 Fix-Agents parallel. Kreuzcheck-Ergebnis:
+**96 % Match, 0 Wert-Abweichungen** bei Preis/Zimmer/Fläche/Ort auf allen vergleichbaren Karten
+— die Mapping-Pipeline stimmt. Umgesetzt:
+
+- **Karten-Clustering** (MapLibre-nativ, RIEGEL-blaue Cluster-Kreise, sanfter Expansion-Zoom) —
+  vorher überlappten ~1/3 der 100+ Pins unklickbar. Fallback: ohne Tile-Netz bleiben Einzel-Pins.
+- **„Weitere Objekte anzeigen"** — Liste lädt 24er-Chunks statt 92 Karten auf einmal; Karte
+  zeigt weiter den Gesamtbestand. Mobile-FAB „Karte anzeigen" kollidiert nicht mehr mit dem
+  Consent-Banner (nach rechts + erscheint erst nach Consent-Entscheidung).
+- **CRM-Dubletten-Schutz**: 5 real doppelt angelegte Objekte im OnOffice-CRM (identischer
+  Titel/Preis/PLZ, 2 Ids) werden serverseitig dedupliziert — es gewinnt der jüngere Datensatz.
+- **Beschreibungs-Qualität**: App-Werbe-Boilerplate („…RIEGEL APP… / Hallo Zukunft……") wird
+  beim Mapping entfernt (3 Varianten, QA-verifiziert), Absätze bleiben erhalten
+  (whitespace-pre-line statt 3000-Zeichen-Textwurst), Ausstattungs-Chips zerreißen keine
+  Kommazahlen mehr und zeigen keine Überschriften/Jahreszahlen als Pillen.
+- **Rechtlich (kritisch)**: Terminbuchung (/termin) sammelte Name/E-Mail/Telefon OHNE
+  Datenschutz-Einwilligung — Checkbox + /datenschutz-Link ergänzt (Muster der anderen
+  Formulare); Kontaktformular-Datenschutz jetzt verlinkt.
+- **Objektbezug bleibt erhalten**: „Besichtigung anfragen" reicht den Objekttitel als
+  `?objekt=` an /termin und /kontakt durch (Nachricht vorbefüllt); Modal-Text ehrlich gemacht.
+- **Detailseite**: Merken-Herz am Preis (fehlte komplett!), Google-Maps-Routen-Link im
+  Lage-Abschnitt, **mobile Sticky-CTA-Leiste** (Preis + Anfrage unten fixiert — der Button lag
+  sonst 60 % der Seite tief), Objekt-ID aus objektnr_extern.
+- **Konto-Journey**: `signUp` mit `emailRedirectTo` (Bestätigungslink führt zurück zum Objekt),
+  Vorab-Zugang-Argument jetzt VOR dem Login sichtbar (Konto-Intro, Merkliste-CTA), Exposé-CTA-
+  Wortlaut vom kostenlosen Merken entkoppelt. Kategorie-Icons im „Fotos folgen"-Platzhalter.
+
+**CRM-Pflege für Sissy** (Portal fängt es ab, sauber wäre es an der Quelle):
+Dubletten-Paare objektnr 2068/1769, RIEGEL-2157/2163, RIEGEL-2322/2350, RIEGEL-2386/2464,
+RIEGEL-2430/2487 (je eins archivieren) · Objekt RIEGEL-2457: Kaltmiete-Feld leer (Portal zeigt
+korrekt „Warmmiete") · App-Werbe-Textbausteine in objektbeschreibung könnten raus.
+
+**Bewusst zurückgestellt** (nächster Batch): Teilen-/Druck-Button Detailseite, Mini-Lagekarte,
+Rückruf-CTA, Header-Login-Status, Toast beim ersten Herz-Klick, „Passwort vergessen"-Link,
+Karten-Fehlerhinweis bei Tile-Ausfall.
+
 ## Offen 🔧
 
-- **OnOffice-Rechte durch Sissy freischalten** (Objekt-Sichtbarkeit „alle Datensätze sehen" +
-  `estatepictures`-Leserecht) — siehe [onoffice-integration.md](./onoffice-integration.md) §9
-  für die genaue To-do-Liste; ohne das bleibt das Portal beim Mock-Fallback.
-- **`ONOFFICE_TOKEN`/`ONOFFICE_SECRET` in Vercel setzen** (alle Environments) — lokal ggf.
-  zusätzlich in `.env.local`, siehe [betrieb.md](./betrieb.md) §1.
+- **`ONOFFICE_TOKEN`/`ONOFFICE_SECRET` in Vercel setzen** (alle Environments) — **DER Grund,
+  warum riegel.vercel.app noch Mock zeigt**, lokal läuft alles live mit 110 Objekten.
+  Siehe [betrieb.md](./betrieb.md).
+- **`estatepictures`-Leserecht fehlt weiterhin** (errorcode 170) — Objekte erscheinen mit
+  „Fotos folgen"-Platzhalter, bis Sissy das API-Recht ergänzt. Danach ggf. Bild-Host in
+  `next.config.ts` gegen echte URLs verifizieren (Code filtert Fremd-Hosts bereits selbst).
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
   Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
   der komplette Bestenlisten-Flow mit einem echten Account.

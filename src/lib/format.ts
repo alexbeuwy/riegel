@@ -36,12 +36,30 @@ export function categoryLabel(c: ObjectCategory): string {
   return CATEGORY[c];
 }
 
+/** Icon-Name je Objektkategorie — u. a. für den "Fotos folgen"-Platzhalter,
+ *  damit nicht jede Karte dasselbe generische Haus zeigt. */
+export function categoryIcon(c: ObjectCategory): "home" | "building" | "tree" | "layers" {
+  switch (c) {
+    case "haus":
+      return "home";
+    case "wohnung":
+      return "building";
+    case "grundstueck":
+      return "tree";
+    default:
+      return "layers";
+  }
+}
+
 export function marketingLabel(m: MarketingType): string {
   return m === "kauf" ? "Kauf" : "Miete";
 }
 
 export function formatArea(n: number | null): string | null {
-  return n == null ? null : `${n} m²`;
+  // de-DE + max. 1 Nachkommastelle: OnOffice liefert exakte Werte wie 108.79 —
+  // "108,8 m²" statt "108.79 m²" auf Karten/Detailseiten.
+  if (n == null) return null;
+  return `${n.toLocaleString("de-DE", { maximumFractionDigits: 1 })} m²`;
 }
 
 export function roomsLabel(n: number | null): string | null {

@@ -24,13 +24,13 @@ export function RequestViewingButton({ title }: { title: string }) {
           Objekt: <span className="text-fg">{title}</span>
         </p>
         <p className="mt-3 text-sm">
-          Hinterlassen Sie uns eine Nachricht — wir melden uns in der Regel
-          innerhalb eines Werktages. Das vollständige Anfrageformular mit
-          direkter Übergabe an OnOffice ist in Vorbereitung.
+          Wählen Sie Ihren Weg — wir melden uns innerhalb eines Werktages. Das
+          vollständige Anfrageformular mit direkter Übergabe an OnOffice ist
+          in Vorbereitung.
         </p>
         <div className="mt-5 flex flex-col gap-3">
           <Link
-            href="/termin"
+            href={`/termin?objekt=${encodeURIComponent(title)}`}
             onClick={() => setOpen(false)}
             className="rounded-full bg-accent px-5 py-2.5 text-center text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
           >
@@ -47,7 +47,7 @@ export function RequestViewingButton({ title }: { title: string }) {
             </a>
           )}
           <Link
-            href="/kontakt"
+            href={`/kontakt?objekt=${encodeURIComponent(title)}`}
             onClick={() => setOpen(false)}
             className="rounded-full border border-border px-5 py-2.5 text-center text-sm text-fg transition-colors hover:border-accent hover:text-accent"
           >

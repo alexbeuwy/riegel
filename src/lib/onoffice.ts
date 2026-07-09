@@ -12,6 +12,7 @@
  * geloggt.
  */
 import { createHmac } from "node:crypto";
+import { inflateSync } from "node:zlib";
 import type { Estate, EstateStatus, ObjectCategory, MarketingType, GeoPoint, EnergyCertificate, Provision } from "@/lib/mock-estates";
 
 /** true, wenn Token+Secret gesetzt sind — Aufrufer können damit z. B. Status-Banner steuern. */
@@ -240,6 +241,26 @@ function mapMarketingType(vermarktungsart: string): MarketingType {
   return vermarktungsart === "kauf" ? "kauf" : "miete"; // miete|pacht|erbpacht -> miete
 }
 
+/**
+ * Ort-Feld normalisieren: RIEGEL pflegt teils "Stadt / Stadtteil" oder
+ * "Stadt , Zusatz" in EINEM Feld ("Ludwigshafen am Rhein / Rheingönheim",
+ * "Harthausen , Pfalz"). Für Filter-Dropdown & Karten-Gruppierung brauchen
+ * wir eine saubere Stadt; der Stadtteil wandert in district (Fallback).
+ */
+function normalizeOrt(raw: string): { city: string; districtFromOrt?: string } {
+  let city = raw;
+  let districtFromOrt: string | undefined;
+  const slash = raw.indexOf("/");
+  if (slash > 0) {
+    city = raw.slice(0, slash);
+    districtFromOrt = raw.slice(slash + 1).trim() || undefined;
+  }
+  city = city.split(",")[0].trim();
+  // Site-weite Konvention (ESTATE_ORTE, Standorte-Seiten): "Ludwigshafen" ohne Zusatz.
+  if (/^ludwigshafen\b/i.test(city)) city = "Ludwigshafen";
+  return { city, districtFromOrt };
+}
+
 const FEATURE_FLAGS: [string, string][] = [
   ["balkon", "Balkon"],
   ["terrasse", "Terrasse"],
@@ -250,20 +271,110 @@ const FEATURE_FLAGS: [string, string][] = [
   ["multiParkingLot", "Stellplätze"],
 ];
 
-/** ausstatt_beschr in kurze Chip-Segmente (≤40 Zeichen) + einen Rest-Absatz für Fließtext. */
-function extractTextFeatures(text: string): { chips: string[]; extraParagraph?: string } {
+const MAX_TEXT_FEATURE_CHIPS = 14;
+
+/** Zeile besteht nur aus einer Jahreszahl (z. B. "1998", "2005 ."), ohne weiteren
+ * Text — typisch für Modernisierungs-Chroniken, für sich genommen kein Ausstattungsmerkmal. */
+function isBareYear(line: string): boolean {
+  return /^\d{4}\s*\.?$/.test(line);
+}
+
+/**
+ * ausstatt_beschr in kurze Chip-Segmente (≤45 Zeichen) + einen Rest-Absatz für
+ * Fließtext. Die Felder sind zeilenbasiert gepflegt (QA-Samples) — NUR an
+ * Zeilenumbrüchen splitten: Kommas gehören zum Text und dürfen dt. Kommazahlen
+ * nicht zerreißen (QA-Fund Id 419: "Ca. 120, 54 m² Garten" wurde vorher an der
+ * "120,"-Stelle zerschnitten). Reine Struktur-Überschriften (Zeile endet auf
+ * ":", z. B. "Angaben laut Verkäufer:") und nackte Jahreszahlen werden
+ * verworfen; "Hinweis"/"Angaben laut"-Zeilen mit echtem Inhalt wandern in den
+ * Fließtext statt als Chip zu erscheinen. existingLabels (bereits über
+ * FEATURE_FLAGS gesetzte Chips wie "Balkon") werden case-insensitiv gegen
+ * Dubletten geprüft. Chip-Deckel: MAX_TEXT_FEATURE_CHIPS (Überhang ->
+ * extraParagraph), damit die Detailseite nicht in Pillen ertrinkt.
+ */
+function extractTextFeatures(text: string, existingLabels: string[] = []): { chips: string[]; extraParagraph?: string } {
   if (!text) return { chips: [] };
-  const segments = text
-    .split(/[\n,]/)
+  const existing = new Set(existingLabels.map((label) => label.toLowerCase()));
+  const lines = text
+    .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
+
   const chips: string[] = [];
   const longParts: string[] = [];
-  for (const seg of segments) {
-    if (seg.length <= 40) chips.push(seg);
-    else longParts.push(seg);
+
+  for (const line of lines) {
+    if (line.endsWith(":") || isBareYear(line)) continue; // reine Struktur-Überschrift/Jahreszahl -> verwerfen
+    if (/^(hinweis|angaben\s+laut)\b/i.test(line)) {
+      longParts.push(line); // Disclaimer mit echtem Inhalt -> Fließtext statt Chip
+      continue;
+    }
+    if (existing.has(line.toLowerCase())) continue; // Dublette zu einem bereits über FEATURE_FLAGS gesetzten Chip
+
+    if (line.length <= 45) chips.push(line);
+    else longParts.push(line);
   }
+
+  // Chip-Überhang landet ebenfalls im Fließtext statt einer endlosen Pillen-Wand.
+  const overflow = chips.length > MAX_TEXT_FEATURE_CHIPS ? chips.splice(MAX_TEXT_FEATURE_CHIPS) : [];
+  longParts.push(...overflow);
+
   return { chips, extraParagraph: longParts.length ? longParts.join(" ") : undefined };
+}
+
+// Erkennt den führenden App-Werbe-Absatz in objektbeschreibung, unabhängig von
+// der (variablen) Punktzahl drumherum — z. B. "................Jetzt die neue
+// RIEGEL APP, kostenlos im APP Store herunterladen........................"
+// oder "........Immer aktuell mit der RIEGEL APP, kostenlos im APP Store
+// herunterladen........." (QA-Samples Id 419/6037/7683).
+const APP_PROMO_KEYWORDS = [/riegel/i, /\bapp\b/i, /herunterladen/i];
+
+function isAppPromoParagraph(paragraph: string): boolean {
+  return APP_PROMO_KEYWORDS.every((re) => re.test(paragraph));
+}
+
+// Folgt dem App-Werbe-Absatz oft: "Hallo Zukunft......" mit variabler
+// Punktzahl. Manchmal hängt direkt ein ECHTER Untertitel im selben Absatz
+// dran ("Hallo Zukunft......Altersgerechte und barrierefreie Wohnung") — nur
+// das Präfix fällt weg, der Rest bleibt erhalten.
+// Auch "........Hallo Zukunft........" (führende Punktreihe, QA-Fund Id 11431).
+const HALLO_ZUKUNFT_RE = /^[.\s]*hallo\s+zukunft[.\s]*/i;
+
+/**
+ * Entfernt die RIEGEL-APP-Werbe-Boilerplate + ein optionales "Hallo
+ * Zukunft...."-Präfix vom Anfang von objektbeschreibung (QA-verifiziert an
+ * echten Ids 419/6037/7683 — Id 5927 hat gar keine Boilerplate und bleibt
+ * unverändert durch). \r\n wird zu \n normalisiert, führende/mehrfache
+ * Leerzeilen werden aufgeräumt. Die Absatzstruktur (Leerzeile = \n\n) bleibt
+ * ansonsten erhalten — die Detailseite rendert sie mit white-space:pre-line.
+ */
+function cleanDescription(raw: string): string {
+  if (!raw) return "";
+  const normalized = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const paragraphs = normalized.split(/\n{2,}/).map((p) => p.trim());
+
+  while (paragraphs.length > 0) {
+    const head = paragraphs[0];
+    if (isAppPromoParagraph(head)) {
+      paragraphs.shift(); // kompletter Werbe-Absatz -> weg
+      continue;
+    }
+    if (HALLO_ZUKUNFT_RE.test(head)) {
+      const rest = head.replace(HALLO_ZUKUNFT_RE, "").trim();
+      if (!rest) {
+        paragraphs.shift(); // nur Punkte, kein echter Untertitel -> Absatz komplett weg
+        continue;
+      }
+      paragraphs[0] = rest; // echter Untertitel bleibt, nur Präfix abgeschnitten
+    }
+    break;
+  }
+
+  // Dekorative Punktreihen um Untertitel abstreifen ("......Titel......" —
+  // QA-Fund Id 11431); Punkte IM Satz (z. B. "ca. 496,00 m²...") bleiben.
+  const stripped = paragraphs.map((p) => p.replace(/^\.{3,}\s*/, "").replace(/\s*\.{4,}$/, "").trim());
+
+  return stripped.filter(Boolean).join("\n\n");
 }
 
 const VALID_ENERGY_CLASSES = new Set(["A+", "A", "B", "C", "D", "E", "F", "G", "H"]);
@@ -437,7 +548,11 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
   const status = mapStatus2(str(el.status2));
   if (status === null) return null; // archiviert/inaktiv/entzogen/fremdvermarktet -> nicht veröffentlichen
 
-  const title = str(el.objekttitel) || "Ohne Titel";
+  // IS24-Marketing-Präfix entfernen: "Sie hier? Wir auch!" zielt auf Portal-
+  // Konkurrenz-Listen — auf der EIGENEN Website wäre er auf jeder Karte reine
+  // Redundanz und killt die Scanbarkeit. (Nur Anzeige hier; CRM bleibt unberührt.)
+  // Tolerant ggü. Tippvarianten im CRM: "Sie hier ? Wir auch !" (QA-Fund, 3 Objekte).
+  const title = str(el.objekttitel).replace(/^\s*sie\s*hier\s*\?\s*wir\s*auch\s*!\s*/i, "").trim() || "Ohne Titel";
   const marketingType = mapMarketingType(str(el.vermarktungsart));
   const category = mapCategory(str(el.objektart));
   const objectType = prettifyKey(str(el.objekttyp)) || undefined;
@@ -466,14 +581,15 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
   const nebenkosten = num(el.nebenkosten);
   const ancillaryCosts = nebenkosten && nebenkosten > 0 ? nebenkosten : undefined;
 
-  const rooms = num(el.anzahl_zimmer);
+  // "0.00" bedeutet bei OnOffice "nicht gepflegt" (z. B. Zimmer bei Grundstücken) — als fehlend behandeln.
+  const rooms = num(el.anzahl_zimmer) || null;
   const livingArea = num(el.wohnflaeche) || num(el.nutzflaeche) || null;
   const grundstuecksflaeche = num(el.grundstuecksflaeche);
   const plotArea = grundstuecksflaeche && grundstuecksflaeche > 0 ? grundstuecksflaeche : undefined;
 
-  const city = str(el.ort);
+  const { city, districtFromOrt } = normalizeOrt(str(el.ort));
   const postcode = str(el.plz);
-  const district = str(el.regionaler_zusatz) || undefined;
+  const district = str(el.regionaler_zusatz) || districtFromOrt || undefined;
 
   const lat = num(el.breitengrad);
   const lng = num(el.laengengrad);
@@ -481,10 +597,10 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
   const showExactLocation = geo !== null;
 
   const flagFeatures = FEATURE_FLAGS.filter(([key]) => bool(el[key])).map(([, label]) => label);
-  const { chips: textFeatures, extraParagraph } = extractTextFeatures(str(el.ausstatt_beschr));
+  const { chips: textFeatures, extraParagraph } = extractTextFeatures(str(el.ausstatt_beschr), flagFeatures);
   const features = [...flagFeatures, ...textFeatures];
 
-  let description = str(el.objektbeschreibung) || undefined;
+  let description = cleanDescription(str(el.objektbeschreibung)) || undefined;
   if (extraParagraph) description = description ? `${description}\n\n${extraParagraph}` : extraParagraph;
 
   const updatedAt = parseOnOfficeDate(el.geaendert_am) ?? parseOnOfficeDate(el.erstellt_am) ?? new Date(0).toISOString();
@@ -493,7 +609,9 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
 
   return {
     id,
-    externalId: str(el.objektnr_extern) || undefined,
+    // "2183 (1/2183)"-Varianten aufs eigentliche Kürzel eindampfen — die Klammer
+    // ist interne Mehrfach-Nummerierung, keine Kunden-Objektnummer.
+    externalId: str(el.objektnr_extern).split("(")[0].trim() || undefined,
     slug: buildSlug(title, id),
     title,
     marketingType,
@@ -595,6 +713,48 @@ async function fetchEstateImages(ids: string[]): Promise<Map<string, string[]>> 
   return result;
 }
 
+/* ─────────────────────────  PDF-Exposé (pdf get)  ───────────────────────── */
+
+// Live verifiziert (09.07.2026): templates:get {type:"pdf"} liefert u. a.
+// "Exposé Riegel neu 2026" und "Exposé Riegel"; pdf:get antwortet mit
+// base64(zlib(PDF)). Reihenfolge: neuestes Template zuerst, Fallback altes.
+const EXPOSE_TEMPLATES = [
+  "urn:onoffice-de-ns:smart:2.5:pdf:expose:lang:Exposé Riegel neu 2026",
+  "urn:onoffice-de-ns:smart:2.5:pdf:expose:lang:Exposé Riegel",
+];
+
+interface OnOfficePdfData {
+  records?: { elements?: { type?: string; document?: string } }[];
+}
+
+/**
+ * Erzeugt das offizielle RIEGEL-PDF-Exposé zu einer OnOffice-Objekt-Id.
+ * `null` bei Fehler/fehlender Konfiguration — der Aufrufer antwortet dann 503.
+ */
+export async function fetchExposePdf(estateId: string): Promise<Buffer | null> {
+  if (!isOnOfficeEnabled) return null;
+
+  for (const template of EXPOSE_TEMPLATES) {
+    const data = await callOnOffice<OnOfficePdfData>("pdf", "get", {
+      estateid: Number(estateId),
+      template,
+    });
+    const document = data?.records?.[0]?.elements?.document;
+    if (!document) continue; // z. B. Template umbenannt -> nächstes probieren
+
+    try {
+      const raw = Buffer.from(document, "base64");
+      // Dokument kommt zlib-komprimiert (0x78-Header); unkomprimiertes PDF tolerieren.
+      const pdf = raw.subarray(0, 4).toString("latin1") === "%PDF" ? raw : inflateSync(raw);
+      if (pdf.subarray(0, 4).toString("latin1") !== "%PDF") continue;
+      return pdf;
+    } catch {
+      continue; // kaputte Antwort -> Fallback-Template versuchen
+    }
+  }
+  return null;
+}
+
 /* ─────────────────────────  Public API  ───────────────────────── */
 
 /**
@@ -615,17 +775,29 @@ export async function fetchOnOfficeEstates(): Promise<Estate[] | null> {
   }
   if (mapped.length === 0) return null;
 
+  // Defensive Dedup-Stufe: Im CRM existieren real doppelt angelegte Datensätze
+  // (QA-Fund 09.07.2026: 5 Titel-Paare mit 2 OnOffice-Ids, identischer Preis/
+  // Ort — z. B. objektnr 2068/1769). Bis RIEGEL die Dubletten archiviert,
+  // gewinnt je Schlüssel (Titel+Preis+PLZ) der zuletzt geänderte Datensatz.
+  const byKey = new Map<string, Estate>();
+  for (const estate of mapped) {
+    const key = `${estate.title.toLowerCase()}|${estate.price ?? ""}|${estate.postcode}`;
+    const existing = byKey.get(key);
+    if (!existing || estate.updatedAt > existing.updatedAt) byKey.set(key, estate);
+  }
+  const deduped = [...byKey.values()];
+
   // sortby ist server-seitig ggf. nicht unterstützt -> clientseitig zusätzlich
   // absichern (neueste Änderung zuerst).
-  mapped.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  mapped.forEach((estate, i) => {
+  deduped.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  deduped.forEach((estate, i) => {
     estate.isFeatured = i < FEATURED_COUNT;
   });
 
-  const imagesByEstate = await fetchEstateImages(mapped.map((e) => e.id));
-  for (const estate of mapped) {
+  const imagesByEstate = await fetchEstateImages(deduped.map((e) => e.id));
+  for (const estate of deduped) {
     estate.images = imagesByEstate.get(estate.id) ?? [];
   }
 
-  return mapped;
+  return deduped;
 }

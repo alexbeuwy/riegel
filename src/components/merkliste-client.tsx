@@ -6,6 +6,7 @@ import { PageIntro } from "@/components/page-intro";
 import { PortalCard } from "@/components/portal/portal-card";
 import { useFavorites } from "@/components/favorites";
 import { useSavedSearches } from "@/components/saved-searches";
+import { useAuth } from "@/components/auth";
 import { Icon } from "@/components/icon";
 import type { Estate } from "@/lib/mock-estates";
 
@@ -14,6 +15,7 @@ import type { Estate } from "@/lib/mock-estates";
 export function MerklisteClient({ estates }: { estates: Estate[] }) {
   const { ids, ready } = useFavorites();
   const { searches, remove, toggleNotify, ready: sReady } = useSavedSearches();
+  const { enabled: authEnabled, user } = useAuth();
   const favorites = estates.filter((e) => ids.includes(e.id));
   // Gemerkte IDs, die es im aktuellen Objektbestand nicht mehr gibt (Objekt
   // verkauft/offline oder Wechsel Mock↔Live): Zähler im Header zeigt weiter
@@ -23,10 +25,24 @@ export function MerklisteClient({ estates }: { estates: Estate[] }) {
   return (
     <>
       <PageIntro eyebrow="Mein Bereich" title="Merkliste & Suchaufträge">
-        Favoriten und gespeicherte Suchen — aktuell lokal in diesem Browser.
-        Mit einem Konto synchronisieren wir sie bald geräteübergreifend und
-        benachrichtigen Sie per E-Mail bei passenden neuen Objekten.
+        Favoriten und gespeicherte Suchen — ohne Konto nur lokal in diesem
+        Browser. Mit kostenlosem Konto: auf jedem Gerät verfügbar, PDF-Exposés
+        laden und von neuen Objekten erfahren, bevor sie öffentlich online gehen.
       </PageIntro>
+
+      {/* Konto-CTA direkt unter der Einleitung — das stärkste Argument
+          (Vorab-Zugang) stand bisher erst NACH dem Login im Suchprofil. */}
+      {authEnabled && !user && (
+        <Container>
+          <Link
+            href="/konto?next=/merkliste"
+            className="press -mt-4 mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+          >
+            <Icon name="users" size={16} />
+            Kostenloses Konto erstellen
+          </Link>
+        </Container>
+      )}
 
       <section className="py-14">
         <Container className="space-y-16">

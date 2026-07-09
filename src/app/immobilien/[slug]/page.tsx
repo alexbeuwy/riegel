@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/container";
 import { RequestViewingButton } from "@/components/request-viewing-button";
 import { AnsprechpartnerCard } from "@/components/ansprechpartner-card";
+import { ExposeCta } from "@/components/expose-cta";
 import { EstateGallery } from "@/components/portal/estate-gallery";
 import { PropertyCard } from "@/components/property-card";
 import { Icon, type IconName } from "@/components/icon";
 import { type EnergyCertificate, type Estate } from "@/lib/mock-estates";
 import { getEstateBySlug, getEstateData } from "@/lib/estates";
+import { FavoriteButton } from "@/components/favorites";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 import { contactForCity } from "@/lib/contacts";
 import { site } from "@/lib/site";
@@ -107,7 +109,8 @@ export default async function EstateDetailPage({
   });
 
   return (
-    <article className="pb-24 pt-24">
+    // pb-36 <lg: Platz für die fixierte Mobile-CTA-Leiste am unteren Rand.
+    <article className="pb-36 pt-24 lg:pb-24">
       {/* "<" escapen: JSON.stringify lässt "</script>" durch — mit Live-Daten
           aus dem CRM (objekttitel etc.) wäre das eine Script-Injection-Fläche. */}
       <script
@@ -151,7 +154,9 @@ export default async function EstateDetailPage({
             {estate.description && (
               <section className="space-y-3">
                 <h2 className="text-xl font-semibold">Objektbeschreibung</h2>
-                <p className="text-muted">{estate.description}</p>
+                {/* whitespace-pre-line: OnOffice-Texte tragen echte Absätze (\n\n) —
+                    ohne das kollabiert alles zu einer 3000-Zeichen-Textwurst. */}
+                <p className="whitespace-pre-line text-muted">{estate.description}</p>
               </section>
             )}
 
@@ -169,10 +174,25 @@ export default async function EstateDetailPage({
               </section>
             )}
 
-            {estate.locationDescription && (
+            {(estate.locationDescription || estate.geo) && (
               <section className="space-y-3">
                 <h2 className="text-xl font-semibold">Lage</h2>
-                <p className="text-muted">{estate.locationDescription}</p>
+                {estate.locationDescription && (
+                  <p className="whitespace-pre-line text-muted">{estate.locationDescription}</p>
+                )}
+                {estate.geo && (
+                  // Reiner Link statt eingebetteter Karte — kein Consent nötig,
+                  // Datenübertragung erst beim bewussten Klick.
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${estate.geo.lat},${estate.geo.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-accent hover:underline"
+                  >
+                    <Icon name="pin" size={15} />
+                    Route auf Google Maps öffnen
+                  </a>
+                )}
               </section>
             )}
 
@@ -213,14 +233,19 @@ export default async function EstateDetailPage({
 
           <aside className="h-fit space-y-5 lg:sticky lg:top-24">
             <div className="space-y-5 rounded-2xl border border-border bg-surface p-6">
-              <div>
-                <div className="text-sm text-faint">{estate.priceLabel}</div>
-                <div className="text-3xl font-semibold text-fg">{formatPrice(estate)}</div>
-                {estate.ancillaryCosts != null && (
-                  <div className="mt-1 text-sm text-muted">
-                    zzgl. {estate.ancillaryCosts} € Nebenkosten
-                  </div>
-                )}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm text-faint">{estate.priceLabel}</div>
+                  <div className="text-3xl font-semibold text-fg">{formatPrice(estate)}</div>
+                  {estate.ancillaryCosts != null && (
+                    <div className="mt-1 text-sm text-muted">
+                      zzgl. {estate.ancillaryCosts} € Nebenkosten
+                    </div>
+                  )}
+                </div>
+                {/* Merken direkt am Preis — wer über einen geteilten Link landet,
+                    soll nicht zurück zur Liste müssen, um das Herz zu finden. */}
+                <FavoriteButton id={estate.id} className="shrink-0 border border-border" />
               </div>
               <RequestViewingButton title={estate.title} />
               <p className="text-xs text-faint">
@@ -237,8 +262,25 @@ export default async function EstateDetailPage({
               </dl>
             </div>
 
+            {/* Konto-Anreiz: Exposé-PDF (Live-Objekte) — eingeloggt Download,
+                ausgeloggt CTA "Konto erstellen & Exposé erhalten". */}
+            <ExposeCta slug={estate.slug} live={source === "onoffice"} />
+
             <AnsprechpartnerCard contact={contact} context={estate.title} />
           </aside>
+        </div>
+
+        {/* Mobile-CTA-Leiste: Auf <lg liegt die Preis-/Anfrage-Box erst ~60 %
+            der Seite tief — Preis + Anfrage deshalb unten fixiert (Portal-
+            Standard à la ImmoScout). Desktop hat die sticky Sidebar. */}
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-border bg-bg/90 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="min-w-0">
+            <div className="text-[0.65rem] uppercase tracking-wider text-faint">{estate.priceLabel}</div>
+            <div className="truncate text-base font-semibold text-fg">{formatPrice(estate)}</div>
+          </div>
+          <div className="ml-auto w-48 shrink-0">
+            <RequestViewingButton title={estate.title} />
+          </div>
         </div>
 
         {similar.length > 0 && (

@@ -26,14 +26,28 @@ function inBounds(e: Estate, b: MapBounds): boolean {
   return e.geo.lat <= b.n && e.geo.lat >= b.s && e.geo.lng <= b.e && e.geo.lng >= b.w;
 }
 
+// Clientseitiges Chunking der Karten-Liste: ~92 Objekte sofort zu rendern ist
+// unnötig teuer — die Karte bekommt trotzdem immer den vollen Bestand (Pins/Cluster).
+const CARD_CHUNK = 24;
+
 export function PortalView({ estates }: { estates: Estate[] }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showMapMobile, setShowMapMobile] = useState(false);
   const [searchInArea, setSearchInArea] = useState(false);
   const [bounds, setBounds] = useState<MapBounds | null>(null);
+  const [visibleCount, setVisibleCount] = useState(CARD_CHUNK);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
-  const { maps: mapsConsent } = useConsent();
+  const { maps: mapsConsent, decided: consentDecided } = useConsent();
+
+  // Bei Filterwechsel (neue estates-Prop von der Seite) wieder von vorn beginnen.
+  // SetState während des Renders statt in einem Effect (React-Pattern für
+  // „State anhand einer geänderten Prop zurücksetzen", kein Extra-Rerender-Flackern).
+  const [prevEstates, setPrevEstates] = useState(estates);
+  if (estates !== prevEstates) {
+    setPrevEstates(estates);
+    setVisibleCount(CARD_CHUNK);
+  }
 
   const onHover = useCallback((id: string | null) => setHoveredId(id), []);
   const onActivate = useCallback((id: string | null) => setActiveId(id), []);
@@ -50,6 +64,14 @@ export function PortalView({ estates }: { estates: Estate[] }) {
     if (!searchInArea || !bounds) return null;
     return new Set(listEstates.map((e) => e.id));
   }, [searchInArea, bounds, listEstates]);
+
+  // Nur die Karten-Liste wird gechunkt — die Karte bekommt weiterhin listEstates
+  // vollständig (s.u.), Pins/Cluster zeigen also immer den ganzen Kartenausschnitt.
+  const visibleEstates = useMemo(
+    () => listEstates.slice(0, visibleCount),
+    [listEstates, visibleCount],
+  );
+  const remaining = listEstates.length - visibleEstates.length;
 
   useEffect(() => {
     if (!activeId) return;
@@ -118,20 +140,33 @@ export function PortalView({ estates }: { estates: Estate[] }) {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 xl:grid-cols-2">
-            {listEstates.map((e) => (
-              <PortalCard
-                key={e.id}
-                estate={e}
-                hovered={e.id === hoveredId}
-                active={e.id === activeId}
-                onHover={onHover}
-                registerRef={(el) => {
-                  cardRefs.current[e.id] = el;
-                }}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 xl:grid-cols-2">
+              {visibleEstates.map((e) => (
+                <PortalCard
+                  key={e.id}
+                  estate={e}
+                  hovered={e.id === hoveredId}
+                  active={e.id === activeId}
+                  onHover={onHover}
+                  registerRef={(el) => {
+                    cardRefs.current[e.id] = el;
+                  }}
+                />
+              ))}
+            </div>
+            {remaining > 0 && (
+              <div className="flex justify-center px-5 pb-10 sm:px-8">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((v) => v + CARD_CHUNK)}
+                  className="press rounded-full border border-border px-5 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+                >
+                  Weitere Objekte anzeigen ({Math.min(remaining, CARD_CHUNK)})
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -168,16 +203,22 @@ export function PortalView({ estates }: { estates: Estate[] }) {
         </MapConsentGate>
       </div>
 
-      {/* Mobile-Umschalter Liste/Karte */}
-      <button
-        type="button"
-        onClick={() => setShowMapMobile((v) => !v)}
-        style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
-        className="fixed left-5 z-50 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent shadow-2xl lg:hidden"
-      >
-        <Icon name={showMapMobile ? "layers" : "pin"} size={18} />
-        {showMapMobile ? "Liste anzeigen" : "Karte anzeigen"}
-      </button>
+      {/* Mobile-Umschalter Liste/Karte — bewusst unten RECHTS statt -links: der
+          Consent-Banner sitzt (ab sm:) unten links und würde den FAB sonst verdecken.
+          Auf schmalen Mobilgeräten ist der Banner sogar fast bildschirmbreit — solange
+          er offen ist (Erstbesuch, keine Entscheidung), bleibt der FAB deshalb
+          ausgeblendet statt unklickbar unter dem Banner zu liegen. */}
+      {consentDecided && (
+        <button
+          type="button"
+          onClick={() => setShowMapMobile((v) => !v)}
+          style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+          className="fixed right-5 z-50 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent shadow-2xl lg:hidden"
+        >
+          <Icon name={showMapMobile ? "layers" : "pin"} size={18} />
+          {showMapMobile ? "Liste anzeigen" : "Karte anzeigen"}
+        </button>
+      )}
     </div>
   );
 }

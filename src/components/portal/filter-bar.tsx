@@ -91,102 +91,111 @@ export function FilterBar({
     filters.typ === "miete" ? `${p} €` : formatEUR(p);
 
   return (
-    <div className="-mx-1 flex items-center gap-2.5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden">
-      {/* Vermarktungsart — gleitendes Pill (tabs sliding) */}
-      <div className="shrink-0">
-        <Segmented
-          ariaLabel="Vermarktungsart"
-          value={filters.typ === "miete" ? "miete" : "kauf"}
-          onChange={(v) =>
-            // Kauf↔Miete: Preis-Filter zurücksetzen (Kauf- und Mietskalen sind inkompatibel)
-            update((p) => {
-              if (v === "kauf") p.delete("typ");
-              else p.set("typ", "miete");
-              p.delete("preis_min");
-              p.delete("preis_max");
-            })
-          }
+    <div className="-mx-1 flex items-center gap-2.5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] lg:mx-0 lg:items-start lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden">
+      {/*
+        Filter-Pills als eigene Gruppe: auf Mobil per `contents` unsichtbar
+        (bleiben Teil der einen Swipe-Reihe des Elternteils), ab lg ein
+        eigener wrap-Container — so bricht die Gruppe unabhängig von der
+        Sortierung um, die immer rechts außen auf Höhe der ersten Zeile bleibt.
+      */}
+      <div className="contents lg:flex lg:flex-1 lg:flex-wrap lg:items-center lg:gap-2.5">
+        {/* Vermarktungsart — gleitendes Pill (tabs sliding) */}
+        <div className="shrink-0">
+          <Segmented
+            ariaLabel="Vermarktungsart"
+            value={filters.typ === "miete" ? "miete" : "kauf"}
+            onChange={(v) =>
+              // Kauf↔Miete: Preis-Filter zurücksetzen (Kauf- und Mietskalen sind inkompatibel)
+              update((p) => {
+                if (v === "kauf") p.delete("typ");
+                else p.set("typ", "miete");
+                p.delete("preis_min");
+                p.delete("preis_max");
+              })
+            }
+            options={[
+              { value: "kauf", label: "Kaufen" },
+              { value: "miete", label: "Mieten" },
+            ]}
+          />
+        </div>
+
+        <Select
+          label="Objektart"
+          icon="building"
+          value={filters.typObj ?? ""}
+          onChange={(v) => set("typ_obj", v)}
           options={[
-            { value: "kauf", label: "Kaufen" },
-            { value: "miete", label: "Mieten" },
+            ["", "Objektart"],
+            ["wohnung", "Wohnung"],
+            ["haus", "Haus"],
+            ["grundstueck", "Grundstück"],
+            ["gewerbe", "Gewerbe"],
           ]}
         />
+        <Select
+          label="Ort"
+          icon="pin"
+          value={filters.ort ?? ""}
+          onChange={(v) => set("ort", v)}
+          options={[["", "Alle Orte"], ...orte.map((o) => [o, o] as [string, string])]}
+        />
+        <Select
+          label="Preis ab"
+          icon="euro"
+          value={filters.preisMin?.toString() ?? ""}
+          onChange={(v) => set("preis_min", v)}
+          options={[["", "Preis ab"], ...preise.map((p) => [p.toString(), priceLabel(p)] as [string, string])]}
+        />
+        <Select
+          label="Preis bis"
+          icon="euro"
+          value={filters.preisMax?.toString() ?? ""}
+          onChange={(v) => set("preis_max", v)}
+          options={[["", "Preis bis"], ...preise.map((p) => [p.toString(), priceLabel(p)] as [string, string])]}
+        />
+        <Select
+          label="Zimmer ab"
+          icon="bed"
+          value={filters.zimmerMin?.toString() ?? ""}
+          onChange={(v) => set("zimmer_min", v)}
+          options={[["", "Zimmer"], ...ZIMMER.map((z) => [z.toString(), `${z}+`] as [string, string])]}
+        />
+        <Select
+          label="Wohnfläche ab"
+          icon="ruler"
+          value={filters.flaecheMin?.toString() ?? ""}
+          onChange={(v) => set("flaeche_min", v)}
+          options={[["", "Fläche ab"], ...FLAECHE.map((f) => [f.toString(), `${f} m²`] as [string, string])]}
+        />
+        <Select
+          label="Wohnfläche bis"
+          icon="ruler"
+          value={filters.flaecheMax?.toString() ?? ""}
+          onChange={(v) => set("flaeche_max", v)}
+          options={[["", "Fläche bis"], ...FLAECHE.map((f) => [f.toString(), `${f} m²`] as [string, string])]}
+        />
+        <button
+          type="button"
+          onClick={() => set("provisionsfrei", filters.provisionsfrei ? "" : "1")}
+          aria-pressed={!!filters.provisionsfrei}
+          className={`press inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm lg:h-10 ${
+            filters.provisionsfrei
+              ? "border-accent text-accent"
+              : "border-border text-muted hover:text-fg"
+          }`}
+        >
+          <Icon name="check" size={15} />
+          Provisionsfrei
+        </button>
+
+        <div className="shrink-0">
+          <MoreFilters filters={filters} />
+        </div>
       </div>
 
-      <Select
-        label="Objektart"
-        icon="building"
-        value={filters.typObj ?? ""}
-        onChange={(v) => set("typ_obj", v)}
-        options={[
-          ["", "Objektart"],
-          ["wohnung", "Wohnung"],
-          ["haus", "Haus"],
-          ["grundstueck", "Grundstück"],
-          ["gewerbe", "Gewerbe"],
-        ]}
-      />
-      <Select
-        label="Ort"
-        icon="pin"
-        value={filters.ort ?? ""}
-        onChange={(v) => set("ort", v)}
-        options={[["", "Alle Orte"], ...orte.map((o) => [o, o] as [string, string])]}
-      />
-      <Select
-        label="Preis ab"
-        icon="euro"
-        value={filters.preisMin?.toString() ?? ""}
-        onChange={(v) => set("preis_min", v)}
-        options={[["", "Preis ab"], ...preise.map((p) => [p.toString(), priceLabel(p)] as [string, string])]}
-      />
-      <Select
-        label="Preis bis"
-        icon="euro"
-        value={filters.preisMax?.toString() ?? ""}
-        onChange={(v) => set("preis_max", v)}
-        options={[["", "Preis bis"], ...preise.map((p) => [p.toString(), priceLabel(p)] as [string, string])]}
-      />
-      <Select
-        label="Zimmer ab"
-        icon="bed"
-        value={filters.zimmerMin?.toString() ?? ""}
-        onChange={(v) => set("zimmer_min", v)}
-        options={[["", "Zimmer"], ...ZIMMER.map((z) => [z.toString(), `${z}+`] as [string, string])]}
-      />
-      <Select
-        label="Wohnfläche ab"
-        icon="ruler"
-        value={filters.flaecheMin?.toString() ?? ""}
-        onChange={(v) => set("flaeche_min", v)}
-        options={[["", "Fläche ab"], ...FLAECHE.map((f) => [f.toString(), `${f} m²`] as [string, string])]}
-      />
-      <Select
-        label="Wohnfläche bis"
-        icon="ruler"
-        value={filters.flaecheMax?.toString() ?? ""}
-        onChange={(v) => set("flaeche_max", v)}
-        options={[["", "Fläche bis"], ...FLAECHE.map((f) => [f.toString(), `${f} m²`] as [string, string])]}
-      />
-      <button
-        type="button"
-        onClick={() => set("provisionsfrei", filters.provisionsfrei ? "" : "1")}
-        aria-pressed={!!filters.provisionsfrei}
-        className={`press inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm lg:h-10 ${
-          filters.provisionsfrei
-            ? "border-accent text-accent"
-            : "border-border text-muted hover:text-fg"
-        }`}
-      >
-        <Icon name="check" size={15} />
-        Provisionsfrei
-      </button>
-
+      {/* Sortierung — rechts außen, unabhängig davon wie die Pills links umbrechen */}
       <div className="shrink-0">
-        <MoreFilters filters={filters} />
-      </div>
-
-      <div className="shrink-0 lg:ml-auto">
         <Select
           label="Sortierung"
           icon="trend"

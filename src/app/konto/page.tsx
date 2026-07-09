@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Container } from "@/components/container";
 import { PageIntro } from "@/components/page-intro";
 import { Icon } from "@/components/icon";
@@ -11,8 +12,27 @@ import { ProfileForm } from "@/components/profile-form";
 const inputCls =
   "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
 
+// useSearchParams verlangt eine Suspense-Grenze (Next-Build-Regel für CSR-Bailout).
 export default function KontoPage() {
+  return (
+    <Suspense>
+      <KontoInner />
+    </Suspense>
+  );
+}
+
+function KontoInner() {
   const { enabled, ready, user, signIn, signUp, signOut } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // ?next=/immobilien/… — nach Login/Registrierung dorthin zurück (z. B. vom
+  // Exposé-CTA). Nur interne Pfade zulassen, sonst wäre das ein Open-Redirect.
+  const rawNext = searchParams.get("next") ?? "";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+
+  useEffect(() => {
+    if (next && user) router.replace(next);
+  }, [next, user, router]);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +51,13 @@ export default function KontoPage() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
     if (password.length < 8) return fail("Passwort: mindestens 8 Zeichen.");
     setBusy(true);
-    const res = mode === "login" ? await signIn(email, password) : await signUp(email, password);
+    // Bestätigungslink zurück auf diese Seite (inkl. ?next=) — sonst verliert
+    // z. B. der Exposé-CTA-Flow nach der Pflicht-E-Mail-Bestätigung sein Ziel.
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/konto${next ? `?next=${encodeURIComponent(next)}` : ""}`
+        : undefined;
+    const res = mode === "login" ? await signIn(email, password) : await signUp(email, password, redirectTo);
     setBusy(false);
     if (res.error) return fail(res.error);
     if (mode === "register" && "needsConfirm" in res && res.needsConfirm) {
@@ -42,8 +68,9 @@ export default function KontoPage() {
   return (
     <>
       <PageIntro eyebrow="Mein Konto" title="Anmelden & Merkliste sichern">
-        Mit einem Konto sichern Sie Favoriten und Suchaufträge geräteübergreifend
-        und werden bei passenden neuen Objekten benachrichtigt.
+        Mit einem Konto sichern Sie Favoriten und Suchaufträge geräteübergreifend,
+        laden PDF-Exposés direkt herunter und erfahren von neuen Objekten,
+        noch bevor sie öffentlich online gehen.
       </PageIntro>
 
       <section className="py-14">

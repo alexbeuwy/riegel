@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Estate } from "@/lib/mock-estates";
 import { TiltCard } from "@/components/tilt-card";
 import { Icon } from "@/components/icon";
-import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
+import { categoryIcon, categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 
 export function PropertyCard({ estate }: { estate: Estate }) {
   return (
@@ -21,7 +21,7 @@ export function PropertyCard({ estate }: { estate: Estate }) {
           ) : (
             // Live-Objekte können ohne Foto-Leserecht kommen — dezenter Platzhalter statt kaputtem Bild.
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-surface-2">
-              <Icon name="home" size={28} className="text-faint" />
+              <Icon name={categoryIcon(estate.category)} size={28} className="text-faint" />
               <span className="text-xs text-faint">Fotos folgen</span>
             </div>
           )}

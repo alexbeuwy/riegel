@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { burstConfetti } from "@/lib/confetti";
@@ -44,7 +45,17 @@ interface Day {
   hint?: string;
 }
 
+// useSearchParams verlangt eine Suspense-Grenze (Next-Build-Regel für CSR-Bailout).
 export function BookingTool() {
+  return (
+    <Suspense>
+      <BookingToolInner />
+    </Suspense>
+  );
+}
+
+function BookingToolInner() {
+  const searchParams = useSearchParams();
   const [days, setDays] = useState<Day[]>([]);
   const [mode, setMode] = useState<Mode>("vor-ort");
   const [location, setLocation] = useState<string>(site.locations[0].city);
@@ -57,6 +68,7 @@ export function BookingTool() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [website, setWebsite] = useState(""); // Honeypot — bleibt bei Menschen leer
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorNonce, setErrorNonce] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -91,6 +103,16 @@ export function BookingTool() {
     setDays(out);
   }, []);
 
+  useEffect(() => {
+    // Objektbezug aus dem Besichtigungs-Modal (?objekt=…) — befüllt die
+    // Nachricht vor, aber nur solange sie noch leer ist (keine Nutzereingabe
+    // überschreiben).
+    const objekt = searchParams.get("objekt");
+    if (!objekt) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMessage((prev) => (prev ? prev : `Ich interessiere mich für: ${objekt}`));
+  }, [searchParams]);
+
   const selectedDay = useMemo(() => days.find((d) => d.iso === date), [days, date]);
   const modeMeta = MODES.find((m) => m.value === mode)!;
   const locationData = site.locations.find((l) => l.city === location) ?? site.locations[0];
@@ -112,6 +134,7 @@ export function BookingTool() {
     if (!name.trim()) return fail("Bitte Ihren Namen angeben.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
     if (mode === "telefon" && !phone.trim()) return fail("Für einen Rückruf brauchen wir Ihre Telefonnummer.");
+    if (!consent) return fail("Bitte stimmen Sie der Verarbeitung Ihrer Angaben zu.");
     setError(null);
     setBusy(true);
 
@@ -438,6 +461,21 @@ export function BookingTool() {
             <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />
           </div>
         </Field>
+
+        {/* Datenschutz-Einwilligung — Pflicht vor dem Absenden */}
+        <label className="flex items-start gap-2.5 text-left text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => { setConsent(e.target.checked); setError(null); }}
+            className="mt-0.5 h-4 w-4 accent-accent"
+          />
+          <span>
+            Ich willige ein, dass meine Angaben zur Bearbeitung der Anfrage
+            verarbeitet werden. Jederzeit widerrufbar (siehe{" "}
+            <Link href="/datenschutz" className="text-accent hover:underline">Datenschutz</Link>).
+          </span>
+        </label>
 
         {/* Absenden */}
         <div className={`t-input-wrap ${error ? "is-error" : ""}`}>
