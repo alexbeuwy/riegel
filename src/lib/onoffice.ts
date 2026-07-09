@@ -821,7 +821,10 @@ export async function createLeadAddress(input: {
     Email: input.email,
     Telefon1: input.telefon,
     Bemerkung: input.bemerkung,
-    HerkunftKontakt: "Website",
+    // HerkunftKontakt ist ein Multiselect mit festen Schlüsseln — "Website"
+    // wirft Fehler 76. Der gültige Schlüssel dieses Accounts ist
+    // "webseite_system" (live verifiziert 09.07.2026 via address:create-Test).
+    HerkunftKontakt: "webseite_system",
     checkDuplicate: true,
   });
   if (!data) return { ok: false };
