@@ -10,6 +10,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { type EnergyCertificate, type Estate } from "@/lib/mock-estates";
 import { getEstateBySlug, getEstateData } from "@/lib/estates";
 import { FavoriteButton } from "@/components/favorites";
+import { ShareButton } from "@/components/share-button";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 import { contactForCity } from "@/lib/contacts";
 import { site } from "@/lib/site";
@@ -243,9 +244,12 @@ export default async function EstateDetailPage({
                     </div>
                   )}
                 </div>
-                {/* Merken direkt am Preis — wer über einen geteilten Link landet,
-                    soll nicht zurück zur Liste müssen, um das Herz zu finden. */}
-                <FavoriteButton id={estate.id} className="shrink-0 border border-border" />
+                {/* Merken + Teilen direkt am Preis — wer über einen geteilten Link
+                    landet, soll nicht zurück zur Liste müssen, um das Herz zu finden. */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <ShareButton title={estate.title} className="border border-border" />
+                  <FavoriteButton id={estate.id} className="border border-border" />
+                </div>
               </div>
               <RequestViewingButton title={estate.title} />
               <p className="text-xs text-faint">

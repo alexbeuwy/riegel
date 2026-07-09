@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Estate } from "@/lib/mock-estates";
@@ -61,6 +61,11 @@ export function PortalMap({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  // Style-/Tile-Ladefehler (z. B. CARTO-Ausfall): einmaliger, dezenter Hinweis
+  // statt Spam bei jedem erneuten Fehl-Request. Pins bleiben dank Fallback
+  // (Initial-Schleife unten) auch ohne Kartenkacheln sichtbar.
+  const [tileError, setTileError] = useState(false);
+  const tileErrorShownRef = useRef(false);
   // Marker je Objekt-ID. Vor dem ersten Cluster-Sync: alle Objekte (Fallback).
   // Danach: nur die aktuell NICHT geclusterten Punkte (Rest steckt im Cluster-Layer).
   const markersRef = useRef<Record<string, maplibregl.Marker>>({});
@@ -97,6 +102,8 @@ export function PortalMap({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    tileErrorShownRef.current = false;
+    setTileError(false);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: STYLE,
@@ -105,6 +112,15 @@ export function PortalMap({
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
+
+    // Einmaliger Hinweis bei Style-/Tile-Ladefehlern — MapLibre feuert "error"
+    // z. B. bei jedem fehlgeschlagenen Kachel-Request, ohne Guard würde das
+    // den Nutzer mit wiederholten State-Updates zuspammen.
+    map.on("error", () => {
+      if (tileErrorShownRef.current) return;
+      tileErrorShownRef.current = true;
+      setTileError(true);
+    });
 
     const withGeo = estates.filter((e) => e.geo);
     estateByIdRef.current = new Map(withGeo.map((e) => [e.id, e]));
@@ -286,11 +302,18 @@ export function PortalMap({
 
   const count = estates.filter((e) => e.geo).length;
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      role="img"
-      aria-label={`Karte mit ${count} ${count === 1 ? "Objekt" : "Objekten"} — Auswahl und Bedienung über die Liste`}
-    />
+    <div className="relative h-full w-full">
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+        role="img"
+        aria-label={`Karte mit ${count} ${count === 1 ? "Objekt" : "Objekten"} — Auswahl und Bedienung über die Liste`}
+      />
+      {tileError && (
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-lg bg-bg/80 px-3 py-2 text-xs text-muted backdrop-blur">
+          Kartendaten momentan nicht erreichbar — die Liste zeigt alle Objekte.
+        </div>
+      )}
+    </div>
   );
 }

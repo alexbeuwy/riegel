@@ -18,6 +18,13 @@ interface AuthState {
   ) => Promise<{ error: string | null; needsConfirm?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** Löst den Supabase-Reset-Mail-Versand aus (verrät nie, ob das Konto
+   *  existiert — die Erfolgsmeldung ist immer gleich). redirectTo führt
+   *  zurück auf /konto/passwort, wo die Recovery-Session landet. */
+  resetPassword: (email: string, redirectTo: string) => Promise<{ error: string | null }>;
+  /** Setzt das Passwort der aktuell aktiven (Recovery-)Session — nur nutzbar,
+   *  solange über den Reset-Link ein `user` vorhanden ist. */
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -63,9 +70,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const resetPassword = useCallback(async (email: string, redirectTo: string) => {
+    if (!supabase) return { error: "Konten sind noch nicht aktiviert." };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    return { error: error ? error.message : null };
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (!supabase) return { error: "Konten sind noch nicht aktiviert." };
+    const { error } = await supabase.auth.updateUser({ password });
+    return { error: error ? error.message : null };
+  }, []);
+
   return (
     <Ctx.Provider
-      value={{ enabled: isSupabaseEnabled, ready, user, session, signUp, signIn, signOut }}
+      value={{
+        enabled: isSupabaseEnabled,
+        ready,
+        user,
+        session,
+        signUp,
+        signIn,
+        signOut,
+        resetPassword,
+        updatePassword,
+      }}
     >
       {children}
     </Ctx.Provider>

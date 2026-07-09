@@ -625,14 +625,32 @@ korrekt „Warmmiete") · App-Werbe-Textbausteine in objektbeschreibung könnten
 Rückruf-CTA, Header-Login-Status, Toast beim ersten Herz-Klick, „Passwort vergessen"-Link,
 Karten-Fehlerhinweis bei Tile-Ausfall.
 
+## Update — Portal FINAL: echte Objektfotos + Polish-Batch + Passwort-Reset ✅
+
+- **Echte Fotos live**: Sissy hat das `estatepictures`-Recht freigeschaltet. Wichtiger Fix
+  dabei: Die echte API-Antwort trägt `elements` als **Array** von Bild-Objekten (nicht als
+  Dict wie bei `estate:read`) — der Parser hätte sonst alle Bilder stumm verworfen. Verifiziert:
+  Liste + Galerie rendern `image.onoffice.de`-Fotos, 0 Platzhalter. Host war in
+  `next.config.ts` (`**.onoffice.de`) schon freigegeben.
+- **district-Leak gefixt**: `regionaler_zusatz` enthält account-weit nur interne Schlüssel
+  (`['indMulti…']`) — wird verworfen, Stadtteil kommt ggf. aus dem Ort-Feld.
+- **Polish-Batch** (Sonnet-Agent): Teilen-Button (navigator.share + „Link kopiert"-Fallback)
+  neben dem Herz, `@media print`-Regeln, Login-Punkt am Header-Konto-Icon, einmaliger
+  Merk-Hinweis-Toast beim ersten Herz-Klick (mit Konto-Link), Karten-Fehlhinweis bei
+  Tile-Ausfall.
+- **Passwort-vergessen-Flow** (Sonnet-Agent): „Passwort vergessen?" auf /konto (Inline,
+  konto-agnostische Erfolgsmeldung), neue Seite `/konto/passwort` für den Reset-Link
+  (Recovery-Session → neues Passwort setzen, t-success-check, noindex).
+- tsc/Build grün; Fotos/Detail per Screenshot verifiziert.
+
 ## Offen 🔧
 
-- **`ONOFFICE_TOKEN`/`ONOFFICE_SECRET` in Vercel setzen** (alle Environments) — **DER Grund,
-  warum riegel.vercel.app noch Mock zeigt**, lokal läuft alles live mit 110 Objekten.
-  Siehe [betrieb.md](./betrieb.md).
-- **`estatepictures`-Leserecht fehlt weiterhin** (errorcode 170) — Objekte erscheinen mit
-  „Fotos folgen"-Platzhalter, bis Sissy das API-Recht ergänzt. Danach ggf. Bild-Host in
-  `next.config.ts` gegen echte URLs verifizieren (Code filtert Fremd-Hosts bereits selbst).
+- **Vercel-Env-Rätsel**: Alex hat `ONOFFICE_TOKEN`/`ONOFFICE_SECRET` als Secrets hinterlegt,
+  der Code-Stand ist nachweislich deployed (neue Features im Live-HTML) — aber riegel.vercel.app
+  fiel beim letzten Check noch auf Mock zurück. Mögliche Ursachen: Variablen nicht im
+  Production-Scope, Tippfehler im Namen, oder Leerzeichen/Zeilenumbruch im Wert (dann schlägt
+  die HMAC-Auth fehl und der Code fällt BEWUSST lautlos auf Mock zurück). Nach diesem Deploy
+  erneut prüfen; die Vercel-Function-Logs zeigen ggf. `[onoffice]`-Fehlerzeilen.
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
   Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
   der komplette Bestenlisten-Flow mit einem echten Account.

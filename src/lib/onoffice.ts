@@ -589,7 +589,11 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
 
   const { city, districtFromOrt } = normalizeOrt(str(el.ort));
   const postcode = str(el.plz);
-  const district = str(el.regionaler_zusatz) || districtFromOrt || undefined;
+  // regionaler_zusatz ist in diesem Account durchgängig ein interner Feld-
+  // Schlüssel ("['indMulti1814Select6511']") statt eines Stadtteils — Technik-
+  // Werte verwerfen, echter Stadtteil kommt ggf. aus dem Ort-Feld (Slash-Teil).
+  const rawDistrict = str(el.regionaler_zusatz);
+  const district = (/^[\["']*ind[A-Z0-9]/i.test(rawDistrict) ? "" : rawDistrict) || districtFromOrt || undefined;
 
   const lat = num(el.breitengrad);
   const lng = num(el.laengengrad);
@@ -655,11 +659,18 @@ interface OnOfficePicture {
 // kein Bild-Leserecht, errorcode 170) — deshalb möglichst tolerant lesen:
 // sowohl flach ({estateid,url,...}) als auch verschachtelt ({elements:{...}})
 // wie bei estate:read.
-function pictureFields(item: unknown): Record<string, unknown> {
-  if (!item || typeof item !== "object") return {};
+// Live verifiziert (09.07.2026, nach Rechte-Freischaltung): ein record trägt
+// elements als ARRAY von Bild-Objekten ({estateid, type, url, ...}) — nicht
+// als Dict wie bei estate:read. Alle drei denkbaren Formen abdecken.
+function extractPictureObjects(item: unknown): Record<string, unknown>[] {
+  if (!item || typeof item !== "object") return [];
   const obj = item as Record<string, unknown>;
-  const nested = obj.elements && typeof obj.elements === "object" ? (obj.elements as Record<string, unknown>) : {};
-  return { ...obj, ...nested };
+  const el = obj.elements;
+  if (Array.isArray(el)) {
+    return el.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object");
+  }
+  if (el && typeof el === "object") return [{ ...obj, ...(el as Record<string, unknown>) }];
+  return [obj];
 }
 
 async function fetchEstateImages(ids: string[]): Promise<Map<string, string[]>> {
@@ -680,26 +691,27 @@ async function fetchEstateImages(ids: string[]): Promise<Map<string, string[]>> 
   const byEstate = new Map<string, OnOfficePicture[]>();
 
   for (const raw of rawRecords) {
-    const f = pictureFields(raw);
-    const estateId = str(f.estateid ?? f.id);
-    const url = str(f.url);
-    if (!estateId || !url.startsWith("https://")) continue;
-    // Host gegen die next.config-Allowlist absichern: eine URL außerhalb von
-    // *.onoffice.de würde next/image hart crashen lassen — lieber verwerfen,
-    // das Objekt fällt dann auf den "Fotos folgen"-Platzhalter zurück.
-    try {
-      const host = new URL(url).hostname;
-      if (host !== "onoffice.de" && !host.endsWith(".onoffice.de")) continue;
-    } catch {
-      continue;
-    }
-    const category = str(f.type ?? f.category);
-    const isTitle = category === "Titelbild";
-    const position = num(f.position) ?? Number.MAX_SAFE_INTEGER;
+    for (const f of extractPictureObjects(raw)) {
+      const estateId = str(f.estateid ?? f.estateMainId ?? f.id);
+      const url = str(f.url);
+      if (!estateId || !url.startsWith("https://")) continue;
+      // Host gegen die next.config-Allowlist absichern: eine URL außerhalb von
+      // *.onoffice.de würde next/image hart crashen lassen — lieber verwerfen,
+      // das Objekt fällt dann auf den "Fotos folgen"-Platzhalter zurück.
+      try {
+        const host = new URL(url).hostname;
+        if (host !== "onoffice.de" && !host.endsWith(".onoffice.de")) continue;
+      } catch {
+        continue;
+      }
+      const category = str(f.type ?? f.category);
+      const isTitle = category === "Titelbild";
+      const position = num(f.position) ?? Number.MAX_SAFE_INTEGER;
 
-    const list = byEstate.get(estateId) ?? [];
-    list.push({ estateId, url, isTitle, position });
-    byEstate.set(estateId, list);
+      const list = byEstate.get(estateId) ?? [];
+      list.push({ estateId, url, isTitle, position });
+      byEstate.set(estateId, list);
+    }
   }
 
   for (const [estateId, pics] of byEstate) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth";
+import { Icon } from "@/components/icon";
 import { supabase } from "@/lib/supabase";
 
 type FavCtx = {
@@ -15,6 +16,9 @@ type FavCtx = {
 
 const Ctx = createContext<FavCtx | null>(null);
 const KEY = "riegel:favorites";
+// Einmaliger Hinweis beim allerersten Herz-Klick (Flag bleibt dauerhaft in
+// localStorage — daher zeigt sich der Hinweis nie ein zweites Mal an).
+const HINT_KEY = "riegel-fav-hint-gesehen";
 
 /**
  * Merkliste — localStorage als Basis (anonym, sofort). Bei Login (Supabase aktiv)
@@ -25,11 +29,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [ids, setIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const syncedFor = useRef<string | null>(null);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setIds(JSON.parse(raw));
     } catch {}
     setReady(true);
@@ -71,6 +77,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (!user) syncedFor.current = null;
   }, [user]);
 
+  // Beim allerersten "Hinzufügen"-Klick (nicht beim Entfernen) den Merk-Hinweis
+  // zeigen. Das Flag landet dauerhaft in localStorage — der Hinweis erscheint
+  // also über die gesamte Lebenszeit dieses Browsers nur ein einziges Mal.
+  const maybeShowHint = () => {
+    try {
+      if (localStorage.getItem(HINT_KEY)) return;
+      localStorage.setItem(HINT_KEY, "1");
+    } catch {}
+    setShowHint(true);
+  };
+
   const toggle = (id: string) =>
     setIds((cur) => {
       const has = cur.includes(id);
@@ -81,13 +98,43 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           supabase.from("favorites").upsert({ user_id: user.id, estate_id: id }).then(undefined, () => {});
         }
       }
+      if (!has) maybeShowHint();
       return has ? cur.filter((x) => x !== id) : [...cur, id];
     });
 
   return (
     <Ctx.Provider value={{ ids, has: (id) => ids.includes(id), toggle, count: ids.length, ready }}>
       {children}
+      {showHint && <FavHint onDone={() => setShowHint(false)} />}
     </Ctx.Provider>
+  );
+}
+
+/**
+ * Einmaliger Merk-Hinweis-Toast (erster Herz-Klick im Browser) — dezent unten
+ * mittig, blendet nach ~5 s von selbst aus. Auto-Hide läuft über die Dauer der
+ * .t-fav-hint-Keyframe (globals.css), onAnimationEnd räumt danach den Knoten
+ * weg (Muster wie .game-quip: reduced-motion kürzt nur die Dauer statt die
+ * Animation abzuschalten, sonst bliebe der Toast dauerhaft stehen).
+ */
+function FavHint({ onDone }: { onDone: () => void }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-3 bottom-4 z-[70] flex justify-center sm:inset-x-0">
+      <div
+        onAnimationEnd={onDone}
+        className="t-fav-hint pointer-events-auto flex max-w-sm items-start gap-3 rounded-2xl border border-border bg-surface-2/95 px-4 py-3 text-sm shadow-2xl backdrop-blur-md"
+      >
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-accent">
+          <Icon name="heart" size={15} />
+        </span>
+        <p className="text-muted">
+          Gemerkt — gespeichert in diesem Browser.{" "}
+          <Link href="/konto" className="font-medium text-accent hover:underline">
+            Mit Konto: auf jedem Gerät.
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 }
 

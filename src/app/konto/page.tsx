@@ -22,7 +22,7 @@ export default function KontoPage() {
 }
 
 function KontoInner() {
-  const { enabled, ready, user, signIn, signUp, signOut } = useAuth();
+  const { enabled, ready, user, signIn, signUp, signOut, resetPassword } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   // ?next=/immobilien/… — nach Login/Registrierung dorthin zurück (z. B. vom
@@ -40,11 +40,26 @@ function KontoInner() {
   const [nonce, setNonce] = useState(0);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // „Passwort vergessen?" — kein eigenes Routing, nur ein Inline-Zustand, der
+  // das bestehende E-Mail-Feld für den Reset-Link-Versand weiterverwendet.
+  const [forgot, setForgot] = useState(false);
 
   const fail = (m: string) => {
     setError(m);
     setNonce((n) => n + 1);
   };
+
+  function openForgot() {
+    setError(null);
+    setInfo(null);
+    setForgot(true);
+  }
+
+  function closeForgot() {
+    setError(null);
+    setInfo(null);
+    setForgot(false);
+  }
 
   async function submit() {
     setInfo(null);
@@ -63,6 +78,19 @@ function KontoInner() {
     if (mode === "register" && "needsConfirm" in res && res.needsConfirm) {
       setInfo("Fast geschafft — bitte bestätigen Sie Ihre E-Mail-Adresse.");
     }
+  }
+
+  async function submitForgot() {
+    setInfo(null);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
+    setBusy(true);
+    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/konto/passwort` : "";
+    const res = await resetPassword(email, redirectTo);
+    setBusy(false);
+    if (res.error) return fail(res.error);
+    // Bewusst konto-agnostisch formuliert — sonst ließe sich per Fehlermeldung
+    // erraten, welche E-Mail-Adressen ein Konto haben.
+    setInfo("Wenn ein Konto existiert, ist ein Reset-Link unterwegs — bitte Posteingang prüfen.");
   }
 
   return (
@@ -122,6 +150,42 @@ function KontoInner() {
                 </div>
                 <ProfileForm />
               </div>
+            ) : forgot ? (
+              /* Passwort vergessen — Inline-Zustand statt eigener Route */
+              <div className="mx-auto max-w-md rounded-2xl border border-border bg-surface p-6 sm:p-8">
+                <div className="mb-6 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={closeForgot}
+                    aria-label="Zurück zur Anmeldung"
+                    className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted transition-colors hover:border-accent hover:text-accent"
+                  >
+                    <Icon name="arrowLeft" size={16} />
+                  </button>
+                  <h2 className="text-lg font-semibold">Passwort zurücksetzen</h2>
+                </div>
+
+                <label className="block space-y-2">
+                  <span className="text-sm text-muted">E-Mail</span>
+                  <input className={inputCls} type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="name@beispiel.de" />
+                </label>
+
+                <div className={`t-input-wrap mt-4 ${error ? "is-error" : ""}`}>
+                  <p className="t-error-msg text-sm text-accent" role="alert">{error ?? " "}</p>
+                </div>
+                {info && <p className="mt-2 text-sm text-accent-strong">{info}</p>}
+
+                <button
+                  key={nonce}
+                  type="button"
+                  onClick={submitForgot}
+                  disabled={busy}
+                  className={`t-input ${error ? "is-shaking" : ""} press mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60`}
+                >
+                  <Icon name="key" size={17} />
+                  {busy ? "Bitte warten …" : "Reset-Link anfordern"}
+                </button>
+              </div>
             ) : (
               /* Login / Registrierung */
               <div className="mx-auto max-w-md rounded-2xl border border-border bg-surface p-6 sm:p-8">
@@ -148,6 +212,18 @@ function KontoInner() {
                     <input className={inputCls} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(null); }} placeholder="mind. 8 Zeichen" />
                   </label>
                 </div>
+
+                {mode === "login" && (
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      onClick={openForgot}
+                      className="text-xs text-muted transition-colors hover:text-accent"
+                    >
+                      Passwort vergessen?
+                    </button>
+                  </div>
+                )}
 
                 <div className={`t-input-wrap mt-4 ${error ? "is-error" : ""}`}>
                   <p className="t-error-msg text-sm text-accent" role="alert">{error ?? " "}</p>

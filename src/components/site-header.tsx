@@ -6,6 +6,7 @@ import { Container } from "@/components/container";
 import { MobileMenu } from "@/components/mobile-menu";
 import { FavoritesLink } from "@/components/favorites";
 import { Icon } from "@/components/icon";
+import { useAuth } from "@/components/auth";
 import { site, type NavItem } from "@/lib/site";
 
 function Wordmark() {
@@ -164,6 +165,28 @@ function DesktopNavItem({ item }: { item: NavItem }) {
   );
 }
 
+/**
+ * Konto-Icon mit Login-Status: eingeloggt erscheint ein kleiner Akzent-Punkt
+ * oben rechts (gleiches t-badge-Muster wie der Zähler bei FavoritesLink, s.
+ * favorites.tsx — hier nur als reiner Punkt statt Zahl).
+ */
+function AccountLink({ className = "" }: { className?: string }) {
+  const { user } = useAuth();
+  const loggedIn = !!user;
+  return (
+    <Link
+      href="/konto"
+      aria-label={loggedIn ? "Mein Konto (eingeloggt)" : "Konto / Anmelden"}
+      className={`relative flex items-center justify-center rounded-md text-muted transition-colors hover:text-fg ${className}`}
+    >
+      <Icon name="users" size={20} />
+      <span className="t-badge" aria-hidden="true" data-open={loggedIn ? "true" : "false"}>
+        <span className="t-badge-dot block h-2 w-2 rounded-full bg-accent" />
+      </span>
+    </Link>
+  );
+}
+
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
@@ -176,13 +199,7 @@ export function SiteHeader() {
             <DesktopNavItem key={item.href} item={item} />
           ))}
           <FavoritesLink />
-          <Link
-            href="/konto"
-            aria-label="Konto / Anmelden"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
-          >
-            <Icon name="users" size={20} />
-          </Link>
+          <AccountLink className="h-11 w-11 shrink-0" />
           <Link
             href="/rechner"
             className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
@@ -194,13 +211,7 @@ export function SiteHeader() {
 
         {/* Mobile: Konto + Merkliste + Icon-Swap-Menü */}
         <div className="flex items-center gap-1 md:hidden">
-          <Link
-            href="/konto"
-            aria-label="Konto / Anmelden"
-            className="flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:text-fg"
-          >
-            <Icon name="users" size={20} />
-          </Link>
+          <AccountLink className="h-11 w-11" />
           <FavoritesLink />
           <MobileMenu />
         </div>

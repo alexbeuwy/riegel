@@ -841,3 +841,38 @@
   .game-timer-urgent { animation: none; }
   .game-timer-bar { transition: none; }
 }
+
+/* ── Merkliste: einmaliger Hinweis-Toast (erster Herz-Klick, favorites.tsx) ──
+   Rein/halten/raus in einer Animation — der Auto-Hide läuft über die Dauer
+   selbst statt über einen zusätzlichen JS-Timer, onAnimationEnd entfernt den
+   Toast danach aus dem DOM. */
+@keyframes t-fav-hint {
+  0%   { opacity: 0; transform: translateY(10px); }
+  6%   { opacity: 1; transform: translateY(0); }
+  92%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+.t-fav-hint { animation: t-fav-hint 5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  /* 0.01ms statt `animation: none` — der Toast braucht sein Animationsende
+     fürs onAnimationEnd-Cleanup, sonst stünde er dauerhaft (Projektstandard,
+     s. .game-quip weiter oben). */
+  .t-fav-hint { animation-duration: 0.01ms; }
+}
+
+/* ── Druckansicht (@media print) ──
+   Objektseiten werden gelegentlich als Exposé-Ersatz ausgedruckt. Header,
+   Footer und alle fixierten Overlays (WhatsApp-FAB, Cookie-Banner, mobile
+   Sticky-CTA, Karten-Umschalter-FAB) tragen im Ausdruck nichts bei — raus.
+   Links bleiben im Fließtext-Schwarz statt im User-Agent-Blau/unterstrichen. */
+@media print {
+  header,
+  footer,
+  .fixed {
+    display: none !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
