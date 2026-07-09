@@ -7,8 +7,59 @@ import { Icon } from "@/components/icon";
 import { ENERGIEKLASSEN, type FilterState } from "@/lib/portal-filter";
 
 const BAUJAHRE = [1950, 1970, 1990, 2000, 2010, 2015, 2020];
-const selectCls =
+// exportiert: wird auch vom Mobil-Filter-Sheet (filter-bar.tsx) für die
+// dort neu gestapelten Felder verwendet, damit der Feld-Stil an einer
+// einzigen Stelle gepflegt wird.
+export const selectCls =
   "w-full rounded-lg border border-border bg-surface px-4 py-3 text-fg outline-none transition-colors focus:border-accent";
+
+/**
+ * Felder „Baujahr ab" + „Energieeffizienzklasse bis" — ausgelagert aus dem
+ * Modal-Body, damit das Mobil-Filter-Sheet (filter-bar.tsx) sie 1:1
+ * mitbenutzen kann, statt Optionen/Markup ein zweites Mal zu pflegen.
+ */
+export function MoreFiltersFields({
+  filters,
+  set,
+}: {
+  filters: FilterState;
+  set: (name: string, value: string) => void;
+}) {
+  return (
+    <>
+      <label className="block space-y-2">
+        <span className="text-sm text-muted">Baujahr ab</span>
+        <select
+          className={selectCls}
+          value={filters.baujahrMin?.toString() ?? ""}
+          onChange={(e) => set("baujahr_min", e.target.value)}
+        >
+          <option value="">egal</option>
+          {BAUJAHRE.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block space-y-2">
+        <span className="text-sm text-muted">Energieeffizienzklasse bis</span>
+        <select
+          className={selectCls}
+          value={filters.energieklasseMax ?? ""}
+          onChange={(e) => set("energieklasse_max", e.target.value)}
+        >
+          <option value="">egal</option>
+          {ENERGIEKLASSEN.map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
+  );
+}
 
 export function MoreFilters({ filters }: { filters: FilterState }) {
   const [open, setOpen] = useState(false);
@@ -47,36 +98,7 @@ export function MoreFilters({ filters }: { filters: FilterState }) {
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Mehr Filter">
         <div className="space-y-5">
-          <label className="block space-y-2">
-            <span className="text-sm text-muted">Baujahr ab</span>
-            <select
-              className={selectCls}
-              value={filters.baujahrMin?.toString() ?? ""}
-              onChange={(e) => set("baujahr_min", e.target.value)}
-            >
-              <option value="">egal</option>
-              {BAUJAHRE.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-2">
-            <span className="text-sm text-muted">Energieeffizienzklasse bis</span>
-            <select
-              className={selectCls}
-              value={filters.energieklasseMax ?? ""}
-              onChange={(e) => set("energieklasse_max", e.target.value)}
-            >
-              <option value="">egal</option>
-              {ENERGIEKLASSEN.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </label>
+          <MoreFiltersFields filters={filters} set={set} />
           <div className="flex items-center justify-end gap-4 pt-2">
             <button type="button" onClick={reset} className="text-sm text-muted hover:text-fg">
               Zurücksetzen

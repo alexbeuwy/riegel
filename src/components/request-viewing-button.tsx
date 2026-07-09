@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Modal } from "@/components/modal";
+import { InquiryForm } from "@/components/inquiry-form";
 import { site, whatsappHref } from "@/lib/site";
 
-export function RequestViewingButton({ title }: { title: string }) {
+export function RequestViewingButton({ title, objektId }: { title: string; objektId?: string }) {
   const [open, setOpen] = useState(false);
   const wa = whatsappHref(
     `Hallo ${site.name}, ich interessiere mich für: ${title}`,
@@ -23,16 +24,15 @@ export function RequestViewingButton({ title }: { title: string }) {
         <p className="text-sm">
           Objekt: <span className="text-fg">{title}</span>
         </p>
-        <p className="mt-3 text-sm">
-          Wählen Sie Ihren Weg — wir melden uns innerhalb eines Werktages. Das
-          vollständige Anfrageformular mit direkter Übergabe an OnOffice ist
-          in Vorbereitung.
-        </p>
-        <div className="mt-5 flex flex-col gap-3">
+        <div className="mt-4">
+          <InquiryForm objektTitel={title} objektId={objektId ?? ""} />
+        </div>
+        <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
+          <p className="text-xs text-faint">Oder direkt:</p>
           <Link
             href={`/termin?objekt=${encodeURIComponent(title)}`}
             onClick={() => setOpen(false)}
-            className="rounded-full bg-accent px-5 py-2.5 text-center text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            className="rounded-full border border-border px-5 py-2.5 text-center text-sm text-fg transition-colors hover:border-accent hover:text-accent"
           >
             Termin online buchen
           </Link>

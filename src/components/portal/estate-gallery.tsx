@@ -82,7 +82,7 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
 
       {open && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-bg/90 backdrop-blur-sm"
+          className="group fixed inset-0 z-[70] flex items-center justify-center bg-bg/90 backdrop-blur-sm"
           onClick={() => setOpen(false)}
           role="dialog"
           aria-modal="true"
@@ -103,7 +103,7 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
               e.stopPropagation();
               prev();
             }}
-            className="absolute left-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-colors hover:text-accent sm:left-6"
+            className="absolute left-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-[color,opacity] duration-200 hover:text-accent sm:left-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
           >
             ‹
           </button>
@@ -123,11 +123,11 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
               e.stopPropagation();
               next();
             }}
-            className="absolute right-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-colors hover:text-accent sm:right-6"
+            className="absolute right-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-[color,opacity] duration-200 hover:text-accent sm:right-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
           >
             ›
           </button>
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-sm text-fg">
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-sm text-fg transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
             {idx + 1} / {imgs.length}
           </div>
         </div>

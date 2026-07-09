@@ -94,7 +94,7 @@ export function PortalCard({
                   e.stopPropagation();
                   setIdx((i) => (i - 1 + imgs.length) % imgs.length);
                 }}
-                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg backdrop-blur transition-opacity hover:bg-bg/90 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg backdrop-blur transition-opacity duration-200 hover:bg-bg/90 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
               >
                 <Icon name="arrowLeft" size={18} />
               </button>
@@ -106,11 +106,11 @@ export function PortalCard({
                   e.stopPropagation();
                   setIdx((i) => (i + 1) % imgs.length);
                 }}
-                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg backdrop-blur transition-opacity hover:bg-bg/90 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-bg/70 text-fg backdrop-blur transition-opacity duration-200 hover:bg-bg/90 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
               >
                 <Icon name="arrowRight" size={18} />
               </button>
-              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
                 {imgs.map((_, i) => (
                   <span
                     key={i}

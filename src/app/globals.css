@@ -876,3 +876,43 @@
     text-decoration: none !important;
   }
 }
+
+/* ── Mobiles Filter-Bottom-Sheet (Slide-up + Backdrop-Fade) ──
+   Ersetzt auf <sm die endlose horizontale Swipe-Pillen-Reihe der Filter
+   (Kundenfeedback: "unendlich zur Seite scrollen", für ältere Nutzer
+   schlecht auffindbar) durch einen einzigen "Filter"-Button + Bottom-Sheet,
+   s. filter-bar.tsx. Analog zu .t-modal (transitions-dev 06) — Transition
+   statt Keyframes, weil es ein interaktiver, jederzeit unterbrechbarer
+   Auf-/Zuklapp-Zustand ist (kein einmaliger Ablauf). Zwei Zustände reichen
+   (Basis = zu, .is-open = auf): die Basis-Transition trägt die Öffnen-Dauer,
+   .is-open überschreibt nur beim Schließen (Klasse wird dann entfernt) auf
+   die kürzere Zu-Dauer — dadurch keine dritte "is-closing"-Klasse nötig. */
+:root {
+  --sheet-open-dur: 320ms;
+  --sheet-close-dur: 220ms;
+  --sheet-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-sheet-backdrop {
+  opacity: 0;
+  transition: opacity var(--sheet-close-dur) var(--sheet-ease);
+  will-change: opacity;
+}
+.t-sheet-backdrop.is-open {
+  opacity: 1;
+  transition-duration: var(--sheet-open-dur);
+}
+.t-sheet-panel {
+  transform: translateY(100%);
+  transition: transform var(--sheet-close-dur) var(--sheet-ease);
+  will-change: transform;
+}
+.t-sheet-panel.is-open {
+  transform: translateY(0);
+  transition-duration: var(--sheet-open-dur);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-sheet-backdrop,
+  .t-sheet-panel {
+    transition: none !important;
+  }
+}

@@ -14,10 +14,12 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - **Foto-Hero-Overlays nicht überdunkeln.** Die BunnyCDN-Fotos sind bereits dunkel/kontrastarm
   fotografiert. Neue Foto-Hero-Sektionen starten mit leichten Gradienten (Richtwert
   `from-bg/50–60` statt `/80–90`) und werden nur bei echtem Lesbarkeits-Problem nachgeschärft.
-- **Sterne-Icons für Bewertungen**: Das Icon-System ist reine Outline (`fill="none"` per
-  Default in `icon.tsx`). Für „gefüllte" Sterne in jeder Bewertungsanzeige immer
-  `fill="currentColor"` an der jeweiligen `<Icon name="star">`-Instanz mitgeben — sonst sehen
-  auch Bestnoten wie leere Sterne aus (Bug, der `trust-strip.tsx` und `testimonials.tsx` betraf).
+- **Sterne-Icons für Bewertungen**: IMMER als EINE Ebene rendern — jeder der 5 Sterne mit
+  `fill="currentColor"`, „volle" Sterne in `text-accent`, „leere" nur blasser (`text-faint`),
+  NIE `fill="none"` (dünne Outline = andere Silhouette) und NIE eine zweite, per `width%`
+  geklippte Overlay-Ebene (Schnittkante mitten durch einen Stern wirkt „doppelt"/unscharf).
+  Bei Teilwertungen auf ganze Sterne runden (die exakte Zahl steht ohnehin daneben). Referenz:
+  `trust-strip.tsx`/`testimonials.tsx`.
 
 ## Erledigt ✅
 
@@ -643,14 +645,41 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   (Recovery-Session → neues Passwort setzen, t-success-check, noindex).
 - tsc/Build grün; Fotos/Detail per Screenshot verifiziert.
 
+## Update — Portal-Feinschliff: Sterne, Karte-DE, Galerie-Dots, Mobil-Filter, Anfrageformular, Mails ✅
+
+- **Sterne-Bug endgültig**: Die doppelte Overlay-Ebene (accent per width% über faint geklippt)
+  ist weg — jetzt EINE Ebene, auf ganze Sterne gerundet, alle gleich gefüllt. Betraf
+  `trust-strip.tsx` (Overlay) + `testimonials.tsx` (Outline-Silhouette). **Neue Standing Rule:
+  Sterne immer als eine gefüllte Ebene, nie Overlay-Klipp, nie Outline für „leere" Sterne.**
+- **Karte auf Deutsch**: MapLibre-Symbol-Layer nach `load` auf `name:de` umgestellt
+  (Bundesländer/Städte deutsch statt Landessprache).
+- **Galerie-Dots + Pfeile nur bei Hover** (Objektkarten + Detail-Galerie) — auf Touch bleiben
+  sie sichtbar (`@media(hover:hover)`).
+- **Mobil-Filter neu** (make-interfaces-feel-better): statt endlosem Seitwärts-Scrollen jetzt
+  ein „Filter"-Button mit Aktiv-Badge → Vollbild-Bottom-Sheet, alle Filter untereinander mit
+  Labels, fixierter „N Objekte anzeigen"-Button, Escape/Backdrop-Close, Scroll-Lock. Desktop
+  unverändert. (Sonnet-Agent, per Screenshot verifiziert.)
+- **Echtes Anfrageformular** auf der Detailseite ersetzt den „in Vorbereitung"-Platzhalter:
+  Name/E-Mail/Telefon/Nachricht (vorbefüllt), Consent, POST an neue Route `/api/inquiry`
+  (Supabase-Lead + Mail + **best-effort OnOffice `create address`**). Route liefert auch ohne
+  Supabase/Resend sauber `ok:true` (lokaler Fallback). `createLeadAddress()` in `onoffice.ts`
+  ist eingebaut, aber **NICHT live getestet** (schreibt ins CRM — Freigabe nötig).
+- **Markenkonforme Mails**: `emailLayout()` mit echtem Logo-PNG (`public/email-logo-riegel.png`,
+  aus dem SVG gerastert — SVG rendert in Gmail/Outlook nicht), RIEGEL-blaue Akzentlinie, große
+  Uppercase-„Superheadline" (Akira-Approximation, echte Fonts gehen in E-Mail nicht), optionaler
+  blauer CTA-Button. Neue Vorschau-Route `/api/mail-preview?type=…` rendert die Mails im Browser
+  OHNE Versand. Per Screenshot verifiziert (Logo, Headline, Tabelle, CTA).
+
 ## Offen 🔧
 
-- **Vercel-Env-Rätsel**: Alex hat `ONOFFICE_TOKEN`/`ONOFFICE_SECRET` als Secrets hinterlegt,
-  der Code-Stand ist nachweislich deployed (neue Features im Live-HTML) — aber riegel.vercel.app
-  fiel beim letzten Check noch auf Mock zurück. Mögliche Ursachen: Variablen nicht im
-  Production-Scope, Tippfehler im Namen, oder Leerzeichen/Zeilenumbruch im Wert (dann schlägt
-  die HMAC-Auth fehl und der Code fällt BEWUSST lautlos auf Mock zurück). Nach diesem Deploy
-  erneut prüfen; die Vercel-Function-Logs zeigen ggf. `[onoffice]`-Fehlerzeilen.
+- **`RESEND_API_KEY` für echten Mail-Versand**: Infrastruktur steht, Templates sind markenfertig,
+  Vorschau läuft. Für einen echten Test an alex@beuwy.com braucht es einen Resend-Key (Konto mit
+  alex@beuwy.com anlegen → Key in Vercel als `RESEND_API_KEY` + lokal). Ohne verifizierte Domain
+  sendet Resend testweise nur von `onboarding@resend.dev` an die Konto-Mail. Produktiv-Domain
+  (`@riegel-immobilien.de`, SPF/DKIM) danach.
+- **OnOffice `create address` live freigeben/testen**: Das Anfrageformular schreibt Leads
+  best-effort ins CRM — der Code ist fertig, aber ungetestet (ein Live-Test würde einen echten
+  Datensatz anlegen). Sissy bestätigt „Adresse anlegen"-Recht bzw. Alex gibt EINEN Test-Lead frei.
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
   Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
   der komplette Bestenlisten-Flow mit einem echten Account.

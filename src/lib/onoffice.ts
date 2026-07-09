@@ -784,6 +784,53 @@ export async function fetchExposePdf(estateId: string): Promise<Buffer | null> {
   return null;
 }
 
+/* ─────────────────────────  address create (Lead-Übergabe)  ───────────────────────── */
+
+interface OnOfficeAddressCreateRecord {
+  id?: string | number;
+  elements?: { id?: string | number };
+}
+
+interface OnOfficeAddressCreateData {
+  records?: OnOfficeAddressCreateRecord[];
+}
+
+/**
+ * Legt einen Interessenten aus einer Website-Anfrage (Objektanfrage, Kontakt
+ * o. Ä.) als Adresse im RIEGEL-CRM an — die Web-Anfrage landet damit direkt
+ * in OnOffice statt nur per Mail/Supabase. Fail-soft wie callOnOffice: bei
+ * fehlender Konfiguration oder jeglichem Fehler wird NIE geworfen, es kommt
+ * immer `{ ok: false }` zurück (kein Secret/HMAC-Logging, siehe Dateikopf).
+ *
+ * ACHTUNG: bewusst NICHT eigenständig aufrufen/live testen — jeder Aufruf
+ * schreibt einen ECHTEN Datensatz in RIEGELs Live-CRM. Das Auslösen eines
+ * echten address:create ist dem Orchestrator/Kunden vorbehalten.
+ */
+export async function createLeadAddress(input: {
+  vorname?: string;
+  name: string;
+  email: string;
+  telefon?: string;
+  bemerkung?: string;
+}): Promise<{ ok: boolean; addressId?: string }> {
+  if (!isOnOfficeEnabled) return { ok: false };
+
+  const data = await callOnOffice<OnOfficeAddressCreateData>("address", "create", {
+    Vorname: input.vorname,
+    Name: input.name,
+    Email: input.email,
+    Telefon1: input.telefon,
+    Bemerkung: input.bemerkung,
+    HerkunftKontakt: "Website",
+    checkDuplicate: true,
+  });
+  if (!data) return { ok: false };
+
+  const record = data.records?.[0];
+  const addressId = record ? str(record.id ?? record.elements?.id) : "";
+  return { ok: true, addressId: addressId || undefined };
+}
+
 /* ─────────────────────────  Public API  ───────────────────────── */
 
 /**

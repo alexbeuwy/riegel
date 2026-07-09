@@ -200,6 +200,25 @@ export function PortalMap({
     });
 
     map.on("load", () => {
+      // CARTO dark-matter liefert Labels (Länder/Bundesländer/Städte) standardmäßig
+      // englisch bzw. in Landessprache (OpenMapTiles-"name"-Feld) — auf Deutsch
+      // umstellen (name:de mit Fallback auf name:latin/name). Pro Layer abgesichert,
+      // falls ein Symbol-Layer kein Namensfeld hat (z. B. reine POI-Icons).
+      for (const layer of map.getStyle().layers) {
+        if (layer.type === "symbol" && layer.layout && "text-field" in layer.layout) {
+          try {
+            map.setLayoutProperty(layer.id, "text-field", [
+              "coalesce",
+              ["get", "name:de"],
+              ["get", "name:latin"],
+              ["get", "name"],
+            ]);
+          } catch {
+            // Layer ohne name-Feld — überspringen statt crashen.
+          }
+        }
+      }
+
       map.addSource(SOURCE_ID, {
         type: "geojson",
         data: toFeatureCollection(estates),

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { activeChips, type FilterState } from "@/lib/portal-filter";
 
@@ -14,6 +15,14 @@ export function ActiveChips({
   const pathname = usePathname();
   const sp = useSearchParams();
   const chips = activeChips(filters);
+
+  // Das mobile Filter-Sheet (filter-bar.tsx) braucht resultCount für den
+  // fixierten "X Objekte anzeigen"-Button. FilterBar bekommt die Zahl nicht
+  // als Prop (gemeinsamer Elternteil ist die Server-Component-Seite, die wir
+  // laut Auftrag nicht anfassen) — daher Broadcast statt Prop-Drilling.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent<number>("riegel:portal-result-count", { detail: resultCount }));
+  }, [resultCount]);
 
   const remove = (param: string) => {
     const p = new URLSearchParams(sp.toString());

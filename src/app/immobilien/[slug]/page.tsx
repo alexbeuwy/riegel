@@ -251,7 +251,7 @@ export default async function EstateDetailPage({
                   <FavoriteButton id={estate.id} className="border border-border" />
                 </div>
               </div>
-              <RequestViewingButton title={estate.title} />
+              <RequestViewingButton title={estate.title} objektId={objektId} />
               <p className="text-xs text-faint">
                 Unverbindliche Anfrage · Antwort i. d. R. innerhalb eines Werktages.
               </p>
@@ -283,7 +283,7 @@ export default async function EstateDetailPage({
             <div className="truncate text-base font-semibold text-fg">{formatPrice(estate)}</div>
           </div>
           <div className="ml-auto w-48 shrink-0">
-            <RequestViewingButton title={estate.title} />
+            <RequestViewingButton title={estate.title} objektId={objektId} />
           </div>
         </div>
 
