@@ -3,7 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: [{ protocol: "https", hostname: "riegel.b-cdn.net" }],
+    remotePatterns: [
+      { protocol: "https", hostname: "riegel.b-cdn.net" },
+      // Objektfotos aus OnOffice (estatepictures) — Subdomain je nach Mandant.
+      // "**" = beliebig tiefe Subdomains; deckt sich mit dem Host-Filter in
+      // onoffice.ts (fetchEstateImages), der Fremd-Hosts vorab verwirft.
+      { protocol: "https", hostname: "**.onoffice.de" },
+    ],
   },
   // Basis-Security-Header. Bewusst ohne CSP: die Inline-JSON-LD-Skripte und
   // Next-Inline-Bootstrapping bräuchten Nonces — späterer Ausbau.

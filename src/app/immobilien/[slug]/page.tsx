@@ -6,26 +6,29 @@ import { AnsprechpartnerCard } from "@/components/ansprechpartner-card";
 import { EstateGallery } from "@/components/portal/estate-gallery";
 import { PropertyCard } from "@/components/property-card";
 import { Icon, type IconName } from "@/components/icon";
-import { mockEstates, type EnergyCertificate, type Estate } from "@/lib/mock-estates";
+import { type EnergyCertificate, type Estate } from "@/lib/mock-estates";
+import { getEstateBySlug, getEstateData } from "@/lib/estates";
 import { categoryLabel, formatArea, formatPrice, roomsLabel } from "@/lib/format";
 import { contactForCity } from "@/lib/contacts";
 import { site } from "@/lib/site";
 
-export function generateStaticParams() {
-  return mockEstates.map((e) => ({ slug: e.slug }));
-}
+// generateStaticParams entfällt bewusst — die Route ist jetzt dynamisch, da
+// Live-Objekte aus OnOffice zur Build-Zeit nicht bekannt sind. getEstateData
+// ist über unstable_cache gecacht, daher bleibt der Request-Aufwand gering.
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const estate = mockEstates.find((e) => e.slug === slug);
-  if (!estate) return { title: "Immobilie" };
+  const found = await getEstateBySlug(slug);
+  if (!found) return { title: "Immobilie" };
+  const { estate, source } = found;
   return {
     title: estate.title,
     description: `${estate.title} in ${estate.city} — ${formatPrice(estate)}. ${estate.description ?? ""}`.slice(0, 160),
     alternates: { canonical: `/immobilien/${estate.slug}` },
     // Beispiel-Objekte (Mock) nicht indexieren — sonst landen Fantasie-Inserate
-    // im Google-Index. Beim OnOffice-Import (echte Objekte) wieder freigeben.
-    robots: { index: false, follow: true },
+    // im Google-Index. Echte OnOffice-Objekte sollen dagegen in den Index —
+    // dort daher kein robots-Override (Standard: index/follow).
+    ...(source === "mock" && { robots: { index: false, follow: true } }),
   };
 }
 
@@ -77,8 +80,9 @@ export default async function EstateDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const estate = mockEstates.find((e) => e.slug === slug);
-  if (!estate) notFound();
+  const found = await getEstateBySlug(slug);
+  if (!found) notFound();
+  const { estate, source } = found;
 
   const facts = [
     roomsLabel(estate.rooms) && { label: "Zimmer", value: roomsLabel(estate.rooms), icon: "bed" as IconName },
@@ -87,12 +91,15 @@ export default async function EstateDetailPage({
     { label: "Objekttyp", value: estate.objectType ?? categoryLabel(estate.category), icon: "building" as IconName },
   ].filter(Boolean) as { label: string; value: string; icon: IconName }[];
 
-  const similar = mockEstates
-    .filter((e) => e.id !== estate.id && (e.category === estate.category || e.city === estate.city))
+  const { estates: allEstates } = await getEstateData();
+  // Nur aktive Objekte empfehlen — PropertyCard trägt kein Status-Badge,
+  // Reserviertes/Verkauftes würde hier wie ein verfügbares Angebot aussehen.
+  const similar = allEstates
+    .filter((e) => e.id !== estate.id && e.status === "aktiv" && (e.category === estate.category || e.city === estate.city))
     .slice(0, 3);
 
   const contact = contactForCity(estate.city);
-  const objektId = `RI-${estate.id.toUpperCase().slice(0, 6)}`;
+  const objektId = estate.externalId ?? `RI-${estate.id.toUpperCase().slice(0, 6)}`;
   const onlineSince = new Date(estate.updatedAt).toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "long",
@@ -101,9 +108,11 @@ export default async function EstateDetailPage({
 
   return (
     <article className="pb-24 pt-24">
+      {/* "<" escapen: JSON.stringify lässt "</script>" durch — mit Live-Daten
+          aus dem CRM (objekttitel etc.) wäre das eine Script-Injection-Fläche. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(estate)) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(estate)).replace(/</g, "\\u003c") }}
       />
       <Container>
         <nav className="text-sm text-faint">
@@ -194,10 +203,12 @@ export default async function EstateDetailPage({
               )}
             </section>
 
-            <p className="text-xs text-faint">
-              Beispiel-Objekt zur Vorschau. Live-Objektdaten folgen mit der
-              OnOffice-Anbindung.
-            </p>
+            {source === "mock" && (
+              <p className="text-xs text-faint">
+                Beispiel-Objekt zur Vorschau. Live-Objektdaten folgen mit der
+                OnOffice-Anbindung.
+              </p>
+            )}
           </div>
 
           <aside className="h-fit space-y-5 lg:sticky lg:top-24">

@@ -32,6 +32,7 @@ export interface GeoPoint {
 
 export interface Estate {
   id: string;
+  externalId?: string; // OnOffice objektnr_extern
   slug: string;
   title: string;
   marketingType: MarketingType;
@@ -42,7 +43,9 @@ export interface Estate {
   isFeatured: boolean;
 
   price: number | null;
-  priceLabel: "Kaufpreis" | "Kaltmiete";
+  // "Warmmiete" nur, wenn in OnOffice ausschließlich die Warmmiete gepflegt ist —
+  // Label und Betrag müssen aus derselben Quelle stammen (s. onoffice.ts).
+  priceLabel: "Kaufpreis" | "Kaltmiete" | "Warmmiete";
   priceReduced: boolean;
   ancillaryCosts?: number;
 

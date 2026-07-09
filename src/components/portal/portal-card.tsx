@@ -40,7 +40,7 @@ export function PortalCard({
   registerRef: (el: HTMLElement | null) => void;
 }) {
   const [idx, setIdx] = useState(0);
-  const imgs = estate.images.length ? estate.images : ["/images/prop-1.jpg"];
+  const imgs = estate.images;
   return (
     <article
       ref={registerRef}
@@ -60,13 +60,21 @@ export function PortalCard({
     >
       <Link href={`/immobilien/${estate.slug}`} className="group block">
         <div className="relative aspect-[16/10] overflow-hidden">
-          <Image
-            src={imgs[idx]}
-            alt={`${estate.title}, ${estate.city}`}
-            fill
-            sizes="(max-width: 1024px) 100vw, 40vw"
-            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-          />
+          {imgs.length > 0 ? (
+            <Image
+              src={imgs[idx]}
+              alt={`${estate.title}, ${estate.city}`}
+              fill
+              sizes="(max-width: 1024px) 100vw, 40vw"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            />
+          ) : (
+            // Live-Objekte können ohne Foto-Leserecht kommen — dezenter Platzhalter statt kaputtem Bild.
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-surface-2">
+              <Icon name="home" size={28} className="text-faint" />
+              <span className="text-xs text-faint">Fotos folgen</span>
+            </div>
+          )}
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg/70 to-transparent" />
           <div className="absolute left-3 top-3 flex flex-wrap gap-2">
             {estate.isNew && <Badge gold>Neu</Badge>}

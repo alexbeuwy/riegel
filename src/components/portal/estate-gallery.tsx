@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
 
 export function EstateGallery({ images, title }: { images: string[]; title: string }) {
-  const imgs = images.length ? images : ["/images/prop-1.jpg"];
+  const imgs = images;
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
 
@@ -30,6 +31,16 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
     setIdx(i);
     setOpen(true);
   };
+
+  if (imgs.length === 0) {
+    // Live-Objekte können ohne Foto-Leserecht kommen — dezenter Platzhalter statt kaputtem Bild.
+    return (
+      <div className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface-2">
+        <Icon name="home" size={32} className="text-faint" />
+        <span className="text-xs text-faint">Fotos folgen</span>
+      </div>
+    );
+  }
 
   return (
     <>

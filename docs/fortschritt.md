@@ -523,8 +523,49 @@ Stand: laufend. Live auf Vercel (Push auf `main` → Deploy). Branch: `claude/ze
 - Live per Playwright verifiziert: Formular- und Bestenliste-Zustand wachsen sauber in
   den Fluss, „Nochmal spielen" bleibt direkt darunter erreichbar.
 
+## Update — OnOffice-Live-Anbindung des Portals ✅
+
+- **Client** (`src/lib/onoffice.ts`, server-only): `isOnOfficeEnabled` (Token+Secret gesetzt?),
+  `fetchOnOfficeEstates()` signiert Requests per HMAC v2 gegen `api.onoffice.de`, mappt
+  `estate`-Records aufs bestehende `Estate`-Modell (`mock-estates.ts`, unverändert bis auf das
+  neue optionale Feld `externalId`) und zieht pro Objekt die Bilder über `estatepictures` nach —
+  fehlt dafür das Leserecht, bekommt das Objekt einfach `images: []` statt die ganze Ladung
+  abzubrechen. Liefert `null` bei fehlender Konfiguration, API-/Netzwerkfehler oder 0 sichtbaren
+  Objekten — der Aufrufer fällt dann auf Mock zurück.
+- **Quelle** (`src/lib/estates.ts`): `getEstateData()`/`getEstateBySlug()`/`getFeaturedEstates()`/
+  `getEstateOrte()` als einheitlicher Einstiegspunkt, gecacht über `unstable_cache` (300 s TTL,
+  Tag `estates`) — cached wird das **Ergebnis** (inkl. Mock-Fallback), nicht der Request, weil
+  der HMAC-Timestamp sich jede Sekunde ändert und sonst nie ein stabiler Fetch-Cache-Key
+  entstünde. `EstateData.source` (`"onoffice" | "mock"`) macht die aktive Quelle für
+  Debug-/Hinweisbanner sichtbar.
+- **Portal/Detail/Merkliste/Home/Sitemap umgezogen**: `/immobilien`, `/immobilien/[slug]`,
+  `/merkliste`, Homepage-Featured-Sektion und `sitemap.ts` lesen jetzt alle über
+  `src/lib/estates.ts` statt direkt `mockEstates` zu importieren — Umschalten auf Live-Daten
+  passiert für alle fünf Stellen gemeinsam, ohne UI-Änderung.
+- **Slug-Schema** stabil gegen Titeländerungen: `slugify(objekttitel) + "-" + Id`,
+  `getEstateBySlug` matcht primär über die numerische Id am Slug-Ende, sekundär exakter
+  Slug-Vergleich (deckt bestehende Mock-Slugs wie `e1-penthouse-…` weiter ab) — alte Links
+  bleiben also auch nach einer Titel-Änderung in OnOffice gültig.
+- **next.config.ts**: `*.onoffice.de` als `remotePatterns`-Host ergänzt, damit `next/image`
+  künftige OnOffice-CDN-Bilder optimieren darf.
+
+### Probe-Ergebnisse (09.07.2026)
+
+Mit den von Sissy erhaltenen Live-Credentials verifiziert: Auth/HMAC funktioniert
+einwandfrei (`errorcode 0`), `fields:get` liefert 251 Felder — aber der API-Nutzer hat noch
+**kein Sichtbarkeitsrecht auf Immobilien-Datensätze** (`estate read` liefert `cntabsolute: 0`)
+und **kein Leserecht auf Objektbilder** (`estatepictures` → `errorcode 170`). Solange das so
+ist, greift der oben beschriebene Fallback: Das Portal zeigt weiterhin die Mock-Objekte, ohne
+Deploy schaltet es auf Live um, sobald Sissy die Rechte in onOffice enterprise freischaltet
+(Details + To-do-Liste: [onoffice-integration.md](./onoffice-integration.md) §9).
+
 ## Offen 🔧
 
+- **OnOffice-Rechte durch Sissy freischalten** (Objekt-Sichtbarkeit „alle Datensätze sehen" +
+  `estatepictures`-Leserecht) — siehe [onoffice-integration.md](./onoffice-integration.md) §9
+  für die genaue To-do-Liste; ohne das bleibt das Portal beim Mock-Fallback.
+- **`ONOFFICE_TOKEN`/`ONOFFICE_SECRET` in Vercel setzen** (alle Environments) — lokal ggf.
+  zusätzlich in `.env.local`, siehe [betrieb.md](./betrieb.md) §1.
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
   Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
   der komplette Bestenlisten-Flow mit einem echten Account.

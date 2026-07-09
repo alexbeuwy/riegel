@@ -39,8 +39,11 @@ export function PortalMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const elsRef = useRef<Record<string, HTMLElement>>({});
   // onBoundsChange als Ref, damit der Map-Init-Effect nicht neu läuft.
+  // Zuweisung im Effect statt im Render-Body (react-hooks/refs).
   const boundsCbRef = useRef(onBoundsChange);
-  boundsCbRef.current = onBoundsChange;
+  useEffect(() => {
+    boundsCbRef.current = onBoundsChange;
+  }, [onBoundsChange]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;

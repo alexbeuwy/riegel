@@ -3,7 +3,7 @@
 Server-seitige Anbindung der OnOffice JSON-API für Immobilien, Bilder und Lead-Anlage.
 Querverweise: [architecture.md](./architecture.md) · [legal-checklist.md](./legal-checklist.md) (AVV) · [RELAUNCH-LOG.md](../RELAUNCH-LOG.md)
 
-> ⚠️ **Verifizierungs-Status:** Im Foundation-Run lieferte die dedizierte `onoffice`-Research-Lens nur ein Dummy-Ergebnis; dieses Dokument basiert auf Synthese-Wissen + echten `apidoc.onoffice.de`-Quellen (unten). HMAC-Recipe, exakte Feldnamen (`objekttyp`/`objektart`, Filtersyntax) und Bild-Endpunkte sind **vor der Implementierung des Clients gegen die Live-Doku zu verifizieren**. Eine dedizierte Re-Research-Phase ist eingeplant.
+> ✅ **Verifizierungs-Status (aktualisiert 09.07.2026):** HMAC-Recipe, Endpoint und Feldnamen sind mittlerweile **live gegen die API verifiziert** (siehe §9), nicht mehr nur Synthese-Wissen aus `apidoc.onoffice.de`. `fields:get` liefert 251 Felder für den RIEGEL-Account — die unten verwendeten Feldnamen (`objektart`/`objekttyp`, `vermarktungsart`, Preis-/Flächen-/Energiefelder etc.) sind bestätigt vorhanden. Ausnahme: `breitengrad`, `laengengrad` und `veroeffentlichen` sind **Systemfelder außerhalb von `fields:get`** — sie tauchen nicht in der Feldliste auf, werden von der API in `data`/`filter` aber anstandslos akzeptiert; im Code entsprechend anfordern, ihr Fehlen aber tolerieren. Offen ist aktuell keine Spezifikationsfrage mehr, sondern die **Rechtevergabe** des API-Users (siehe §9).
 
 > **Grundregel:** Das HMAC-Secret **ist** der API-Key. Jeder Call läuft in einem Route Handler /
 > Server Action mit `ONOFFICE_TOKEN` + `ONOFFICE_SECRET` aus Vercel-Server-Env. **Nie** `NEXT_PUBLIC`,
@@ -195,6 +195,60 @@ die Bestätigung, dass der **API-Zugang** (onOffice Marketplace/„API") für da
 (Lese-Rechte `estate` + `estatepictures`). Danach: Mapping-Modul + Sync-Job bauen (~0,5–1 Tag),
 `mockEstates` als Datenquelle gegen den Supabase-`estates`-Reader tauschen, fertig. Bei 108 Pins
 lohnt sich dann auch das **Karten-Clustering** (bisher bewusst zurückgestellt).
+
+---
+
+## 9. Live-Status (Probe 09.07.2026)
+
+- Credentials (`ONOFFICE_TOKEN`/`ONOFFICE_SECRET`) von Sissy erhalten und gegen die Live-API
+  verifiziert (Werte selbst stehen ausschließlich in `process.env`, nirgends in diesem
+  Repo/dieser Doku).
+- **Auth/HMAC v2 funktioniert**: alle getesteten Calls kommen mit `errorcode 0` zurück — das
+  Signatur-Recipe aus §1 und der Request-Envelope sind damit bestätigt korrekt.
+- **`fields:get`**: liefert 251 Felder — Grundlage der Feldliste/des Mappings in §8.
+- **`estate` `read`**: liefert aktuell **0 Records** (`cntabsolute: 0`), obwohl die
+  Authentifizierung erfolgreich ist → dem API-Benutzer fehlt das Recht, Immobilien-Datensätze
+  überhaupt zu **sehen** (Sichtbarkeit, nicht der API-Zugriff an sich).
+- **`estatepictures` `get`**: `errorcode 170` „No read permission for this user" (im Body
+  mitgeliefertes HTTP-Status-Feld: 500) → kein Leserecht für Objektbilder.
+- **`address` `read`** funktioniert dagegen anstandslos — **über 40.000 Datensätze sichtbar**.
+  Hinweis fürs Least-Privilege-Prinzip aus §7: das ist deutlich mehr Zugriff, als die Integration
+  aktuell braucht (nur Lead-**Anlage**, kein Adress-Lesen) — sollte entzogen werden, sobald die
+  Objekt-Rechte stehen.
+
+### To-do für Sissy in onOffice enterprise
+
+1. **API-Benutzer → Rechte → Immobilien**: „alle Datensätze sehen" aktivieren (mindestens die
+   veröffentlichten Objekte) — ohne dieses Recht bleibt `estate read` bei 0 Treffern, unabhängig
+   von Filtern oder angefragten Feldern.
+2. **API-Recht `estatepictures` (read)** aktivieren — aktuell explizit verweigert
+   (`errorcode 170`).
+3. **Optional**: Adress-**Leserecht** entziehen (Least-Privilege) — für die Lead-Anlage genügt
+   später das **create**-Recht auf `address`, ein Leserecht auf >40.000 fremden Datensätzen ist
+   dafür nicht nötig.
+
+### Code-Stand
+
+Das Portal verhält sich bereits so, wie es sich verhalten soll, solange diese Rechte fehlen:
+`fetchOnOfficeEstates()` liefert `null`, sobald 0 Objekte sichtbar sind (aktuell der Fall) oder
+ein API-/Netzwerkfehler auftritt, und `getEstateData()`/`getEstateBySlug()`/
+`getFeaturedEstates()` fallen dann sauber auf die Mock-Objekte zurück (`source: "mock"`).
+Sobald Sissy die Rechte oben freischaltet, braucht es **kein Deploy** — der nächste Seitenaufruf
+nach Ablauf des Caches (`unstable_cache`, 300 s / Tag `estates`) liefert dann automatisch die
+echten Objekte.
+
+### E2E-verifiziert (09.07.2026)
+
+Der komplette Live-Pfad wurde per Playwright gegen einen lokalen Mock der OnOffice-API
+(exakte Envelope-Shape) durchgespielt — 27/27 Checks grün: Mapping (Preise/Warmmiete-Label/
+Energie/Provision/Features/Umlaut-Slugs), Status-Filterung (`in_akquise` & Co. erscheinen NIE,
+Reserviert mit Badge, Featured nur aktiv), Bild-Host-Filter (Fremd-Hosts verworfen →
+„Fotos folgen"-Platzhalter), Id-Suffix-Slug-Match bei Titeländerung, Live-Sitemap, robots-Umschaltung.
+Dafür gibt es den Test-Hebel `ONOFFICE_API_URL` (überschreibt den Endpoint; produktiv ungesetzt).
+Betriebs-Hinweise: (1) `unstable_cache` persistiert in `.next/cache` über Dev-Server-Neustarts —
+nach lokalen Mock-Tests `.next` löschen, sonst klebt Testdaten-Cache bis zum TTL-Ablauf.
+(2) Unbekannte Slugs liefern wegen `loading.tsx`-Streaming einen Soft-404 (HTTP 200, aber
+Next rendert die 404-UI **mit `noindex`-Meta**) — SEO-seitig unbedenklich.
 
 ---
 

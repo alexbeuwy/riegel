@@ -21,10 +21,11 @@ Querverweise: [architecture.md](./architecture.md) · [bunny-cdn.md](./bunny-cdn
 | `BUNNY_STORAGE_HOST` | Storage-Endpoint; Default `storage.bunnycdn.com` | Optional (Default ok) | `.env.local` |
 | `BUNNY_STORAGE_ACCESS_KEY` | **Schreib-/Lösch-Schlüssel** der Storage-Zone | Nur fürs Upload-Script | **nur lokal** `.env.local`, nie ins Repo |
 | `BUNNY_CDN_HOST` | Öffentlicher CDN-Host; Default `riegel.b-cdn.net` | Optional (Default ok) | `.env.local` |
+| `ONOFFICE_TOKEN` | **Secret.** OnOffice-API-Zugang für Live-Objekte im Portal `/immobilien` (`src/lib/onoffice.ts`) | Optional — ohne Token/Secret liefert das Portal automatisch die Mock-Objekte (`mock-estates.ts`), kein Crash | Vercel (alle Environments) + lokal `.env.local`, **server-only, nie `NEXT_PUBLIC_`** |
+| `ONOFFICE_SECRET` | **Secret.** HMAC-Signatur-Key zum obigen Token (siehe [onoffice-integration.md](./onoffice-integration.md) §1) | wie oben | Vercel (alle Environments) + lokal `.env.local`, server-only |
 
-**Zukunft (OnOffice-Anbindung, noch nicht im Code):** `ONOFFICE_TOKEN`, `ONOFFICE_SECRET`,
-`ONOFFICE_WEBHOOK_SECRET` — server-only, Least-Privilege-API-User (siehe
-[onoffice-integration.md](./onoffice-integration.md)).
+**Zukunft (noch nicht im Code):** `ONOFFICE_WEBHOOK_SECRET` — für die geplante
+Webhook-basierte Revalidierung (siehe [onoffice-integration.md](./onoffice-integration.md) §5).
 
 ---
 

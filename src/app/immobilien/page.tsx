@@ -3,7 +3,7 @@ import { FilterBar } from "@/components/portal/filter-bar";
 import { ActiveChips } from "@/components/portal/active-chips";
 import { PortalView } from "@/components/portal/portal-view";
 import { SaveSearchButton } from "@/components/saved-searches";
-import { mockEstates, ESTATE_ORTE } from "@/lib/mock-estates";
+import { getEstateData, getEstateOrte } from "@/lib/estates";
 import { filterEstates, parseFilters, type SearchParamsObj } from "@/lib/portal-filter";
 
 export const metadata = {
@@ -20,14 +20,15 @@ export default async function ImmobilienPage({
 }) {
   const sp = await searchParams;
   const filters = parseFilters(sp);
-  const results = filterEstates(mockEstates, filters);
+  const [{ estates, source }, orte] = await Promise.all([getEstateData(), getEstateOrte()]);
+  const results = filterEstates(estates, filters);
 
   return (
     <div>
       <h1 className="sr-only">Immobilienangebote in Speyer, Ludwigshafen &amp; der Vorderpfalz</h1>
       <div className="border-b border-border bg-bg pt-6">
         <Container className="pb-5">
-          <FilterBar filters={filters} orte={ESTATE_ORTE} />
+          <FilterBar filters={filters} orte={orte} />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <ActiveChips filters={filters} resultCount={results.length} />
             <SaveSearchButton />
@@ -36,8 +37,9 @@ export default async function ImmobilienPage({
       </div>
       <PortalView estates={results} />
       <p className="px-5 pb-10 text-xs text-faint sm:px-8">
-        Vorschau mit Beispiel-Objekten · Live-Anbindung an OnOffice in
-        Vorbereitung · Karten-Tiles © OpenStreetMap, © CARTO.
+        {source === "mock"
+          ? "Vorschau mit Beispiel-Objekten · Live-Anbindung an OnOffice in Vorbereitung · Karten-Tiles © OpenStreetMap, © CARTO."
+          : "Live-Daten aus der RIEGEL-Objektverwaltung · Karten-Tiles © OpenStreetMap, © CARTO."}
       </p>
     </div>
   );

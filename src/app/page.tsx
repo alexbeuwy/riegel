@@ -4,7 +4,7 @@ import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Magnetic } from "@/components/magnetic";
 import { PropertyCard } from "@/components/property-card";
-import { mockEstates } from "@/lib/mock-estates";
+import { getEstateData, getFeaturedEstates } from "@/lib/estates";
 import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
 import { Faq } from "@/components/faq";
@@ -74,6 +74,7 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const heroImage = await getSiteSetting(HERO_IMAGE_KEY, photos.heroKitchenDark);
+  const [featured, { source }] = await Promise.all([getFeaturedEstates(3), getEstateData()]);
   return (
     <>
       <script
@@ -412,14 +413,16 @@ export default async function HomePage() {
           </Reveal>
 
           <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {mockEstates.slice(0, 3).map((estate, i) => (
+            {featured.map((estate, i) => (
               <Reveal key={estate.slug} delay={i * 90}>
                 <PropertyCard estate={estate} />
               </Reveal>
             ))}
           </div>
           <p className="mt-8 text-sm text-faint">
-            Vorschau mit Beispiel-Objekten · Live-Anbindung an OnOffice in Vorbereitung.
+            {source === "mock"
+              ? "Vorschau mit Beispiel-Objekten · Live-Anbindung an OnOffice in Vorbereitung."
+              : "Live-Daten aus der RIEGEL-Objektverwaltung."}
           </p>
         </Container>
       </section>

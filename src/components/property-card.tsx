@@ -10,13 +10,21 @@ export function PropertyCard({ estate }: { estate: Estate }) {
     <TiltCard cardClassName="border border-border bg-surface">
       <Link href={`/immobilien/${estate.slug}`} className="group block h-full">
         <div className="relative aspect-[16/10] overflow-hidden">
-          <Image
-            src={estate.images[0]}
-            alt={`${estate.title}, ${estate.city}`}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover"
-          />
+          {estate.images.length > 0 ? (
+            <Image
+              src={estate.images[0]}
+              alt={`${estate.title}, ${estate.city}`}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover"
+            />
+          ) : (
+            // Live-Objekte können ohne Foto-Leserecht kommen — dezenter Platzhalter statt kaputtem Bild.
+            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-surface-2">
+              <Icon name="home" size={28} className="text-faint" />
+              <span className="text-xs text-faint">Fotos folgen</span>
+            </div>
+          )}
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-bg/70 to-transparent" />
           <div className="absolute left-3 top-3 flex gap-2">
             {estate.isNew && (
