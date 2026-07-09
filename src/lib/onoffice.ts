@@ -673,21 +673,38 @@ function extractPictureObjects(item: unknown): Record<string, unknown>[] {
   return [obj];
 }
 
+// Gemessen (09.07.2026): estatepictures skaliert bei OnOffice linear mit der
+// Objektzahl (~0,17 s/Objekt Server-Rendering) — 110 Objekte in EINEM Call
+// dauerten 13,8 s und waren der Grund für >15 s Ladezeit beim Cache-Fill.
+// 6 parallele Batches à 20 drücken das auf die Zeit des längsten Batches (~3 s).
+const PICTURE_BATCH_SIZE = 20;
+
 async function fetchEstateImages(ids: string[]): Promise<Map<string, string[]>> {
   const result = new Map<string, string[]>();
   if (ids.length === 0) return result;
 
-  const data = await callOnOffice<{ records?: unknown[] } | unknown[]>("estatepictures", "get", {
-    estateids: ids,
-    categories: ["Titelbild", "Foto"],
-    size: "1600x1200",
-    language: "DEU",
-  });
-  // z. B. errorcode 170 "No read permission for this user" -> alle Estates
-  // bekommen unten images:[] (kein Abbruch der gesamten Estate-Ladung).
-  if (!data) return result;
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += PICTURE_BATCH_SIZE) {
+    batches.push(ids.slice(i, i + PICTURE_BATCH_SIZE));
+  }
+  const t0 = Date.now();
+  const responses = await Promise.all(
+    batches.map((batch) =>
+      callOnOffice<{ records?: unknown[] } | unknown[]>("estatepictures", "get", {
+        estateids: batch,
+        categories: ["Titelbild", "Foto"],
+        size: "1600x1200",
+        language: "DEU",
+      }),
+    ),
+  );
+  console.info(`[onoffice] estatepictures: ${batches.length} Batches in ${Date.now() - t0}ms`);
 
-  const rawRecords = Array.isArray(data) ? data : data.records ?? [];
+  // z. B. errorcode 170 "No read permission for this user" -> betroffene Estates
+  // bekommen unten images:[] (kein Abbruch der gesamten Estate-Ladung).
+  const rawRecords = responses.flatMap((data) =>
+    data ? (Array.isArray(data) ? data : data.records ?? []) : [],
+  );
   const byEstate = new Map<string, OnOfficePicture[]>();
 
   for (const raw of rawRecords) {
@@ -777,7 +794,9 @@ export async function fetchExposePdf(estateId: string): Promise<Buffer | null> {
 export async function fetchOnOfficeEstates(): Promise<Estate[] | null> {
   if (!isOnOfficeEnabled) return null;
 
+  const tStart = Date.now(); // Timing in den Vercel-Logs sichtbar machen
   const records = await fetchEstateRecords();
+  console.info(`[onoffice] estate read: ${records.length} Records in ${Date.now() - tStart}ms`);
   if (records.length === 0) return null;
 
   const mapped: Estate[] = [];

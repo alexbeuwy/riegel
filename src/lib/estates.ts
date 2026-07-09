@@ -5,6 +5,7 @@
  * aus OnOffice oder die Mock-Fixtures als Fallback, ohne dass Aufrufer den
  * Unterschied kennen müssen (source-Feld ist nur für Debug-/Hinweisbanner gedacht).
  */
+import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { fetchOnOfficeEstates } from "@/lib/onoffice";
 import { mockEstates, ESTATE_ORTE, type Estate } from "@/lib/mock-estates";
@@ -29,9 +30,12 @@ const getCachedEstateData = unstable_cache(
   { revalidate: 300, tags: ["estates"] },
 );
 
-export async function getEstateData(): Promise<EstateData> {
+// React cache() als Request-Dedup obendrauf: unstable_cache koalesziert
+// PARALLELE In-Flight-Aufrufe nicht — bei leerem Cache lösten Liste +
+// Orte-Dropdown im selben Request ZWEI volle OnOffice-Pulls aus (gemessen).
+export const getEstateData = cache(async (): Promise<EstateData> => {
   return getCachedEstateData();
-}
+});
 
 export async function getEstateBySlug(
   slug: string,
