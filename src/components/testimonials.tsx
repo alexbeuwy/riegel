@@ -29,12 +29,15 @@ export function Testimonials() {
               <TiltCard cardClassName="flex h-full flex-col border border-border bg-surface p-6">
                 {t.sterne ? (
                   <div className="flex text-accent" aria-hidden>
+                    {/* Alle Sterne gefüllt (fill=currentColor) — leere Sterne nur
+                        blasser eingefärbt, nie als dünne Outline (sonst andere
+                        Silhouette als die vollen Sterne). */}
                     {Array.from({ length: 5 }).map((_, s) => (
                       <Icon
                         key={s}
                         name="star"
                         size={14}
-                        fill={s < t.sterne! ? "currentColor" : "none"}
+                        fill="currentColor"
                         className={s < t.sterne! ? "" : "text-faint"}
                       />
                     ))}

@@ -7,26 +7,23 @@ import { TRUST_PLATFORMS, TRUST_BADGES } from "@/lib/trust-data";
  * (Muster/Klassen aus .reel-marquee wiederverwendet, s. globals.css).
  */
 function Stars({ rating, max }: { rating: number; max: number }) {
-  const pct = Math.round((rating / max) * 5 * 20); // auf 5-Sterne-Skala normiert, in %
+  // EINE Sternebene: die frühere Overlay-Technik (accent-Ebene per width % über
+  // eine faint-Ebene geklippt) schnitt mitten durch einen Stern und wirkte
+  // dadurch „doppelt"/unscharf. Stattdessen auf ganze Sterne runden (die exakte
+  // Zahl steht ohnehin daneben). Alle Sterne gleich gefüllt, nur die Farbe
+  // unterscheidet — so identische Silhouette, kein Versatz.
+  const filled = Math.round((rating / max) * 5);
   return (
-    <span className="relative inline-flex" aria-hidden>
-      {/* Beide Ebenen MÜSSEN denselben fill-Stil haben (hier: beide gefüllt) —
-          sonst hat die Outline-Ebene eine andere Silhouette als die gefüllte
-          Ebene (Stroke+Fill wirkt kräftiger/breiter als Stroke allein) und
-          beide liegen sichtbar nicht bündig übereinander. */}
-      <span className="flex text-faint">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Icon key={i} name="star" size={13} fill="currentColor" />
-        ))}
-      </span>
-      <span
-        className="absolute inset-0 flex overflow-hidden text-accent"
-        style={{ width: `${pct}%` }}
-      >
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Icon key={i} name="star" size={13} fill="currentColor" />
-        ))}
-      </span>
+    <span className="flex" aria-hidden>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Icon
+          key={i}
+          name="star"
+          size={13}
+          fill="currentColor"
+          className={i < filled ? "text-accent" : "text-faint"}
+        />
+      ))}
     </span>
   );
 }
