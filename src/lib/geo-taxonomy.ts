@@ -85,20 +85,39 @@ export const STANDORT_GEO: Record<string, { region: string; lng: number; lat: nu
   waldsee: { region: "speyer", lng: 8.448, lat: 49.376 },
   schifferstadt: { region: "speyer", lng: 8.376, lat: 49.387 },
   "boehl-iggelheim": { region: "speyer", lng: 8.305, lat: 49.376 },
+  // Südpfalz/Speyer-Umland (unmittelbare Nachbargemeinden bzw. Landkreis Germersheim):
+  lingenfeld: { region: "speyer", lng: 8.3189, lat: 49.2336 },
+  hanhofen: { region: "speyer", lng: 8.4081, lat: 49.2958 },
+  harthausen: { region: "speyer", lng: 8.325, lat: 49.2686 },
+  "woerth-am-rhein": { region: "speyer", lng: 8.2667, lat: 49.05 },
 
   ludwigshafen: { region: "lu", lng: 8.4452, lat: 49.4774 },
   mutterstadt: { region: "lu", lng: 8.355, lat: 49.44 },
   limburgerhof: { region: "lu", lng: 8.39, lat: 49.425 },
   frankenthal: { region: "lu", lng: 8.354, lat: 49.536 },
+  // LU-Umland:
+  lambsheim: { region: "lu", lng: 8.2333, lat: 49.5331 },
 
   "neustadt-weinstrasse": { region: "weinstrasse", lng: 8.135, lat: 49.35 },
   "bad-duerkheim": { region: "weinstrasse", lng: 8.169, lat: 49.463 },
   landau: { region: "weinstrasse", lng: 8.117, lat: 49.198 },
   hassloch: { region: "weinstrasse", lng: 8.258, lat: 49.362 },
+  // Weinstraße/Pfälzerwald/Nordpfalz:
+  "hochstadt-pfalz": { region: "weinstrasse", lng: 8.1333, lat: 49.1167 },
+  "sankt-martin": { region: "weinstrasse", lng: 8.1167, lat: 49.3167 },
+  elmstein: { region: "weinstrasse", lng: 7.95, lat: 49.3667 },
+  neuhemsbach: { region: "weinstrasse", lng: 7.8167, lat: 49.4667 },
+  otterbach: { region: "weinstrasse", lng: 7.7667, lat: 49.4667 },
 
   mannheim: { region: "rheinneckar", lng: 8.466, lat: 49.4875 },
   worms: { region: "rheinneckar", lng: 8.359, lat: 49.634 },
   germersheim: { region: "rheinneckar", lng: 8.365, lat: 49.223 },
+  // Baden/Rheinhessen/Bergstraße:
+  bruehl: { region: "rheinneckar", lng: 8.5339, lat: 49.2864 },
+  hockenheim: { region: "rheinneckar", lng: 8.5489, lat: 49.3289 },
+  karlsruhe: { region: "rheinneckar", lng: 8.4037, lat: 49.0069 },
+  gundersheim: { region: "rheinneckar", lng: 8.1667, lat: 49.7167 },
+  "heppenheim-bergstrasse": { region: "rheinneckar", lng: 8.6333, lat: 49.6333 },
 };
 
 export function standortRegion(a: GeoArticle): string {

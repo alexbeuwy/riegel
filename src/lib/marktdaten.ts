@@ -87,6 +87,23 @@ const STADT_FAKTOR: Record<string, number> = {
   worms: 1.03, // Domstadt, Rhein-Neckar-Nähe, gute Anbindung
   landau: 1.05, // Kreisstadt an der Weinstraße, Universität, gehobene Nachfrage
   "bad-duerkheim": 1.08, // Kur- und Weinstadt, touristisch, gehobenes Segment
+
+  // Neue Standorte (Expansion außerhalb der bisherigen Vorderpfalz-Kernorte):
+  elmstein: 0.69, // sehr kleine Gemeinde tief im Pfälzerwald, stark ländlich, kaum Baulandreserven
+  neuhemsbach: 0.75, // kleine Landgemeinde im Nordpfälzer Bergland, wenig Nachfragedruck
+  gundersheim: 0.78, // kleines Rheinhessen-Weindorf, ländlich geprägt
+  otterbach: 0.78, // kleine Stadt bei Kaiserslautern, solide, aber ohne Preisdruck
+  lingenfeld: 0.89, // Südpfalz-Gemeinde bei Speyer/Germersheim, ländlich-solide
+  "woerth-am-rhein": 0.89, // Südpfalz, Rhein-Grenzlage zu Karlsruhe, gute Anbindung
+  hanhofen: 0.94, // direkte Nachbargemeinde von Speyer, gute Anbindung
+  harthausen: 0.94, // Pfalz-Gemeinde nahe Speyer, ruhige Wohnlage
+  lambsheim: 0.92, // LU-Umland, solide Wohngemeinde ohne Stadtstatus-Aufschlag
+  "hochstadt-pfalz": 0.92, // Ortsteil bei Herxheim/Landau, ländlich-solide Weinbaulage
+  "sankt-martin": 1.06, // bekanntes Weindorf an der Weinstraße, Tourismus-Prämie
+  hockenheim: 0.97, // Mittelstadt, Hockenheimring-Bekanntheit, solide Nachfrage
+  bruehl: 1.03, // Rhein-Neckar-Kreis, unmittelbare Mannheim/Schwetzingen-Nähe
+  "heppenheim-bergstrasse": 1.0, // hessische Kreisstadt, Bergstraße, gute Anbindung Richtung Rhein-Main
+  karlsruhe: 1.19, // Großstadt (~300.000 EW), deutlich höheres Preisniveau als die Umlandgemeinden
 };
 
 /** Basiswerte je Ort: Direkter Rechner-Region-Treffer oder DEFAULT_BASIS × Stadt-Faktor. */
