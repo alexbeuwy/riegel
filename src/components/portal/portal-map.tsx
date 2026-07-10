@@ -137,6 +137,8 @@ export function PortalMap({
       el.type = "button";
       el.className = "riegel-pin";
       el.textContent = formatPriceShort(estate);
+      // Für Tests/Debugging: Objekt-Id direkt am Element ablesbar.
+      el.dataset.estateId = estate.id;
       // Karte ist visuelle Repräsentation der Liste → Pins aus Tab-/SR-Reihenfolge nehmen.
       el.tabIndex = -1;
       el.setAttribute("aria-hidden", "true");
@@ -145,6 +147,11 @@ export function PortalMap({
       el.addEventListener("click", (ev) => {
         ev.stopPropagation();
         onActivateRef.current(estate.id);
+      });
+      // Ungeduldiges Doppelklicken auf die Pill soll nicht den MapLibre-
+      // Doppelklick-Zoom auf der Karte auslösen.
+      el.addEventListener("dblclick", (ev) => {
+        ev.stopPropagation();
       });
       el.classList.toggle("is-active", estate.id === hoveredIdRef.current || estate.id === activeIdRef.current);
       el.classList.toggle("is-dimmed", !!inAreaIdsRef.current && !inAreaIdsRef.current.has(estate.id));

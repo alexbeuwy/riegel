@@ -38,6 +38,10 @@ export function PortalView({ estates }: { estates: Estate[] }) {
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [visibleCount, setVisibleCount] = useState(CARD_CHUNK);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
+  // Id der zuletzt angesteuerten Karte: verhindert erneutes Scrollen, wenn der
+  // Scroll-Effect nur wegen einer gewachsenen visibleEstates-Liste (z. B. durch
+  // den „Weitere Objekte anzeigen"-Button) neu läuft, activeId sich aber nicht ändert.
+  const lastScrolledIdRef = useRef<string | null>(null);
   const { maps: mapsConsent, decided: consentDecided } = useConsent();
 
   // Bei Filterwechsel (neue estates-Prop von der Seite) wieder von vorn beginnen.
@@ -50,7 +54,6 @@ export function PortalView({ estates }: { estates: Estate[] }) {
   }
 
   const onHover = useCallback((id: string | null) => setHoveredId(id), []);
-  const onActivate = useCallback((id: string | null) => setActiveId(id), []);
   const onBoundsChange = useCallback((b: MapBounds) => setBounds(b), []);
 
   // Liste filtert auf den Kartenausschnitt, wenn aktiviert. Die Karte bekommt
@@ -59,6 +62,29 @@ export function PortalView({ estates }: { estates: Estate[] }) {
     if (!searchInArea || !bounds) return estates;
     return estates.filter((e) => inBounds(e, bounds));
   }, [estates, searchInArea, bounds]);
+
+  // Aktivierung (Pin-Klick auf der Karte): Karte kennt IMMER alle Objekte, die
+  // gechunkte Listen-Ansicht aber nur die ersten `visibleCount`. Liegt das
+  // angeklickte Objekt dahinter, muss die Liste erst bis dorthin aufklappen,
+  // sonst existiert keine Karten-Ref zum Hinscrollen (Bug: Klick "tut nichts").
+  const onActivate = useCallback(
+    (id: string | null) => {
+      setActiveId(id);
+      if (id === null) return;
+      // Mobil ist die Liste hinter der Karte versteckt (`hidden`) — nach Pin-Tap
+      // soll der Nutzer die (aufgeklappte) Karte in der Liste sehen.
+      setShowMapMobile(false);
+      const index = listEstates.findIndex((e) => e.id === id);
+      // -1: Objekt aktuell nicht in der Liste (z. B. durch aktive Bereichssuche
+      // herausgefiltert) — nur aktivieren, nichts aufklappen, kein Crash.
+      if (index === -1) return;
+      const chunkZiel = Math.ceil((index + 1) / CARD_CHUNK) * CARD_CHUNK;
+      // Updater-Funktion + Math.max: nie schrumpfen, falls der Nutzer schon
+      // mehr aufgeklappt hat; kein `visibleCount`-Dependency nötig.
+      setVisibleCount((v) => Math.max(v, chunkZiel));
+    },
+    [listEstates],
+  );
 
   const inAreaIds = useMemo(() => {
     if (!searchInArea || !bounds) return null;
@@ -75,12 +101,22 @@ export function PortalView({ estates }: { estates: Estate[] }) {
 
   useEffect(() => {
     if (!activeId) return;
+    // Schon zu dieser Karte gescrollt (Effect läuft nur wegen gewachsener
+    // visibleEstates erneut, z. B. durch "Weitere Objekte anzeigen") → kein Re-Scroll.
+    if (activeId === lastScrolledIdRef.current) return;
+    // Karte evtl. noch nicht gerendert (Chunk-Aufklappen aus onActivate ist
+    // asynchron zum State-Update) — dann keine Ref vorhanden, nicht crashen.
+    const card = cardRefs.current[activeId];
+    if (!card) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    cardRefs.current[activeId]?.scrollIntoView({
-      block: "nearest",
+    card.scrollIntoView({
+      block: "center",
       behavior: reduce ? "auto" : "smooth",
     });
-  }, [activeId]);
+    lastScrolledIdRef.current = activeId;
+    // visibleEstates als Dependency: nach dem Aufklappen (setVisibleCount in
+    // onActivate) läuft der Effect erneut und findet die inzwischen gerenderte Ref.
+  }, [activeId, visibleEstates]);
 
   return (
     <div className="grid lg:grid-cols-[1.25fr_1fr]">
