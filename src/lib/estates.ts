@@ -19,14 +19,25 @@ export interface EstateData {
 
 // Der HMAC-Timestamp im Request-Body ändert sich jede Sekunde — ein fetch-naher
 // Cache-Key wäre also nie stabil. Deshalb cachen wir nicht den Request, sondern das
-// Ergebnis dieser Funktion (Fallback auf Mock inklusive) über unstable_cache.
-const getCachedEstateData = unstable_cache(
-  async (): Promise<EstateData> => {
-    const onOfficeEstates = await fetchOnOfficeEstates();
-    if (onOfficeEstates) return { estates: onOfficeEstates, source: "onoffice" };
-    return { estates: mockEstates, source: "mock" };
+// Ergebnis dieser Funktion über unstable_cache.
+//
+// WICHTIG: Es wird NUR der Erfolgsfall gecacht. Vorher landete auch der
+// Mock-Fallback im Cache — ein einziger fehlgeschlagener OnOffice-Pull
+// (Timeout/Hiccup beim Cold Start) wurde dann via stale-while-revalidate
+// dauerhaft als „Mock" ausgeliefert, obwohl die API längst wieder gesund war
+// (live auf Vercel passiert: /immobilien zeigte Mock, /api/estate-orte echte
+// Orte). Ein Throw verhindert das Persistieren des Fehlerfalls; der
+// Mock-Fallback passiert pro Request außerhalb des Caches und heilt sich
+// beim nächsten erfolgreichen Abruf von selbst. Neuer Cache-Key
+// („estates-live" statt „estates-source"), damit ein bereits vergifteter
+// Alt-Eintrag sicher ignoriert wird.
+const getCachedLiveEstates = unstable_cache(
+  async (): Promise<Estate[]> => {
+    const live = await fetchOnOfficeEstates();
+    if (!live) throw new Error("onoffice_unavailable");
+    return live;
   },
-  ["estates-source"],
+  ["estates-live"],
   { revalidate: 300, tags: ["estates"] },
 );
 
@@ -34,7 +45,14 @@ const getCachedEstateData = unstable_cache(
 // PARALLELE In-Flight-Aufrufe nicht — bei leerem Cache lösten Liste +
 // Orte-Dropdown im selben Request ZWEI volle OnOffice-Pulls aus (gemessen).
 export const getEstateData = cache(async (): Promise<EstateData> => {
-  return getCachedEstateData();
+  try {
+    return { estates: await getCachedLiveEstates(), source: "onoffice" };
+  } catch {
+    // Liegt bereits ein (ggf. abgelaufener) Live-Eintrag im Cache, liefert
+    // unstable_cache den weiterhin aus — hier landen wir nur, wenn es noch
+    // NIE einen erfolgreichen Abruf gab und der aktuelle auch scheitert.
+    return { estates: mockEstates, source: "mock" };
+  }
 });
 
 export async function getEstateBySlug(
