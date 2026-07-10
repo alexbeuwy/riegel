@@ -65,7 +65,7 @@ export function PortalCard({
               src={imgs[idx]}
               alt={`${estate.title}, ${estate.city}`}
               fill
-              sizes="(max-width: 1024px) 100vw, 40vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 480px"
               className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
             />
           ) : (
@@ -110,14 +110,21 @@ export function PortalCard({
               >
                 <Icon name="arrowRight" size={18} />
               </button>
-              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
-                {imgs.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-1.5 rounded-full transition-all ${i === idx ? "w-4 bg-accent" : "w-1.5 bg-fg/50"}`}
-                  />
-                ))}
-              </div>
+              {imgs.length > 8 ? (
+                // Bei sehr vielen Fotos wären Dots unübersichtlich — kompakter Zähler statt Punkte-Reihe.
+                <span className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-bg/70 px-2.5 py-1 text-xs text-fg backdrop-blur transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
+                  {idx + 1}/{imgs.length}
+                </span>
+              ) : (
+                <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
+                  {imgs.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`h-1.5 rounded-full transition-all ${i === idx ? "w-4 bg-accent" : "w-1.5 bg-fg/50"}`}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>

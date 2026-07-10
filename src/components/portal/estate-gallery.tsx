@@ -44,41 +44,26 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-4">
-        <button
-          type="button"
-          onClick={() => openAt(0)}
-          className="group relative col-span-full aspect-[16/9] overflow-hidden rounded-2xl border border-border"
-        >
-          <Image
-            src={imgs[0]}
-            alt={title}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
-          />
-          <span className="absolute bottom-3 right-3 rounded-full bg-bg/70 px-3 py-1 text-xs text-fg backdrop-blur">
+      {/* NEU: Nur der Hero lädt sofort — weitere Bilder erst nach Klick (Lightbox lädt on demand). */}
+      <button
+        type="button"
+        onClick={() => openAt(0)}
+        className="group relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-border"
+      >
+        <Image
+          src={imgs[0]}
+          alt={title}
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 66vw"
+          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
+        />
+        {imgs.length > 1 && (
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-bg/70 px-4 py-1.5 text-xs font-medium text-fg backdrop-blur">
             Alle {imgs.length} Fotos
           </span>
-        </button>
-        {imgs.slice(1, 5).map((src, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => openAt(i + 1)}
-            className="group relative aspect-[4/3] overflow-hidden rounded-lg border border-border"
-          >
-            <Image
-              src={src}
-              alt={`${title} – Ansicht ${i + 2}`}
-              fill
-              sizes="(max-width: 640px) 50vw, 25vw"
-              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
-            />
-          </button>
-        ))}
-      </div>
+        )}
+      </button>
 
       {open && (
         <div
@@ -130,6 +115,18 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
           <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-sm text-fg transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
             {idx + 1} / {imgs.length}
           </div>
+          {/* Verstecktes Preload des nächsten Bilds — Weiterklicken fühlt sich flott an, ohne alles vorzuladen. */}
+          {imgs.length > 1 && (
+            <div className="sr-only" aria-hidden="true">
+              <Image
+                src={imgs[(idx + 1) % imgs.length]}
+                alt=""
+                fill
+                sizes="92vw"
+                loading="eager"
+              />
+            </div>
+          )}
         </div>
       )}
     </>
