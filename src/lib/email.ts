@@ -158,7 +158,10 @@ export async function sendMail(opts: {
       replyTo: opts.replyTo,
       ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
     });
-    if (error) return { ok: false, error: String(error) };
+    // Resend liefert ein Fehler-OBJEKT ({name, message, statusCode}) — ein
+    // nacktes String(error) ergäbe nur "[object Object]" und hat beim ersten
+    // Prod-Versand die eigentliche Ursache verschluckt.
+    if (error) return { ok: false, error: error.message || JSON.stringify(error) };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "unknown" };
