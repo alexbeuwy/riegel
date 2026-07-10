@@ -53,7 +53,7 @@ export async function POST(req: Request) {
           { label: "Telefon", value: esc(phone) },
           { label: "Anliegen", value: esc(topic) },
         ]) +
-        `<p style="margin:14px 0 6px;color:#7c7a75;font-size:13px;">Nachricht</p><p style="margin:0;color:#f4f3f0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`,
+        `<p style="margin:14px 0 6px;color:#6b7590;font-size:13px;">Nachricht</p><p style="margin:0;color:#141724;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`,
     }),
   });
 
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       intro:
         "Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages. Bei dringenden Anliegen erreichen Sie uns unter 06232 100 10 10.",
       bodyHtml: message
-        ? `<p style="margin:8px 0 6px;color:#7c7a75;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#a8a6a0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
+        ? `<p style="margin:8px 0 6px;color:#6b7590;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#5a6072;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
         : "",
     }),
   });

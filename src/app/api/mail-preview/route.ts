@@ -77,7 +77,7 @@ function buildVariant(type: string): { subject: string; html: string } | null {
               { label: "Telefon", value: esc(LEAD.phone) },
               { label: "Anliegen", value: "Verkauf" },
             ]) +
-            `<p style="margin:14px 0 6px;color:#7c7a75;font-size:13px;">Nachricht</p><p style="margin:0;color:#f4f3f0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(LEAD.message)}</p>`,
+            `<p style="margin:14px 0 6px;color:#6b7590;font-size:13px;">Nachricht</p><p style="margin:0;color:#141724;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(LEAD.message)}</p>`,
         }),
       };
 
@@ -89,7 +89,7 @@ function buildVariant(type: string): { subject: string; html: string } | null {
           heading: `Danke, ${esc(LEAD.name.split(" ")[0])}!`,
           intro:
             "Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages. Bei dringenden Anliegen erreichen Sie uns unter 06232 100 10 10.",
-          bodyHtml: `<p style="margin:8px 0 6px;color:#7c7a75;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#a8a6a0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(LEAD.message)}</p>`,
+          bodyHtml: `<p style="margin:8px 0 6px;color:#6b7590;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#5a6072;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(LEAD.message)}</p>`,
         }),
       };
 
@@ -144,11 +144,11 @@ function buildVariant(type: string): { subject: string; html: string } | null {
     // Spiegelt api/report/route.ts (Kunden-Mail): Wert-Hero + Objektdaten +
     // Kennzahlen + CTA + Disclaimer — hier ohne PDF-Anhang (reine HTML-Vorschau).
     case "report": {
-      const valueHero = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#0f1117;border:1px solid #2a2a30;border-radius:12px;">
+      const valueHero = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#eef3ff;border:1px solid #dbe5fa;border-radius:16px;">
 <tr><td style="padding:22px 24px;text-align:center;">
-<div style="color:#7c7a75;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
-<div style="color:#f4f3f0;font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(VALUE.mid)}</div>
-<div style="color:#a8a6a0;font-size:14px;">Spanne ${eur(VALUE.low)} – ${eur(VALUE.high)} · ${eur(VALUE.perSqm)}/m²</div>
+<div style="color:#6b7590;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
+<div style="color:#015cff;font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(VALUE.mid)}</div>
+<div style="color:#5a6072;font-size:14px;">Spanne ${eur(VALUE.low)} – ${eur(VALUE.high)} · ${eur(VALUE.perSqm)}/m²</div>
 </td></tr></table>`;
       const objektRows = emailRows([
         { label: "Adresse", value: esc(OBJ.adresse) },
@@ -168,7 +168,7 @@ function buildVariant(type: string): { subject: string; html: string } | null {
         { label: "Mikrolage", value: "8,4/10" },
         { label: "Konfidenz", value: "86 %" },
       ]);
-      const disclaimer = `<p style="margin:18px 0 0;color:#7c7a75;font-size:12px;line-height:1.6;">
+      const disclaimer = `<p style="margin:18px 0 0;color:#6b7590;font-size:12px;line-height:1.6;">
 Unverbindliche, datenbasierte Sofort-Einschätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
 Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
       return {
@@ -178,8 +178,8 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
           intro: `Vielen Dank, ${esc(LEAD.name.split(" ")[0])}! Hier ist Ihre Sofort-Einschätzung für ${esc(OBJ.adresse)} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
           bodyHtml:
             valueHero +
-            `<div style="color:#a8a6a0;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
-            `<div style="color:#a8a6a0;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen +
+            `<div style="color:#6b7590;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
+            `<div style="color:#6b7590;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen +
             disclaimer,
           ctaLabel: "Vor-Ort-Bewertung vereinbaren",
           ctaHref: `${site.url}/rechner`,

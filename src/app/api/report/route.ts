@@ -75,11 +75,11 @@ async function fetchSatellite(lat: number | null, lng: number | null): Promise<s
 
 /** Bewertungs-Hero (große Zahl + Spanne) als email-sichere Tabelle. */
 function valueHero(mid: number, low: number, high: number, perSqm: number | undefined) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#0f1117;border:1px solid #2a2a30;border-radius:12px;">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#eef3ff;border:1px solid #dbe5fa;border-radius:16px;">
 <tr><td style="padding:22px 24px;text-align:center;">
-<div style="color:#7c7a75;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
-<div style="color:#f4f3f0;font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(mid)}</div>
-<div style="color:#a8a6a0;font-size:14px;">Spanne ${eur(low)} – ${eur(high)}${perSqm ? ` · ${eur(perSqm)}/m²` : ""}</div>
+<div style="color:#6b7590;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
+<div style="color:#015cff;font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(mid)}</div>
+<div style="color:#5a6072;font-size:14px;">Spanne ${eur(low)} – ${eur(high)}${perSqm ? ` · ${eur(perSqm)}/m²` : ""}</div>
 </td></tr></table>`;
 }
 
@@ -214,7 +214,7 @@ export async function POST(req: Request) {
     { label: "Vervielfältiger (Ertragswert)", value: vervielfaeltiger != null ? `${vervielfaeltiger}×` : "" },
   ]);
 
-  const disclaimer = `<p style="margin:18px 0 0;color:#7c7a75;font-size:12px;line-height:1.6;">
+  const disclaimer = `<p style="margin:18px 0 0;color:#6b7590;font-size:12px;line-height:1.6;">
 Unverbindliche, datenbasierte Sofort-Einschätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
 Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
 
@@ -279,8 +279,8 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       intro: `Vielen Dank, ${esc(name.split(" ")[0]) || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${esc(address)}` : ""} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
       bodyHtml:
         valueHero(mid, low, high, perSqm) +
-        `<div style="color:#a8a6a0;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
-        `<div style="color:#a8a6a0;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen +
+        `<div style="color:#6b7590;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
+        `<div style="color:#6b7590;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen +
         ctaBtn + disclaimer,
     }),
   });
@@ -301,8 +301,8 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
           { label: "Nachricht", value: esc(message) },
         ]) +
         valueHero(mid, low, high, perSqm) +
-        `<div style="color:#a8a6a0;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
-        `<div style="color:#a8a6a0;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen,
+        `<div style="color:#6b7590;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
+        `<div style="color:#6b7590;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen,
     }),
   });
 

@@ -684,25 +684,41 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   `/konto` mit zweistufiger Bestätigung, räumt lokale Spuren auf, meldet ab, leitet weiter.
   Braucht `SUPABASE_SERVICE_ROLE_KEY` in Vercel (sonst klare 503-Meldung).
 
+## Update — E-Mail-Redesign: helles Karten-Layout + Resend live ✅
+
+- **Resend produktionsbereit**: Domain-Strategie auf Subdomain **`m.riegel-immobilien.de`**
+  umgestellt (DNS-Dienstleister war mit der Hauptdomain überfordert). MX/SPF/DKIM gesetzt,
+  Resend-Verifizierung **grün** — erste echte Mails erfolgreich an alex@beuwy.com versendet.
+  `EMAIL_FROM=RIEGEL Immobilien <mail@m.riegel-immobilien.de>` lokal in `.env.local`.
+- **Redesign nach Alex' Design-Referenz** (helle Pastell-Card-Optik, RIEGEL-Blau statt
+  Pink/Grün): Body `#eef1f7`, weiße Karte (Radius 20, Border `#e4e8f0`), **dunkles**
+  Logo-PNG (`public/email-logo-riegel-dark.png`, 220px, per Playwright aus dem SVG
+  gerastert) + MSO-Text-Wordmark-Fallback, blaue Akzentlinie, 30px/800-Uppercase-Headline
+  `#141724`, Label/Wert-Zeilen in weichem `#eef3ff`-Info-Block (Radius 16, Trenner
+  `#dbe5fa`), Bulletproof-VML-Pill-CTA `#015cff`, Footer `#8a90a3`, `color-scheme: light`.
+- **Farb-Patch der echten Mail-Routen** (kritischer Agent-Fund): `contact`, `inquiry` und
+  `report` bauten eigenes HTML mit den alten Dunkel-Farben — auf der neuen weißen Karte
+  wäre der Text fast unsichtbar gewesen. Mapping: `#f4f3f0→#141724`, `#a8a6a0→#5a6072`,
+  `#7c7a75→#6b7590`, Wert-Hero-Box `#0f1117→#eef3ff` (Border `#dbe5fa`), Hero-Zahl im
+  Report jetzt RIEGEL-Blau `#015cff`. Identisch zur Vorschau in `/api/mail-preview`.
+- Verifiziert: tsc 0, Lint 0, Screenshots aller 5 Varianten (inquiry/contact/confirm/
+  booking/report) spec-konform; die 3 Dunkel-Reste in `mail-preview` sind die interne
+  Browser-Übersichtsseite (dunkler Hintergrund, keine E-Mail) — bewusst so.
+
 ## Offen 🔧
 
-- **`RESEND_API_KEY` für echten Mail-Versand**: Infrastruktur steht, Templates sind markenfertig,
-  Vorschau läuft. Für einen echten Test an alex@beuwy.com braucht es einen Resend-Key (Konto mit
-  alex@beuwy.com anlegen → Key in Vercel als `RESEND_API_KEY` + lokal). Ohne verifizierte Domain
-  sendet Resend testweise nur von `onboarding@resend.dev` an die Konto-Mail. Produktiv-Domain
-  (`@riegel-immobilien.de`, SPF/DKIM) danach.
-- **OnOffice `create address` live freigeben/testen**: Das Anfrageformular schreibt Leads
-  best-effort ins CRM — der Code ist fertig, aber ungetestet (ein Live-Test würde einen echten
-  Datensatz anlegen). Sissy bestätigt „Adresse anlegen"-Recht bzw. Alex gibt EINEN Test-Lead frei.
+- **Resend-Env in Vercel (Production) setzen**: lokal versendet die verifizierte Subdomain
+  bereits. In Vercel fehlen noch `RESEND_API_KEY` und
+  `EMAIL_FROM=RIEGEL Immobilien <mail@m.riegel-immobilien.de>` — bis dahin skipped die
+  Live-Seite den Versand sauber (kein Crash, Leads landen weiter in Supabase/OnOffice).
+- **OnOffice-Test-Lead löschen (Sissy)**: Der Live-Test der Lead-Übergabe hat Adresse
+  **83519** („TEST-Fable BITTE-LOESCHEN") im CRM angelegt und den Multiselect-Fix
+  (`HerkunftKontakt: webseite_system`) bewiesen. Der API-Nutzer hat bewusst kein
+  Löschrecht (Least Privilege) — Sissy löscht den Datensatz bitte manuell in OnOffice.
 - **Blitzverkauf einmal im echten Browser testen** (auf Vercel, mit echtem Supabase-Env):
   Kanonen-Gefühl, Trefferzonen-Größe, Musik/SFX-Balance, Mobile-Performance, und jetzt auch
-  der komplette Bestenlisten-Flow mit einem echten Account.
-- **`game_scores`-Migration in Supabase ausführen** — vermutlich die Ursache für Alex'
-  „Eintrag fehlgeschlagen" beim Live-Test: `docs/supabase-schema.sql` §7 im SQL-Editor
-  des RIEGEL-Supabase-Projekts einfügen und ausführen. Ich habe über die verbundene
-  Supabase-Integration geprüft, aber keines der dort sichtbaren Projekte gehört zu
-  riegel.de (nur zwei andere Kunden-Funnels) — die Migration muss daher manuell im
-  richtigen Projekt laufen.
+  der komplette Bestenlisten-Flow mit einem echten Account. (Die `game_scores`-Migration
+  hat Alex ausgeführt — `/api/game-scores` liefert live `ok:true`.)
 - **Bunny/Supabase-Env für das Hero-Bild-Feature**: siehe Update weiter oben — ohne
   `BUNNY_STORAGE_ZONE`/`BUNNY_STORAGE_ACCESS_KEY` in Vercel + die SQL-Migration bleibt der
   Medien-Tab in `/intern` funktionslos (zeigt Fehlermeldung, Startseite bleibt unverändert).

@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       bodyHtml:
         rows +
         (message
-          ? `<p style="margin:14px 0 6px;color:#7c7a75;font-size:13px;">Nachricht</p><p style="margin:0;color:#f4f3f0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
+          ? `<p style="margin:14px 0 6px;color:#6b7590;font-size:13px;">Nachricht</p><p style="margin:0;color:#141724;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
           : ""),
     }),
   });
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
       heading: `Danke, ${esc(name.split(" ")[0]) || "schön"}!`,
       intro: `Ihre Anfrage zu „${esc(objektTitel) || "der Immobilie"}“ ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages.`,
       bodyHtml: message
-        ? `<p style="margin:8px 0 6px;color:#7c7a75;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#a8a6a0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
+        ? `<p style="margin:8px 0 6px;color:#6b7590;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#5a6072;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
         : "",
     }),
   });

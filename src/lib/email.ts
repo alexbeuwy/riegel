@@ -17,10 +17,11 @@ const TO = process.env.EMAIL_TO || "info@riegel-immobilien.de";
 // bereits die kanonische Produktions-Domain (site.url) — die nutzen wir als
 // Fallback, bevor wir "irgendeine" Vercel-URL erfinden.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
-// PNG statt SVG: SVG rendert in Gmail/Outlook unzuverlässig. Das PNG enthält
-// Marke + „RIEGEL IMMOBILIEN"-Schriftzug (weiß, transparent) — passt auf die
-// dunkle Mail-Karte. Absolute URL nötig (E-Mail hat keinen Origin-Kontext).
-const LOGO_URL = `${SITE_URL}/email-logo-riegel.png`;
+// PNG statt SVG: SVG rendert in Gmail/Outlook unzuverlässig. Seit dem Redesign
+// (helle Karte, weißer Hintergrund) brauchen wir die DUNKLE Logo-Variante —
+// das alte weiße "email-logo-riegel.png" wäre auf Weiß unsichtbar. Absolute
+// URL nötig (E-Mail hat keinen Origin-Kontext).
+const LOGO_URL = `${SITE_URL}/email-logo-riegel-dark.png`;
 
 /**
  * E-Mail-Realität, die dieses Layout berücksichtigt (bitte beim Ändern im Kopf
@@ -40,12 +41,25 @@ const LOGO_URL = `${SITE_URL}/email-logo-riegel.png`;
  *    gebrochenem Bild ein hässliches Broken-Image-Icon + alt-Text, der sich
  *    mit eigenem Markup überlappt (in Chrome selbst beobachtet, als die
  *    Produktions-Domain aus site.ts das Logo noch nicht auslieferte).
- *    Robuste Lösung hier: Logo als rein dekoratives <img alt=""> (für
+ *    Robuste Lösung hier: Logo-<img> mit alt="RIEGEL Immobilien" (für
  *    Outlook per MSO-Kommentar komplett ausgeblendet, da dort ohnehin nie
  *    darstellbar), PLUS ein immer sichtbarer Text-Wordmark ("RIEGEL
  *    IMMOBILIEN") als echtes HTML direkt darunter — unabhängig vom
  *    Bild-Ladezustand. So wirkt die Mail nie "leer", auch ganz ohne Bilder,
  *    und nie doppelt/kaputt, wenn das Bild fehlschlägt.
+ * 3) Redesign auf helles Karten-Layout (weiße Karte auf pastelligem
+ *    Blaugrau-Hintergrund, RIEGEL-Blau #015cff als einziger Farbakzent): dafür
+ *    jetzt die DUNKLE Logo-Variante (statt der alten weißen), da Weiß-auf-
+ *    Weiß unsichtbar wäre. `color-scheme: light` im <head> ist ein Hinweis an
+ *    Clients, die ihn respektieren (Apple Mail, iOS/Android-Mail-Apps,
+ *    neueres Outlook Desktop) — Gmail-Webmail und Outlook.com ignorieren
+ *    dieses Meta-Tag komplett und wenden ggf. ihre eigene Dark-Mode-Heuristik
+ *    an. Das ist hier unkritischer als beim alten dunklen Layout: diese
+ *    Heuristiken invertieren vor allem dunkle/transparente Layouts, ein
+ *    echtes helles Layout (weiße Karte, dunkler Text) lassen die meisten
+ *    Clients ohnehin weitgehend in Ruhe. Eine 100%-Garantie gegen
+ *    Dark-Mode-Eigenmächtigkeiten einzelner Clients gibt es aber ehrlicherweise
+ *    nicht.
  */
 
 /**
@@ -63,13 +77,15 @@ function ctaButton(label: string, href: string): string {
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<a href="${href}" style="background:#015cff;border-radius:999px;color:#ffffff;display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;line-height:46px;padding:0 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${label}</a>
+<a href="${href}" style="background:#015cff;border-radius:999px;color:#ffffff;display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:14px 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${label}</a>
 <!--<![endif]-->
 </td></tr></table>`;
 }
 
 /**
- * Dark, markenkonformer RIEGEL-Mail-Rahmen (email-safe, Inline-Styles).
+ * Heller, markenkonformer RIEGEL-Mail-Rahmen (email-safe, Inline-Styles):
+ * weiße Karte mit großen Radien auf pastelligem Blaugrau-Hintergrund,
+ * RIEGEL-Blau (#015cff) als einziger Farbakzent — bewusst kein Pink/Grün.
  *
  * Neue Parameter (optional, Default-Verhalten für bestehende Aufrufer aus
  * booking/contact/report unverändert):
@@ -83,36 +99,46 @@ export function emailLayout(opts: {
   ctaHref?: string;
 }): string {
   const cta = opts.ctaLabel && opts.ctaHref ? ctaButton(opts.ctaLabel, opts.ctaHref) : "";
-  return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="supported-color-schemes" content="dark light"></head>
-<body style="margin:0;padding:0;background:#0b0b0d;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0b0d;"><tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#141417;border:1px solid #2a2a30;border-radius:16px;overflow:hidden;font-family:Helvetica,Arial,sans-serif;">
+  return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>
+<body style="margin:0;padding:0;background:#eef1f7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;"><tr><td align="center" style="padding:40px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #e4e8f0;border-radius:20px;overflow:hidden;font-family:Helvetica,Arial,sans-serif;">
 <tr><td style="padding:28px 32px 0;">
 <!--[if !mso]><!-->
-<!-- Echtes Logo-PNG; alt trägt den Markennamen, falls Bilder blockiert sind. -->
-<img src="${LOGO_URL}" width="240" alt="RIEGEL Immobilien" style="display:block;border:0;outline:none;text-decoration:none;height:auto;width:240px;max-width:70%;margin:0;">
+<!-- Echtes Logo-PNG (dunkle Variante fürs helle Layout); alt trägt den Markennamen, falls Bilder blockiert sind. -->
+<img src="${LOGO_URL}" width="220" alt="RIEGEL Immobilien" style="display:block;border:0;outline:none;text-decoration:none;height:auto;width:220px;max-width:70%;margin:0;">
 <!--<![endif]-->
 <!--[if mso]>
-<div style="color:#f4f3f0;font-size:17px;font-weight:800;letter-spacing:3px;line-height:1;">RIEGEL<span style="color:#8a8f99;font-weight:400;">&nbsp;IMMOBILIEN</span></div>
+<div style="color:#141724;font-size:17px;font-weight:800;letter-spacing:3px;line-height:1;">RIEGEL<span style="color:#6b7590;font-weight:400;">&nbsp;IMMOBILIEN</span></div>
 <![endif]-->
 </td></tr>
-<tr><td style="padding:14px 32px 24px;border-bottom:1px solid #2a2a30;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:#015cff;border-radius:2px;">&nbsp;</div></td></tr>
-<tr><td style="padding:34px 32px 8px;"><h1 style="margin:0 0 14px;color:#f4f3f0;font-size:30px;font-weight:800;line-height:1.25;text-transform:uppercase;letter-spacing:1px;">${opts.heading}</h1>${
-    opts.intro ? `<p style="margin:0 0 18px;color:#a8a6a0;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
+<tr><td style="padding:14px 32px 24px;border-bottom:1px solid #e4e8f0;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:#015cff;border-radius:2px;">&nbsp;</div></td></tr>
+<tr><td style="padding:34px 32px 8px;"><h1 style="margin:0 0 14px;color:#141724;font-size:30px;font-weight:800;line-height:1.25;text-transform:uppercase;letter-spacing:1px;">${opts.heading}</h1>${
+    opts.intro ? `<p style="margin:0 0 18px;color:#5a6072;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
   }${opts.bodyHtml ?? ""}${cta}</td></tr>
-<tr><td style="padding:22px 32px;border-top:1px solid #2a2a30;"><p style="margin:0;color:#7c7a75;font-size:12px;line-height:1.6;">Riegel Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>
+<tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;"><p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">Riegel Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>
 </table></td></tr></table></body></html>`;
 }
 
-/** Label/Wert-Zeilen als Tabelle. */
+/**
+ * Label/Wert-Zeilen als Tabelle — liegt jetzt in einem weich getönten,
+ * abgerundeten RIEGEL-Blau-Info-Block (statt nackter Zeilen direkt auf der
+ * weißen Kartenfläche). API unverändert (Array aus {label, value} → HTML-
+ * String) — die bestehenden Aufrufer in contact/booking/inquiry/report
+ * bauen weiterhin exakt dieselben Arrays, nur die Optik ändert sich.
+ */
 export function emailRows(rows: { label: string; value: string }[]): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 8px;">${rows
-    .filter((r) => r.value)
-    .map(
-      (r) =>
-        `<tr><td style="padding:7px 0;border-bottom:1px solid #2a2a30;color:#7c7a75;font-size:13px;width:38%;vertical-align:top;">${r.label}</td><td style="padding:7px 0;border-bottom:1px solid #2a2a30;color:#f4f3f0;font-size:14px;">${r.value}</td></tr>`,
-    )
-    .join("")}</table>`;
+  const filled = rows.filter((r) => r.value);
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 14px;background:#eef3ff;border-radius:16px;"><tr><td style="padding:6px 20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${filled
+    .map((r, i) => {
+      // Letzte Zeile ohne Trennlinie — sonst sitzt eine Linie direkt vor dem
+      // unteren Innenabstand des Info-Blocks.
+      const border = i < filled.length - 1 ? "border-bottom:1px solid #dbe5fa;" : "";
+      return `<tr><td style="padding:12px 0;${border}color:#6b7590;font-size:13px;width:38%;vertical-align:top;">${r.label}</td><td style="padding:12px 0;${border}color:#141724;font-size:14px;">${r.value}</td></tr>`;
+    })
+    .join("")}</table>
+</td></tr></table>`;
 }
 
 export async function sendMail(opts: {
