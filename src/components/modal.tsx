@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 function closeMs() {
   if (typeof window === "undefined") return 150;
@@ -19,11 +20,14 @@ export function Modal({
   onClose,
   title,
   children,
+  maxWidthClassName = "max-w-md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** Optionale Breiten-Override-Klasse (Default max-w-md), z. B. für breitere Formulare. */
+  maxWidthClassName?: string;
 }) {
   const [mounted, setMounted] = useState(open);
   const [shown, setShown] = useState(false);
@@ -80,9 +84,14 @@ export function Modal({
     };
   }, [open, onClose]);
 
-  if (!mounted) return null;
+  if (!mounted || typeof document === "undefined") return null;
 
-  return (
+  // Portal auf document.body: Aufrufer betten den Trigger-Button teils in
+  // Container mit backdrop-filter/transform ein (z. B. die mobile Sticky-CTA-
+  // Leiste). Solche Ancestor-Styles erzeugen einen eigenen Containing Block
+  // für "position: fixed"-Nachfahren — ohne Portal würde der Dialog dann
+  // relativ zu diesem kleinen Container statt zum echten Viewport positioniert.
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       aria-hidden={!open}
@@ -100,11 +109,11 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`t-modal relative w-full max-w-md rounded-2xl border border-border bg-surface p-7 shadow-2xl outline-none ${
+        className={`t-modal relative flex w-full ${maxWidthClassName} max-h-[calc(100dvh-2rem)] flex-col rounded-2xl border border-border bg-surface p-6 shadow-2xl outline-none sm:p-7 ${
           shown ? "is-open" : "is-closing"
         }`}
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex shrink-0 items-start justify-between gap-4">
           <h2 className="text-xl font-semibold text-fg">{title}</h2>
           <button
             type="button"
@@ -117,8 +126,11 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="mt-4 text-muted">{children}</div>
+        <div className="-mr-2 mt-4 min-h-0 overflow-y-auto overscroll-contain pr-2 text-muted">
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

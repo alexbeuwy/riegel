@@ -94,14 +94,16 @@ export function InquiryForm({ objektTitel, objektId }: { objektTitel: string; ob
 
   return (
     <div className="space-y-4">
-      <label className="block space-y-2">
-        <span className="text-sm text-muted">Name</span>
-        <input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Vor- und Nachname" />
-      </label>
-      <label className="block space-y-2">
-        <span className="text-sm text-muted">E-Mail</span>
-        <input className={inputCls} type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="name@beispiel.de" />
-      </label>
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+        <label className="block space-y-2">
+          <span className="text-sm text-muted">Name</span>
+          <input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Vor- und Nachname" />
+        </label>
+        <label className="block space-y-2">
+          <span className="text-sm text-muted">E-Mail</span>
+          <input className={inputCls} type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="name@beispiel.de" />
+        </label>
+      </div>
       <label className="block space-y-2">
         <span className="text-sm text-muted">Telefon (optional)</span>
         <input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Für Rückfragen" />
@@ -120,7 +122,8 @@ export function InquiryForm({ objektTitel, objektId }: { objektTitel: string; ob
       <label className="block space-y-2">
         <span className="text-sm text-muted">Nachricht</span>
         <textarea
-          className={`${inputCls} min-h-24 resize-y`}
+          className={`${inputCls} resize-y`}
+          rows={3}
           value={f.message}
           onChange={(e) => set("message", e.target.value)}
         />

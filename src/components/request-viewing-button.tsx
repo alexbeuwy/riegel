@@ -20,39 +20,46 @@ export function RequestViewingButton({ title, objektId }: { title: string; objek
       >
         Besichtigung anfragen
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Besichtigung anfragen">
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Besichtigung anfragen"
+        maxWidthClassName="max-w-xl"
+      >
         <p className="text-sm">
           Objekt: <span className="text-fg">{title}</span>
         </p>
         <div className="mt-4">
           <InquiryForm objektTitel={title} objektId={objektId ?? ""} />
         </div>
-        <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
+        <div className="mt-4 border-t border-border pt-4">
           <p className="text-xs text-faint">Oder direkt:</p>
-          <Link
-            href={`/termin?objekt=${encodeURIComponent(title)}`}
-            onClick={() => setOpen(false)}
-            className="rounded-full border border-border px-5 py-2.5 text-center text-sm text-fg transition-colors hover:border-accent hover:text-accent"
-          >
-            Termin online buchen
-          </Link>
-          {wa && (
-            <a
-              href={wa}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-border px-5 py-2.5 text-center text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <Link
+              href={`/termin?objekt=${encodeURIComponent(title)}`}
+              onClick={() => setOpen(false)}
+              className="rounded-full border border-border px-3 py-2 text-center text-xs text-fg transition-colors hover:border-accent hover:text-accent sm:text-sm"
             >
-              Per WhatsApp anfragen
-            </a>
-          )}
-          <Link
-            href={`/kontakt?objekt=${encodeURIComponent(title)}`}
-            onClick={() => setOpen(false)}
-            className="rounded-full border border-border px-5 py-2.5 text-center text-sm text-fg transition-colors hover:border-accent hover:text-accent"
-          >
-            Zum Kontakt
-          </Link>
+              Termin online buchen
+            </Link>
+            {wa && (
+              <a
+                href={wa}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border px-3 py-2 text-center text-xs text-fg transition-colors hover:border-accent hover:text-accent sm:text-sm"
+              >
+                WhatsApp
+              </a>
+            )}
+            <Link
+              href={`/kontakt?objekt=${encodeURIComponent(title)}`}
+              onClick={() => setOpen(false)}
+              className="rounded-full border border-border px-3 py-2 text-center text-xs text-fg transition-colors hover:border-accent hover:text-accent sm:text-sm"
+            >
+              Zum Kontakt
+            </Link>
+          </div>
         </div>
       </Modal>
     </>
