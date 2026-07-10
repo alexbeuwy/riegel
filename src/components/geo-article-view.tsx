@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
+import { EstatesTeaser } from "@/components/estates-teaser";
 import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
 import { geoArticles, GEO_CONTENT_PUBLISHED, GEO_CONTENT_UPDATED, type GeoArticle } from "@/lib/geo";
@@ -359,6 +360,11 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
               </section>
             ))}
 
+            {/* Echte Objekte aus dem Bestand — nach dem Hauptcontent, vor FAQ.
+                Rendert serverseitig nichts, falls der Ort keine aktiven
+                Objekte hat (EstatesTeaser gibt dann null zurück). */}
+            {article.kind === "standort" && <EstatesTeaser ort={article.ort} />}
+
             {/* FAQ — Akkordeon (nativ, ohne JS) */}
             {article.faq.length > 0 && (
               <section className="mt-12">
@@ -416,6 +422,13 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
                   })}
                 </div>
               </section>
+            )}
+
+            {/* Ratgeber-Artikel: dezenter Objekt-Teaser ganz am Ende, der
+                Artikel bleibt der Fokus — daher kein Ort-Filter und nur 2
+                Objekte. Rendert nichts, falls es keine aktiven Objekte gibt. */}
+            {article.kind === "ratgeber" && (
+              <EstatesTeaser heading="Aktuelle Angebote von RIEGEL" limit={2} />
             )}
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { MARKT_STAND, PREIS_DISCLAIMER, type MarktOrt } from "@/lib/marktdaten";
 
@@ -94,6 +95,20 @@ export function MarktPanel({ ort }: MarktPanelProps) {
       </div>
 
       <Sparkline points={ort.trend12} trendYoyPct={ort.trendYoyPct} />
+
+      {/* Nur ein Link, keine Datenladung im Client: der Objektbestand ist
+          hier (Client-Komponente) nicht verfügbar. Ohne ort-Filter-Param —
+          ort.name folgt der freien GEO-Artikel-Schreibweise ("Ludwigshafen
+          am Rhein") und würde beim exakten Portal-Abgleich (portal-filter.ts)
+          ggf. ins Leere laufen. Der Link ist trotzdem immer sinnvoll: das
+          Portal zeigt dann eben alle Objekte. */}
+      <Link
+        href="/immobilien"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+      >
+        Objekte in {ort.name} ansehen
+        <Icon name="arrowRight" size={14} />
+      </Link>
 
       <p className="border-t border-border pt-4 text-xs text-faint">
         Stand {MARKT_STAND} · {PREIS_DISCLAIMER}
