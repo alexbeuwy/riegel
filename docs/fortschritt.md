@@ -733,6 +733,43 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   kompakter Zähler statt Dot-Reihe. Netzwerk-verifiziert: Detailseite vor
   Lightbox-Öffnung nur noch 1 Galerie-Request (vorher 5).
 
+## Update — Karten-Klick, Anfrage-Modal, GEO-Ausbau (3 parallele Agenten) ✅
+
+- **Karten-Pill → Liste** (Alex' Bug „passiert gar nichts außer kleiner Zoom"):
+  Die gechunkte Liste (24er-Blöcke) hatte für Objekte dahinter keine Karte im
+  DOM — `onActivate` klappt die Liste jetzt bis zum Objekt auf, scrollt
+  zentriert hin (Re-Scroll-Guard), mobil wechselt die Ansicht zur Liste,
+  Pill-Doppelklick zoomt nicht mehr. E2E gegen Live-Daten verifiziert.
+- **Anfrage-Modal-Fix** (Alex: „am Desktop nicht verwendbar, brutal
+  abgeschnitten"): modal.tsx hatte keine max-Höhe/kein Overflow → jetzt
+  `max-h-[calc(100dvh-2rem)]` + internes Scrollen, `maxWidthClassName`-Prop
+  (Anfrage: max-w-xl), Formular kompakter (Name/E-Mail nebeneinander,
+  Sekundär-Links als 3er-Reihe). ROOT CAUSE mobil: die Sticky-CTA-Leiste mit
+  `backdrop-blur` wurde per CSS-Spec zum Containing Block des fixed-Modals →
+  Fix via `createPortal(document.body)`. Verifiziert in 1440×900 (passt ohne
+  Scroll), 1280×720, 390×844 + „Mehr Filter"-Regression.
+- **Standing Rule (Alex' Auflage)**: Interaktive UI (v. a. Modals/Overlays)
+  wird vor JEDEM Deploy per Playwright in min. 3 Viewports (1440×900,
+  1280×720, 390×844) mit Geometrie-Assertions (Dialog vollständig im
+  Viewport) getestet — kein Ship ohne diesen Beweis.
+- **GEO-Ausbau nach realem Bestand**: Abgleich der 31 echten OnOffice-Orte
+  mit den 18 Standort-Seiten → 15 neue Seiten (Brühl, Hockenheim, Lambsheim,
+  Lingenfeld, Hanhofen, Harthausen, Hochstadt, Sankt Martin, Wörth am Rhein,
+  Elmstein, Neuhemsbach, Otterbach, Gundersheim, Heppenheim, Karlsruhe) —
+  erscheinen automatisch im Preisatlas (Koordinaten/Region/Stadt-Faktoren in
+  geo-taxonomy/marktdaten, ehrlich hergeleitet und kommentiert). Ostsee-
+  Ausreißer (Dahme, Middelhagen) bewusst OHNE „Makler vor Ort"-Seite.
+- **Echte Objekte in GEO-Seiten**: neue Server-Komponente `EstatesTeaser`
+  (nur aktive Objekte, Featured zuerst, `null` bei 0 Treffern) — Standort-
+  Seiten zeigen „Aktuelle Angebote in {Ort}" (robustes City-Matching inkl.
+  „Römerberg Heiligenstein"/„Heppenheim (Bergstraße)"), Ratgeber-Artikel
+  2er-Teaser am Ende, Preisatlas-Panel verlinkt ins Portal. PropertyCard
+  wiederverwendet.
+- Bekannter Feinschliff (dokumentiert, bewusst nicht angefasst): Der
+  PreisRECHNER (`valuation.ts`) schätzt Karlsruhe zu niedrig (DEFAULT-Basis)
+  und kleine Pfalz-Orte über den „pfalz"-Substring-Fallback leicht zu hoch —
+  Preisatlas ist davon unabhängig (eigener Stadt-Faktor-Pfad).
+
 ## Offen 🔧
 
 - **Resend-Env in Vercel (Production) setzen**: lokal versendet die verifizierte Subdomain
