@@ -705,6 +705,34 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   booking/report) spec-konform; die 3 Dunkel-Reste in `mail-preview` sind die interne
   Browser-Übersichtsseite (dunkler Hintergrund, keine E-Mail) — bewusst so.
 
+## Update — Incident „plötzlich Mock" + Bild-Performance-Batch ✅
+
+- **Incident (Prod zeigte Mock statt Live)**: Ein einzelner fehlgeschlagener
+  OnOffice-Pull (kalter Start) wurde vom `unstable_cache` als Mock-Ergebnis
+  persistiert und via stale-while-revalidate dauerhaft ausgeliefert — die
+  Revalidation heilte sich auf Vercel nicht selbst (parallel bewiesen:
+  `/api/estate-orte` lieferte echte Orte, `/immobilien` Mock; OnOffice-API
+  direkt in ~1s gesund). **Fix**: In `estates.ts` wird NUR der Erfolgsfall
+  gecacht (Throw statt Mock im Fehlerfall, Mock-Fallback pro Request außerhalb
+  des Caches), neuer Cache-Key `estates-live` evakuierte den vergifteten
+  Eintrag. Nach Deploy in ~75s verifiziert geheilt. Standing Rule:
+  **Fail-Soft-Fallbacks niemals in einen persistenten Cache schreiben.**
+- **Bild-Performance Root Cause**: `image.onoffice.de` sendet
+  `Cache-Control: private` → Vercel verwarf optimierte Varianten und
+  transformierte die Originale (URLs tragen bereits `@1600x1200`-Suffix)
+  ständig neu; dazu langsames AVIF-Encoding. **Fix in `next.config.ts`**:
+  `minimumCacheTTL: 2678400` (31 Tage — sicher, da Foto-URLs UUID-stabil sind)
+  + nur noch WebP. Live gemessen: optimierte Antwort jetzt
+  `cache-control: public, max-age=2678400`, Edge-HIT ~0,3s, Kartenbild
+  (w=640) ~40 KB.
+- **„Nur 1 Bild im Preview, Rest auf Klick"** (Alex' Wunsch): Detailseite
+  lädt nur noch den Galerie-Hero (Thumbnail-4er-Grid entfernt, `sizes`
+  präzisiert, „Alle N Fotos"-Pill prominenter, ausgeblendet bei nur 1 Foto);
+  Lightbox lädt on demand + lädt unsichtbar das jeweils nächste Bild vor.
+  Portal-Karten: fester 480px-`sizes`-Bucket statt 40vw; bei >8 Fotos
+  kompakter Zähler statt Dot-Reihe. Netzwerk-verifiziert: Detailseite vor
+  Lightbox-Öffnung nur noch 1 Galerie-Request (vorher 5).
+
 ## Offen 🔧
 
 - **Resend-Env in Vercel (Production) setzen**: lokal versendet die verifizierte Subdomain
