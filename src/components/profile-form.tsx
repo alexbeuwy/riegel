@@ -7,10 +7,14 @@ import { useAuth } from "@/components/auth";
 import { supabase } from "@/lib/supabase";
 
 type Rolle = "eigennutzer" | "kapitalanlage" | "verkauf";
-const OBJEKTARTEN = ["Wohnung", "Haus", "Mehrfamilienhaus", "Grundstück", "Gewerbe"];
-const REGIONEN = [
+// An das echte Portal angeglichen: genau die vier Kategorien, die es im Bestand
+// wirklich gibt (categoryLabel in format.ts) — "Mehrfamilienhaus" war keine
+// eigene Kategorie und ist raus.
+const OBJEKTARTEN = ["Wohnung", "Haus", "Grundstück", "Gewerbe"];
+// Fallback-Regionen, falls /api/estate-orte (echte Orte) nicht lädt.
+const REGIONEN_FALLBACK = [
   "Speyer", "Ludwigshafen", "Schifferstadt", "Frankenthal", "Neustadt",
-  "Germersheim", "Mannheim", "Worms", "Landau", "Vorderpfalz (Umgebung)",
+  "Germersheim", "Mannheim", "Worms", "Landau",
 ];
 const PREISE = ["250.000", "400.000", "600.000", "800.000", "1.000.000", "1.500.000+"];
 const ZIMMER = ["1", "2", "3", "4", "5"];
@@ -56,6 +60,23 @@ export function ProfileForm() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [regionen, setRegionen] = useState<string[]>(REGIONEN_FALLBACK);
+
+  // Echte Orte aus dem Live-Bestand laden (Fallback bleibt, falls die Route
+  // scheitert oder leer ist). So spiegelt die Regionen-Auswahl die tatsächlich
+  // vermarkteten Orte statt einer festen Wunschliste.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/estate-orte")
+      .then((r) => r.json())
+      .then((d: { orte?: string[] }) => {
+        if (alive && Array.isArray(d.orte) && d.orte.length) setRegionen(d.orte);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Laden: aus Supabase, Fallback localStorage.
   useEffect(() => {
@@ -80,7 +101,6 @@ export function ProfileForm() {
     return () => {
       done = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const toggle = (key: "objektarten" | "regionen", v: string) =>
@@ -164,7 +184,7 @@ export function ProfileForm() {
           <div className="mt-6 space-y-2">
             <span className="text-sm text-muted">Bevorzugte Regionen</span>
             <div className="flex flex-wrap gap-2">
-              {REGIONEN.map((r) => (
+              {regionen.map((r) => (
                 <Chip key={r} label={r} on={p.regionen.includes(r)} onClick={() => toggle("regionen", r)} />
               ))}
             </div>

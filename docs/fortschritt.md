@@ -670,6 +670,20 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   blauer CTA-Button. Neue Vorschau-Route `/api/mail-preview?type=…` rendert die Mails im Browser
   OHNE Versand. Per Screenshot verifiziert (Logo, Headline, Tabelle, CTA).
 
+## Update — Konto/Merkliste an echte Daten + DSGVO-Löschung ✅
+
+- **„2 Herzen"-Bug**: Alt-Favoriten aus der Mock-Phase (IDs `e1`…`e10`) werden beim
+  Laden aussortiert — der Header-Zähler zeigte sonst Favoriten ohne Objekt. Zusätzlich
+  neue `reconcile()`-Methode + „Aufräumen"-Button in der Merkliste für echte, nicht mehr
+  verfügbare Objekte (nur bei Live-Daten, nicht im Mock-Fallback).
+- **Suchprofil an echte Möglichkeiten**: Objektarten auf die real existierenden vier
+  Kategorien reduziert (Mehrfamilienhaus raus), Regionen kommen jetzt live über neue Route
+  `/api/estate-orte` aus dem OnOffice-Bestand (Fallback-Liste bleibt).
+- **Konto-Löschung (DSGVO Art. 17)**: neue Route `/api/account/delete` (verifiziert Token,
+  löscht Auth-User via service_role → Profile/Favoriten/Suchen kaskadieren), Danger-Zone in
+  `/konto` mit zweistufiger Bestätigung, räumt lokale Spuren auf, meldet ab, leitet weiter.
+  Braucht `SUPABASE_SERVICE_ROLE_KEY` in Vercel (sonst klare 503-Meldung).
+
 ## Offen 🔧
 
 - **`RESEND_API_KEY` für echten Mail-Versand**: Infrastruktur steht, Templates sind markenfertig,

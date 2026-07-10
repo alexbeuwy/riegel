@@ -9,18 +9,19 @@ import { useSavedSearches } from "@/components/saved-searches";
 import { useAuth } from "@/components/auth";
 import { Icon } from "@/components/icon";
 import type { Estate } from "@/lib/mock-estates";
+import type { EstateSource } from "@/lib/estates";
 
 // Estates kommen als Prop vom Server (Live- oder Mock-Daten) — die Auswahl
 // nach gemerkten IDs bleibt client-seitig, da Favoriten nur lokal (Browser) existieren.
-export function MerklisteClient({ estates }: { estates: Estate[] }) {
-  const { ids, ready } = useFavorites();
+export function MerklisteClient({ estates, source }: { estates: Estate[]; source: EstateSource }) {
+  const { ids, ready, reconcile } = useFavorites();
   const { searches, remove, toggleNotify, ready: sReady } = useSavedSearches();
   const { enabled: authEnabled, user } = useAuth();
   const favorites = estates.filter((e) => ids.includes(e.id));
   // Gemerkte IDs, die es im aktuellen Objektbestand nicht mehr gibt (Objekt
-  // verkauft/offline oder Wechsel Mock↔Live): Zähler im Header zeigt weiter
-  // alle IDs — ohne Hinweis sähe die Diskrepanz nach einem Bug aus.
-  const missingCount = ready ? ids.length - favorites.length : 0;
+  // verkauft/offline). Nur bei echten Live-Daten aussagekräftig — beim Mock-
+  // Fallback matchen echte gemerkte IDs ohnehin nichts.
+  const missingCount = ready && source === "onoffice" ? ids.length - favorites.length : 0;
 
   return (
     <>
@@ -85,11 +86,21 @@ export function MerklisteClient({ estates }: { estates: Estate[] }) {
               </div>
             )}
             {missingCount > 0 && (
-              <p className="mt-4 text-xs text-faint">
-                {missingCount === 1
-                  ? "Ein gemerktes Objekt ist aktuell nicht mehr verfügbar."
-                  : `${missingCount} gemerkte Objekte sind aktuell nicht mehr verfügbar.`}
-              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-faint">
+                <span>
+                  {missingCount === 1
+                    ? "Ein gemerktes Objekt ist nicht mehr verfügbar (verkauft/offline)."
+                    : `${missingCount} gemerkte Objekte sind nicht mehr verfügbar (verkauft/offline).`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => reconcile(estates.map((e) => e.id))}
+                  className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-fg transition-colors hover:border-accent hover:text-accent"
+                >
+                  <Icon name="check" size={13} />
+                  Aufräumen
+                </button>
+              </div>
             )}
           </div>
 

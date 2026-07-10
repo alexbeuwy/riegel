@@ -22,7 +22,7 @@ export default function KontoPage() {
 }
 
 function KontoInner() {
-  const { enabled, ready, user, signIn, signUp, signOut, resetPassword } = useAuth();
+  const { enabled, ready, user, session, signIn, signUp, signOut, resetPassword } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   // ?next=/immobilien/… — nach Login/Registrierung dorthin zurück (z. B. vom
@@ -43,6 +43,35 @@ function KontoInner() {
   // „Passwort vergessen?" — kein eigenes Routing, nur ein Inline-Zustand, der
   // das bestehende E-Mail-Feld für den Reset-Link-Versand weiterverwendet.
   const [forgot, setForgot] = useState(false);
+  // Konto-Löschung (DSGVO): zweistufig — erst „Konto löschen", dann Bestätigung.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function deleteAccount() {
+    if (deleting || !session) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "Löschung fehlgeschlagen.");
+      // Lokale Spuren mitnehmen (Merkliste/Suchprofil/Suchen liegen auch im Browser).
+      try {
+        ["riegel:favorites", "riegel:profile", "riegel:searches", "riegel-fav-hint-gesehen"].forEach((k) =>
+          localStorage.removeItem(k),
+        );
+      } catch {}
+      await signOut();
+      router.replace("/?konto=geloescht");
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Löschung fehlgeschlagen.");
+      setDeleting(false);
+    }
+  }
 
   const fail = (m: string) => {
     setError(m);
@@ -149,6 +178,64 @@ function KontoInner() {
                   </div>
                 </div>
                 <ProfileForm />
+
+                {/* Konto löschen (DSGVO) — bewusst dezent, zweistufig bestätigt. */}
+                <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+                  <div className="flex items-center gap-2 text-sm text-muted">
+                    <Icon name="shield" size={18} />
+                    Konto &amp; Daten
+                  </div>
+                  {!confirmDelete ? (
+                    <>
+                      <p className="mt-2 max-w-md text-sm text-muted">
+                        Sie können Ihr Konto jederzeit vollständig löschen. Dabei werden Ihr
+                        Profil, Ihre Merkliste und Ihre Suchaufträge unwiderruflich entfernt.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDelete(true);
+                          setDeleteError(null);
+                        }}
+                        className="press mt-4 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-muted transition-colors hover:border-accent hover:text-fg"
+                      >
+                        <Icon name="close" size={15} />
+                        Konto löschen
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-2 max-w-md text-sm text-fg">
+                        Wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden —
+                        Profil, Merkliste und Suchaufträge werden endgültig entfernt.
+                      </p>
+                      {deleteError && (
+                        <p className="mt-3 text-sm text-accent" role="alert">
+                          {deleteError}
+                        </p>
+                      )}
+                      <div className="mt-4 flex flex-wrap gap-2.5">
+                        <button
+                          type="button"
+                          onClick={deleteAccount}
+                          disabled={deleting}
+                          className="press inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
+                        >
+                          <Icon name="close" size={15} />
+                          {deleting ? "Wird gelöscht …" : "Endgültig löschen"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(false)}
+                          disabled={deleting}
+                          className="press inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ) : forgot ? (
               /* Passwort vergessen — Inline-Zustand statt eigener Route */

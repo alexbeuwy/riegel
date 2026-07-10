@@ -10,12 +10,19 @@ type FavCtx = {
   ids: string[];
   has: (id: string) => boolean;
   toggle: (id: string) => void;
+  /** Entfernt gemerkte IDs, die es im echten Objektbestand nicht mehr gibt
+   *  (verkauft/offline). Nur mit den ECHTEN Live-IDs aufrufen — s. Merkliste. */
+  reconcile: (validIds: string[]) => void;
   count: number;
   ready: boolean;
 };
 
 const Ctx = createContext<FavCtx | null>(null);
 const KEY = "riegel:favorites";
+// Alt-Favoriten aus der Mock-Phase: IDs im Format "e1".."e10". Echte OnOffice-
+// IDs sind reine Zahlen — diese Alt-IDs matchen kein reales Objekt mehr und
+// würden nur den Zähler künstlich hochhalten ("2 Herzen ohne Objekt"-Bug).
+const LEGACY_MOCK_ID = /^e\d+$/;
 // Einmaliger Hinweis beim allerersten Herz-Klick (Flag bleibt dauerhaft in
 // localStorage — daher zeigt sich der Hinweis nie ein zweites Mal an).
 const HINT_KEY = "riegel-fav-hint-gesehen";
@@ -35,8 +42,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setIds(JSON.parse(raw));
+      if (raw) {
+        // Legacy-Mock-IDs beim Laden aussortieren — sonst zeigt der Header-Zähler
+        // Favoriten, zu denen es kein Objekt mehr gibt (Portal ist jetzt live).
+        const cleaned = (JSON.parse(raw) as string[]).filter((id) => !LEGACY_MOCK_ID.test(id));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIds(cleaned);
+      }
     } catch {}
     setReady(true);
   }, []);
@@ -102,8 +114,23 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       return has ? cur.filter((x) => x !== id) : [...cur, id];
     });
 
+  // Gemerkte IDs entfernen, die nicht mehr im (echten) Bestand sind. Bewusst
+  // ohne Merk-Hinweis und mit Supabase-Cleanup pro entfernter ID.
+  const reconcile = (validIds: string[]) =>
+    setIds((cur) => {
+      const valid = new Set(validIds);
+      const stale = cur.filter((id) => !valid.has(id));
+      if (!stale.length) return cur;
+      if (supabase && user) {
+        for (const id of stale) {
+          supabase.from("favorites").delete().eq("user_id", user.id).eq("estate_id", id).then(undefined, () => {});
+        }
+      }
+      return cur.filter((id) => valid.has(id));
+    });
+
   return (
-    <Ctx.Provider value={{ ids, has: (id) => ids.includes(id), toggle, count: ids.length, ready }}>
+    <Ctx.Provider value={{ ids, has: (id) => ids.includes(id), toggle, reconcile, count: ids.length, ready }}>
       {children}
       {showHint && <FavHint onDone={() => setShowHint(false)} />}
     </Ctx.Provider>
