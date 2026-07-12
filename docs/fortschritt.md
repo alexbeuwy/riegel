@@ -770,12 +770,20 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   und kleine Pfalz-Orte über den „pfalz"-Substring-Fallback leicht zu hoch —
   Preisatlas ist davon unabhängig (eigener Stadt-Faktor-Pfad).
 
-## Offen 🔧
+## Update — Mail-Versand auf Produktion LIVE ✅
 
-- **Resend-Env in Vercel (Production) setzen**: lokal versendet die verifizierte Subdomain
-  bereits. In Vercel fehlen noch `RESEND_API_KEY` und
-  `EMAIL_FROM=RIEGEL Immobilien <mail@m.riegel-immobilien.de>` — bis dahin skipped die
-  Live-Seite den Versand sauber (kein Crash, Leads landen weiter in Supabase/OnOffice).
+- Alex hat `RESEND_API_KEY` + `EMAIL_FROM` in Vercel gesetzt. Erster Versuch
+  schlug mit „domain is not verified" fehl — Ursache: Key aus einem ANDEREN
+  Resend-Konto als dem mit der verifizierten Subdomain (DKIM ist
+  kontospezifisch!). Diagnose-Weg dokumentiert: sendMail() serialisierte
+  Resend-Fehler als `[object Object]` → Fix (error.message), danach war die
+  Ursache sofort lesbar. Nach Key-Tausch auf den Send-Key des
+  riegelimmo@gmail.com-Kontos + Redeploy: **Produktions-Mail erfolgreich an
+  alex@beuwy.com versendet** (`ok:true`, Absender
+  `RIEGEL Immobilien <mail@m.riegel-immobilien.de>`). Damit versenden
+  Kontakt/Termin/Anfrage/Report auf der Live-Seite echte On-Brand-Mails.
+
+## Offen 🔧
 - **OnOffice-Test-Lead löschen (Sissy)**: Der Live-Test der Lead-Übergabe hat Adresse
   **83519** („TEST-Fable BITTE-LOESCHEN") im CRM angelegt und den Multiselect-Fix
   (`HerkunftKontakt: webseite_system`) bewiesen. Der API-Nutzer hat bewusst kein
