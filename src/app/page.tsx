@@ -4,7 +4,10 @@ import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Magnetic } from "@/components/magnetic";
 import { PropertyCard } from "@/components/property-card";
-import { getEstateData, getFeaturedEstates } from "@/lib/estates";
+import { getEstateData, getFeaturedEstates, getLiveTickerStats } from "@/lib/estates";
+import { LiveTicker } from "@/components/live-ticker";
+import { StatStrip } from "@/components/stat-strip";
+import { RIEGEL_STATS } from "@/lib/riegel-stats";
 import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
 import { Faq } from "@/components/faq";
@@ -60,9 +63,11 @@ export const metadata = {
   alternates: { canonical: "/" },
 };
 
+// "20+ Jahre" und "Ø 90 Tage" sind in den neuen StatStrip/RIEGEL_STATS
+// gewandert (Sektion "Zahlen, die man nachprüfen kann", direkt nach dem
+// TrustStrip) — hier bewusst nicht mehr dupliziert, nur die übrigen,
+// dort nicht abgedeckten Kennzahlen bleiben in diesem Block.
 const stats: { prefix?: string; value: string; suffix?: string; label: string; icon: Parameters<typeof Icon>[0]["name"] }[] = [
-  { value: "20", suffix: "+ Jahre", label: "Erfahrung als Familienunternehmen in der Region", icon: "calendar" },
-  { prefix: "Ø", value: "90", suffix: "Tage", label: "durchschnittliche Vermarktungszeit bis zum Verkauf", icon: "clock" },
   { prefix: "Ø ~", value: "4", suffix: "Mon.", label: "bis der Kaufpreis auf Ihrem Konto ist", icon: "euro" },
   { prefix: "Top", value: "21", label: "von über 25.000 Maklern bundesweit · ImmoAward 2025", icon: "star" },
   { value: "2", label: "Standorte — Speyer & Ludwigshafen", icon: "pin" },
@@ -74,7 +79,11 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const heroImage = await getSiteSetting(HERO_IMAGE_KEY, photos.heroKitchenDark);
-  const [featured, { source }] = await Promise.all([getFeaturedEstates(3), getEstateData()]);
+  const [featured, { source }, liveTicker] = await Promise.all([
+    getFeaturedEstates(3),
+    getEstateData(),
+    getLiveTickerStats(),
+  ]);
   return (
     <>
       <script
@@ -149,6 +158,43 @@ export default async function HomePage() {
 
       {/* ───────── Trust-Streifen (Bewertungen, Auszeichnungen) ───────── */}
       <TrustStrip />
+
+      {/* ───────── Block · Zahlen, die man nachprüfen kann (Live-Ticker + Zahlenstreifen) ─────────
+          Markenkern-Story in einem Scroll: ein Wettbewerber wirbt mit Live-Ticker +
+          Zahlenkacheln, aber mit erfundenen Zahlen — bei uns kommt der Ticker
+          wirklich live aus derselben Objektverwaltung, die auch das Portal befüllt. */}
+      <section className="py-20 sm:py-28">
+        <Container>
+          <Reveal className="max-w-2xl space-y-4">
+            <Eyebrow>Zahlen, die man nachprüfen kann</Eyebrow>
+            <h2 className="text-3xl font-semibold sm:text-4xl">
+              Wir behaupten nicht. Wir zeigen live.
+            </h2>
+            <p className="text-lg text-muted">
+              Andere Makler werben mit Wunschzahlen. Unser Ticker liest live aus
+              derselben Objektverwaltung, die auch unser Portal befüllt —
+              jede Zahl hier ist nachprüfbar.
+            </p>
+          </Reveal>
+
+          <div className="mt-12 space-y-8">
+            {/* Ehrlichkeitspflicht: ohne live gezogene Zahlen (OnOffice down/Mock-
+                Fallback) gibt es KEINEN Ticker statt einer geschätzten Zahl —
+                der Zahlenstreifen mit den statischen, real belegten Kennzahlen
+                bleibt davon unabhängig immer sichtbar. Gestapelt statt
+                nebeneinander: der Ticker bleibt als kompakte Karte lesbar,
+                der Zahlenstreifen bekommt die volle Breite für große Zahlen. */}
+            {liveTicker && (
+              <Reveal className="max-w-lg">
+                <LiveTicker {...liveTicker} />
+              </Reveal>
+            )}
+            <Reveal delay={liveTicker ? 100 : 0}>
+              <StatStrip stats={RIEGEL_STATS} />
+            </Reveal>
+          </div>
+        </Container>
+      </section>
 
       {/* ───────── Block 2 · Leistungen (Bento) ───────── */}
       <section className="py-24 sm:py-32">
@@ -266,7 +312,7 @@ export default async function HomePage() {
       <section className="py-16 sm:py-20">
         <Container>
           <Reveal>
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-3">
               {stats.map((s) => (
                 <div
                   key={s.label}

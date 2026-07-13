@@ -834,6 +834,66 @@ export async function createLeadAddress(input: {
   return { ok: true, addressId: addressId || undefined };
 }
 
+/* ─────────────────────────  Live-Ticker: aggregierte Counts  ───────────────────────── */
+
+interface OnOfficeCountData {
+  // NUR meta.cntabsolute wird ausgewertet — data:["Id"] + listlimit:1 dient
+  // ausschließlich dazu, den Call günstig zu halten (keine echten Records nötig).
+  meta?: { cntabsolute?: number | string };
+}
+
+/**
+ * Gesamtzahl der Objekte, die `filter` erfüllen — OHNE die Records selbst zu
+ * laden (listlimit:1, data:["Id"]). Liefert NUR den aggregierten Zähler aus
+ * response.results[0].data.meta.cntabsolute. `null` bei jeglichem Fehler
+ * (fail-soft wie callOnOffice) — niemals ein geratener/gerundeter Ersatzwert.
+ */
+async function fetchEstateCount(filter: Record<string, unknown>): Promise<number | null> {
+  const data = await callOnOffice<OnOfficeCountData>("estate", "read", {
+    data: ["Id"],
+    listlimit: 1,
+    filter,
+  });
+  return num(data?.meta?.cntabsolute);
+}
+
+/**
+ * Aggregierte Live-Zähler für den Start-Ticker ("Zahlen, die man nachprüfen
+ * kann") — NUR Counts, NIE einzelne Objekt-Datensätze. `aktuellImAngebot`
+ * kommt bewusst NICHT von hier, sondern vom Aufrufer aus derselben
+ * getEstateData()-Quelle wie das Portal (Konsistenz: der Ticker muss exakt zu
+ * dem passen, was ein Besucher im Portal anklicken kann).
+ *
+ * `reserviert` wird hier ABSICHTLICH nicht geliefert: das boolesche Feld
+ * `reserviert` liefert bei diesem Account durchgängig 0 (der tatsächliche
+ * Reservierungsstatus wird über status2 gepflegt, nicht über dieses Feld) —
+ * ein Count darauf wäre technisch "erfolgreich", aber inhaltlich falsch.
+ * Lieber eine ehrliche Lücke im Ticker als eine falsche Zahl.
+ *
+ * `null`, wenn OnOffice nicht konfiguriert ist oder IRGENDEINE der beiden
+ * Abfragen fehlschlägt — der Aufrufer zeigt dann gar keinen Ticker an.
+ */
+export async function fetchLiveTickerCounts(): Promise<{
+  inVorbereitung: number;
+  bisherVerkauft: number;
+} | null> {
+  if (!isOnOfficeEnabled) return null;
+
+  const [inVorbereitung, bisherVerkauft] = await Promise.all([
+    // In Vorbereitung: CRM-Status aktiv, aber noch nicht veröffentlicht.
+    fetchEstateCount({
+      status: [{ op: "=", val: 1 }],
+      veroeffentlichen: [{ op: "=", val: 0 }],
+    }),
+    // Bisher verkauft: persistentes Boolean-Feld, unabhängig vom Veröffentlichungs-
+    // status — deckt auch längst offline genommene Alt-Objekte ab.
+    fetchEstateCount({ verkauft: [{ op: "=", val: 1 }] }),
+  ]);
+  if (inVorbereitung === null || bisherVerkauft === null) return null;
+
+  return { inVorbereitung, bisherVerkauft };
+}
+
 /* ─────────────────────────  Public API  ───────────────────────── */
 
 /**

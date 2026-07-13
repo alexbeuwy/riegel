@@ -7,7 +7,7 @@
  */
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { fetchOnOfficeEstates } from "@/lib/onoffice";
+import { fetchOnOfficeEstates, fetchLiveTickerCounts } from "@/lib/onoffice";
 import { mockEstates, ESTATE_ORTE, type Estate } from "@/lib/mock-estates";
 
 export type EstateSource = "onoffice" | "mock";
@@ -96,3 +96,52 @@ export async function getEstateOrte(): Promise<string[]> {
   const orte = new Set(estates.map((e) => e.city).filter(Boolean));
   return [...orte].sort((a, b) => a.localeCompare(b, "de"));
 }
+
+/* ─────────────────────────  Live-Ticker (Startseite)  ───────────────────────── */
+
+export interface LiveTickerStats {
+  /** Aktive, öffentliche Objekte — bewusst dieselbe Quelle wie das Portal
+   *  (getEstateData().estates, dedupliziert, Status "aktiv"), damit der
+   *  Ticker exakt zu dem passt, was ein Besucher im Portal anklicken kann. */
+  aktuellImAngebot: number;
+  inVorbereitung: number;
+  bisherVerkauft: number;
+}
+
+// Gleiches Muster wie getCachedLiveEstates oben: NUR der Erfolgsfall wird
+// gecacht (throw statt Platzhalter-Objekt), damit ein einzelner fehlgeschlagener
+// Pull nicht dauerhaft als "kein Ticker" einfriert, sobald OnOffice wieder
+// gesund ist. Eigener Cache-Key/Tag ("live-ticker" statt "estates"), damit
+// beide Caches unabhängig revalidieren.
+const getCachedLiveTickerStats = unstable_cache(
+  async (): Promise<LiveTickerStats> => {
+    // Ehrlichkeitspflicht: der Ticker zeigt NUR echte Live-Zahlen. Läuft die
+    // Seite gerade auf dem Mock-Fallback (source !== "onoffice"), gibt es
+    // keinen Ticker statt einer mit Beispiel-Objekten "live" wirkenden Zahl.
+    const { estates, source } = await getEstateData();
+    if (source !== "onoffice") throw new Error("live_ticker_no_live_estates");
+
+    const aktuellImAngebot = estates.filter((e) => e.status === "aktiv").length;
+
+    const counts = await fetchLiveTickerCounts();
+    if (!counts) throw new Error("live_ticker_counts_unavailable");
+
+    return { aktuellImAngebot, ...counts };
+  },
+  ["live-ticker-stats"],
+  { revalidate: 600, tags: ["live-ticker"] },
+);
+
+/**
+ * Live-Zahlen für den Start-Ticker ("Zahlen, die man nachprüfen kann").
+ * `null` bei jeglichem Fehler oder Mock-Fallback — die Komponente rendert
+ * dann einfach ohne Ticker weiter (siehe Kommentar oben: lieber kein Ticker
+ * als erfundene/veraltete Zahlen).
+ */
+export const getLiveTickerStats = cache(async (): Promise<LiveTickerStats | null> => {
+  try {
+    return await getCachedLiveTickerStats();
+  } catch {
+    return null;
+  }
+});
