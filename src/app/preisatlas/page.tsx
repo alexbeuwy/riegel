@@ -58,7 +58,7 @@ export default async function PreisatlasPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <PageIntro
         eyebrow="RIEGEL Preisatlas · Vorderpfalz & Rhein-Neckar"
-        title="Was ist der Markt in Ihrer Stadt wert?"
+        title="Was ist der Quadratmeter in Ihrer Stadt wert?"
       >
         Marktüberblick vom Makler vor Ort — Ihre Anfrage bleibt bei RIEGEL, nicht bei einer
         Plattform. Preisspannen, Bodenwerte und Trends für {STAEDTE_ANZAHL} Städte der Region.

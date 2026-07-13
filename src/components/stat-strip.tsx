@@ -4,21 +4,12 @@ import { useInViewOnce, useCountUp } from "@/components/count-up";
 import type { RiegelStats } from "@/lib/riegel-stats";
 
 const nfInt = new Intl.NumberFormat("de-DE");
-const nf1 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-interface Tile {
+interface Fact {
   key: string;
   label: string;
-  prefix?: string;
-  /** Count-up-Zielwert — bereits in der Einheit, die format() erwartet. */
   target: number;
-  /** Formatiert NUR die große Zahl (ohne Präfix/Suffix) — Einheiten/Zeichen
-   *  wie "Mio."/"+"/"Ø" laufen bewusst als eigene, kleinere Spans daneben
-   *  (Muster aus dem bestehenden Kennzahlen-Block, s. page.tsx): die .akira-
-   *  Klasse transformiert auf UPPERCASE, und lange Strings in der riesigen
-   *  Zahl-Schrift laufen in schmalen Kacheln sonst in die Nachbarkachel über. */
   format: (n: number) => string;
-  suffix?: string;
 }
 
 export interface StatStripProps {
@@ -26,69 +17,50 @@ export interface StatStripProps {
 }
 
 /**
- * Großer Zahlenstreifen ("wie beim Wettbewerber, nur mit echten Zahlen") —
- * die stärksten vier RIEGEL_STATS-Werte, groß und ohne Chrome. Zählt einmalig
- * beim Scroll-in hoch (gemeinsamer IntersectionObserver für den ganzen
- * Streifen, damit alle Kacheln synchron starten).
+ * Zwei ruhige Zusatz-Fakten NEBEN dem Live-Ticker — bewusst KEIN eigener
+ * 4-Kachel-Zahlenstreifen mehr (Kundenfeedback "zu viele große Zahlen").
+ * Die Lebenszeit-Zahlen (Aufrufe, Besichtigungen) stehen bereits in Prosa im
+ * Hero-Sub und werden hier NICHT dupliziert — nur die beiden Werte, die
+ * exklusiv dieser Sektion gehören (s. Kommentar in page.tsx), bleiben übrig:
+ * Ø Vermarktungsdauer und Jahre am Markt. Deutlich kleiner/leiser als die
+ * drei Live-Zahlen im Ticker gesetzt (kein akira-Display, kleinere Schrift) —
+ * reine Ergänzung, kein zweites Cockpit voller Riesenzahlen.
  */
 export function StatStrip({ stats }: StatStripProps) {
   const [ref, inView] = useInViewOnce<HTMLDivElement>();
 
-  const tiles: Tile[] = [
-    {
-      key: "aufrufe",
-      label: "Aufrufe auf ImmoScout24",
-      target: stats.immoscoutAufrufe / 1_000_000,
-      format: (n) => nf1.format(n),
-      suffix: "Mio.",
-    },
-    {
-      key: "besichtigungen",
-      label: "Besichtigungen begleitet",
-      target: stats.besichtigungen,
-      format: (n) => nfInt.format(Math.round(n)),
-    },
+  const facts: Fact[] = [
     {
       key: "vermarktungstage",
-      label: "bis zum Verkauf",
-      prefix: "Ø",
+      label: "Tage bis zum Verkauf",
       target: stats.oVermarktungstage,
-      format: (n) => nfInt.format(Math.round(n)),
-      suffix: "Tage",
+      format: (n) => `Ø ${nfInt.format(Math.round(n))}`,
     },
     {
       key: "jahre",
-      label: "Erfahrung in der Region",
+      label: "Jahre am Markt",
       target: 20,
-      format: (n) => nfInt.format(Math.round(n)),
-      suffix: "+ Jahre",
+      format: (n) => `${nfInt.format(Math.round(n))}+`,
     },
   ];
 
   return (
-    <div
-      ref={ref}
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-4"
-    >
-      {tiles.map((tile, i) => (
-        <StatTile key={tile.key} tile={tile} active={inView} delay={i * 90} />
+    <div ref={ref} className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+      {facts.map((fact, i) => (
+        <FactItem key={fact.key} fact={fact} active={inView} delay={i * 90} />
       ))}
     </div>
   );
 }
 
-function StatTile({ tile, active, delay }: { tile: Tile; active: boolean; delay: number }) {
-  const value = useCountUp(tile.target, active, 1200 + delay);
+function FactItem({ fact, active, delay }: { fact: Fact; active: boolean; delay: number }) {
+  const value = useCountUp(fact.target, active, 900 + delay);
   return (
-    <div className="group relative flex flex-col items-start gap-2 bg-surface p-6 transition-colors duration-300 hover:bg-surface-2 sm:p-8">
-      {/* Akzent-Hairline oben, erscheint beim Hover (Muster aus dem bestehenden Kennzahlen-Block). */}
-      <span className="pointer-events-none absolute inset-x-0 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-accent to-transparent transition-transform duration-500 group-hover:scale-x-100" />
-      <span className="flex flex-wrap items-baseline gap-1.5">
-        {tile.prefix && <span className="text-sm font-medium text-accent sm:text-base">{tile.prefix}</span>}
-        <span className="akira text-3xl tabular-nums text-fg sm:text-5xl">{tile.format(value)}</span>
-        {tile.suffix && <span className="text-sm font-medium text-accent sm:text-base">{tile.suffix}</span>}
+    <p className="flex items-baseline gap-1.5 text-sm text-muted">
+      <span className="tabular-nums text-base font-semibold text-fg sm:text-lg">
+        {fact.format(value)}
       </span>
-      <span className="text-sm leading-snug text-muted">{tile.label}</span>
-    </div>
+      {fact.label}
+    </p>
   );
 }

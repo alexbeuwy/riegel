@@ -123,21 +123,23 @@ export default async function HomePage() {
             </div>
             <h1 className="mt-8 akira text-[2rem] leading-[1.02] sm:text-5xl lg:text-[4.25rem]">
               <span className="reveal-lcp block" style={{ animationDelay: "80ms" }}>
-                Regionale Expertise.
+                Der führende Makler
               </span>
               <span className="reveal-lcp block text-accent-strong" style={{ animationDelay: "180ms" }}>
-                Alles andere ist
+                mit größter Reichweite
               </span>
               <span className="reveal-lcp block akira-outline" style={{ animationDelay: "280ms" }}>
-                Fast Food.
+                der Region.
               </span>
             </h1>
             <p
               className="reveal-lcp mt-8 max-w-xl text-lg text-muted"
               style={{ animationDelay: "380ms" }}
             >
-              Verkauf, Bewertung und Beratung in Speyer, Ludwigshafen und der
-              Vorderpfalz — diskret, persönlich und datenbasiert.
+              Für alle, die keine Lust auf Zeitverschwendung haben.{" "}
+              <strong className="font-medium text-fg">Über zehntausend Besichtigungen</strong>,{" "}
+              <strong className="font-medium text-fg">über 1.000 verkaufte Objekte</strong> in 20 Jahren.{" "}
+              <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
             </p>
             <div className="reveal-lcp relative z-20 mt-10" style={{ animationDelay: "480ms" }}>
               <HeroAddressSearch />
@@ -159,10 +161,15 @@ export default async function HomePage() {
       {/* ───────── Trust-Streifen (Bewertungen, Auszeichnungen) ───────── */}
       <TrustStrip />
 
-      {/* ───────── Block · Zahlen, die man nachprüfen kann (Live-Ticker + Zahlenstreifen) ─────────
-          Markenkern-Story in einem Scroll: ein Wettbewerber wirbt mit Live-Ticker +
-          Zahlenkacheln, aber mit erfundenen Zahlen — bei uns kommt der Ticker
-          wirklich live aus derselben Objektverwaltung, die auch das Portal befüllt. */}
+      {/* ───────── Block · Zahlen, die man nachprüfen kann (Live-Ticker als ruhiges Zentrum) ─────────
+          Markenkern-Story: ein Wettbewerber wirbt mit Live-Ticker + Zahlenkacheln,
+          aber mit erfundenen Zahlen — bei uns kommt der Ticker wirklich live aus
+          derselben Objektverwaltung, die auch das Portal befüllt.
+          Redesign (Kundenfeedback "zu viele große Zahlen"): die Lebenszeit-Zahlen
+          (Aufrufe, Verkäufe, Besichtigungen) stehen bereits in Prosa im Hero-Sub
+          und werden hier NICHT als zweite Zahlen-Wand wiederholt. Der Live-Ticker
+          mit seinen drei echten Live-Werten ist die einzige große Zahlengruppe
+          dieser Sektion, StatStrip liefert nur noch zwei leise Zusatz-Fakten. */}
       <section className="py-20 sm:py-28">
         <Container>
           <Reveal className="max-w-2xl space-y-4">
@@ -172,24 +179,22 @@ export default async function HomePage() {
             </h2>
             <p className="text-lg text-muted">
               Andere Makler werben mit Wunschzahlen. Unser Ticker liest live aus
-              derselben Objektverwaltung, die auch unser Portal befüllt —
-              jede Zahl hier ist nachprüfbar.
+              derselben Objektverwaltung, die auch unser Portal befüllt. Jede
+              Zahl hier ist nachprüfbar.
             </p>
           </Reveal>
 
-          <div className="mt-12 space-y-8">
+          <div className="mt-12 max-w-2xl">
             {/* Ehrlichkeitspflicht: ohne live gezogene Zahlen (OnOffice down/Mock-
-                Fallback) gibt es KEINEN Ticker statt einer geschätzten Zahl —
-                der Zahlenstreifen mit den statischen, real belegten Kennzahlen
-                bleibt davon unabhängig immer sichtbar. Gestapelt statt
-                nebeneinander: der Ticker bleibt als kompakte Karte lesbar,
-                der Zahlenstreifen bekommt die volle Breite für große Zahlen. */}
+                Fallback) gibt es KEINEN Ticker statt einer geschätzten Zahl — die
+                zwei statischen, real belegten Zusatz-Fakten bleiben davon
+                unabhängig immer sichtbar. */}
             {liveTicker && (
-              <Reveal className="max-w-lg">
+              <Reveal>
                 <LiveTicker {...liveTicker} />
               </Reveal>
             )}
-            <Reveal delay={liveTicker ? 100 : 0}>
+            <Reveal delay={liveTicker ? 120 : 0} className="mt-8">
               <StatStrip stats={RIEGEL_STATS} />
             </Reveal>
           </div>
