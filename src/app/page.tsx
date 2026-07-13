@@ -25,6 +25,7 @@ import { PreisatlasTeaser } from "@/components/preisatlas-teaser";
 import { TESTIMONIALS, TRUST_PLATFORMS } from "@/lib/trust-data";
 import { getSiteSetting } from "@/lib/site-settings";
 import { HERO_IMAGE_KEY } from "@/lib/site-settings-keys";
+import { ReachChart } from "@/components/reach-chart";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -141,7 +142,16 @@ export default async function HomePage() {
               <strong className="font-medium text-fg">über 1.000 verkaufte Objekte</strong> in 20 Jahren.{" "}
               <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
             </p>
-            <div className="reveal-lcp relative z-20 mt-10" style={{ animationDelay: "480ms" }}>
+            <p
+              className="reveal-lcp mt-4 max-w-xl text-base text-muted"
+              style={{ animationDelay: "430ms" }}
+            >
+              Ohne Zwang, ohne lästige Telefonate, ohne Registrierung: in 60 Sekunden zur
+              ersten Werteinschätzung mit dem <strong className="font-medium text-fg">RIEGEL Rechner</strong>.
+              Er rechnet mit Daten aus dutzenden Quellen, von amtlichen BORIS-Bodenrichtwerten
+              bis zu unserem eigenen Verkaufsbestand.
+            </p>
+            <div className="reveal-lcp relative z-20 mt-8" style={{ animationDelay: "480ms" }}>
               <HeroAddressSearch />
             </div>
             <div
@@ -169,37 +179,55 @@ export default async function HomePage() {
           (Aufrufe, Verkäufe, Besichtigungen) stehen bereits in Prosa im Hero-Sub
           und werden hier NICHT als zweite Zahlen-Wand wiederholt. Der Live-Ticker
           mit seinen drei echten Live-Werten ist die einzige große Zahlengruppe
-          dieser Sektion, StatStrip liefert nur noch zwei leise Zusatz-Fakten. */}
+          dieser Sektion, StatStrip liefert nur noch zwei leise Zusatz-Fakten.
+          Layout (2. Redesign): Desktop 2 Spalten (lg:grid-cols-2) — links bleibt
+          alles wie gehabt (Eyebrow/H2/Copy + Ticker + Zusatz-Fakten), rechts
+          füllt der neue Reichweiten-Vergleich (ReachChart, zulässige
+          vergleichende Werbung mit realen, öffentlich nachprüfbaren
+          ImmoScout24-Zahlen) den bislang leeren Raum neben dem Ticker. Mobil
+          stapelt CSS Grid automatisch (Chart rutscht unter den Ticker), da die
+          Chart-Spalte im Markup nach der Textspalte kommt. */}
       <section className="py-20 sm:py-28">
         <Container>
-          <Reveal className="max-w-2xl space-y-4">
-            <Eyebrow>Zahlen, die man nachprüfen kann</Eyebrow>
-            <h2 className="text-3xl font-semibold sm:text-4xl">
-              Wir behaupten nicht. Wir zeigen live.
-            </h2>
-            <p className="text-lg text-muted">
-              Andere Makler werben mit Wunschzahlen. Unser Ticker liest live aus
-              derselben Objektverwaltung, die auch unser Portal befüllt. Jede
-              Zahl hier ist nachprüfbar.
-            </p>
-          </Reveal>
-
-          <div className="mt-12 max-w-2xl">
-            {/* Ehrlichkeitspflicht: ohne live gezogene Zahlen (OnOffice down/Mock-
-                Fallback) gibt es KEINEN Ticker statt einer geschätzten Zahl — die
-                zwei statischen, real belegten Zusatz-Fakten bleiben davon
-                unabhängig immer sichtbar. */}
-            {liveTicker && (
-              <Reveal>
-                <LiveTicker {...liveTicker} />
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+            <div>
+              <Reveal className="max-w-2xl space-y-4">
+                <Eyebrow>Zahlen, die man nachprüfen kann</Eyebrow>
+                <h2 className="text-3xl font-semibold sm:text-4xl">
+                  Wir behaupten nicht. Wir zeigen live.
+                </h2>
+                <p className="text-lg text-muted">
+                  Andere Makler werben mit Wunschzahlen. Unser Ticker liest live aus
+                  derselben Objektverwaltung, die auch unser Portal befüllt. Jede
+                  Zahl hier ist nachprüfbar.
+                </p>
               </Reveal>
-            )}
-            <Reveal delay={liveTicker ? 120 : 0} className="mt-8">
-              <StatStrip stats={RIEGEL_STATS} />
+
+              <div className="mt-12 max-w-2xl">
+                {/* Ehrlichkeitspflicht: ohne live gezogene Zahlen (OnOffice down/Mock-
+                    Fallback) gibt es KEINEN Ticker statt einer geschätzten Zahl — die
+                    zwei statischen, real belegten Zusatz-Fakten bleiben davon
+                    unabhängig immer sichtbar. */}
+                {liveTicker && (
+                  <Reveal>
+                    <LiveTicker {...liveTicker} />
+                  </Reveal>
+                )}
+                <Reveal delay={liveTicker ? 120 : 0} className="mt-8">
+                  <StatStrip stats={RIEGEL_STATS} />
+                </Reveal>
+              </div>
+            </div>
+
+            <Reveal delay={liveTicker ? 200 : 80}>
+              <ReachChart />
             </Reveal>
           </div>
         </Container>
       </section>
+
+      {/* ───────── Block · So vermarkten wir Immobilien (Videos, bewusst prominent direkt nach den Zahlen) ───────── */}
+      <ReelsGrid />
 
       {/* ───────── Block 2 · Leistungen (Bento) ───────── */}
       <section className="py-24 sm:py-32">
@@ -486,9 +514,6 @@ export default async function HomePage() {
 
       {/* ───────── Block · Weitere Auszeichnungen & Mitgliedschaften ───────── */}
       <AwardsGrid />
-
-      {/* ───────── Block · Instagram-Reels ───────── */}
-      <ReelsGrid />
 
       {/* ───────── Block · Shader-CTA (Sofort-Bewertung) ───────── */}
       <ShaderCta />
