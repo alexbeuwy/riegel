@@ -26,7 +26,7 @@ export function PreisatlasTeaser() {
         <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
           <Reveal className="space-y-6">
             <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-              Preisatlas Vorderpfalz
+              Preisatlas Rhein-Neckar
             </span>
             <h2 className="text-3xl font-semibold sm:text-4xl lg:text-[2.75rem]">
               Was kostet der Quadratmeter in Ihrer Stadt?

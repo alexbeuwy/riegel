@@ -8,8 +8,8 @@ import { site } from "@/lib/site";
 const STAEDTE_ANZAHL = alleMarktorte().length;
 
 export const metadata = {
-  title: "Preisatlas Vorderpfalz — Immobilienpreise & Trends",
-  description: `Was ist Ihre Immobilie in Speyer, Ludwigshafen oder der Vorderpfalz wert? RIEGEL Preisatlas zeigt Preisspannen, Bodenwerte und Trends für ${STAEDTE_ANZAHL} Städte der Region — kostenlose Bewertung inklusive.`,
+  title: "Preisatlas Rhein-Neckar — Immobilienpreise & Trends",
+  description: `Was ist Ihre Immobilie in Speyer, Ludwigshafen oder der Metropolregion Rhein-Neckar wert? RIEGEL Preisatlas zeigt Preisspannen, Bodenwerte und Trends für ${STAEDTE_ANZAHL} Städte der Region — kostenlose Bewertung inklusive.`,
   alternates: { canonical: "/preisatlas" },
 };
 
@@ -57,7 +57,7 @@ export default async function PreisatlasPage({
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <PageIntro
-        eyebrow="RIEGEL Preisatlas · Vorderpfalz & Rhein-Neckar"
+        eyebrow="RIEGEL Preisatlas · Metropolregion Rhein-Neckar"
         title="Was ist der Quadratmeter in Ihrer Stadt wert?"
       >
         Marktüberblick vom Makler vor Ort — Ihre Anfrage bleibt bei RIEGEL, nicht bei einer

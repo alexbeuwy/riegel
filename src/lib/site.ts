@@ -28,7 +28,7 @@ export const site = {
   // TODO: finale Produktions-Domain bestätigen
   url: "https://riegel-immobilien.de",
   locales: "de-DE",
-  regions: ["Speyer", "Ludwigshafen", "Vorderpfalz"],
+  regions: ["Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar"],
 
   // Primär-Navigation (Portal = #1)
   nav: [
@@ -47,7 +47,7 @@ export const site = {
         },
         {
           href: "/preisatlas",
-          label: "Preisatlas Vorderpfalz",
+          label: "Preisatlas Rhein-Neckar",
           desc: "Preise, Bodenwerte & Trends für 18 Städte",
           icon: "trend",
         },

@@ -23,7 +23,7 @@ interface Reel {
 const BASE = "https://riegel.b-cdn.net/";
 const REELS: Reel[] = [
   { src: "Doppelhaushaelfte-Schifferstadt.mp4", caption: "Doppelhaushälfte", tag: "Schifferstadt" },
-  { src: "Einfamilienhaus1.mp4", caption: "Einfamilienhaus", tag: "Vorderpfalz" },
+  { src: "Einfamilienhaus1.mp4", caption: "Einfamilienhaus", tag: "Rhein-Neckar" },
   { src: "Bad-Duerkheim-Wohnung.mp4", caption: "Wohnung", tag: "Bad Dürkheim" },
   { src: "Carina-Einfamilienhaus.mp4", caption: "Einfamilienhaus", tag: "mit Carina" },
   { src: "Miete-Sissy-in-Speyer.mp4", caption: "Zur Miete", tag: "Speyer · mit Sissy" },

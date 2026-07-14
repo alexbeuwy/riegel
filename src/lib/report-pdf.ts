@@ -466,7 +466,7 @@ function drawFactors(ctx: Ctx) {
 
   heading(ctx, page, "Was Ihren Preis beeinflusst", M, y, 16);
   y -= 18;
-  for (const line of wrap("Aus über 25 Jahren regionaler Praxis: Diese Faktoren bewegen den erzielbaren Preis am stärksten. Die Bandbreiten sind Erfahrungswerte für die Vorderpfalz — Ihr Objekt kann je nach Kombination abweichen.", ctx.reg, 9.5, w - 2 * M)) {
+  for (const line of wrap("Aus über 25 Jahren regionaler Praxis: Diese Faktoren bewegen den erzielbaren Preis am stärksten. Die Bandbreiten sind Erfahrungswerte für die Metropolregion Rhein-Neckar — Ihr Objekt kann je nach Kombination abweichen.", ctx.reg, 9.5, w - 2 * M)) {
     t(line, M, y, 9.5, ctx.reg, MUTED);
     y -= 13;
   }
@@ -541,9 +541,9 @@ function drawMarket(ctx: Ctx, d: ReportData, objektTitle: string) {
   ], M + colW + 24, NEG);
   y = Math.min(left, right) - 16;
 
-  heading(ctx, page, "Markttrend Vorderpfalz", M, y, 13);
+  heading(ctx, page, "Markttrend Rhein-Neckar", M, y, 13);
   y -= 16;
-  const trend = `Einschätzung ${new Date().getFullYear()}: Die Nachfrage in Speyer, Ludwigshafen und der Vorderpfalz ist bei gut gelegenen Objekten stabil. Energieeffizienz ist zum preisbestimmenden Faktor geworden; das Zinsniveau bremst die Zahlungsbereitschaft, doch energetisch gute und fair bepreiste Immobilien verkaufen sich weiterhin zügig.${d.city ? ` Für ${d.city} sehen wir aktuell ${d.value.trendPct != null ? `rund +${d.value.trendPct} % p. a.` : "eine stabile Entwicklung"}.` : ""}`;
+  const trend = `Einschätzung ${new Date().getFullYear()}: Die Nachfrage in Speyer, Ludwigshafen und der Metropolregion Rhein-Neckar ist bei gut gelegenen Objekten stabil. Energieeffizienz ist zum preisbestimmenden Faktor geworden; das Zinsniveau bremst die Zahlungsbereitschaft, doch energetisch gute und fair bepreiste Immobilien verkaufen sich weiterhin zügig.${d.city ? ` Für ${d.city} sehen wir aktuell ${d.value.trendPct != null ? `rund +${d.value.trendPct} % p. a.` : "eine stabile Entwicklung"}.` : ""}`;
   for (const line of wrap(trend, ctx.reg, 9.5, w - 2 * M)) {
     t(line, M, y, 9.5, ctx.reg, MUTED);
     y -= 13.5;

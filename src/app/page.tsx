@@ -295,7 +295,7 @@ export default async function HomePage() {
               <BentoTile
                 icon="chart"
                 eyebrow="Markt-Transparenz"
-                title="Preisatlas Vorderpfalz"
+                title="Preisatlas Rhein-Neckar"
                 cols="2"
                 href="/preisatlas"
                 cta="Preise & Trends ansehen"
@@ -557,7 +557,7 @@ export default async function HomePage() {
               <p className="text-lg text-muted">
                 Riegel Immobilien steht für persönliche Betreuung und echte
                 Marktkenntnis in Speyer, Ludwigshafen und der gesamten
-                Vorderpfalz. Wir begleiten Sie mit Diskretion und Erfahrung —
+                Metropolregion Rhein-Neckar. Wir begleiten Sie mit Diskretion und Erfahrung —
                 vom ersten Gespräch bis zur Schlüsselübergabe.
               </p>
               <p className="text-sm text-faint">{site.regions.join(" · ")}</p>

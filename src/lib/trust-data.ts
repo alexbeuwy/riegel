@@ -1,8 +1,10 @@
 /**
  * Bewertungsdaten & Kundenstimmen — recherchiert & verifiziert (Stand 2026-07-02).
  * NUR Plattformen mit direkt bestätigtem ODER mehrfach kreuzverifiziertem Wert.
- * Kununu (kein Profil auffindbar) und eine belastbare Einzel-Google-Zahl (nur
- * Spannen über Drittseiten, nicht direkt verifizierbar) sind bewusst NICHT drin.
+ * Kununu (kein Profil auffindbar) ist bewusst NICHT drin.
+ * Google ist auf Wunsch aufgenommen — Anzahl aus Alex' Ablesung (Speyer 414 +
+ * Ludwigshafen 35 = 449). Sterne 4,8 provisorisch (Aggregator-Wert), BITTE von
+ * Alex final bestätigen + kanonische Google-Profil-URL(s) nachreichen.
  * IVD-Mitgliedschaft ist nicht belegbar — echte Verbandszugehörigkeit ist BVFI
  * (Manfred Riegel, Regionaldirektor), das steht stattdessen im Streifen.
  */
@@ -19,6 +21,8 @@ export interface TrustPlatform {
 }
 
 export const TRUST_PLATFORMS: TrustPlatform[] = [
+  // Sterne 4,8 = provisorisch (bitte bestätigen); Anzahl 449 = Speyer 414 + LU 35 (Alex).
+  { key: "google", name: "Google", rating: 4.8, scaleMax: 5, count: 449, url: "https://www.google.com/maps/search/?api=1&query=RIEGEL+Immobilien+Speyer", icon: "pin" },
   { key: "immoscout24", name: "ImmoScout24", rating: 4.7, scaleMax: 5, count: 148, url: "https://www.immobilienscout24.de/anbieter/profil/riegel-immobilien/riegel-immobilien", icon: "home" },
   { key: "trustpilot", name: "Trustpilot", rating: 4.6, scaleMax: 5, count: 34, url: "https://de.trustpilot.com/review/www.riegel-immobilien.de", icon: "star" },
   { key: "trustlocal", name: "Trustlocal", rating: 8.6, scaleMax: 10, count: 30, url: "https://trustlocal.de/rheinland-pfalz/ludwigshafen-am-rhein/immobilienmakler/riegel-immobilien/", icon: "shield" },

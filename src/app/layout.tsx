@@ -65,7 +65,7 @@ const orgJsonLd = {
     "Scheidungsimmobilie", "geerbte Immobilie", "Maklerprovision", "Energieausweis",
   ],
   areaServed: [
-    "Speyer", "Ludwigshafen", "Vorderpfalz", "Rhein-Neckar", "Schifferstadt",
+    "Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar", "Rhein-Neckar", "Schifferstadt",
     "Frankenthal", "Neustadt an der Weinstraße", "Germersheim", "Haßloch", "Mutterstadt",
   ],
   address: site.locations.map((l) => ({

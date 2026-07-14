@@ -125,7 +125,7 @@ export function standortRegion(a: GeoArticle): string {
 }
 
 export function standortRegionLabel(key: string): string {
-  return REGION_LABEL[key] ?? "Vorderpfalz";
+  return REGION_LABEL[key] ?? "Metropolregion Rhein-Neckar";
 }
 
 export function standortCoords(slug: string): { lng: number; lat: number } | null {

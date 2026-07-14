@@ -116,7 +116,7 @@ export function GeoMap({
       ref={ref}
       className="h-[360px] w-full overflow-hidden rounded-3xl border border-border sm:h-[440px]"
       role="img"
-      aria-label="Karte der Standorte in der Vorderpfalz und im Rhein-Neckar-Raum"
+      aria-label="Karte der Standorte in der Metropolregion Rhein-Neckar"
     />
   );
 }

@@ -8,7 +8,7 @@ import { site } from "@/lib/site";
 export const metadata = {
   title: "Ratgeber rund um den Immobilienverkauf",
   description:
-    "Immobilienbewertung, Maklerprovision, Energieausweis, Ablauf des Hausverkaufs — verständlich erklärt von Riegel Immobilien für die Vorderpfalz und Rhein-Neckar.",
+    "Immobilienbewertung, Maklerprovision, Energieausweis, Ablauf des Hausverkaufs — verständlich erklärt von Riegel Immobilien für die Metropolregion Rhein-Neckar.",
   alternates: { canonical: "/ratgeber" },
 };
 

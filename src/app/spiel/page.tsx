@@ -4,7 +4,7 @@ import { BlitzverkaufGame } from "@/components/game/blitzverkauf-game";
 export const metadata = {
   title: "Blitzverkauf — das RIEGEL-Spiel",
   description:
-    "Nur zum Spaß: Flieg über die Vorderpfalz und verkaufe Häuser aus der Luft. Ein kleines Easter-Egg-Spiel von Riegel Immobilien.",
+    "Nur zum Spaß: Flieg über die Region Rhein-Neckar und verkaufe Häuser aus der Luft. Ein kleines Easter-Egg-Spiel von Riegel Immobilien.",
   alternates: { canonical: "/spiel" },
   robots: { index: false, follow: true },
 };

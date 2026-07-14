@@ -8,7 +8,7 @@ import { site } from "@/lib/site";
 export const metadata = {
   title: "Standorte & Regionen",
   description:
-    "Immobilie verkaufen in Speyer, Ludwigshafen, Germersheim, Frankenthal und der gesamten Vorderpfalz — Ihr lokaler Immobilienmakler Riegel Immobilien.",
+    "Immobilie verkaufen in Speyer, Ludwigshafen, Germersheim, Frankenthal und der gesamten Metropolregion Rhein-Neckar — Ihr lokaler Immobilienmakler Riegel Immobilien.",
   alternates: { canonical: "/standorte" },
 };
 
@@ -61,7 +61,7 @@ export default function StandorteIndex() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <PageIntro eyebrow="Standorte & Regionen" title="Ihr Immobilienmakler in der Vorderpfalz">
+      <PageIntro eyebrow="Standorte & Regionen" title="Ihr Immobilienmakler in der Metropolregion Rhein-Neckar">
         Lokale Marktkenntnis zahlt sich aus. Wählen Sie Ihre Stadt — wir kennen
         den Markt vor Ort und verkaufen Ihre Immobilie zum bestmöglichen Preis.
       </PageIntro>

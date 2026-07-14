@@ -9,7 +9,7 @@ export const faqs: { q: string; a: string }[] = [
   },
   {
     q: "In welchen Regionen sind Sie tätig?",
-    a: "Unser Schwerpunkt liegt in Speyer, Ludwigshafen und der gesamten Vorderpfalz. Sprechen Sie uns auch für angrenzende Lagen an.",
+    a: "Unser Schwerpunkt liegt in Speyer, Ludwigshafen und der gesamten Metropolregion Rhein-Neckar. Sprechen Sie uns auch für angrenzende Lagen an.",
   },
   {
     q: "Welche Unterlagen brauche ich für den Verkauf?",

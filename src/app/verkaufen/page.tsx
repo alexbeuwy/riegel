@@ -11,7 +11,7 @@ import { photos } from "@/lib/photos";
 export const metadata = {
   title: "Immobilie verkaufen",
   description:
-    "Verkaufen Sie Ihre Immobilie in Speyer, Ludwigshafen und der Vorderpfalz zum bestmöglichen Preis — mit professioneller Vermarktung und persönlicher Begleitung von Riegel Immobilien.",
+    "Verkaufen Sie Ihre Immobilie in Speyer, Ludwigshafen und der Metropolregion Rhein-Neckar zum bestmöglichen Preis — mit professioneller Vermarktung und persönlicher Begleitung von Riegel Immobilien.",
   alternates: { canonical: "/verkaufen" },
 };
 
@@ -151,6 +151,13 @@ export default function VerkaufenPage() {
                 Unterlagen in Form und verbinden sie mit einer datenbasierten Bewertung.
                 Das schafft Vertrauen bei Käufern und beschleunigt den Verkauf.
               </p>
+              <p className="mt-3 max-w-md text-xs text-faint">
+                Hinweis: Beim Verkauf ist ein gültiger Energieausweis Pflicht
+                (§&nbsp;80 GEG). Ob Verbrauchs- oder Bedarfsausweis nötig ist,
+                hängt vom Gebäude ab — bei älteren Ein- und Zweifamilienhäusern
+                (Bauantrag vor 1977, unsaniert) ist ein Bedarfsausweis
+                vorgeschrieben. Wir klären das für Ihr Objekt.
+              </p>
               <ul className="mt-6 space-y-2.5">
                 {["Vollständige Objektakte & Grundrisse", "Datenbasierte Wertermittlung", "Aussagekräftiges, professionelles Exposé"].map((t) => (
                   <li key={t} className="flex items-start gap-2.5 text-fg/90">
@@ -212,7 +219,7 @@ export default function VerkaufenPage() {
                 Ein fester Ansprechpartner von Anfang bis zur Übergabe.
               </BentoTile>
               <BentoTile icon="pin" title="Regional verwurzelt">
-                Speyer, Ludwigshafen und die gesamte Vorderpfalz.
+                Speyer, Ludwigshafen und die gesamte Metropolregion Rhein-Neckar.
               </BentoTile>
               <BentoTile
                 icon="calculator"

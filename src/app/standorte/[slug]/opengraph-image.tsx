@@ -13,7 +13,7 @@ export const contentType = "image/png";
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const article = getArticle("standort", slug);
-  const ort = article?.ort ?? "Vorderpfalz";
+  const ort = article?.ort ?? "Rhein-Neckar";
   return new ImageResponse(
     (
       <div

@@ -25,7 +25,7 @@ export default async function ImmobilienPage({
 
   return (
     <div>
-      <h1 className="sr-only">Immobilienangebote in Speyer, Ludwigshafen &amp; der Vorderpfalz</h1>
+      <h1 className="sr-only">Immobilienangebote in Speyer, Ludwigshafen &amp; der Metropolregion Rhein-Neckar</h1>
       <div className="border-b border-border bg-bg pt-6">
         <Container className="pb-5">
           <FilterBar filters={filters} orte={orte} />

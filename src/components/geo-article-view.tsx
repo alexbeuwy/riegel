@@ -272,7 +272,7 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
         telephone: site.phone,
         email: site.email,
         award: "ImmoScout24 ImmoAward 2025 — Top 21 Makler des Jahres in Deutschland",
-        areaServed: ["Speyer", "Ludwigshafen", "Vorderpfalz", "Rhein-Neckar", article.ort].filter(Boolean),
+        areaServed: ["Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar", "Rhein-Neckar", article.ort].filter(Boolean),
         address: site.locations.map((l) => ({
           "@type": "PostalAddress",
           streetAddress: l.street,

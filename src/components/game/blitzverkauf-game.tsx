@@ -634,7 +634,7 @@ export function BlitzverkaufGame() {
               RIEGEL <span className="text-accent">Blitzverkauf</span>
             </h2>
             <p className="max-w-md text-sm text-muted sm:text-base">
-              Flieg über die Vorderpfalz und verkaufe Häuser aus der Luft — schneller
+              Flieg über die Region Rhein-Neckar und verkaufe Häuser aus der Luft — schneller
               geht&apos;s nicht. {DURATION_SEC} Sekunden, so viel Volumen wie möglich.
             </p>
             <p className="max-w-md text-xs text-faint sm:text-sm">
