@@ -17,11 +17,20 @@ const TO = process.env.EMAIL_TO || "info@riegel-immobilien.de";
 // bereits die kanonische Produktions-Domain (site.url) — die nutzen wir als
 // Fallback, bevor wir "irgendeine" Vercel-URL erfinden.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
+// E-Mail-Assets (Logo etc.) bewusst NICHT von site.url ableiten: site.url ist
+// die kanonische SEO-/Marketing-Domain (riegel-immobilien.de) — die ist noch
+// NICHT live und liefert aktuell 404 (siehe TODO in site.ts). Ein Mail-Client
+// könnte das Logo von dort also nie laden, unabhängig davon, ob Bilder generell
+// erlaubt sind. riegel.vercel.app ist die tatsächlich erreichbare Deployment-
+// URL (verifiziert: liefert email-logo-riegel-dark.png mit 200/image-png) und
+// dient hier als verlässlicher Default — per Env überschreibbar, sobald die
+// echte Domain live ist (dann z. B. EMAIL_ASSET_BASE=https://riegel-immobilien.de).
+const EMAIL_ASSET_BASE = process.env.EMAIL_ASSET_BASE || "https://riegel.vercel.app";
 // PNG statt SVG: SVG rendert in Gmail/Outlook unzuverlässig. Seit dem Redesign
 // (helle Karte, weißer Hintergrund) brauchen wir die DUNKLE Logo-Variante —
 // das alte weiße "email-logo-riegel.png" wäre auf Weiß unsichtbar. Absolute
 // URL nötig (E-Mail hat keinen Origin-Kontext).
-const LOGO_URL = `${SITE_URL}/email-logo-riegel-dark.png`;
+const LOGO_URL = `${EMAIL_ASSET_BASE}/email-logo-riegel-dark.png`;
 
 /**
  * E-Mail-Realität, die dieses Layout berücksichtigt (bitte beim Ändern im Kopf

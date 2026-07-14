@@ -6,6 +6,15 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 
+// pdf-lib/fontkit brauchen echte Node.js-Buffer/Crypto-APIs (kein Edge) UND
+// diese Route macht mehrere sequenzielle externe Aufrufe (Bodenrichtwert bis
+// 6 s, Satellitenbild bis 9 s) PLUS CPU-lastiges Font-/Bild-Embedding fürs
+// PDF — das kann in Summe deutlich über Vercels Standard-Timeout (ohne
+// explizite Konfiguration je nach Plan nur 10–15 s) liegen. Beides explizit
+// setzen, statt auf implizite Next.js-/Vercel-Defaults zu vertrauen.
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 // Nur beim HTML-Rendern escapen — PDF, DB, to/replyTo bekommen Rohwerte
 // (sonst landet „Müller &amp; Söhne" im Report und im CSV-Export).
 const esc = (s: unknown) =>
@@ -260,7 +269,10 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,
     });
   } catch (e) {
-    console.error("[report] PDF-Erstellung fehlgeschlagen:", e);
+    // Vollen Stack loggen (nicht nur die Fehlermeldung) — sonst lässt sich ein
+    // produktionsspezifischer Fehler (Font-/Bild-Decode, pdf-lib-Aufruf mit
+    // unerwartetem Wert …) aus den Vercel-Logs nicht rekonstruieren.
+    console.error("[report] PDF-Erstellung fehlgeschlagen:", e instanceof Error ? e.stack ?? e.message : e);
   }
 
   const pdfName = `RIEGEL-Marktwert-Report${city ? `-${city}` : ""}.pdf`.replace(/\s+/g, "-");

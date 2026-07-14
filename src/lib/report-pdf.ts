@@ -107,11 +107,15 @@ interface Ctx {
   reg: PDFFont;
   bold: PDFFont;
   akira: PDFFont;
-  mark: PDFImage;
-  vibe: PDFImage;
+  /** Alle Bild-Assets sind bewusst nullable: EIN korrupter/nicht dekodierbarer
+   * Font/Bild-Embed (z. B. durch eine abweichende Laufzeitumgebung) darf NIE
+   * den gesamten Report zum Scheitern bringen — s. tryEmbedPng/tryEmbedJpg
+   * in buildReportPdf() und die Fallback-Zeichnung an den jeweiligen Stellen. */
+  mark: PDFImage | null;
+  vibe: PDFImage | null;
   satellite: PDFImage | null;
-  heroRays: PDFImage;
-  gauge: PDFImage;
+  heroRays: PDFImage | null;
+  gauge: PDFImage | null;
   icons: Record<string, PDFImage>;
 }
 
@@ -135,9 +139,42 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
 
   const reg = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const akira = await doc.embedFont(Buffer.from(AKIRA_B64, "base64"), { subset: true });
-  const mark = await doc.embedPng(Buffer.from(RIEGEL_MARK_B64, "base64"));
-  const vibe = await doc.embedJpg(Buffer.from(COVER_JPG_B64, "base64"));
+
+  // Fehlertolerantes Embedding für ALLE nicht-essenziellen Assets: schlägt ein
+  // einzelnes Bild/Font aus welchem Grund auch immer (Decode-Fehler, in dieser
+  // Laufzeitumgebung nicht unterstütztes Encoding …) fehl, bekommt der Kunde
+  // trotzdem einen vollständigen, mehrseitigen Report statt GAR keinen —
+  // die betroffene Stelle rendert dann mit einem einfachen Fallback (s. u.).
+  async function tryEmbedPng(b64: string, label: string): Promise<PDFImage | null> {
+    try {
+      return await doc.embedPng(Buffer.from(b64, "base64"));
+    } catch (e) {
+      console.error(`[report-pdf] Bild-Embed fehlgeschlagen (${label}):`, e instanceof Error ? e.message : e);
+      return null;
+    }
+  }
+  async function tryEmbedJpg(b64: string, label: string): Promise<PDFImage | null> {
+    try {
+      return await doc.embedJpg(Buffer.from(b64, "base64"));
+    } catch (e) {
+      console.error(`[report-pdf] Bild-Embed fehlgeschlagen (${label}):`, e instanceof Error ? e.message : e);
+      return null;
+    }
+  }
+
+  // AKIRA-Headline-Font: bei Embed-Fehler auf Helvetica Bold zurückfallen
+  // (kosmetisch abweichend, aber liefert IMMER ein PDF) statt den kompletten
+  // Report scheitern zu lassen.
+  let akira: PDFFont;
+  try {
+    akira = await doc.embedFont(Buffer.from(AKIRA_B64, "base64"), { subset: true });
+  } catch (e) {
+    console.error("[report-pdf] AKIRA-Font-Embed fehlgeschlagen, Fallback auf Helvetica Bold:", e instanceof Error ? e.message : e);
+    akira = bold;
+  }
+
+  const mark = await tryEmbedPng(RIEGEL_MARK_B64, "Logo");
+  const vibe = await tryEmbedJpg(COVER_JPG_B64, "Stimmungsbild");
   let satellite: PDFImage | null = null;
   if (d.satelliteB64) {
     try {
@@ -147,10 +184,13 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
     }
   }
 
-  const heroRays = await doc.embedJpg(Buffer.from(HERO_RAYS_B64, "base64"));
-  const gauge = await doc.embedPng(Buffer.from(GAUGE_B64, "base64"));
+  const heroRays = await tryEmbedJpg(HERO_RAYS_B64, "Hero-Rays");
+  const gauge = await tryEmbedPng(GAUGE_B64, "Gauge");
   const icons: Record<string, PDFImage> = {};
-  for (const [k, v] of Object.entries(ICONS)) icons[k] = await doc.embedPng(Buffer.from(v, "base64"));
+  for (const [k, v] of Object.entries(ICONS)) {
+    const img = await tryEmbedPng(v, `Icon:${k}`);
+    if (img) icons[k] = img;
+  }
 
   const ctx: Ctx = { doc, reg, bold, akira, mark, vibe, satellite, heroRays, gauge, icons };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
@@ -208,9 +248,14 @@ function bg(page: PDFPage, w: number, h: number) {
 function header(ctx: Ctx, page: PDFPage, w: number, h: number, kicker: string) {
   const t = mkText(page);
   const mh = 16;
-  const mw = (ctx.mark.width / ctx.mark.height) * mh;
-  page.drawImage(ctx.mark, { x: M, y: h - M - mh + 1, width: mw, height: mh });
-  t("RIEGEL", M + mw + 7, h - M - 12, 15, ctx.akira, FG, 1.5);
+  // Logo-Bild optional (s. Ctx-Kommentar): ohne Mark einfach ohne Bild-Offset
+  // starten — der Wortmarken-Text "RIEGEL" bleibt immer sichtbar.
+  let mw = 0;
+  if (ctx.mark) {
+    mw = (ctx.mark.width / ctx.mark.height) * mh;
+    page.drawImage(ctx.mark, { x: M, y: h - M - mh + 1, width: mw, height: mh });
+  }
+  t("RIEGEL", M + mw + (ctx.mark ? 7 : 0), h - M - 12, 15, ctx.akira, FG, 1.5);
   textRight(page, kicker, w - M, h - M - 11, 9, ctx.bold, ACCENT_SOFT);
   const y = h - M - 22;
   page.drawLine({ start: { x: M, y }, end: { x: w - M, y }, thickness: 1, color: BORDER });
@@ -292,7 +337,12 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   const heroBottom = y - heroH;
   const heroW = w - 2 * M;
   // Light-Ray-Panel (JPEG mit dunklem Grund) + dezenter Bild-Outline + Akzentkante
-  page.drawImage(ctx.heroRays, { x: M, y: heroBottom, width: heroW, height: heroH });
+  // — ohne Bild (Embed fehlgeschlagen) einfacher dunkler Panel-Hintergrund.
+  if (ctx.heroRays) {
+    page.drawImage(ctx.heroRays, { x: M, y: heroBottom, width: heroW, height: heroH });
+  } else {
+    page.drawRectangle({ x: M, y: heroBottom, width: heroW, height: heroH, color: SURFACE });
+  }
   page.drawRectangle({ x: M, y: heroBottom, width: heroW, height: heroH, borderColor: rgb(1, 1, 1), borderWidth: 1, borderOpacity: 0.1 });
   page.drawRectangle({ x: M, y: heroBottom, width: 4, height: heroH, color: ACCENT });
 
@@ -311,8 +361,13 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   const trackR = w - M - 40;
   const trackW = trackR - trackL;
   const gaugeY = heroBottom + 46;
-  const gh = (ctx.gauge.height / ctx.gauge.width) * trackW;
-  page.drawImage(ctx.gauge, { x: trackL, y: gaugeY - gh / 2, width: trackW, height: gh });
+  if (ctx.gauge) {
+    const gh = (ctx.gauge.height / ctx.gauge.width) * trackW;
+    page.drawImage(ctx.gauge, { x: trackL, y: gaugeY - gh / 2, width: trackW, height: gh });
+  } else {
+    // Fallback: einfacher Track-Balken ohne Gradient-Bild.
+    page.drawRectangle({ x: trackL, y: gaugeY - 3, width: trackW, height: 6, color: BORDER });
+  }
   const range = Math.max(1, d.value.high - d.value.low);
   let f = (d.value.mid - d.value.low) / range;
   f = Math.min(0.94, Math.max(0.06, Number.isFinite(f) ? f : 0.5));
@@ -390,8 +445,10 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   yy -= 10;
 
   // Stimmungsbild (Vibe) — bewusst hier, nicht auf dem Deckblatt
+  // (kein Fallback-Zeichnen nötig, wenn das Embed fehlschlägt: Block entfällt
+  // einfach, die Seite bleibt ohne den optionalen Bild-Abschluss valide.)
   const imgH = yy - 70;
-  if (imgH > 90) {
+  if (ctx.vibe && imgH > 90) {
     page.drawImage(ctx.vibe, { x: M, y: 70, width: w - 2 * M, height: imgH });
     page.drawRectangle({ x: M, y: 70, width: w - 2 * M, height: imgH, borderColor: BORDER, borderWidth: 1 });
   }
