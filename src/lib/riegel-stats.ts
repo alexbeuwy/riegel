@@ -11,6 +11,10 @@ export const RIEGEL_STATS = {
   /** real — Familienunternehmen seit über 20 Jahren in der Region. */
   jahreAmMarkt: "20+",
 
+  /** von Alex bestätigt — über 40 Jahre Immobilienerfahrung im Team (mehr als
+   *  die reine Firmenlaufzeit; wird in der Hero-Prosa genannt). */
+  immobilienErfahrungJahre: 40,
+
   /** real — Ø Tage bis zum Verkauf; bereits im bestehenden Kennzahlen-Block der
    *  Startseite verwendet (s. src/app/page.tsx). */
   oVermarktungstage: 90,
@@ -18,14 +22,18 @@ export const RIEGEL_STATS = {
   /** real — Ø Kaufpreis 2020–2026, aus der Live-API abgeleitet. */
   oKaufpreisEuro: 385_820,
 
-  /** TODO Sissy: finale Bestätigung ausstehend — vorläufiger Wert, KEINE Erfindung. */
-  besichtigungen: 16_870,
+  /** von Alex bestätigt — ca. 6.000 Besichtigungen JÄHRLICH. Bewusst als
+   *  Jahreswert statt eines über die Jahrzehnte nicht exakt belegbaren
+   *  Gesamtwerts (Sissy: lässt sich über die Jahre nicht genau sagen). */
+  besichtigungenProJahr: 6_000,
 
-  /** real — Aufrufe auf ImmoScout24 (12,5 Mio.). */
+  /** real — Aufrufe/Ausspielungen auf ImmoScout24: mind. 12,5 Mio., Tendenz
+   *  darüber. Bewusst konservativ beim runden Begriff „12,5 Millionen" belassen. */
   immoscoutAufrufe: 12_500_000,
 
-  /** real — Exposé-Aufrufe, Top-Objekt (Spitzenwert). */
-  exposeSpitze: 416_897,
+  /** von Alex bestätigt — Exposé-Aufrufe des Anbieterprofils (= RIEGEL-Wert im
+   *  Reichweiten-Chart, s. reach-chart.tsx). */
+  exposeAufrufe: 416_054,
 } as const;
 
 export type RiegelStats = typeof RIEGEL_STATS;

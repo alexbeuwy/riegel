@@ -33,8 +33,11 @@ export function LiveTicker({ aktuellImAngebot, inVorbereitung }: LiveTickerProps
   const angebot = useCountUp(aktuellImAngebot, inView, 1100);
   const vorbereitung = useCountUp(inVorbereitung, inView, 1300);
 
-  const cols: { label: string; value: number; icon: IconName }[] = [
-    { label: "Aktuell im Angebot", value: angebot, icon: "building" },
+  const cols: { label: string; value: number; icon: IconName; href?: string }[] = [
+    // Die „im Angebot"-Kachel ist zusätzlich klickbar und führt direkt ins
+    // Portal (der Text-CTA darunter bleibt). „In Vorbereitung" ist noch nicht
+    // gelistet und bleibt daher bewusst eine reine Kennzahl ohne Link.
+    { label: "Aktuell im Angebot", value: angebot, icon: "building", href: "/immobilien" },
     { label: "In Vorbereitung", value: vorbereitung, icon: "sparkle" },
   ];
 
@@ -54,24 +57,34 @@ export function LiveTicker({ aktuellImAngebot, inVorbereitung }: LiveTickerProps
 
       {/* Boxen: 1:1 der Kennzahlen-Block (Container/Cell/Hover identisch) */}
       <div className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2">
-        {cols.map((col) => (
-          <div
-            key={col.label}
-            className="group relative flex flex-col items-start gap-3 bg-surface p-5 transition-colors duration-300 hover:bg-surface-2 sm:p-7"
-          >
-            {/* Akzent-Hairline oben, erscheint beim Hover — identisch zum Kennzahlen-Block */}
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-accent to-transparent transition-transform duration-500 group-hover:scale-x-100" />
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/[0.08] text-accent transition-transform duration-300 group-hover:-translate-y-0.5">
-              <Icon name={col.icon} size={20} />
-            </span>
-            {/* Zahl IN der Box größer */}
-            <span className="akira text-4xl tabular-nums leading-none text-fg sm:text-5xl">
-              {nf.format(Math.round(col.value))}
-            </span>
-            {/* Schlagwort fett/hell, damit sofort klar ist, worum es geht */}
-            <span className="text-sm font-bold text-fg sm:text-base">{col.label}</span>
-          </div>
-        ))}
+        {cols.map((col) => {
+          const cellClass =
+            "group relative flex flex-col items-start gap-3 bg-surface p-5 transition-colors duration-300 hover:bg-surface-2 sm:p-7";
+          const inner = (
+            <>
+              {/* Akzent-Hairline oben, erscheint beim Hover — identisch zum Kennzahlen-Block */}
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-accent to-transparent transition-transform duration-500 group-hover:scale-x-100" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/25 bg-accent/[0.08] text-accent transition-transform duration-300 group-hover:-translate-y-0.5">
+                <Icon name={col.icon} size={20} />
+              </span>
+              {/* Zahl IN der Box größer */}
+              <span className="akira text-4xl tabular-nums leading-none text-fg sm:text-5xl">
+                {nf.format(Math.round(col.value))}
+              </span>
+              {/* Schlagwort fett/hell, damit sofort klar ist, worum es geht */}
+              <span className="text-sm font-bold text-fg sm:text-base">{col.label}</span>
+            </>
+          );
+          return col.href ? (
+            <Link key={col.label} href={col.href} className={cellClass}>
+              {inner}
+            </Link>
+          ) : (
+            <div key={col.label} className={cellClass}>
+              {inner}
+            </div>
+          );
+        })}
       </div>
 
       {/* Kontextueller CTA: die Live-Zahl „im Angebot" führt direkt ins Portal. */}

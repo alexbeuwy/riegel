@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { useInViewOnce, useCountUp } from "@/components/count-up";
 
 /**
@@ -20,23 +22,49 @@ export interface ReachEntry {
 }
 
 export const REACH_DATA: ReachEntry[] = [
-  { name: "RIEGEL Immobilien", value: 413_177, highlight: true },
+  { name: "RIEGEL Immobilien", value: 416_054, highlight: true },
   // Wettbewerber bewusst ANONYM nach Ort (Vorgabe Sissy): keine Namensnennung
   // -> kein Risiko vergleichender Werbung, die Zahlen bleiben echt und
-  // öffentlich nachprüfbar. Weitere Balken folgen, sobald die Aufruf-Zahlen
-  // der jeweiligen IS24-Profile bestätigt sind.
+  // öffentlich nachprüfbar (Aufrufe der jeweiligen IS24-Anbieterprofile,
+  // von Alex direkt abgelesen). Zwei Makler sitzen am selben Ort
+  // (Ludwigshafen) -> „I"/„II", damit die Balken einen eindeutigen React-Key
+  // behalten und optisch unterscheidbar bleiben.
   { name: "Makler aus Neustadt", value: 64_423 },
+  { name: "Makler aus Heidelberg", value: 53_509 },
+  { name: "Makler aus Ludwigshafen I", value: 44_125 },
   { name: "Makler aus Mannheim", value: 36_473 },
+  { name: "Makler aus Ludwigshafen II", value: 33_203 },
+  { name: "Makler aus Speyer", value: 28_801 },
   // Weiterer Makler? Einfach eine Zeile ergänzen — Sortierung und Skala
   // passen sich automatisch an (Maximalwert = längster Balken).
 ];
 
 const nf = new Intl.NumberFormat("de-DE");
 
+// Store, der sich nie ändert — nur dafür da, das „heute"-Datum hydrationssicher
+// erst auf dem Client zu liefern (s. useSyncExternalStore in ReachChart).
+const subscribeNoop = () => () => {};
+
 export function ReachChart() {
   const [ref, inView] = useInViewOnce<HTMLDivElement>(0.35);
   const sorted = [...REACH_DATA].sort((a, b) => b.value - a.value);
   const max = sorted[0]?.value ?? 1;
+
+  // „Stand" = heutiger Tag, hydrationssicher: der Server rendert leer
+  // (getServerSnapshot ""), der Client ersetzt es nach der Hydration durch das
+  // aktuelle Datum — ohne Hydration-Mismatch und ohne setState im Effect. Der
+  // Datumsstring ist tagesstabil (Object.is-gleich), es entsteht keine
+  // Render-Schleife. Rein informativ.
+  const stand = useSyncExternalStore(
+    subscribeNoop,
+    () =>
+      new Date().toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }),
+    () => "",
+  );
 
   return (
     <div ref={ref} className="border-t border-border pt-6 sm:pt-7">
@@ -45,7 +73,7 @@ export function ReachChart() {
           Exposé-Aufrufe auf ImmoScout24
         </h3>
         <p className="text-xs text-faint">
-          ImmoScout24-Anbieterprofile · Stand 13.07.2026
+          ImmoScout24-Anbieterprofile{stand ? ` · Stand ${stand}` : ""}
         </p>
         <p className="text-[11px] text-faint/70">
           Öffentlich einsehbar auf den jeweiligen Anbieterprofilen.

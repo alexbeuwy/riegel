@@ -17,14 +17,13 @@ export interface StatStripProps {
 }
 
 /**
- * Zwei ruhige Zusatz-Fakten NEBEN dem Live-Ticker — bewusst KEIN eigener
- * 4-Kachel-Zahlenstreifen mehr (Kundenfeedback "zu viele große Zahlen").
- * Die Lebenszeit-Zahlen (Aufrufe, Besichtigungen) stehen bereits in Prosa im
- * Hero-Sub und werden hier NICHT dupliziert — nur die beiden Werte, die
- * exklusiv dieser Sektion gehören (s. Kommentar in page.tsx), bleiben übrig:
- * Ø Vermarktungsdauer und Jahre am Markt. Deutlich kleiner/leiser als die
- * drei Live-Zahlen im Ticker gesetzt (kein akira-Display, kleinere Schrift) —
- * reine Ergänzung, kein zweites Cockpit voller Riesenzahlen.
+ * Ruhige Zusatz-Fakten NEBEN dem Live-Ticker — bewusst KEIN eigener
+ * 4-Kachel-Zahlenstreifen mit Riesenzahlen (Kundenfeedback "zu viele große
+ * Zahlen"). Deutlich kleiner/leiser als die Live-Zahlen im Ticker gesetzt
+ * (kein akira-Display, kleinere Schrift) — reine Ergänzung. Alle drei Werte
+ * sind belegbar und bewusst so gewählt, dass sie über die Jahre stimmen:
+ * Ø Vermarktungsdauer, Jahre am Markt und die jährlichen Besichtigungen
+ * (Jahreswert statt eines nicht exakt belegbaren Gesamtwerts).
  */
 export function StatStrip({ stats }: StatStripProps) {
   const [ref, inView] = useInViewOnce<HTMLDivElement>();
@@ -41,6 +40,12 @@ export function StatStrip({ stats }: StatStripProps) {
       label: "Jahre am Markt",
       target: 20,
       format: (n) => `${nfInt.format(Math.round(n))}+`,
+    },
+    {
+      key: "besichtigungen",
+      label: "Besichtigungen / Jahr",
+      target: stats.besichtigungenProJahr,
+      format: (n) => `ca. ${nfInt.format(Math.round(n))}`,
     },
   ];
 

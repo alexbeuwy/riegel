@@ -135,9 +135,10 @@ export default async function HomePage() {
               style={{ animationDelay: "380ms" }}
             >
               Ihr <strong className="font-medium text-fg">Familienunternehmen</strong> für Immobilien:
-              seit über 20 Jahren regional verwurzelt und bundesweit vernetzt. Ihr führender Makler
-              mit großer Reichweite: <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong>{" "}
-              auf ImmoScout24.
+              seit über 20 Jahren regional verwurzelt, bundesweit vernetzt und mit{" "}
+              <strong className="font-medium text-fg">über 40 Jahren Immobilienerfahrung</strong> im Team.
+              Ihr führender Makler mit großer Reichweite:{" "}
+              <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
             </p>
             <p
               className="reveal-lcp mt-4 max-w-xl text-base text-muted"
@@ -172,11 +173,12 @@ export default async function HomePage() {
           Markenkern-Story: ein Wettbewerber wirbt mit Live-Ticker + Zahlenkacheln,
           aber mit erfundenen Zahlen — bei uns kommt der Ticker wirklich live aus
           derselben Objektverwaltung, die auch das Portal befüllt.
-          Redesign (Kundenfeedback "zu viele große Zahlen"): die Lebenszeit-Zahlen
-          (Aufrufe, Verkäufe, Besichtigungen) stehen bereits in Prosa im Hero-Sub
-          und werden hier NICHT als zweite Zahlen-Wand wiederholt. Der Live-Ticker
-          mit seinen drei echten Live-Werten ist die einzige große Zahlengruppe
-          dieser Sektion, StatStrip liefert nur noch zwei leise Zusatz-Fakten.
+          Redesign (Kundenfeedback "zu viele große Zahlen"): die Aufrufe-Zahl steht
+          bereits in Prosa im Hero-Sub und wird hier NICHT als zweite Zahlen-Wand
+          wiederholt. Eine „bisher verkauft"-Zahl gibt es bewusst NICHT (Sissy:
+          über die Jahrzehnte nicht exakt belegbar). Der Live-Ticker mit seinen
+          echten Live-Werten ist die einzige große Zahlengruppe dieser Sektion,
+          StatStrip liefert nur drei leise, dauerhaft belegbare Zusatz-Fakten.
           Layout (2. Redesign): Desktop 2 Spalten (lg:grid-cols-2) — links bleibt
           alles wie gehabt (Eyebrow/H2/Copy + Ticker + Zusatz-Fakten), rechts
           füllt der neue Reichweiten-Vergleich (ReachChart, zulässige
