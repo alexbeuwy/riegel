@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icon";
 import { useInViewOnce, useCountUp } from "@/components/count-up";
+import { TRUST_PLATFORMS } from "@/lib/trust-data";
+
+// Google-Bewertung (4,8 / 449) für die Kachel am Ticker — Single Source ist die
+// Trust-Datenliste, damit Streifen und Ticker nie auseinanderlaufen.
+const GOOGLE = TRUST_PLATFORMS.find((p) => p.key === "google");
 
 const nf = new Intl.NumberFormat("de-DE");
 
@@ -87,18 +92,43 @@ export function LiveTicker({ aktuellImAngebot, inVorbereitung }: LiveTickerProps
         })}
       </div>
 
-      {/* Kontextueller CTA: die Live-Zahl „im Angebot" führt direkt ins Portal. */}
-      <Link
-        href="/immobilien"
-        className="group mt-4 inline-flex items-center gap-2 text-sm font-medium text-accent-strong transition-colors hover:text-accent"
-      >
-        Alle Objekte im Portal ansehen
-        <Icon
-          name="arrowRight"
-          size={16}
-          className="transition-transform duration-300 group-hover:translate-x-0.5"
-        />
-      </Link>
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+        {/* Google-Bewertung direkt am Ticker — verlinkt aufs Google-My-Business-Profil Speyer. */}
+        {GOOGLE && (
+          <a
+            href={GOOGLE.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm transition-colors hover:border-accent/40 hover:bg-surface-2"
+          >
+            <span className="font-semibold text-fg">Google Maps</span>
+            <span className="inline-flex items-center gap-1 text-accent-strong">
+              <Icon name="star" size={14} />
+              <span className="tabular-nums font-bold">
+                {GOOGLE.rating.toFixed(1).replace(".", ",")}
+              </span>
+            </span>
+            <span className="tabular-nums text-muted">{nf.format(GOOGLE.count)} Bewertungen</span>
+            <Icon
+              name="arrowUpRight"
+              size={14}
+              className="text-faint transition-transform duration-300 group-hover:translate-x-0.5"
+            />
+          </a>
+        )}
+        {/* Kontextueller CTA: die Live-Zahl „im Angebot" führt direkt ins Portal. */}
+        <Link
+          href="/immobilien"
+          className="group inline-flex items-center gap-2 text-sm font-medium text-accent-strong transition-colors hover:text-accent"
+        >
+          Alle Objekte im Portal ansehen
+          <Icon
+            name="arrowRight"
+            size={16}
+            className="transition-transform duration-300 group-hover:translate-x-0.5"
+          />
+        </Link>
+      </div>
     </div>
   );
 }

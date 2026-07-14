@@ -2,9 +2,9 @@
  * Bewertungsdaten & Kundenstimmen — recherchiert & verifiziert (Stand 2026-07-02).
  * NUR Plattformen mit direkt bestätigtem ODER mehrfach kreuzverifiziertem Wert.
  * Kununu (kein Profil auffindbar) ist bewusst NICHT drin.
- * Google ist auf Wunsch aufgenommen — Anzahl aus Alex' Ablesung (Speyer 414 +
- * Ludwigshafen 35 = 449). Sterne 4,8 provisorisch (Aggregator-Wert), BITTE von
- * Alex final bestätigen + kanonische Google-Profil-URL(s) nachreichen.
+ * Google: von Alex bestätigt mit 4,8 / 449 Bewertungen (Speyer 414 + LU 35),
+ * verlinkt auf den Google-My-Business-Eintrag Speyer. (Kanonische Place-URL darf
+ * Alex bei Gelegenheit noch gegen die Maps-Suche tauschen.)
  * IVD-Mitgliedschaft ist nicht belegbar — echte Verbandszugehörigkeit ist BVFI
  * (Manfred Riegel, Regionaldirektor), das steht stattdessen im Streifen.
  */
