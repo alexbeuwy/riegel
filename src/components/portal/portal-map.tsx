@@ -109,6 +109,10 @@ export function PortalMap({
       style: STYLE,
       center: [8.4413, 49.3172],
       zoom: 10,
+      // Datenschutz: Zoom auf Ortsebene deckeln — man soll die (ohnehin schon
+      // serverseitig verunschärften) Objekte nur in ihrer Gegend sehen, nie bis
+      // aufs einzelne Gebäude heranzoomen können.
+      maxZoom: 13,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
@@ -230,7 +234,9 @@ export function PortalMap({
         type: "geojson",
         data: toFeatureCollection(estates),
         cluster: true,
-        clusterMaxZoom: 15,
+        // Unter dem gedeckelten maxZoom (13) clustern; auf der letzten Stufe
+        // werden die (verunschärften) Einzelpunkte gezeigt.
+        clusterMaxZoom: 12,
         clusterRadius: 52,
       });
 

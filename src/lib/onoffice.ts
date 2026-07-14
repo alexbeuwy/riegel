@@ -595,10 +595,31 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
   const rawDistrict = str(el.regionaler_zusatz);
   const district = (/^[\["']*ind[A-Z0-9]/i.test(rawDistrict) ? "" : rawDistrict) || districtFromOrt || undefined;
 
-  const lat = num(el.breitengrad);
-  const lng = num(el.laengengrad);
-  const geo: GeoPoint | null = lat !== null && lng !== null && lat !== 0 && lng !== 0 ? { lat, lng } : null;
-  const showExactLocation = geo !== null;
+  // DATENSCHUTZ (Vorgabe Sissy Riegel): Die genaue Anschrift eines Objekts darf
+  // NIRGENDS im Portal auftauchen — auch nicht als exakte Karten-Koordinate im
+  // Seiten-Quelltext. Deshalb werden die OnOffice-Koordinaten hier serverseitig
+  // (a) auf 2 Nachkommastellen (~1 km) gerundet — verlustbehaftet, also NICHT
+  // auf die Hausnummer rückrechenbar — und (b) mit einem kleinen, aus der Id
+  // abgeleiteten Versatz (~200–320 m) versehen, damit Objekte derselben
+  // Rasterzelle sich auf der Karte nicht exakt überlagern (der Versatz sitzt auf
+  // dem bereits gerundeten Wert und verrät daher die echte Lage nicht). Die
+  // Karte deckelt zusätzlich den Zoom (portal-map.tsx). Ergebnis: nur die
+  // Gegend/der Ort ist sichtbar, nie das einzelne Gebäude.
+  const rawLat = num(el.breitengrad);
+  const rawLng = num(el.laengengrad);
+  let geo: GeoPoint | null = null;
+  if (rawLat !== null && rawLng !== null && rawLat !== 0 && rawLng !== 0) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0;
+    const ang = ((((h % 360) + 360) % 360) * Math.PI) / 180;
+    const dist = 0.0018 + ((Math.abs(h >> 8) % 120) / 120) * 0.0012; // ~200–320 m
+    geo = {
+      lat: Math.round(rawLat * 100) / 100 + Math.sin(ang) * dist,
+      lng: Math.round(rawLng * 100) / 100 + Math.cos(ang) * dist,
+    };
+  }
+  // Bewusst IMMER false: das Portal zeigt nie die exakte Lage (nur den Ort).
+  const showExactLocation = false;
 
   const flagFeatures = FEATURE_FLAGS.filter(([key]) => bool(el[key])).map(([, label]) => label);
   const { chips: textFeatures, extraParagraph } = extractTextFeatures(str(el.ausstatt_beschr), flagFeatures);

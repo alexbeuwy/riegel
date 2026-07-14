@@ -175,23 +175,25 @@ export default async function EstateDetailPage({
               </section>
             )}
 
-            {(estate.locationDescription || estate.geo) && (
+            {(estate.locationDescription || estate.city) && (
               <section className="space-y-3">
                 <h2 className="text-xl font-semibold">Lage</h2>
                 {estate.locationDescription && (
                   <p className="whitespace-pre-line text-muted">{estate.locationDescription}</p>
                 )}
-                {estate.geo && (
-                  // Reiner Link statt eingebetteter Karte — kein Consent nötig,
-                  // Datenübertragung erst beim bewussten Klick.
+                {estate.city && (
+                  // Datenschutz (Vorgabe Sissy Riegel): NUR auf den Ort verlinken,
+                  // niemals auf die exakte Adresse/Koordinate. Reiner Link statt
+                  // eingebetteter Karte — kein Consent nötig, Datenübertragung
+                  // erst beim bewussten Klick.
                   <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${estate.geo.lat},${estate.geo.lng}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(estate.city)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-accent hover:underline"
                   >
                     <Icon name="pin" size={15} />
-                    Route auf Google Maps öffnen
+                    {estate.city} auf Google Maps ansehen
                   </a>
                 )}
               </section>
