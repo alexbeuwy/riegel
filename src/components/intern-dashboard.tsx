@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
+import type { FeedbackStatusMap, FeedbackState } from "@/lib/intern-feedback";
 
 interface ReportRow {
   id: string;
@@ -38,7 +39,15 @@ interface LeadRow {
   message?: string;
 }
 
-type Tab = "overview" | "reports" | "leads" | "objekte" | "medien";
+interface FeedbackRow {
+  id: string;
+  created_at: string;
+  page_url?: string;
+  area?: string;
+  comment: string;
+}
+
+type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback";
 
 interface BunnyImage {
   name: string;
@@ -217,6 +226,10 @@ export function InternDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<{ reports: ReportRow[]; leads: LeadRow[] } | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusMap>({});
+  const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
+  const [fbBusyId, setFbBusyId] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>("overview");
   const [rQuery, setRQuery] = useState("");
@@ -311,10 +324,27 @@ export function InternDashboard() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
       setData({ reports: json.reports ?? [], leads: json.leads ?? [] });
+      setFeedback(json.feedback ?? []);
+      setFeedbackStatus(json.feedbackStatus ?? {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function toggleFeedback(id: string, status: FeedbackState) {
+    setFbBusyId(id);
+    try {
+      const res = await fetch("/api/intern/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, id, status }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) setFeedbackStatus(json.feedbackStatus ?? {});
+    } finally {
+      setFbBusyId(null);
     }
   }
 
@@ -432,12 +462,17 @@ export function InternDashboard() {
     );
   }
 
+  const fbOpenCount = feedback.filter(
+    (f) => (feedbackStatus[f.id]?.status ?? "open") !== "done",
+  ).length;
+
   const TABS: { key: Tab; label: string; icon: IconName; n?: number }[] = [
     { key: "overview", label: "Übersicht", icon: "chart" },
     { key: "reports", label: "Reports", icon: "doc", n: stats?.reports },
     { key: "leads", label: "Anfragen", icon: "calendar", n: stats?.leads },
     { key: "objekte", label: "Objekte", icon: "building" },
     { key: "medien", label: "Medien", icon: "layers" },
+    { key: "feedback", label: "Feedback", icon: "sparkle", n: fbOpenCount },
   ];
 
   return (
@@ -873,6 +908,107 @@ export function InternDashboard() {
                     })}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Feedback (On-Page-Kommentare von Sissy) ── */}
+        {tab === "feedback" && (
+          <div className="space-y-5">
+            <div className="flex gap-1.5">
+              {(
+                [
+                  ["all", `Alle (${feedback.length})`],
+                  ["open", `Offen (${fbOpenCount})`],
+                  ["done", `Erledigt (${feedback.length - fbOpenCount})`],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFbFilter(key)}
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                    fbFilter === key
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border text-muted hover:border-accent/40"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {feedback.length === 0 ? (
+              <p className="rounded-2xl border border-border bg-surface px-4 py-10 text-center text-muted">
+                Noch keine Kommentare.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {feedback
+                  .filter((f) => {
+                    const st = feedbackStatus[f.id]?.status ?? "open";
+                    return fbFilter === "all" || (fbFilter === "done" ? st === "done" : st !== "done");
+                  })
+                  .map((f) => {
+                    const entry = feedbackStatus[f.id];
+                    const done = entry?.status === "done";
+                    return (
+                      <div
+                        key={f.id}
+                        className={`rounded-2xl border p-4 transition-colors ${
+                          done ? "border-border bg-surface/50" : "border-accent/30 bg-surface"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                          <span
+                            className={`rounded-full border px-2 py-0.5 ${
+                              done ? "border-border text-faint" : "border-accent/50 text-accent"
+                            }`}
+                          >
+                            {done ? "Erledigt" : "Offen"}
+                          </span>
+                          <span className="text-faint">{fmtDate(f.created_at)}</span>
+                          {f.page_url && (
+                            <a
+                              href={f.page_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent hover:underline"
+                            >
+                              {f.page_url}
+                            </a>
+                          )}
+                        </div>
+                        <p
+                          className={`mt-2 whitespace-pre-wrap text-sm ${
+                            done ? "text-muted" : "text-fg"
+                          }`}
+                        >
+                          {f.comment}
+                        </p>
+                        {f.area && (
+                          <p className="mt-1.5 line-clamp-1 text-xs text-faint" title={f.area}>
+                            {f.area}
+                          </p>
+                        )}
+                        {entry?.note && (
+                          <p className="mt-1.5 text-xs text-accent">Notiz: {entry.note}</p>
+                        )}
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleFeedback(f.id, done ? "open" : "done")}
+                            disabled={fbBusyId === f.id}
+                            className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                          >
+                            <Icon name={done ? "close" : "check"} size={13} />
+                            {done ? "Wieder öffnen" : "Als erledigt markieren"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyInternAccess } from "@/lib/intern-access";
+import { FEEDBACK_STATUS_ROW_ID, parseFeedbackStatus } from "@/lib/intern-feedback";
 
 /**
  * Internes Lead-Dashboard-Backend. Liest Bewertungs-Reports + Termin-/Kontakt-Leads
@@ -37,9 +38,14 @@ export async function POST(req: Request) {
   }
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-  const [reportsRes, leadsRes] = await Promise.all([
+  const [reportsRes, leadsRes, feedbackRes] = await Promise.all([
     admin.from("valuation_requests").select("*").order("created_at", { ascending: false }).limit(300),
     admin.from("leads").select("*").order("created_at", { ascending: false }).limit(300),
+    admin
+      .from("feedback")
+      .select("id, created_at, page_url, area, comment")
+      .order("created_at", { ascending: false })
+      .limit(500),
   ]);
 
   if (reportsRes.error || leadsRes.error) {
@@ -49,10 +55,19 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+  // Feedback ist optional — fehlt die Tabelle, bleibt das Dashboard nutzbar.
+  if (feedbackRes.error) console.error("[intern] Feedback-Load-Fehler:", feedbackRes.error.message);
+
+  // Status liegt in einer Sentinel-Zeile derselben Tabelle -> herausfiltern.
+  const allFeedback = feedbackRes.data ?? [];
+  const statusRow = allFeedback.find((r) => r.id === FEEDBACK_STATUS_ROW_ID);
+  const comments = allFeedback.filter((r) => r.id !== FEEDBACK_STATUS_ROW_ID);
 
   return NextResponse.json({
     ok: true,
     reports: reportsRes.data ?? [],
     leads: leadsRes.data ?? [],
+    feedback: comments,
+    feedbackStatus: parseFeedbackStatus(statusRow?.comment),
   });
 }
