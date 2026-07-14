@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Estate } from "@/lib/mock-estates";
 import { PortalCard } from "@/components/portal/portal-card";
 import { Icon } from "@/components/icon";
 import { MapConsentGate, useConsent } from "@/components/consent";
 import type { MapBounds } from "@/components/portal/portal-map";
+import { filterByRadius, readRadiusKm } from "@/components/portal/umkreis";
 
 const PortalMap = dynamic(
   () => import("@/components/portal/portal-map").then((m) => m.PortalMap),
@@ -53,15 +55,39 @@ export function PortalView({ estates }: { estates: Estate[] }) {
     setVisibleCount(CARD_CHUNK);
   }
 
+  // Umkreissuche: liegt ein Radius + Ort vor, wird clientseitig um den
+  // Schwerpunkt (Centroid) des gewählten Orts gefiltert (s. umkreis.ts). Ohne
+  // Radius ist baseEstates referenzgleich zur (serverseitig exakt gefilterten)
+  // estates-Prop — Karte/Reset-Logik verhalten sich dann exakt wie bisher.
+  const sp = useSearchParams();
+  const umkreisKm = readRadiusKm(sp);
+  const umkreisCity = sp.get("umkreis_ort") ?? "";
+  const baseEstates = useMemo(() => {
+    if (umkreisKm > 0 && umkreisCity) return filterByRadius(estates, umkreisCity, umkreisKm);
+    return estates;
+  }, [estates, umkreisKm, umkreisCity]);
+
+  // Treffer-Zahl (Umkreis-korrekt) an die Geschwister-Komponenten broadcasten:
+  // ActiveChips zeigt sie als „X Objekte", FilterBar im Sheet-Button. PortalView
+  // ist die einzige Stelle mit dem tatsächlich sichtbaren Bestand — im
+  // Umkreis-Modus liefert der Server (ohne `ort`) mehr Objekte, als am Ende
+  // sichtbar sind.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent<number>("riegel:portal-result-count", { detail: baseEstates.length }),
+    );
+  }, [baseEstates.length]);
+
   const onHover = useCallback((id: string | null) => setHoveredId(id), []);
   const onBoundsChange = useCallback((b: MapBounds) => setBounds(b), []);
 
   // Liste filtert auf den Kartenausschnitt, wenn aktiviert. Die Karte bekommt
-  // immer alle Objekte (stabil) → kein Re-Fit-Loop; betroffene Pins werden gedimmt.
+  // immer alle (Umkreis-)Objekte (stabil) → kein Re-Fit-Loop; betroffene Pins
+  // werden gedimmt.
   const listEstates = useMemo(() => {
-    if (!searchInArea || !bounds) return estates;
-    return estates.filter((e) => inBounds(e, bounds));
-  }, [estates, searchInArea, bounds]);
+    if (!searchInArea || !bounds) return baseEstates;
+    return baseEstates.filter((e) => inBounds(e, bounds));
+  }, [baseEstates, searchInArea, bounds]);
 
   // Aktivierung (Pin-Klick auf der Karte): Karte kennt IMMER alle Objekte, die
   // gechunkte Listen-Ansicht aber nur die ersten `visibleCount`. Liegt das
@@ -228,7 +254,7 @@ export function PortalView({ estates }: { estates: Estate[] }) {
 
         <MapConsentGate>
           <PortalMap
-            estates={estates}
+            estates={baseEstates}
             hoveredId={hoveredId}
             activeId={activeId}
             inAreaIds={inAreaIds}

@@ -7,6 +7,13 @@ import { MoreFilters, MoreFiltersFields, selectCls } from "@/components/portal/m
 import { Segmented } from "@/components/segmented";
 import { Icon, type IconName } from "@/components/icon";
 import { activeChips, type FilterState } from "@/lib/portal-filter";
+import {
+  UMKREIS_OPTIONS,
+  readCity,
+  readRadiusKm,
+  setCity,
+  setRadius,
+} from "@/components/portal/umkreis";
 
 const KAUF_PREISE = [100000, 200000, 300000, 400000, 500000, 750000, 1000000, 1500000, 2000000];
 const MIETE_PREISE = [500, 750, 1000, 1250, 1500, 2000, 2500, 3000];
@@ -155,6 +162,16 @@ export function FilterBar({
   const set = (name: string, value: string) =>
     update((p) => (value ? p.set(name, value) : p.delete(name)));
 
+  // Ort + Umkreis brauchen einen eigenen Mutations-Pfad, weil der Ort je nach
+  // Modus in `ort` (exakt) oder `umkreis_ort` (Radius) liegt — s. umkreis.ts.
+  const setCityParam = (v: string) => update((p) => setCity(p, v));
+  const setUmkreisParam = (v: string) => update((p) => setRadius(p, v));
+
+  // Aktuell gewählter Ort (aus `ort` ODER `umkreis_ort`) und Umkreis-Wert.
+  const selectedCity = readCity(sp);
+  const radiusValue = sp.get("umkreis") ?? "";
+  const umkreisActive = readRadiusKm(sp) > 0 && !!selectedCity;
+
   const setTyp = (v: "kauf" | "miete") =>
     // Kauf↔Miete: Preis-Filter zurücksetzen (Kauf- und Mietskalen sind inkompatibel)
     update((p) => {
@@ -177,7 +194,9 @@ export function FilterBar({
 
   // Aktive-Filter-Zahl fürs Badge auf dem mobilen "Filter"-Button — dieselbe
   // Quelle wie die entfernbaren Chips unter der Filterleiste.
-  const activeCount = activeChips(filters).length;
+  // Im Umkreis-Modus zählt activeChips(filters) den Ort nicht (kein `ort`-Param),
+  // daher +2 für Ort-Chip und Umkreis-Chip (s. ActiveChips).
+  const activeCount = activeChips(filters).length + (umkreisActive ? 2 : 0);
 
   // Treffer-Zahl fürs "X Objekte anzeigen" im Sheet: FilterBar bekommt sie
   // nicht als Prop (Elternteil ist die Server-Component-Seite, die wir laut
@@ -325,10 +344,20 @@ export function FilterBar({
           <Select
             label="Ort"
             icon="pin"
-            value={filters.ort ?? ""}
-            onChange={(v) => set("ort", v)}
+            value={selectedCity}
+            onChange={setCityParam}
             options={ortOptions}
           />
+          {/* Umkreis: nur sichtbar, wenn ein Ort gewählt ist. */}
+          {selectedCity && (
+            <Select
+              label="Umkreis"
+              icon="compass"
+              value={radiusValue}
+              onChange={setUmkreisParam}
+              options={UMKREIS_OPTIONS}
+            />
+          )}
           <Select
             label="Preis ab"
             icon="euro"
@@ -448,10 +477,18 @@ export function FilterBar({
                 />
                 <SheetSelect
                   label="Ort"
-                  value={filters.ort ?? ""}
-                  onChange={(v) => set("ort", v)}
+                  value={selectedCity}
+                  onChange={setCityParam}
                   options={ortOptions}
                 />
+                {selectedCity && (
+                  <SheetSelect
+                    label="Umkreis"
+                    value={radiusValue}
+                    onChange={setUmkreisParam}
+                    options={UMKREIS_OPTIONS}
+                  />
+                )}
                 <SheetSelect
                   label="Preis ab"
                   value={filters.preisMin?.toString() ?? ""}
