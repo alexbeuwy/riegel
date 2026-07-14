@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { checkAdminPassword } from "@/lib/admin-auth";
+import { verifyInternAccess } from "@/lib/intern-access";
 
 /**
  * Internes Lead-Dashboard-Backend. Liest Bewertungs-Reports + Termin-/Kontakt-Leads
@@ -19,14 +19,14 @@ export async function POST(req: Request) {
     );
   }
 
-  let b: { password?: string };
+  let b: { password?: string; accessToken?: string };
   try {
     b = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
 
-  const auth = checkAdminPassword(b.password);
+  const auth = await verifyInternAccess({ password: b.password, accessToken: b.accessToken });
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

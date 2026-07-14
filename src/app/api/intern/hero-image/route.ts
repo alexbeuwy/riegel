@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { checkAdminPassword } from "@/lib/admin-auth";
+import { verifyInternAccess } from "@/lib/intern-access";
 import { supabaseServer } from "@/lib/supabase-server";
 import { listBunnyImages, uploadBunnyImage, isOwnCdnUrl } from "@/lib/bunny";
 import { getSiteSetting } from "@/lib/site-settings";
@@ -36,7 +36,10 @@ export async function POST(req: Request) {
   // ── Upload (Drag & Drop) — multipart/form-data ──
   if (contentType.includes("multipart/form-data")) {
     const form = await req.formData();
-    const auth = checkAdminPassword(String(form.get("password") ?? ""));
+    const auth = await verifyInternAccess({
+      password: String(form.get("password") ?? ""),
+      accessToken: String(form.get("accessToken") ?? ""),
+    });
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const file = form.get("file");
@@ -62,13 +65,13 @@ export async function POST(req: Request) {
   }
 
   // ── JSON-Aktionen: "list" / "select" ──
-  let b: { password?: string; action?: string; url?: string };
+  let b: { password?: string; accessToken?: string; action?: string; url?: string };
   try {
     b = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
-  const auth = checkAdminPassword(b.password);
+  const auth = await verifyInternAccess({ password: b.password, accessToken: b.accessToken });
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   if (b.action === "list") {

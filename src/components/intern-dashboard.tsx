@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
+import { useAuth } from "@/components/auth";
 
 interface ReportRow {
   id: string;
@@ -207,6 +208,11 @@ function FilterSelect({
 /* ───────────────────────── Dashboard ───────────────────────── */
 
 export function InternDashboard() {
+  // Zugang wahlweise per ADMIN_PASSWORD oder per eingeloggtem RIEGEL-Konto
+  // (E-Mail-Allowlist, serverseitig geprüft). accessToken wird bei jedem
+  // Aufruf mitgeschickt; der Server nimmt, was gültig ist.
+  const { session } = useAuth();
+  const accessToken = session?.access_token;
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -233,7 +239,7 @@ export function InternDashboard() {
       const res = await fetch("/api/intern/hero-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, action: "list" }),
+        body: JSON.stringify({ password, accessToken, action: "list" }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
@@ -254,7 +260,7 @@ export function InternDashboard() {
       const res = await fetch("/api/intern/hero-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, action: "select", url }),
+        body: JSON.stringify({ password, accessToken, action: "select", url }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
@@ -274,6 +280,7 @@ export function InternDashboard() {
     try {
       const fd = new FormData();
       fd.append("password", password);
+      fd.append("accessToken", accessToken ?? "");
       fd.append("file", file);
       const res = await fetch("/api/intern/hero-image", { method: "POST", body: fd });
       const json = await res.json();
@@ -289,8 +296,8 @@ export function InternDashboard() {
   }
 
   async function load() {
-    if (!password.trim()) {
-      setError("Bitte Passwort eingeben.");
+    if (!password.trim() && !accessToken) {
+      setError("Bitte mit einem freigeschalteten RIEGEL-Konto anmelden oder Passwort eingeben.");
       return;
     }
     setBusy(true);
@@ -299,7 +306,7 @@ export function InternDashboard() {
       const res = await fetch("/api/intern", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, accessToken }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
@@ -370,27 +377,55 @@ export function InternDashboard() {
             </div>
             <h1 className="mt-3 text-xl font-semibold">Lead-Cockpit</h1>
             <p className="mt-2 text-sm text-muted">Reports, Termin- &amp; Kontaktanfragen an einem Ort.</p>
-            <input
-              type="password"
-              value={password}
-              aria-label="Passwort"
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && load()}
-              placeholder="Passwort"
-              className="mt-5 w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
-            />
-            {error && <p className="mt-3 text-sm text-accent" role="alert">{error}</p>}
-            <button
-              type="button"
-              onClick={load}
-              disabled={busy}
-              className="press mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70"
-            >
-              {busy ? "Lädt …" : "Anmelden"}
-            </button>
+            {accessToken ? (
+              // Eingeloggt (RIEGEL-Konto): direkter Zugang, der Server prüft die
+              // E-Mail-Freigabe. Kein Passwort nötig.
+              <>
+                <p className="mt-5 rounded-lg border border-border bg-bg px-4 py-3 text-sm text-muted">
+                  Angemeldet als{" "}
+                  <span className="text-fg">{session?.user?.email}</span>
+                </p>
+                {error && <p className="mt-3 text-sm text-accent" role="alert">{error}</p>}
+                <button
+                  type="button"
+                  onClick={load}
+                  disabled={busy}
+                  className="press mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70"
+                >
+                  {busy ? "Lädt …" : "Dashboard öffnen"}
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="password"
+                  value={password}
+                  aria-label="Passwort"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError(null);
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && load()}
+                  placeholder="Passwort"
+                  className="mt-5 w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
+                />
+                {error && <p className="mt-3 text-sm text-accent" role="alert">{error}</p>}
+                <button
+                  type="button"
+                  onClick={load}
+                  disabled={busy}
+                  className="press mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-70"
+                >
+                  {busy ? "Lädt …" : "Anmelden"}
+                </button>
+                <p className="mt-4 text-center text-xs text-faint">
+                  Freigeschaltetes RIEGEL-Konto?{" "}
+                  <a href="/konto?next=/intern" className="text-accent hover:underline">
+                    Anmelden oder registrieren
+                  </a>
+                </p>
+              </>
+            )}
           </div>
         </Container>
       </section>
