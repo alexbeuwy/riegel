@@ -38,6 +38,8 @@ const DONE_RULES = [
   ["fotos kann man die bisherigen", "Kein Handlungsbedarf: Fotos bleiben, neue im August"],
   ["Zustimmung von Datenschutz und Wideruf", "Pre-Exposé Provisionsvereinbarung-Onboarding gebaut (Bestaetigungs-Dialog + Mail)"],
   ["das wort ist hier zu lang", "Rechner-Kachel Vergleichsobjekte auf Vergleiche gekuerzt"],
+  ["steht immer nur der eigene rekord", "Dauerhafte Bestenliste (Allzeit + Monat) dauerhaft unter dem Spiel eingebaut"],
+  ["findet man hier auch die kontaktdaten", "Konten-Liste im /intern gebaut (registrierte Nutzerkonten)"],
 ];
 
 const { data: rows, error } = await sb.from("feedback").select("id, comment");
