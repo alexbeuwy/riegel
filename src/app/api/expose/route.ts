@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { getEstateBySlug } from "@/lib/estates";
-import { fetchExposePdf } from "@/lib/onoffice";
+import { getExposePdfCached } from "@/lib/expose-cache";
 
 /**
  * PDF-Exposé-Download (/immobilien/[slug]) — bewusst hinter dem Konto-Gate:
@@ -37,7 +37,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Für dieses Objekt ist kein Exposé verfügbar." }, { status: 404 });
   }
 
-  const pdf = await fetchExposePdf(found.estate.id);
+  // Cache in Supabase Storage vorgeschaltet (siehe expose-cache.ts) — nur bei
+  // Cache-Miss/Storage-Fehler rendert OnOffice frisch (~11-16s).
+  const pdf = await getExposePdfCached(found.estate.id, found.estate.updatedAt);
   if (!pdf) {
     return NextResponse.json(
       { ok: false, error: "Exposé derzeit nicht verfügbar — bitte später erneut versuchen." },

@@ -78,9 +78,24 @@ export function ExposeCta({ slug, live }: { slug: string; live: boolean }) {
             disabled={busy}
             className="press mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-accent px-5 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent hover:text-on-accent disabled:opacity-60"
           >
-            <Icon name="doc" size={16} />
-            {busy ? "Wird erstellt …" : "Exposé herunterladen"}
+            {busy ? (
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden
+              />
+            ) : (
+              <Icon name="doc" size={16} />
+            )}
+            {busy ? "Exposé wird erstellt …" : "Exposé herunterladen"}
           </button>
+          {busy && (
+            // Erster Download je Objekt rendert live beim externen System
+            // (OnOffice, mehrere Sekunden), danach liefert unser Cache sofort aus.
+            <p className="mt-2 text-center text-[0.7rem] text-faint">
+              Das externe System generiert das Exposé frisch, das kann bis zu
+              15 Sekunden dauern. Danach ist es sofort da.
+            </p>
+          )}
         </>
       ) : (
         <>
