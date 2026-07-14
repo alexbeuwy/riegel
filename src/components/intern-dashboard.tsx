@@ -47,7 +47,15 @@ interface FeedbackRow {
   comment: string;
 }
 
-type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback";
+interface AccountRow {
+  id: string;
+  email?: string | null;
+  created_at?: string;
+  last_sign_in_at?: string | null;
+  email_confirmed_at?: string | null;
+}
+
+type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback" | "konten";
 
 interface BunnyImage {
   name: string;
@@ -230,6 +238,7 @@ export function InternDashboard() {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusMap>({});
   const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
   const [fbBusyId, setFbBusyId] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
 
   const [tab, setTab] = useState<Tab>("overview");
   const [rQuery, setRQuery] = useState("");
@@ -237,6 +246,7 @@ export function InternDashboard() {
   const [rHot, setRHot] = useState(false);
   const [lQuery, setLQuery] = useState("");
   const [lKind, setLKind] = useState("all");
+  const [aQuery, setAQuery] = useState("");
 
   const [heroImages, setHeroImages] = useState<BunnyImage[] | null>(null);
   const [heroCurrent, setHeroCurrent] = useState<string>("");
@@ -326,6 +336,7 @@ export function InternDashboard() {
       setData({ reports: json.reports ?? [], leads: json.leads ?? [] });
       setFeedback(json.feedback ?? []);
       setFeedbackStatus(json.feedbackStatus ?? {});
+      setAccounts(json.accounts ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
@@ -395,6 +406,16 @@ export function InternDashboard() {
       return norm(`${l.name ?? ""} ${l.email ?? ""} ${l.subject ?? ""} ${l.message ?? ""}`).includes(q);
     });
   }, [data, lQuery, lKind]);
+
+  const filteredAccounts = useMemo(() => {
+    const q = norm(aQuery.trim());
+    return accounts
+      .filter((a) => (q ? norm(a.email ?? "").includes(q) : true))
+      .slice()
+      .sort(
+        (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+      );
+  }, [accounts, aQuery]);
 
   /* ── Login-Gate ── */
   if (!data) {
@@ -473,6 +494,7 @@ export function InternDashboard() {
     { key: "objekte", label: "Objekte", icon: "building" },
     { key: "medien", label: "Medien", icon: "layers" },
     { key: "feedback", label: "Feedback", icon: "sparkle", n: fbOpenCount },
+    { key: "konten", label: "Konten", icon: "users", n: accounts.length },
   ];
 
   return (
@@ -1011,6 +1033,61 @@ export function InternDashboard() {
                   })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Konten (per Supabase-Auth registrierte Nutzer) ── */}
+        {tab === "konten" && (
+          <div>
+            <Toolbar query={aQuery} setQuery={setAQuery} placeholder="E-Mail …" />
+
+            <div className="overflow-x-auto rounded-2xl border border-border">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
+                  <tr>
+                    {["E-Mail", "Registriert", "Letzter Login", "Bestätigt"].map((h) => (
+                      <th key={h} className="px-4 py-3 font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAccounts.length === 0 ? (
+                    <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">Keine Konten.</td></tr>
+                  ) : (
+                    filteredAccounts.map((a) => {
+                      const confirmed = Boolean(a.email_confirmed_at);
+                      return (
+                        <tr key={a.id} className="border-t border-border align-top hover:bg-surface/60">
+                          <td className="px-4 py-3">
+                            {a.email ? (
+                              <a href={`mailto:${a.email}`} className="text-accent hover:underline">{a.email}</a>
+                            ) : (
+                              <span className="text-faint">ohne E-Mail</span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-muted">
+                            {a.created_at ? fmtDate(a.created_at) : "–"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-muted">
+                            {a.last_sign_in_at ? fmtDate(a.last_sign_in_at) : "–"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-xs ${
+                                confirmed ? "border-accent/40 text-accent" : "border-border text-faint"
+                              }`}
+                            >
+                              {confirmed ? "Ja" : "Nein"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-faint">{filteredAccounts.length} von {accounts.length} Konten</p>
           </div>
         )}
       </Container>

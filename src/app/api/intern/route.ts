@@ -63,11 +63,38 @@ export async function POST(req: Request) {
   const statusRow = allFeedback.find((r) => r.id === FEEDBACK_STATUS_ROW_ID);
   const comments = allFeedback.filter((r) => r.id !== FEEDBACK_STATUS_ROW_ID);
 
+  // Registrierte Auth-Nutzerkonten. Fail-soft: bei Fehler leere Liste, damit
+  // das restliche Dashboard nutzbar bleibt. Nur nicht-sensible Felder nach außen.
+  let accounts: {
+    id: string;
+    email: string | null;
+    created_at?: string;
+    last_sign_in_at: string | null;
+    email_confirmed_at: string | null;
+  }[] = [];
+  try {
+    const { data: usersData, error: usersError } = await admin.auth.admin.listUsers();
+    if (usersError) {
+      console.error("[intern] Konten-Load-Fehler:", usersError.message);
+    } else {
+      accounts = (usersData?.users ?? []).map((u) => ({
+        id: u.id,
+        email: u.email ?? null,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at ?? null,
+        email_confirmed_at: u.email_confirmed_at ?? u.confirmed_at ?? null,
+      }));
+    }
+  } catch (e) {
+    console.error("[intern] Konten-Load-Ausnahme:", e instanceof Error ? e.message : String(e));
+  }
+
   return NextResponse.json({
     ok: true,
     reports: reportsRes.data ?? [],
     leads: leadsRes.data ?? [],
     feedback: comments,
     feedbackStatus: parseFeedbackStatus(statusRow?.comment),
+    accounts,
   });
 }
