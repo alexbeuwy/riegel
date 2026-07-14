@@ -270,7 +270,7 @@ export default async function EstateDetailPage({
 
             {/* Konto-Anreiz: Exposé-PDF (Live-Objekte) — eingeloggt Download,
                 ausgeloggt CTA "Konto erstellen & Exposé erhalten". */}
-            <ExposeCta slug={estate.slug} live={source === "onoffice"} />
+            <ExposeCta slug={estate.slug} live={source === "onoffice"} provision={estate.provision} />
 
             <AnsprechpartnerCard contact={contact} context={estate.title} />
           </aside>
