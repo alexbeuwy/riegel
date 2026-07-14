@@ -145,3 +145,19 @@ alter table public.game_scores enable row level security;
 drop policy if exists "insert game scores" on public.game_scores;
 create policy "insert game scores" on public.game_scores
   for insert with check (true);
+
+-- 8) Feedback ("Auf der Seite kommentieren", feedback-widget.tsx) — von Alex
+--    im Supabase-Dashboard → SQL-Editor auszuführen. Nur intern (Team) sichtbar,
+--    kein Besucher-Formular: der Insert läuft ausschließlich über /api/feedback
+--    mit dem service_role-Key. Deshalb bewusst OHNE public-Policy (weder
+--    insert noch select für anon/authenticated) — RLS ist an, aber leer, da
+--    service_role RLS ohnehin umgeht. Auswertung über Supabase-Dashboard/Editor.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  page_url text,
+  comment text not null,
+  area text,
+  user_agent text
+);
+alter table public.feedback enable row level security;

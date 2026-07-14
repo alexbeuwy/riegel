@@ -916,3 +916,44 @@
     transition: none !important;
   }
 }
+
+/* ── Feedback-Widget (nur intern, „Auf der Seite kommentieren", s. feedback-widget.tsx) ──
+   Sichtbar nur mit lokalem Flag — für normale Besucher ohne jede Wirkung.
+   Crosshair-Cursor im „Stelle wählen"-Modus (Klick zeigt aufs Element statt
+   es auszulösen) + sanftes Pop-in fürs Desktop-Popover. Mobil (<640px) nutzt
+   bewusst das bereits vorhandene .t-sheet-*-Bottom-Sheet von oben, statt ein
+   zweites Sheet-Muster zu erfinden. */
+:root {
+  --feedback-pop-open-dur: 200ms;
+  --feedback-pop-close-dur: 150ms;
+}
+.feedback-picking,
+.feedback-picking * {
+  cursor: crosshair !important;
+}
+/* Eigene Widget-UI (Hinweisleiste, Abbrechen/Allgemein) bleibt normal bedienbar. */
+.feedback-picking [data-feedback-ui],
+.feedback-picking [data-feedback-ui] * {
+  cursor: default !important;
+}
+.feedback-picking [data-feedback-ui] button {
+  cursor: pointer !important;
+}
+.t-feedback-pop {
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+  transition:
+    opacity var(--feedback-pop-close-dur) var(--ease-smooth-out),
+    transform var(--feedback-pop-close-dur) var(--ease-smooth-out);
+  will-change: transform, opacity;
+}
+.t-feedback-pop.is-open {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition-duration: var(--feedback-pop-open-dur);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-feedback-pop {
+    transition: none !important;
+  }
+}

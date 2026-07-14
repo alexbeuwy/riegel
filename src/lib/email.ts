@@ -177,4 +177,8 @@ export async function sendMail(opts: {
   }
 }
 
-export const emailTargets = { FROM, TO, SITE_URL };
+// ASSET_BASE zusätzlich exportiert fürs Feedback-Widget (/api/feedback): der
+// "Seite öffnen"-Link in der Mail soll auf eine tatsächlich erreichbare
+// Domain zeigen — SITE_URL (riegel-immobilien.de) liefert laut obigem Kommentar
+// aktuell 404, ASSET_BASE (riegel.vercel.app) ist die verifiziert live Domain.
+export const emailTargets = { FROM, TO, SITE_URL, ASSET_BASE: EMAIL_ASSET_BASE };

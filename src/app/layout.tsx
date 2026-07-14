@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CtaBand } from "@/components/cta-band";
 import { WhatsappFab } from "@/components/whatsapp-fab";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import { FavoritesProvider } from "@/components/favorites";
 import { SavedSearchesProvider } from "@/components/saved-searches";
 import { AuthProvider } from "@/components/auth";
@@ -144,6 +145,9 @@ export default function RootLayout({
                 <CtaBand />
                 <SiteFooter />
                 <WhatsappFab />
+                {/* Nur fürs Team: rendert `null`, solange kein lokales Flag gesetzt
+                    ist (s. feedback-widget.tsx) — für normale Besucher ohne jede Wirkung. */}
+                <FeedbackWidget />
               </SavedSearchesProvider>
             </FavoritesProvider>
           </AuthProvider>
