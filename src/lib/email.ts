@@ -151,7 +151,8 @@ export function emailRows(rows: { label: string; value: string }[]): string {
 }
 
 export async function sendMail(opts: {
-  to?: string;
+  to?: string | string[];
+  cc?: string | string[];
   subject: string;
   html: string;
   replyTo?: string;
@@ -165,6 +166,7 @@ export async function sendMail(opts: {
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo,
+      ...(opts.cc ? { cc: opts.cc } : {}),
       ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
     });
     // Resend liefert ein Fehler-OBJEKT ({name, message, statusCode}) — ein

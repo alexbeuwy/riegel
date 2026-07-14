@@ -48,10 +48,13 @@ export async function POST(req: Request) {
   // SITE_URL liefert laut email.ts aktuell 404, der Link in der Mail muss
   // aber tatsächlich anklickbar sein.
   const ctaHref = `${emailTargets.ASSET_BASE.replace(/\/$/, "")}${path}`;
-  const to = process.env.FEEDBACK_TO || emailTargets.TO;
+  // Seiten-Kommentare gehen an Alex, Sissy im CC (per Env überschreibbar).
+  const to = process.env.FEEDBACK_TO || "alex@beuwy.com";
+  const cc = process.env.FEEDBACK_CC || "sissy.riegel@riegel-immobilien.de";
 
   const internal = await sendMail({
     to,
+    cc,
     subject: "Neuer Seiten-Kommentar",
     html: emailLayout({
       heading: "Neuer Seiten-Kommentar",
