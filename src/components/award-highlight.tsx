@@ -19,7 +19,7 @@ export function AwardHighlight() {
             <p className="mt-4 text-muted">
               Beim ImmoAward 2025 von ImmoScout24 haben wir uns unter mehr als
               <span className="text-fg"> 25.000 Makler:innen deutschlandweit</span> durchgesetzt:
-              in der Rubrik „Makler des Jahres" national in die <span className="text-fg">Top 21</span> und im
+              in der Rubrik „Makler des Jahres“ national in die <span className="text-fg">Top 21</span> und im
               Raum Frankfurt &amp; Umgebung in die <span className="text-fg">Top 3</span>.
             </p>
             <p className="mt-4 text-muted">
