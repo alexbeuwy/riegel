@@ -217,6 +217,7 @@ function useCountUp(target: number, run: boolean, dur = 1900) {
   useEffect(() => {
     if (!run) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sofort-Endwert bei reduced-motion, einmalig, kein Cascading-Render (Präzedenz: modal.tsx)
       setVal(target);
       return;
     }
@@ -291,6 +292,7 @@ export function Calculator() {
         city: p.get("city") || "",
         postcode: p.get("plz") || "",
       };
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliger URL-Prefill beim Mount
       setF((s) => ({ ...s, address: geo, addressQuery: label }));
       setStep(1);
     } else {
@@ -299,7 +301,6 @@ export function Calculator() {
       const query = p.get("query") || "";
       if (query) setF((s) => ({ ...s, addressQuery: query }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Adress-Autocomplete
@@ -318,6 +319,30 @@ export function Calculator() {
     }
   }, [step, phase]);
 
+  // Wurzel-Container der Analyse-/Ergebnis-Sektion (SOURCES-Reveal-Liste inkl.
+  // BORIS, danach das Bewertungsergebnis). Analyzing und Result ersetzen sich
+  // gegenseitig im selben Slot (kein umschließendes Element in diesem Render-
+  // Baum) — derselbe Ref wird daher an BEIDE Wurzel-Divs gereicht, sodass er
+  // beim Phasenwechsel "analyzing" → "result" einfach auf den jeweils aktuell
+  // gemounteten Knoten zeigt, ohne dass hierfür erneut gescrollt werden muss.
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // Sanft (ease-in-out = Standard-Smooth-Easing des Browsers) zur Analyse-
+  // Sektion scrollen, sobald die Bewertung startet — sonst sieht der Nutzer
+  // die Datenquellen-Reveal-Liste (inkl. BORIS) und das Ergebnis erst nach
+  // manuellem Hochscrollen. Reagiert NUR auf den Eintritt in "analyzing"
+  // (Dependency ist bewusst nur `phase`, nicht `revealed`), damit pro Reveal-
+  // Tick kein zusätzlicher Sprung entsteht. Der rAF-Aufschub lässt den
+  // Analyse-Block sicher erst rendern/mounten, bevor gemessen/gescrollt wird.
+  useEffect(() => {
+    if (phase !== "analyzing") return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const raf = requestAnimationFrame(() => {
+      resultRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }));
 
   const toggleAusst = (a: string) =>
@@ -330,6 +355,7 @@ export function Calculator() {
     if (f.address && f.addressQuery === f.address.label) return; // bereits bestätigt
     const q = f.addressQuery;
     if (q.trim().length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Debounce-Reset bei zu kurzer Query
       setSuggestions([]);
       setActiveIdx(-1);
       return;
@@ -455,10 +481,11 @@ export function Calculator() {
     setPhase("form");
   }
 
-  if (phase === "analyzing") return <Analyzing f={f} result={result} revealed={revealed} boris={boris} />;
+  if (phase === "analyzing") return <Analyzing f={f} result={result} revealed={revealed} boris={boris} sectionRef={resultRef} />;
   // mid<=0-Guard: sollte durch validateStep nicht mehr vorkommen, fängt aber
   // ungültige/negative Eingaben ab, statt ein "0 €"-Ergebnis als gültig zu zeigen.
-  if (phase === "result" && result && result.mid > 0) return <Result f={f} result={result} onReset={reset} boris={boris} />;
+  if (phase === "result" && result && result.mid > 0)
+    return <Result f={f} result={result} onReset={reset} boris={boris} sectionRef={resultRef} />;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -741,7 +768,20 @@ export function Calculator() {
   );
 }
 
-function Analyzing({ f, result, revealed, boris }: { f: FormState; result: ValuationResult | null; revealed: number; boris: BorisState }) {
+function Analyzing({
+  f,
+  result,
+  revealed,
+  boris,
+  sectionRef,
+}: {
+  f: FormState;
+  result: ValuationResult | null;
+  revealed: number;
+  boris: BorisState;
+  /** Wurzel-Container für den Auto-Scroll beim Start der Analyse (s. Calculator). */
+  sectionRef: React.RefObject<HTMLDivElement | null>;
+}) {
   const pct = Math.round((revealed / SOURCES.length) * 100);
   // Passenden Preisatlas-Standort einmal pro Adresse ermitteln (statt in
   // jeder SOURCES-Zeile neu) — s. marktortByOrt in lib/marktdaten.ts.
@@ -751,7 +791,13 @@ function Analyzing({ f, result, revealed, boris }: { f: FormState; result: Valua
   );
   const ctx: SourceCtx = { boris, markt };
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border" role="status" aria-live="polite" aria-busy={pct < 100}>
+    <div
+      ref={sectionRef}
+      className="relative overflow-hidden rounded-2xl border border-border"
+      role="status"
+      aria-live="polite"
+      aria-busy={pct < 100}
+    >
       {/* Eine aggregierte Live-Ansage statt jeder einzelnen Quelle (nicht zu gesprächig). */}
       <span className="sr-only">Bewertung wird berechnet, {pct} Prozent.</span>
       <HeroBackdrop />
@@ -799,14 +845,28 @@ function Analyzing({ f, result, revealed, boris }: { f: FormState; result: Valua
   );
 }
 
-function Result({ f, result, onReset, boris }: { f: FormState; result: ValuationResult; onReset: () => void; boris: BorisState }) {
+function Result({
+  f,
+  result,
+  onReset,
+  boris,
+  sectionRef,
+}: {
+  f: FormState;
+  result: ValuationResult;
+  onReset: () => void;
+  boris: BorisState;
+  /** Derselbe Ref wie in Analyzing — der Slot bleibt beim Phasenwechsel
+   * gleich, daher wird hier NICHT erneut gescrollt (s. Calculator). */
+  sectionRef: React.RefObject<HTMLDivElement | null>;
+}) {
   const mid = useCountUp(result.mid, true);
   const rangePos = result.high > result.low ? ((result.mid - result.low) / (result.high - result.low)) * 100 : 50;
   const b = boris.data;
   const tiles = statTiles(result);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border">
+    <div ref={sectionRef} className="overflow-hidden rounded-2xl border border-border">
       {/* Satelliten-Ansicht + Adresse */}
       {f.address && (
         <div className="relative h-64 w-full sm:h-80">
