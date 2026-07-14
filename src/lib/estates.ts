@@ -35,9 +35,18 @@ const getCachedLiveEstates = unstable_cache(
   async (): Promise<Estate[]> => {
     const live = await fetchOnOfficeEstates();
     if (!live) throw new Error("onoffice_unavailable");
+    // Bild-Ausfall darf NICHT als Erfolg gecacht werden: kommen ALLE Objekte
+    // ohne Foto zurück, ist das mit hoher Wahrscheinlichkeit ein transienter
+    // estatepictures-Fehler (Timeout/Drossel bei der schweren Bild-Batch —
+    // das Bild-Leserecht ist aktiv). Sonst würde 300s lang "Fotos folgen"
+    // ausgeliefert. Werfen statt cachen -> der nächste Abruf holt die Fotos.
+    // (Ein einziges Objekt mit Bild genügt, damit es NICHT als Ausfall gilt.)
+    if (live.length > 0 && live.every((e) => !e.images || e.images.length === 0)) {
+      throw new Error("onoffice_images_missing");
+    }
     return live;
   },
-  ["estates-live"],
+  ["estates-live-v2"],
   { revalidate: 300, tags: ["estates"] },
 );
 
