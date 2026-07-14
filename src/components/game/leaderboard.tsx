@@ -7,21 +7,28 @@ export function Leaderboard({
   entries,
   monthLabel,
   highlightId,
+  heading = "Bestenliste",
+  className = "max-w-sm",
 }: {
   entries: LeaderboardEntry[];
+  /** Rechte Kopf-Beschriftung (z. B. Monat oder „Allzeit"). */
   monthLabel: string;
   highlightId?: string | null;
+  /** Linke Kopf-Beschriftung. */
+  heading?: string;
+  /** Breiten-Utility (Standard max-w-sm; für Grid-Zellen z. B. max-w-none). */
+  className?: string;
 }) {
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-bg/60 text-left backdrop-blur">
+    <div className={`w-full ${className} overflow-hidden rounded-2xl border border-border bg-bg/60 text-left backdrop-blur`}>
       <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-[0.65rem] uppercase tracking-[0.2em] text-faint">
         <Icon name="users" size={13} className="text-accent" />
-        <span className="flex-1">Bestenliste</span>
+        <span className="flex-1">{heading}</span>
         <span>{monthLabel}</span>
       </div>
       {entries.length === 0 ? (
         <p className="px-4 py-5 text-sm text-faint">
-          Noch niemand in {monthLabel} — du kannst der/die Erste sein.
+          Noch keine Einträge — du kannst der/die Erste sein.
         </p>
       ) : (
         <ol className="max-h-64 overflow-y-auto px-2 py-2">

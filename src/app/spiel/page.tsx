@@ -1,5 +1,6 @@
 import { Container } from "@/components/container";
 import { BlitzverkaufGame } from "@/components/game/blitzverkauf-game";
+import { GameLeaderboards } from "@/components/game/game-leaderboards";
 
 export const metadata = {
   title: "Blitzverkauf — das RIEGEL-Spiel",
@@ -24,6 +25,8 @@ export default function SpielPage() {
           </p>
         </div>
         <BlitzverkaufGame />
+        {/* Dauerhafte Bestenlisten (Allzeit + Monat) direkt unter dem Spiel. */}
+        <GameLeaderboards />
       </Container>
     </section>
   );
