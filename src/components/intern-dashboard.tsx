@@ -55,6 +55,15 @@ interface AccountRow {
   email_confirmed_at?: string | null;
 }
 
+interface ObjektRow {
+  id: string;
+  title: string;
+  city: string;
+  slug: string;
+  status: string;
+  price: string;
+}
+
 type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback" | "konten";
 
 interface BunnyImage {
@@ -94,6 +103,13 @@ const OBJEKTART_LABEL: Record<string, string> = {
   grundstueck: "Grundstück",
   gewerbe: "Gewerbe",
   mehrfamilienhaus: "Mehrfamilienhaus",
+};
+
+const OBJ_STATUS: Record<string, { label: string; cls: string }> = {
+  aktiv: { label: "Verfügbar", cls: "border-[#34d399]/40 text-[#34d399]" },
+  reserviert: { label: "Reserviert", cls: "border-[#fbbf24]/40 text-[#fbbf24]" },
+  verkauft: { label: "Verkauft", cls: "border-border text-faint" },
+  vermietet: { label: "Vermietet", cls: "border-border text-faint" },
 };
 
 const norm = (s: string) =>
@@ -238,6 +254,7 @@ export function InternDashboard() {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusMap>({});
   const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
   const [fbBusyId, setFbBusyId] = useState<string | null>(null);
+  const [objekte, setObjekte] = useState<ObjektRow[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
 
   const [tab, setTab] = useState<Tab>("overview");
@@ -336,6 +353,7 @@ export function InternDashboard() {
       setData({ reports: json.reports ?? [], leads: json.leads ?? [] });
       setFeedback(json.feedback ?? []);
       setFeedbackStatus(json.feedbackStatus ?? {});
+      setObjekte(json.objekte ?? []);
       setAccounts(json.accounts ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
@@ -491,7 +509,7 @@ export function InternDashboard() {
     { key: "overview", label: "Übersicht", icon: "chart" },
     { key: "reports", label: "Reports", icon: "doc", n: stats?.reports },
     { key: "leads", label: "Anfragen", icon: "calendar", n: stats?.leads },
-    { key: "objekte", label: "Objekte", icon: "building" },
+    { key: "objekte", label: "Objekte", icon: "building", n: objekte.length },
     { key: "medien", label: "Medien", icon: "layers" },
     { key: "feedback", label: "Feedback", icon: "sparkle", n: fbOpenCount },
     { key: "konten", label: "Konten", icon: "users", n: accounts.length },
@@ -770,58 +788,57 @@ export function InternDashboard() {
           </div>
         )}
 
-        {/* ── Objekte (OnOffice-Scaffold) ── */}
+        {/* ── Objekte (live aus OnOffice) ── */}
         {tab === "objekte" && (
-          <div className="space-y-6">
-            <div className="flex items-start gap-4 rounded-2xl border border-accent/30 bg-accent/5 p-6">
-              <span className="mt-0.5 text-accent"><Icon name="building" size={22} /></span>
-              <div>
-                <h2 className="text-lg font-semibold text-fg">Objekt-Sync via OnOffice</h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted">
-                  Status wie <span className="text-fg">Verfügbar</span>, <span className="text-fg">Reserviert</span> und{" "}
-                  <span className="text-fg">Verkauft</span> werden nicht hier gepflegt — sie kommen automatisch aus
-                  OnOffice, sobald die Schnittstelle (API/Marketplace) freigeschaltet ist. Dieses Cockpit ist dafür
-                  vorbereitet: die Objektliste wird hier mit Live-Status, Vermarktungsstand und verknüpften Leads
-                  erscheinen.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-faint">
-                  <Icon name="clock" size={13} /> Wartet auf OnOffice-API-Zugang
-                </div>
-              </div>
+          <div>
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+              <Icon name="building" size={16} className="text-accent" />
+              {objekte.length} Objekte live aus OnOffice
             </div>
-
-            {/* Vorschau, wie die Objektliste aussehen wird (deaktiviert) */}
-            <div className="rounded-2xl border border-dashed border-border p-1 opacity-60">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm">
-                  <thead className="text-xs uppercase tracking-wider text-faint">
-                    <tr>
-                      {["Objekt", "Ort", "Preis", "Status", "Vorschau"].map((h) => (
-                        <th key={h} className="px-4 py-3 font-medium">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { t: "Stadtvilla · 5 Zi.", o: "Speyer", p: "—", s: "Verfügbar", c: "border-[#34d399]/40 text-[#34d399]" },
-                      { t: "Penthouse · Rheinblick", o: "Ludwigshafen", p: "—", s: "Reserviert", c: "border-[#fbbf24]/40 text-[#fbbf24]" },
-                      { t: "Architektenhaus", o: "Vorderpfalz", p: "—", s: "Verkauft", c: "border-border text-faint" },
-                    ].map((row) => (
-                      <tr key={row.t} className="border-t border-border">
-                        <td className="px-4 py-3 text-fg">{row.t}</td>
-                        <td className="px-4 py-3 text-muted">{row.o}</td>
-                        <td className="px-4 py-3 text-faint">{row.p}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full border px-2 py-0.5 text-xs ${row.c}`}>{row.s}</span>
-                        </td>
-                        <td className="px-4 py-3 text-faint">aus OnOffice</td>
-                      </tr>
+            <div className="overflow-x-auto rounded-2xl border border-border">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
+                  <tr>
+                    {["Objekt", "Ort", "Preis", "Status", ""].map((h) => (
+                      <th key={h} className="px-4 py-3 font-medium">{h}</th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </tr>
+                </thead>
+                <tbody>
+                  {objekte.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Keine Objekte geladen.</td></tr>
+                  ) : (
+                    objekte.map((o) => {
+                      const st = OBJ_STATUS[o.status] ?? { label: o.status, cls: "border-border text-faint" };
+                      return (
+                        <tr key={o.id} className="border-t border-border align-top hover:bg-surface/60">
+                          <td className="px-4 py-3 text-fg">{o.title}</td>
+                          <td className="px-4 py-3 text-muted">{o.city}</td>
+                          <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted">{o.price}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full border px-2 py-0.5 text-xs ${st.cls}`}>{st.label}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <a
+                              href={`/immobilien/${o.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent hover:underline"
+                            >
+                              öffnen
+                            </a>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-            <p className="text-xs text-faint">Beispielhafte Vorschau — echte Objekte erscheinen nach Anbindung der OnOffice-API.</p>
+            <p className="mt-3 text-xs text-faint">
+              Live aus OnOffice · Status (Verfügbar/Reserviert/Verkauft) wird in OnOffice
+              gepflegt, nicht hier.
+            </p>
           </div>
         )}
 

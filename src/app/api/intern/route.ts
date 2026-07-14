@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyInternAccess } from "@/lib/intern-access";
 import { FEEDBACK_STATUS_ROW_ID, parseFeedbackStatus } from "@/lib/intern-feedback";
+import { getEstateData } from "@/lib/estates";
+import { formatPrice } from "@/lib/format";
 
 /**
  * Internes Lead-Dashboard-Backend. Liest Bewertungs-Reports + Termin-/Kontakt-Leads
@@ -89,6 +91,29 @@ export async function POST(req: Request) {
     console.error("[intern] Konten-Load-Ausnahme:", e instanceof Error ? e.message : String(e));
   }
 
+  // Live-Objekte aus OnOffice (cached). Fail-soft: bei Fehler leere Liste.
+  let objekte: {
+    id: string;
+    title: string;
+    city: string;
+    slug: string;
+    status: string;
+    price: string;
+  }[] = [];
+  try {
+    const { estates } = await getEstateData();
+    objekte = estates.map((e) => ({
+      id: e.id,
+      title: e.title,
+      city: e.city,
+      slug: e.slug,
+      status: e.status,
+      price: formatPrice(e),
+    }));
+  } catch (e) {
+    console.error("[intern] Objekte-Load-Fehler:", e instanceof Error ? e.message : String(e));
+  }
+
   return NextResponse.json({
     ok: true,
     reports: reportsRes.data ?? [],
@@ -96,5 +121,6 @@ export async function POST(req: Request) {
     feedback: comments,
     feedbackStatus: parseFeedbackStatus(statusRow?.comment),
     accounts,
+    objekte,
   });
 }
