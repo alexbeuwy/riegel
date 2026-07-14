@@ -201,7 +201,7 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
 function statTiles(result: ValuationResult): { k: string; v: string; icon: IconName }[] {
   const tiles: { k: string; v: string; icon: IconName }[] = [
     { k: "Preis / m²", v: result.pricePerSqm != null ? formatEUR(result.pricePerSqm) : "–", icon: "euro" },
-    { k: "Vergleichsobjekte", v: `${result.comparables}`, icon: "layers" },
+    { k: "Vergleiche", v: `${result.comparables}`, icon: "layers" },
     { k: "Markttrend", v: `+${result.trendPct} %`, icon: "trend" },
     { k: "Mikrolage", v: `${result.mikrolage}/10`, icon: "compass" },
     { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
