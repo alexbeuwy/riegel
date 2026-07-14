@@ -21,8 +21,12 @@ export interface ReachEntry {
 
 export const REACH_DATA: ReachEntry[] = [
   { name: "RIEGEL Immobilien", value: 413_177, highlight: true },
-  { name: "Bartz Immobilien", value: 64_423 },
-  { name: "Kozlowski Immobilien", value: 36_473 },
+  // Wettbewerber bewusst ANONYM nach Ort (Vorgabe Sissy): keine Namensnennung
+  // -> kein Risiko vergleichender Werbung, die Zahlen bleiben echt und
+  // öffentlich nachprüfbar. Weitere Balken folgen, sobald die Aufruf-Zahlen
+  // der jeweiligen IS24-Profile bestätigt sind.
+  { name: "Makler aus Neustadt", value: 64_423 },
+  { name: "Makler aus Mannheim", value: 36_473 },
   // Weiterer Makler? Einfach eine Zeile ergänzen — Sortierung und Skala
   // passen sich automatisch an (Maximalwert = längster Balken).
 ];

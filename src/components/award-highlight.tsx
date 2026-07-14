@@ -39,15 +39,25 @@ export function AwardHighlight() {
               ))}
             </div>
           </div>
-          <div className="relative order-1 min-h-[260px] overflow-hidden lg:order-2">
-            <Image
-              src="/images/news/event.jpg"
-              alt="Riegel Immobilien beim ImmoAward 2025"
-              fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-surface/60 to-transparent lg:bg-gradient-to-l" />
+          {/* Zwei echte Hochkant-Fotos (Christoph & Alex Riegel) statt Platzhalter —
+              als Diptychon nebeneinander, füllen die Bildspalte. Von BunnyCDN
+              (riegel.b-cdn.net, in next.config als remotePattern erlaubt). */}
+          <div className="relative order-1 grid min-h-[340px] grid-cols-2 gap-1 overflow-hidden lg:order-2 lg:min-h-full">
+            {[
+              "https://riegel.b-cdn.net/ImmoAward_F-103.jpg",
+              "https://riegel.b-cdn.net/ImmoAward_F-40%281%29.jpg",
+            ].map((src) => (
+              <div key={src} className="relative">
+                <Image
+                  src={src}
+                  alt="Christoph und Alex Riegel beim ImmoAward 2025"
+                  fill
+                  sizes="(max-width: 1024px) 50vw, 25vw"
+                  className="object-cover object-top"
+                />
+              </div>
+            ))}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-surface/50 to-transparent lg:bg-gradient-to-l" />
           </div>
         </div>
       </Container>
