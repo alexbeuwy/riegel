@@ -33,7 +33,7 @@ export interface MarktOrt {
 }
 
 /** Stand der Marktdaten — an Seite/JSON-LD durchreichen statt `new Date()`. */
-export const MARKT_STAND = "Q2 2026";
+export const MARKT_STAND = "Q3 2026";
 
 export const PREIS_DISCLAIMER =
   "Modellwerte und Spannen basieren auf regionalen Richtwerten sowie eigener Marktbeobachtung, sind keine Verkehrswertermittlung nach § 194 BauGB — der Bodenrichtwert ist ein Bodenwert, kein Objektpreis.";
@@ -41,16 +41,16 @@ export const PREIS_DISCLAIMER =
 /* ─────────────────────────  Basiswerte (Spiegel von valuation.ts)  ───────────────────────── */
 
 const REGION_BASIS: Record<string, { wohnung: number; haus: number; boden: number }> = {
-  speyer: { wohnung: 4250, haus: 4050, boden: 620 },
-  ludwigshafen: { wohnung: 3250, haus: 3050, boden: 470 },
-  schifferstadt: { wohnung: 3450, haus: 3300, boden: 430 },
-  frankenthal: { wohnung: 3300, haus: 3150, boden: 440 },
-  neustadt: { wohnung: 3850, haus: 3700, boden: 520 },
-  mannheim: { wohnung: 4100, haus: 3900, boden: 600 },
-  heidelberg: { wohnung: 5200, haus: 4900, boden: 900 },
-  vorderpfalz: { wohnung: 3650, haus: 3500, boden: 410 },
+  speyer: { wohnung: 3950, haus: 3800, boden: 590 },
+  ludwigshafen: { wohnung: 2850, haus: 2700, boden: 430 },
+  schifferstadt: { wohnung: 3200, haus: 3050, boden: 410 },
+  frankenthal: { wohnung: 3050, haus: 2900, boden: 415 },
+  neustadt: { wohnung: 3550, haus: 3400, boden: 490 },
+  mannheim: { wohnung: 3800, haus: 3600, boden: 570 },
+  heidelberg: { wohnung: 5000, haus: 4700, boden: 860 },
+  vorderpfalz: { wohnung: 3350, haus: 3200, boden: 390 },
 };
-const DEFAULT_BASIS = { wohnung: 3600, haus: 3450, boden: 420 };
+const DEFAULT_BASIS = { wohnung: 3350, haus: 3200, boden: 400 };
 
 /**
  * Nur diese Region-Keys gelten als „eigener REGIONS-Eintrag" der Rechner-Engine.
@@ -134,7 +134,9 @@ function roundTo25(n: number): number {
 }
 
 function spanne(basis: number): { min: number; max: number } {
-  return { min: roundTo25(basis * 0.88), max: roundTo25(basis * 1.15) };
+  // Engere, konservativere Spanne (±10 % statt −12/+15 %) — die oberen Enden
+  // wirkten zu hoch (Feedback Sissy), die Basiswerte wurden zusätzlich gesenkt.
+  return { min: roundTo25(basis * 0.9), max: roundTo25(basis * 1.1) };
 }
 
 /** Jahres-Trend in % — deterministisch aus Hash, plausible Bandbreite 2.6–6.2 %. */

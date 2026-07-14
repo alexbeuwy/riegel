@@ -57,16 +57,16 @@ export interface ValuationResult {
 }
 
 const REGIONS: Record<string, { wohnung: number; haus: number; gewerbe: number; boden: number }> = {
-  speyer: { wohnung: 4250, haus: 4050, gewerbe: 2600, boden: 620 },
-  ludwigshafen: { wohnung: 3250, haus: 3050, gewerbe: 2100, boden: 470 },
-  schifferstadt: { wohnung: 3450, haus: 3300, gewerbe: 2000, boden: 430 },
-  frankenthal: { wohnung: 3300, haus: 3150, gewerbe: 1950, boden: 440 },
-  neustadt: { wohnung: 3850, haus: 3700, gewerbe: 2200, boden: 520 },
-  mannheim: { wohnung: 4100, haus: 3900, gewerbe: 2700, boden: 600 },
-  heidelberg: { wohnung: 5200, haus: 4900, gewerbe: 3200, boden: 900 },
-  vorderpfalz: { wohnung: 3650, haus: 3500, gewerbe: 2000, boden: 410 },
+  speyer: { wohnung: 3950, haus: 3800, gewerbe: 2450, boden: 590 },
+  ludwigshafen: { wohnung: 2850, haus: 2700, gewerbe: 1950, boden: 430 },
+  schifferstadt: { wohnung: 3200, haus: 3050, gewerbe: 1900, boden: 410 },
+  frankenthal: { wohnung: 3050, haus: 2900, gewerbe: 1850, boden: 415 },
+  neustadt: { wohnung: 3550, haus: 3400, gewerbe: 2050, boden: 490 },
+  mannheim: { wohnung: 3800, haus: 3600, gewerbe: 2550, boden: 570 },
+  heidelberg: { wohnung: 5000, haus: 4700, gewerbe: 3050, boden: 860 },
+  vorderpfalz: { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 390 },
 };
-const DEFAULT_REGION = { wohnung: 3600, haus: 3450, gewerbe: 2000, boden: 420 };
+const DEFAULT_REGION = { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 400 };
 
 const ZUSTAND_FACTOR: Record<Zustand, number> = {
   neuwertig: 1.12,
