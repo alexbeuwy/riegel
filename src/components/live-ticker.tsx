@@ -9,7 +9,6 @@ const nf = new Intl.NumberFormat("de-DE");
 export interface LiveTickerProps {
   aktuellImAngebot: number;
   inVorbereitung: number;
-  bisherVerkauft: number;
 }
 
 /**
@@ -23,21 +22,20 @@ export interface LiveTickerProps {
  * ins Auge springt, worum es geht. Zusätzlich der Live-Puls oben und ein
  * Portal-CTA unten (die „im Angebot"-Zahl führt direkt zu den Objekten).
  *
- * Absichtlich nur DREI Werte (kein „Reserviert") — s. Kommentar bei
- * fetchLiveTickerCounts() in lib/onoffice.ts: lieber eine ehrliche Lücke als
- * eine falsche Zahl.
+ * Zeigt zwei Live-Werte (Aktuell im Angebot, In Vorbereitung). „Bisher
+ * verkauft" wurde auf Wunsch (Sissy) von der Startseite genommen; „Reserviert"
+ * gibt es bewusst nicht (s. fetchLiveTickerCounts() in lib/onoffice.ts: lieber
+ * eine ehrliche Lücke als eine falsche Zahl).
  */
-export function LiveTicker({ aktuellImAngebot, inVorbereitung, bisherVerkauft }: LiveTickerProps) {
+export function LiveTicker({ aktuellImAngebot, inVorbereitung }: LiveTickerProps) {
   const [ref, inView] = useInViewOnce<HTMLDivElement>();
   // Leichter Versatz je Spalte (Split-&-Stagger statt eines einzigen Sprungs).
   const angebot = useCountUp(aktuellImAngebot, inView, 1100);
   const vorbereitung = useCountUp(inVorbereitung, inView, 1300);
-  const verkauft = useCountUp(bisherVerkauft, inView, 1500);
 
   const cols: { label: string; value: number; icon: IconName }[] = [
     { label: "Aktuell im Angebot", value: angebot, icon: "building" },
     { label: "In Vorbereitung", value: vorbereitung, icon: "sparkle" },
-    { label: "Bisher verkauft", value: verkauft, icon: "handshake" },
   ];
 
   return (
@@ -55,7 +53,7 @@ export function LiveTicker({ aktuellImAngebot, inVorbereitung, bisherVerkauft }:
       </div>
 
       {/* Boxen: 1:1 der Kennzahlen-Block (Container/Cell/Hover identisch) */}
-      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2">
         {cols.map((col) => (
           <div
             key={col.label}

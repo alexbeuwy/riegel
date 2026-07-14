@@ -120,27 +120,24 @@ export default async function HomePage() {
         <Container className="relative z-10 py-24 sm:py-28">
           <div className="max-w-3xl">
             <div className="reveal-lcp" style={{ animationDelay: "0ms" }}>
-              <Eyebrow>Immobilienmakler · Speyer &amp; Ludwigshafen</Eyebrow>
+              <Eyebrow>Familienunternehmen · Speyer &amp; Ludwigshafen</Eyebrow>
             </div>
-            <h1 className="mt-8 akira text-[2rem] leading-[1.02] sm:text-5xl lg:text-[4.25rem]">
+            <h1 className="mt-8 akira text-[2.25rem] leading-[1.04] sm:text-6xl lg:text-[4.5rem]">
               <span className="reveal-lcp block" style={{ animationDelay: "80ms" }}>
-                Der führende Makler
+                Regional zuhause.
               </span>
               <span className="reveal-lcp block text-accent-strong" style={{ animationDelay: "180ms" }}>
-                mit größter Reichweite
-              </span>
-              <span className="reveal-lcp block akira-outline" style={{ animationDelay: "280ms" }}>
-                der Region.
+                National vernetzt.
               </span>
             </h1>
             <p
               className="reveal-lcp mt-8 max-w-xl text-lg text-muted"
               style={{ animationDelay: "380ms" }}
             >
-              Für alle, die keine Lust auf Zeitverschwendung haben.{" "}
-              <strong className="font-medium text-fg">Über zehntausend Besichtigungen</strong>,{" "}
-              <strong className="font-medium text-fg">über 1.000 verkaufte Objekte</strong> in 20 Jahren.{" "}
-              <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
+              Ihr <strong className="font-medium text-fg">Familienunternehmen</strong> für Immobilien:
+              seit über 20 Jahren regional verwurzelt und bundesweit vernetzt. Ihr führender Makler
+              mit großer Reichweite: <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong>{" "}
+              auf ImmoScout24.
             </p>
             <p
               className="reveal-lcp mt-4 max-w-xl text-base text-muted"
