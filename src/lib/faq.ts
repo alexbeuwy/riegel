@@ -1,7 +1,7 @@
 export const faqs: { q: string; a: string }[] = [
   {
     q: "Was kostet die Maklerprovision?",
-    a: "Beim Verkauf von Wohnimmobilien gilt in Rheinland-Pfalz der Halbteilungsgrundsatz (§ 656c BGB) — Käufer und Verkäufer teilen sich die Provision. Die genaue Höhe weisen wir bei jedem Objekt transparent inkl. MwSt. aus.",
+    a: "Beim Verkauf von Wohnimmobilien an Verbraucher gilt in Deutschland der gesetzliche Halbteilungsgrundsatz (§ 656c BGB) — Käufer und Verkäufer teilen sich die Provision. Die genaue Höhe weisen wir bei jedem Objekt transparent inkl. MwSt. aus.",
   },
   {
     q: "Wie läuft eine Immobilienbewertung ab?",
@@ -13,11 +13,11 @@ export const faqs: { q: string; a: string }[] = [
   },
   {
     q: "Welche Unterlagen brauche ich für den Verkauf?",
-    a: "Unter anderem Grundbuchauszug, Energieausweis, Grundrisse und Flurkarte. Wir unterstützen Sie bei der Beschaffung und Aufbereitung aller Dokumente.",
+    a: "Unter anderem Grundbuchauszug, Energieausweis, Grundrisse, Flurkarte und die Versicherungspolice (z. B. Wohngebäudeversicherung) — je nach Objekt kommen weitere Unterlagen dazu. Wir unterstützen Sie bei der Beschaffung und Aufbereitung aller Dokumente.",
   },
   {
     q: "Bieten Sie digitale Besichtigungen und Beratung an?",
-    a: "Ja. Termine sind vor Ort in Speyer/Ludwigshafen oder digital möglich — buchbar direkt über unsere Online-Terminvereinbarung.",
+    a: "Ja. Besichtigungen und Beratung sind vor Ort in Speyer und Ludwigshafen oder digital möglich — jederzeit nach Vereinbarung, buchbar direkt über unsere Online-Terminvereinbarung.",
   },
   {
     q: "Wie schnell lässt sich meine Immobilie verkaufen?",

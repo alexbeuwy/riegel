@@ -1,7 +1,7 @@
 import { site } from "@/lib/site";
 
 /**
- * Ansprechpartner:innen für Objektdetail, Kontakt & Termin.
+ * Ansprechpartner für Objektdetail, Kontakt & Termin.
  * Echte Familie Riegel mit echten Porträts — baut „gewohnten" Portal-Trust auf
  * (Avatar + Name + Rolle + Kontakt, wie bei ImmoScout & Co.).
  */

@@ -341,9 +341,17 @@ export function PortalMap({
         role="img"
         aria-label={`Karte mit ${count} ${count === 1 ? "Objekt" : "Objekten"} — Auswahl und Bedienung über die Liste`}
       />
-      {tileError && (
+      {tileError ? (
         <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-lg bg-bg/80 px-3 py-2 text-xs text-muted backdrop-blur">
           Kartendaten momentan nicht erreichbar — die Liste zeigt alle Objekte.
+        </div>
+      ) : (
+        // Datenschutz-Hinweis: die Pins sitzen bewusst nur ungefähr (server-
+        // seitig verunschärft, Zoom gedeckelt), nie auf der exakten Anschrift.
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+          <span className="inline-block max-w-full rounded-full bg-bg/80 px-2.5 py-1 text-[11px] leading-tight text-muted backdrop-blur">
+            Ungefähre Lage — aus Datenschutzgründen zeigen wir nur die Gegend, nicht die genaue Anschrift.
+          </span>
         </div>
       )}
     </div>

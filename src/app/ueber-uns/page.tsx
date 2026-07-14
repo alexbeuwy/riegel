@@ -9,7 +9,7 @@ import { photos } from "@/lib/photos";
 export const metadata = {
   title: "Über uns",
   description:
-    "Riegel Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Expert:innen an zwei Standorten. Lernen Sie die Familie Riegel und das Team kennen.",
+    "Riegel Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Experten an zwei Standorten. Lernen Sie die Familie Riegel und das Team kennen.",
   alternates: { canonical: "/ueber-uns" },
 };
 
@@ -42,9 +42,9 @@ const familie = [
   },
 ];
 
-// Das übrige Team — vorübergehend als Platzhalter (18 Expert:innen gesamt).
+// Das übrige Team — vorübergehend als Platzhalter (18 Experten gesamt).
 // Profile/Fotos folgen; Rollenbereiche real abgebildet.
-// 14 Platzhalter + 4 Familie = 18 Expert:innen. Namen/Porträts folgen.
+// 14 Platzhalter + 4 Familie = 18 Experten. Namen/Porträts folgen.
 const teamRollen = [
   "Immobilienberatung Speyer",
   "Immobilienberatung Ludwigshafen",
@@ -85,9 +85,9 @@ export default function UeberUnsPage() {
     <>
       <PageIntro eyebrow="Über uns" title="Die Familie Riegel — und ein Team, das Ihre Region kennt">
         Riegel Immobilien ist inhabergeführt und seit über 20&nbsp;Jahren in Speyer,
-        Ludwigshafen und der Vorderpfalz verwurzelt. Als Familienunternehmen mit
-        18&nbsp;Expert:innen an zwei Standorten verbinden wir persönliche
-        Betreuung mit echter Marktkenntnis.
+        Ludwigshafen und der Region verwurzelt — regional zuhause, national
+        vernetzt. Als Familienunternehmen mit Immobilienexperten an zwei
+        Standorten verbinden wir persönliche Betreuung mit echter Marktkenntnis.
       </PageIntro>
 
       {/* Familie */}
@@ -166,7 +166,7 @@ export default function UeberUnsPage() {
                 Das Team
               </span>
               <h2 className="text-2xl font-semibold sm:text-3xl">
-                18 freundliche Expert:innen an zwei Standorten
+                Ihre freundlichen Experten an unseren Standorten
               </h2>
               <p className="text-muted">
                 Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team.
@@ -190,7 +190,7 @@ export default function UeberUnsPage() {
             ))}
           </div>
           <p className="mt-6 text-xs text-faint">
-            Platzhalter — Namen &amp; Porträts der Kolleg:innen werden ergänzt.
+            Platzhalter — Namen &amp; Porträts der Kollegen werden ergänzt.
           </p>
         </Container>
       </section>
