@@ -36,6 +36,8 @@ const DONE_RULES = [
   ["in der Region verwurzelt - national", "ueber-uns: regional zuhause national vernetzt + Immobilienexperten, kein Gendern"],
   ["Ihre freundlichen Experten", "Team-Ueberschrift: Ihre freundlichen Experten an unseren Standorten"],
   ["fotos kann man die bisherigen", "Kein Handlungsbedarf: Fotos bleiben, neue im August"],
+  ["Zustimmung von Datenschutz und Wideruf", "Pre-Exposé Provisionsvereinbarung-Onboarding gebaut (Bestaetigungs-Dialog + Mail)"],
+  ["das wort ist hier zu lang", "Rechner-Kachel Vergleichsobjekte auf Vergleiche gekuerzt"],
 ];
 
 const { data: rows, error } = await sb.from("feedback").select("id, comment");

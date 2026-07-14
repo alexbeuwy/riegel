@@ -257,6 +257,21 @@ export default async function EstateDetailPage({
               <p className="text-xs text-faint">
                 Unverbindliche Anfrage · Antwort i. d. R. innerhalb eines Werktages.
               </p>
+              {/* Provision transparent direkt am Objekt (rechtlich wichtig für RIEGEL):
+                  konkrete Höhe + Hinweis auf die gesetzliche Aufteilung. */}
+              <div className="rounded-xl border border-border bg-surface-2 p-4">
+                <div className="text-xs uppercase tracking-wide text-faint">Provision</div>
+                <div className="mt-1 text-sm font-medium text-fg">
+                  {estate.provision.free ? "Provisionsfrei für den Käufer" : estate.provision.text}
+                </div>
+                {!estate.provision.free && (
+                  <p className="mt-1.5 text-xs text-faint">
+                    Halbteilungsgrundsatz (§&nbsp;656c BGB): Käufer und Verkäufer teilen
+                    sich die Provision. Fällig nur bei erfolgreichem, notariell
+                    beurkundetem Kauf.
+                  </p>
+                )}
+              </div>
               {/* Objekt-Metadaten wie auf großen Portalen */}
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-4 text-xs">
                 <dt className="text-faint">Objekt-ID</dt>

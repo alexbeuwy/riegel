@@ -148,6 +148,9 @@ export function PortalCard({
               {categoryLabel(estate.category)}
             </span>
           </div>
+          {!estate.provision.free && estate.provision.text && (
+            <div className="line-clamp-1 text-xs text-faint">{estate.provision.text}</div>
+          )}
           <h3 className="line-clamp-1 text-base text-muted">{estate.title}</h3>
           <div className="inline-flex items-center gap-1.5 text-sm text-faint">
             <Icon name="pin" size={15} />
