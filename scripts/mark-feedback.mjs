@@ -40,6 +40,8 @@ const DONE_RULES = [
   ["das wort ist hier zu lang", "Rechner-Kachel Vergleichsobjekte auf Vergleiche gekuerzt"],
   ["steht immer nur der eigene rekord", "Dauerhafte Bestenliste (Allzeit + Monat) dauerhaft unter dem Spiel eingebaut"],
   ["findet man hier auch die kontaktdaten", "Konten-Liste im /intern gebaut (registrierte Nutzerkonten)"],
+  ["schicke dir hier noch welche dazu", "Gold-Badge 2026 aus BunnyCDN in die Auszeichnungen aufgenommen"],
+  ["Logo zur MRN", "MRN-Logo aus BunnyCDN in die Auszeichnungen/Mitgliedschaften aufgenommen"],
 ];
 
 const { data: rows, error } = await sb.from("feedback").select("id, comment");
