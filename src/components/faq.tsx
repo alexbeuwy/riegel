@@ -9,12 +9,16 @@ export function Faq() {
     <div className="divide-y divide-border border-y border-border">
       {faqs.map((f, i) => {
         const isOpen = open === i;
+        const panelId = `faq-panel-${i}`;
+        const buttonId = `faq-trigger-${i}`;
         return (
           <div key={f.q}>
             <button
               type="button"
+              id={buttonId}
               onClick={() => setOpen(isOpen ? null : i)}
               aria-expanded={isOpen}
+              aria-controls={panelId}
               className="flex w-full items-center justify-between gap-6 py-5 text-left"
             >
               <span className="text-lg text-fg">{f.q}</span>
@@ -28,6 +32,9 @@ export function Faq() {
               </span>
             </button>
             <div
+              id={panelId}
+              role="region"
+              aria-labelledby={buttonId}
               className={`grid transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                 isOpen ? "grid-rows-[1fr] pb-5" : "grid-rows-[0fr]"
               }`}

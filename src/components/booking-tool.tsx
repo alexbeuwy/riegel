@@ -228,12 +228,12 @@ function BookingToolInner() {
             </p>
           </div>
 
-          <dl className="divide-y divide-border px-8 py-2 text-sm">
+          <div className="divide-y divide-border px-8 py-2 text-sm">
             <SummaryRow icon="sparkle" label="Anlass" value={type} />
             <SummaryRow icon="calendar" label="Datum" value={selectedDay ? `${selectedDay.weekday}, ${selectedDay.day}. ${selectedDay.month}` : date} />
             <SummaryRow icon="clock" label="Uhrzeit" value={`${time} Uhr · ${duration} Min.`} />
             <SummaryRow icon={modeMeta.icon} label={modeMeta.label} value={locationLabel} />
-          </dl>
+          </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 border-t border-border px-8 py-6">
             <button
@@ -276,7 +276,7 @@ function BookingToolInner() {
             <div className="text-xs text-faint">Beratung & Besichtigung</div>
           </div>
         </div>
-        <dl className="space-y-3.5 pt-5 text-sm">
+        <div className="space-y-3.5 pt-5 text-sm">
           <RailRow icon="sparkle" value={type} active />
           <RailRow icon="clock" value={`${duration} Minuten`} active />
           <RailRow icon={modeMeta.icon} value={locationLabel} active />
@@ -286,7 +286,7 @@ function BookingToolInner() {
             active={Boolean(selectedDay)}
           />
           <RailRow icon="clock" value={time ? `${time} Uhr` : "Uhrzeit wählen"} active={Boolean(time)} />
-        </dl>
+        </div>
         <p className="mt-5 border-t border-border pt-4 text-xs leading-relaxed text-faint">
           Unverbindlich & kostenlos. Sie erhalten eine Bestätigung per E-Mail.
         </p>
@@ -453,10 +453,10 @@ function BookingToolInner() {
         {/* 6 · Kontakt */}
         <Field n={6} icon="users" label="Wie erreichen wir Sie?">
           <div className="grid gap-3 sm:grid-cols-2">
-            <input value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
-            <input value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} type="email" placeholder="E-Mail" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
-            <input value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder={mode === "telefon" ? "Telefon (für den Rückruf)" : "Telefon (optional)"} className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
-            <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Nachricht (optional) — z. B. Objekt, das Sie interessiert" className="resize-none rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
+            <input aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
+            <input aria-label="E-Mail" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} type="email" placeholder="E-Mail" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
+            <input aria-label={mode === "telefon" ? "Telefon (für den Rückruf)" : "Telefon (optional)"} value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder={mode === "telefon" ? "Telefon (für den Rückruf)" : "Telefon (optional)"} className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
+            <textarea aria-label="Nachricht (optional)" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Nachricht (optional) — z. B. Objekt, das Sie interessiert" className="resize-none rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
             {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
             <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />
           </div>

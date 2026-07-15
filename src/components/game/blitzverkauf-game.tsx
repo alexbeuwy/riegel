@@ -161,6 +161,7 @@ function ScoreSubmitPanel({
       </div>
       <input
         className={`${fieldCls} mt-3`}
+        aria-label="Name oder Spielername"
         value={name}
         onChange={(e) => {
           setName(e.target.value);
@@ -179,6 +180,7 @@ function ScoreSubmitPanel({
         <>
           <input
             className={`${fieldCls} mt-2.5`}
+            aria-label="E-Mail für Gewinn-Benachrichtigung (optional)"
             type="email"
             value={email}
             onChange={(e) => {

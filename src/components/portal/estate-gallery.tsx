@@ -1,29 +1,57 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 
 export function EstateGallery({ images, title }: { images: string[]; title: string }) {
   const imgs = images;
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const prev = useCallback(() => setIdx((i) => (i - 1 + imgs.length) % imgs.length), [imgs.length]);
   const next = useCallback(() => setIdx((i) => (i + 1) % imgs.length), [imgs.length]);
 
   useEffect(() => {
     if (!open) return;
+    // Fokus in den Dialog holen und beim Schließen dorthin zurückgeben, wo er
+    // geöffnet wurde (Muster wie Modal.tsx) — plus Tab-Fokusfalle, damit der
+    // Fokus nicht hinter das Overlay in den Seiteninhalt wandert.
+    const prevFocus = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
+      if (e.key === "Escape") return setOpen(false);
+      if (e.key === "ArrowLeft") return prev();
+      if (e.key === "ArrowRight") return next();
+      if (e.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusables.length) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === dialog)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      prevFocus?.focus?.();
     };
   }, [open, prev, next]);
 
@@ -67,7 +95,9 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
 
       {open && (
         <div
-          className="group fixed inset-0 z-[70] flex items-center justify-center bg-bg/90 backdrop-blur-sm"
+          ref={dialogRef}
+          tabIndex={-1}
+          className="group fixed inset-0 z-[70] flex items-center justify-center bg-bg/90 outline-none backdrop-blur-sm"
           onClick={() => setOpen(false)}
           role="dialog"
           aria-modal="true"
@@ -88,7 +118,7 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
               e.stopPropagation();
               prev();
             }}
-            className="absolute left-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-[color,opacity] duration-200 hover:text-accent sm:left-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+            className="absolute left-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-[color,opacity] duration-200 hover:text-accent sm:left-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
           >
             ‹
           </button>
@@ -108,11 +138,11 @@ export function EstateGallery({ images, title }: { images: string[]; title: stri
               e.stopPropagation();
               next();
             }}
-            className="absolute right-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-[color,opacity] duration-200 hover:text-accent sm:right-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+            className="absolute right-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-xl text-fg transition-[color,opacity] duration-200 hover:text-accent sm:right-6 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
           >
             ›
           </button>
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-sm text-fg transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-surface px-3 py-1 text-sm text-fg transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
             {idx + 1} / {imgs.length}
           </div>
           {/* Verstecktes Preload des nächsten Bilds — Weiterklicken fühlt sich flott an, ohne alles vorzuladen. */}
