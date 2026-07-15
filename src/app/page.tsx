@@ -141,15 +141,15 @@ export default async function HomePage() {
               <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
             </p>
             <p
-              className="reveal-lcp mt-4 max-w-xl text-base text-muted"
+              className="reveal-lcp mt-3 max-w-xl text-xs text-faint"
               style={{ animationDelay: "430ms" }}
             >
               Ohne Zwang, ohne lästige Telefonate, ohne Registrierung: in 60 Sekunden zur
-              ersten Werteinschätzung mit dem <strong className="font-medium text-fg">RIEGEL Rechner</strong>.
+              ersten Werteinschätzung mit dem <strong className="font-medium text-muted">RIEGEL Rechner</strong>.
               Er rechnet mit Daten aus dutzenden Quellen, von amtlichen BORIS-Bodenrichtwerten
               bis zu unserem eigenen Verkaufsbestand.
             </p>
-            <div className="reveal-lcp relative z-20 mt-8" style={{ animationDelay: "480ms" }}>
+            <div className="reveal-lcp relative z-20 mt-6" style={{ animationDelay: "480ms" }}>
               <HeroAddressSearch />
             </div>
             <div
