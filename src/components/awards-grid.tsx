@@ -14,9 +14,15 @@ interface Award {
   alt: string;
   width: number;
   height: number;
+  /** Für Remote-Grafiken (BunnyCDN) — SVG/PNG ohne next/image-Optimierung
+   *  direkt ausliefern (umgeht SVG-Sperre + Sonderzeichen im Dateinamen). */
+  unoptimized?: boolean;
 }
 
 const AWARDS: Award[] = [
+  // Neu (2026) + Regionslogo, von BunnyCDN (riegel.b-cdn.net):
+  { key: "gold-2026", src: "https://riegel.b-cdn.net/2026_Gold_Badge_transparent_container@3x.png", alt: "Gold-Auszeichnung 2026", width: 120, height: 120, unoptimized: true },
+  { key: "mrn", src: "https://riegel.b-cdn.net/Logo_MRN.svg", alt: "Metropolregion Rhein-Neckar", width: 140, height: 105, unoptimized: true },
   { key: "bvfi", src: "/images/badges/bvfi-siegel.svg", alt: "Mitglied im BVFI — Bundesverband für die Immobilienwirtschaft", width: 130, height: 130 },
   { key: "immoscout-experte", src: "/images/badges/immoscout-experte-seit-2009.svg", alt: "ImmoScout24 Experte — seit 2009", width: 110, height: 110 },
   { key: "ida", src: "/images/badges/ida-siegel-2022.png", alt: "Immobiliendienstleister Award (IDA) 2022", width: 110, height: 110 },
@@ -44,6 +50,7 @@ export function AwardsGrid() {
                   alt={a.alt}
                   width={a.width}
                   height={a.height}
+                  unoptimized={a.unoptimized}
                   className="h-full w-auto object-contain drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
                 />
               </div>
