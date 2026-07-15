@@ -96,9 +96,17 @@ export async function POST(req: Request) {
     id: string;
     title: string;
     city: string;
+    postcode: string;
     slug: string;
     status: string;
     price: string;
+    priceValue: number;
+    image: string | null;
+    rooms: number | null;
+    livingArea: number | null;
+    category: string;
+    marketingType: string;
+    provision: string;
   }[] = [];
   try {
     const { estates } = await getEstateData();
@@ -106,9 +114,17 @@ export async function POST(req: Request) {
       id: e.id,
       title: e.title,
       city: e.city,
+      postcode: e.postcode,
       slug: e.slug,
       status: e.status,
       price: formatPrice(e),
+      priceValue: e.price ?? 0,
+      image: e.images?.[0] ?? null,
+      rooms: e.rooms,
+      livingArea: e.livingArea,
+      category: e.category,
+      marketingType: e.marketingType,
+      provision: e.provision.free ? "Provisionsfrei" : e.provision.text ?? "",
     }));
   } catch (e) {
     console.error("[intern] Objekte-Load-Fehler:", e instanceof Error ? e.message : String(e));

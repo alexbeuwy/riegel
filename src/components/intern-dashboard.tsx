@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
@@ -59,10 +59,20 @@ interface ObjektRow {
   id: string;
   title: string;
   city: string;
+  postcode?: string;
   slug: string;
   status: string;
   price: string;
+  priceValue: number;
+  image?: string | null;
+  rooms?: number | null;
+  livingArea?: number | null;
+  category?: string;
+  marketingType?: string;
+  provision?: string;
 }
+
+type ObjSortKey = "title" | "city" | "priceValue" | "status";
 
 type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback" | "konten";
 
@@ -111,6 +121,15 @@ const OBJ_STATUS: Record<string, { label: string; cls: string }> = {
   verkauft: { label: "Verkauft", cls: "border-border text-faint" },
   vermietet: { label: "Vermietet", cls: "border-border text-faint" },
 };
+
+function ObjDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-faint">{label}</dt>
+      <dd className="text-fg">{value}</dd>
+    </div>
+  );
+}
 
 const norm = (s: string) =>
   s.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
@@ -255,6 +274,11 @@ export function InternDashboard() {
   const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
   const [fbBusyId, setFbBusyId] = useState<string | null>(null);
   const [objekte, setObjekte] = useState<ObjektRow[]>([]);
+  const [objSort, setObjSort] = useState<{ key: ObjSortKey; dir: "asc" | "desc" }>({
+    key: "status",
+    dir: "asc",
+  });
+  const [objOpen, setObjOpen] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
 
   const [tab, setTab] = useState<Tab>("overview");
@@ -425,6 +449,20 @@ export function InternDashboard() {
     });
   }, [data, lQuery, lKind]);
 
+  // Objekte sortiert (Hook VOR dem Login-Gate, damit die Hook-Reihenfolge stabil ist).
+  const sortedObjekte = useMemo(() => {
+    const arr = [...objekte];
+    const { key, dir } = objSort;
+    arr.sort((a, b) => {
+      const cmp =
+        key === "priceValue"
+          ? a.priceValue - b.priceValue
+          : String(a[key]).localeCompare(String(b[key]), "de");
+      return dir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [objekte, objSort]);
+
   const filteredAccounts = useMemo(() => {
     const q = norm(aQuery.trim());
     return accounts
@@ -504,6 +542,11 @@ export function InternDashboard() {
   const fbOpenCount = feedback.filter(
     (f) => (feedbackStatus[f.id]?.status ?? "open") !== "done",
   ).length;
+  function objSortBy(key: ObjSortKey) {
+    setObjSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+  }
 
   const TABS: { key: Tab; label: string; icon: IconName; n?: number }[] = [
     { key: "overview", label: "Übersicht", icon: "chart" },
@@ -788,7 +831,7 @@ export function InternDashboard() {
           </div>
         )}
 
-        {/* ── Objekte (live aus OnOffice) ── */}
+        {/* ── Objekte (live aus OnOffice) — sortierbar + aufklappbar ── */}
         {tab === "objekte" && (
           <div>
             <div className="mb-4 flex items-center gap-2 text-sm text-muted">
@@ -796,39 +839,118 @@ export function InternDashboard() {
               {objekte.length} Objekte live aus OnOffice
             </div>
             <div className="overflow-x-auto rounded-2xl border border-border">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
-                    {["Objekt", "Ort", "Preis", "Status", ""].map((h) => (
-                      <th key={h} className="px-4 py-3 font-medium">{h}</th>
+                    <th className="px-4 py-3 font-medium">Bild</th>
+                    {(
+                      [
+                        ["title", "Objekt"],
+                        ["city", "Ort"],
+                        ["priceValue", "Preis"],
+                        ["status", "Status"],
+                      ] as [ObjSortKey, string][]
+                    ).map(([key, label]) => (
+                      <th key={key} className="px-4 py-3 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => objSortBy(key)}
+                          className="press inline-flex items-center gap-1 hover:text-fg"
+                        >
+                          {label}
+                          <Icon
+                            name="chevronDown"
+                            size={12}
+                            className={`transition-transform ${
+                              objSort.key === key
+                                ? objSort.dir === "asc"
+                                  ? "rotate-180 text-accent"
+                                  : "text-accent"
+                                : "opacity-30"
+                            }`}
+                          />
+                        </button>
+                      </th>
                     ))}
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
-                  {objekte.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Keine Objekte geladen.</td></tr>
+                  {sortedObjekte.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-10 text-center text-muted">
+                        Keine Objekte geladen.
+                      </td>
+                    </tr>
                   ) : (
-                    objekte.map((o) => {
+                    sortedObjekte.map((o) => {
                       const st = OBJ_STATUS[o.status] ?? { label: o.status, cls: "border-border text-faint" };
+                      const open = objOpen === o.id;
                       return (
-                        <tr key={o.id} className="border-t border-border align-top hover:bg-surface/60">
-                          <td className="px-4 py-3 text-fg">{o.title}</td>
-                          <td className="px-4 py-3 text-muted">{o.city}</td>
-                          <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted">{o.price}</td>
-                          <td className="px-4 py-3">
-                            <span className={`rounded-full border px-2 py-0.5 text-xs ${st.cls}`}>{st.label}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <a
-                              href={`/immobilien/${o.slug}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-accent hover:underline"
-                            >
-                              öffnen
-                            </a>
-                          </td>
-                        </tr>
+                        <Fragment key={o.id}>
+                          <tr
+                            className="cursor-pointer border-t border-border hover:bg-surface/60"
+                            onClick={() => setObjOpen(open ? null : o.id)}
+                          >
+                            <td className="px-4 py-2">
+                              {o.image ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- Admin-Vorschau, dynamische Fremd-URL, next/image lohnt hier nicht
+                                <img src={o.image} alt="" className="h-10 w-14 rounded object-cover" />
+                              ) : (
+                                <div className="flex h-10 w-14 items-center justify-center rounded bg-surface-2 text-faint">
+                                  <Icon name="building" size={14} />
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-fg">{o.title}</td>
+                            <td className="px-4 py-3 text-muted">{o.city}</td>
+                            <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted">{o.price}</td>
+                            <td className="px-4 py-3">
+                              <span className={`rounded-full border px-2 py-0.5 text-xs ${st.cls}`}>{st.label}</span>
+                            </td>
+                            <td className="px-4 py-3 text-faint">
+                              <Icon
+                                name="chevronDown"
+                                size={16}
+                                className={`transition-transform ${open ? "rotate-180" : ""}`}
+                              />
+                            </td>
+                          </tr>
+                          {open && (
+                            <tr className="border-t border-border bg-surface/40">
+                              <td colSpan={6} className="px-4 py-4">
+                                <div className="flex flex-col gap-4 sm:flex-row">
+                                  {o.image && (
+                                    // eslint-disable-next-line @next/next/no-img-element -- Admin-Vorschau
+                                    <img
+                                      src={o.image}
+                                      alt=""
+                                      className="h-32 w-full rounded-lg object-cover sm:w-48"
+                                    />
+                                  )}
+                                  <div className="flex-1">
+                                    <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+                                      <ObjDetail label="Art" value={OBJEKTART_LABEL[o.category ?? ""] ?? o.category ?? "–"} />
+                                      <ObjDetail label="Vermarktung" value={o.marketingType === "miete" ? "Miete" : "Kauf"} />
+                                      <ObjDetail label="Zimmer" value={o.rooms != null ? String(o.rooms) : "–"} />
+                                      <ObjDetail label="Wohnfläche" value={o.livingArea != null ? `${o.livingArea} m²` : "–"} />
+                                      <ObjDetail label="PLZ / Ort" value={`${o.postcode ?? ""} ${o.city}`.trim()} />
+                                      <ObjDetail label="Provision" value={o.provision || "–"} />
+                                    </dl>
+                                    <a
+                                      href={`/immobilien/${o.slug}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-3 inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+                                    >
+                                      Objekt öffnen <Icon name="arrowUpRight" size={14} />
+                                    </a>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })
                   )}
@@ -836,8 +958,8 @@ export function InternDashboard() {
               </table>
             </div>
             <p className="mt-3 text-xs text-faint">
-              Live aus OnOffice · Status (Verfügbar/Reserviert/Verkauft) wird in OnOffice
-              gepflegt, nicht hier.
+              Live aus OnOffice · Spalten sortierbar, Zeile anklicken für Details. Status
+              (Verfügbar/Reserviert/Verkauft) wird in OnOffice gepflegt.
             </p>
           </div>
         )}
