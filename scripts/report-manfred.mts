@@ -25,8 +25,8 @@ in den letzten Tagen ein ganzes Paket auf der neuen Website geworden. Hier der �
 </p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 ${li(
-  "1. Die Experten-Seiten sind live (Manfreds Idee)",
-  "Fünf Verkäufer-Landingpages: Mehrfamilienhäuser &amp; Zinshäuser, Gewerbeimmobilien, Wohn- und Geschäftshäuser, Anlage- &amp; Investmentimmobilien, Nachlass- &amp; Erbimmobilien. Jede Seite mit eigener Überschrift, USPs (121.000+ Suchaufträge, Direktankauf über die Investorenfirmen, Investoren-Netzwerk), einer animierten Infografik, echten Beispielobjekten aus OnOffice, Kundenstimmen und häufigen Eigentümerfragen. Die lange Begriffsliste ist bewusst zu kompakten Schlagwort-Reihen destilliert, damit nichts überladen wirkt.",
+  "1. Das komplette Experten-Programm ist live (Manfreds Idee)",
+  "35 Verkäufer-Landingpages — für JEDES Spezialgebiet aus der Liste eine eigene Seite: von Mehrfamilienhäusern, Zinshäusern und Wohn- und Geschäftshäusern über Büro, Einzelhandel, Fachmarkt- und Einkaufszentren, Logistik, Industrie und Produktion bis zu Hotel-, Pflege-, Gesundheits- und Seniorenimmobilien, Grundstücken, Projektentwicklungen, Portfolios und Off-Market. Jede Seite mit eigener Überschrift mit Wortwitz (z. B. „Miete auf Rezept.&quot; für Ärztehäuser), den USPs (121.000+ Suchaufträge, Direktankauf über die Investorenfirmen, Investoren-Netzwerk), echten Beispielobjekten aus OnOffice, Kundenstimmen und häufigen Eigentümerfragen — die fünf Kernseiten zusätzlich mit einer animierten Infografik. Alle Seiten sind untereinander thematisch verlinkt und über „Alle Spezialgebiete&quot; auf der Verkaufen-Seite erreichbar; die lange Begriffsliste ist je Seite zu kompakten Schlagwort-Reihen destilliert, damit nichts überladen wirkt.",
   `${BASE}/verkaufen/mehrfamilienhaus`,
 )}
 ${li(
