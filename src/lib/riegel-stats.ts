@@ -34,6 +34,11 @@ export const RIEGEL_STATS = {
   /** von Alex bestätigt — Exposé-Aufrufe des Anbieterprofils (= RIEGEL-Wert im
    *  Reichweiten-Chart, s. reach-chart.tsx). */
   exposeAufrufe: 416_054,
+
+  /** von Manfred (Inhaber) — über 121.000 aktive Suchaufträge in der eigenen
+   *  Käufer-Datenbank (E-Mail 17.07.2026). Verkäufer-Argument: Objekte finden
+   *  oft schon vor der Veröffentlichung einen Käufer (Off-Market). */
+  aktiveSuchauftraege: 121_000,
 } as const;
 
 export type RiegelStats = typeof RIEGEL_STATS;

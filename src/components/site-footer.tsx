@@ -140,6 +140,22 @@ export function SiteFooter() {
               <Link href="/widerruf" className="transition-colors hover:text-fg">
                 Widerrufsbelehrung
               </Link>
+              {/* Agentur-Credit (Vorgabe: wie saadi-ag.vercel.app) — externes
+                  SVG-Logo bewusst als <img>, next/image optimiert kein SVG. */}
+              <a
+                href="https://beuwy.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 opacity-70 transition-opacity hover:opacity-100"
+              >
+                Brand and website made by
+                {/* eslint-disable-next-line @next/next/no-img-element -- externes SVG-Logo, keine Optimierung nötig */}
+                <img
+                  src="https://beuwy.b-cdn.net/wp-content/uploads/2025/11/beuwy_logo_2026_final_hell.svg"
+                  alt="beuwy"
+                  className="h-3.5 w-auto"
+                />
+              </a>
             </div>
           </Container>
         </div>

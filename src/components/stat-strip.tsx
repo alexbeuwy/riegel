@@ -47,6 +47,12 @@ export function StatStrip({ stats }: StatStripProps) {
       target: stats.besichtigungenProJahr,
       format: (n) => `ca. ${nfInt.format(Math.round(n))}`,
     },
+    {
+      key: "suchauftraege",
+      label: "aktive Suchaufträge",
+      target: stats.aktiveSuchauftraege,
+      format: (n) => `${nfInt.format(Math.round(n))}+`,
+    },
   ];
 
   return (
