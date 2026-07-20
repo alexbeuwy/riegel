@@ -106,6 +106,42 @@ const SCORER: Record<string, (e: Estate) => number> = {
 };
 
 /**
+ * Cluster-Fallback für die 30 Content-Factory-Seiten (src/content/
+ * experten-seiten.json): je Themen-Cluster der passendste vorhandene Scorer.
+ * Grundstücks-Cluster bekommt einen eigenen Scorer (category "grundstueck").
+ */
+const CLUSTER_SCORER: Record<string, (e: Estate) => number> = {
+  wohnen: SCORER.mehrfamilienhaus,
+  kapitalanlage: SCORER.anlageimmobilie,
+  "buero-handel": SCORER.gewerbeimmobilie,
+  industrie: SCORER.gewerbeimmobilie,
+  betreiber: SCORER.gewerbeimmobilie,
+  grundstuecke: (e) =>
+    e.category === "grundstueck" && e.marketingType === "kauf" ? 3 : 0,
+};
+
+/** slug → Cluster (Spiegel der Cluster-Zuordnung in experten-seiten.json). */
+const SLUG_CLUSTER: Record<string, string> = {
+  investmentimmobilien: "kapitalanlage", kapitalanlageobjekte: "kapitalanlage",
+  renditeobjekte: "kapitalanlage", immobilienportfolios: "kapitalanlage",
+  "off-market-immobilien": "kapitalanlage",
+  zinshaeuser: "wohnen", wohnanlagen: "wohnen", wohnportfolios: "wohnen",
+  gewerbeportfolios: "buero-handel", buerogebaeude: "buero-handel",
+  "buero-und-verwaltungsgebaeude": "buero-handel",
+  einzelhandelsimmobilien: "buero-handel", fachmarktzentren: "buero-handel",
+  einkaufszentren: "buero-handel",
+  logistikimmobilien: "industrie", lagerhallen: "industrie",
+  industrieimmobilien: "industrie", produktionsimmobilien: "industrie",
+  hotelimmobilien: "betreiber", boardinghaeuser: "betreiber",
+  pflegeimmobilien: "betreiber", aerztehaeuser: "betreiber",
+  gesundheitsimmobilien: "betreiber", seniorenresidenzen: "betreiber",
+  studentenwohnanlagen: "betreiber",
+  bautraegergrundstuecke: "grundstuecke", wohnbaugrundstuecke: "grundstuecke",
+  gewerbegrundstuecke: "grundstuecke", projektentwicklungen: "grundstuecke",
+  neubauprojekte: "grundstuecke",
+};
+
+/**
  * Pure Auswahl-Logik — separat exportiert, damit sie ohne Next-Cache-Runtime
  * (z. B. tsx-Funktionstest gegen echte fetchOnOfficeEstates-Daten) prüfbar ist.
  *
@@ -117,7 +153,7 @@ const SCORER: Record<string, (e: Estate) => number> = {
  * beiden Schubladen falsch einsortiert.
  */
 export function selectExpertenObjekte(estates: Estate[], typ: string, limit = 3): Estate[] {
-  const scorer = SCORER[typ];
+  const scorer = SCORER[typ] ?? CLUSTER_SCORER[SLUG_CLUSTER[typ] ?? ""];
   if (!scorer || limit <= 0) return [];
 
   const ranked = estates

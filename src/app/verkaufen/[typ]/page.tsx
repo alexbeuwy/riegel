@@ -12,9 +12,13 @@ import {
 import { ReferenzObjekte } from "@/components/experten/referenz-objekte";
 import { BewertungSpotlight } from "@/components/experten/bewertung-spotlight";
 import { getExpertenObjekte } from "@/lib/experten-objekte";
+
+/** Nur diese 5 Typen haben eine eigene Infografik-Variante. */
+const INFOGRAFIK_TYPEN = new Set(["mehrfamilienhaus", "gewerbeimmobilie", "wohn-und-geschaeftshaus", "anlageimmobilie", "nachlassimmobilie"]);
 import { site } from "@/lib/site";
 import {
   expertenSeiten,
+  expertenRelated,
   getExpertenSeite,
   EXPERTEN_PUBLISHED,
   EXPERTEN_UPDATED,
@@ -134,7 +138,8 @@ export default async function ExpertenPage({ params }: { params: Promise<{ typ: 
   if (!seite) notFound();
 
   const url = `${site.url}/verkaufen/${seite.slug}`;
-  const related = expertenSeiten.filter((s) => s.slug !== seite.slug);
+  // Cluster-Nachbarn zuerst (Hub-and-Spoke-Verlinkung), aufgefüllt mit Flaggschiffen.
+  const related = expertenRelated(seite, 4);
   // Fail-soft: Mock-Fallback oder Fehler → [] → Sektion entfällt komplett.
   const objekte = await getExpertenObjekte(seite.slug, 3);
 
@@ -224,13 +229,17 @@ export default async function ExpertenPage({ params }: { params: Promise<{ typ: 
           </div>
         </section>
 
-        {/* Animierte Infografik direkt nach der Übersicht (Kundenvorgabe). */}
-        <section className="mt-20 sm:mt-24">
-          <SektionsTitel icon="chart">Auf einen Blick</SektionsTitel>
-          <div className="mt-6">
-            <ExpertenInfografik typ={seite.slug as ExpertenInfografikTyp} />
-          </div>
-        </section>
+        {/* Animierte Infografik direkt nach der Übersicht (Kundenvorgabe) —
+            nur die 5 Flaggschiff-Typen haben eine eigene Variante; die
+            weiteren Objektart-Seiten überspringen die Sektion. */}
+        {INFOGRAFIK_TYPEN.has(seite.slug) && (
+          <section className="mt-20 sm:mt-24">
+            <SektionsTitel icon="chart">Auf einen Blick</SektionsTitel>
+            <div className="mt-6">
+              <ExpertenInfografik typ={seite.slug as ExpertenInfografikTyp} />
+            </div>
+          </section>
+        )}
 
         {/* Vertiefende Inhalts-Sektionen — Zick-Zack: Text/Bild wechseln
             die Seite, mobil kollabiert alles einspaltig (Text zuerst). */}

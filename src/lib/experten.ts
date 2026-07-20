@@ -13,6 +13,8 @@ import { photos } from "@/lib/photos";
  * referenziert, damit diese Seite ohne Änderung an photos.ts auskommt.
  * Existenz aller drei Dateien am 2026-07-20 per HTTP 200 verifiziert.
  */
+import weitereSeitenJson from "@/content/experten-seiten.json";
+
 const CDN = "https://riegel.b-cdn.net";
 const fotoHausLightrays = `${CDN}/Riegel-Haus-lightrays.webp`;
 const fotoModelFrau = `${CDN}/Model-Frau-In-Wohnung.webp`;
@@ -48,6 +50,8 @@ export interface ExpertenVertiefung {
 
 export interface ExpertenSeite {
   slug: string;
+  /** Themen-Cluster für Related-Verlinkung + Hub-Gruppierung (Hub-and-Spoke-SEO). */
+  cluster?: string;
   /** Kurzlabel für Verweise (Hub-Karten, Related-Zeile). */
   label: string;
   /** Eine Zeile für die Hub-Karte auf /verkaufen. */
@@ -124,9 +128,16 @@ const uspWertermittlung: ExpertenUsp = {
   text: "Lage, Zustand, Flächen, Mieteinnahmen, Mietverträge und Mieterstruktur fließen in die Bewertung ein — auf Wunsch mit schriftlicher, nachvollziehbar hergeleiteter Marktwertanalyse.",
 };
 
-export const expertenSeiten: ExpertenSeite[] = [
+/**
+ * Die 5 Flaggschiff-Seiten (handkuratiert, mit eigener Infografik-Variante).
+ * Die weiteren 30 Objektart-Seiten kommen aus src/content/experten-seiten.json
+ * (Content-Factory-Workflow 20.07.2026, adversarial verifiziert; Konverter:
+ * scripts/build-experten-content.mjs) und werden unten angehängt.
+ */
+const flaggschiffe: ExpertenSeite[] = [
   {
     slug: "mehrfamilienhaus",
+    cluster: "wohnen",
     label: "Mehrfamilienhäuser & Zinshäuser",
     teaser: "Vermietete Wohnobjekte marktgerecht bewertet und an vorgemerkte Kapitalanleger vermittelt.",
     h1: "Die Experten für Mehrfamilienhäuser & Zinshäuser",
@@ -238,6 +249,7 @@ export const expertenSeiten: ExpertenSeite[] = [
   },
   {
     slug: "gewerbeimmobilie",
+    cluster: "buero-handel",
     label: "Gewerbeimmobilien",
     teaser: "Vom Bürogebäude bis zur Logistikhalle — diskret vermarktet an geprüfte Investoren.",
     h1: "Die Experten für Gewerbeimmobilien",
@@ -352,6 +364,7 @@ export const expertenSeiten: ExpertenSeite[] = [
   },
   {
     slug: "wohn-und-geschaeftshaus",
+    cluster: "wohnen",
     label: "Wohn- und Geschäftshäuser",
     teaser: "Wohnen und Gewerbe unter einem Dach — beide Ertragsbausteine realistisch bewertet.",
     h1: "Die Experten für Wohn- und Geschäftshäuser",
@@ -460,6 +473,7 @@ export const expertenSeiten: ExpertenSeite[] = [
   },
   {
     slug: "anlageimmobilie",
+    cluster: "kapitalanlage",
     label: "Anlage- & Investmentimmobilien",
     teaser: "Vom einzelnen Renditeobjekt bis zum Portfolio — mit Investorennetzwerk und Direktankauf.",
     h1: "Die Experten für Anlage- & Investmentimmobilien",
@@ -572,6 +586,7 @@ export const expertenSeiten: ExpertenSeite[] = [
   },
   {
     slug: "nachlassimmobilie",
+    cluster: "anlaesse",
     label: "Nachlass- & Erbimmobilien",
     teaser: "Geordneter Verkauf für Erben und Erbengemeinschaften — in Abstimmung mit Rechtsanwälten und Nachlassverwaltern.",
     h1: "Die Experten für Nachlass- & Erbimmobilien",
@@ -694,6 +709,33 @@ export const expertenSeiten: ExpertenSeite[] = [
   },
 ];
 
+/** Die 30 Content-Factory-Seiten — exakt in ExpertenSeite-Shape erzeugt. */
+const weitereSeiten = weitereSeitenJson as ExpertenSeite[];
+
+/** Alle Experten-Seiten: 5 Flaggschiffe zuerst, danach die 30 weiteren (alphabetisch). */
+export const expertenSeiten: ExpertenSeite[] = [...flaggschiffe, ...weitereSeiten];
+
+/** Nur die Flaggschiffe (Mega-Menü, prominente Hub-Karten). */
+export const expertenFlaggschiffe: ExpertenSeite[] = flaggschiffe;
+
+/** Cluster-Label für die Hub-Gruppierung. */
+export const EXPERTEN_CLUSTER_LABEL: Record<string, string> = {
+  wohnen: "Wohnen & Bestand",
+  kapitalanlage: "Kapitalanlage & Investment",
+  "buero-handel": "Büro & Handel",
+  industrie: "Industrie & Logistik",
+  betreiber: "Betreiber- & Sozialimmobilien",
+  grundstuecke: "Grundstücke & Entwicklung",
+  anlaesse: "Besondere Anlässe",
+};
+
 export function getExpertenSeite(slug: string): ExpertenSeite | undefined {
   return expertenSeiten.find((s) => s.slug === slug);
+}
+
+/** Cluster-Nachbarn für die Related-Zeile (gleiches Cluster zuerst, dann Flaggschiffe). */
+export function expertenRelated(seite: ExpertenSeite, max = 4): ExpertenSeite[] {
+  const same = expertenSeiten.filter((s) => s.slug !== seite.slug && s.cluster === seite.cluster);
+  const rest = flaggschiffe.filter((s) => s.slug !== seite.slug && s.cluster !== seite.cluster);
+  return [...same, ...rest].slice(0, max);
 }

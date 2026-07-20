@@ -7,7 +7,7 @@ import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
 import { photos } from "@/lib/photos";
-import { expertenSeiten } from "@/lib/experten";
+import { expertenSeiten, expertenFlaggschiffe, EXPERTEN_CLUSTER_LABEL } from "@/lib/experten";
 
 export const metadata = {
   title: "Immobilie verkaufen",
@@ -190,7 +190,7 @@ export default function VerkaufenPage() {
           </Reveal>
           <Reveal>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {expertenSeiten.map((s) => (
+              {expertenFlaggschiffe.map((s) => (
                 <Link
                   key={s.slug}
                   href={`/verkaufen/${s.slug}`}
@@ -210,6 +210,38 @@ export default function VerkaufenPage() {
                   </span>
                 </Link>
               ))}
+            </div>
+          </Reveal>
+
+          {/* Alle Spezialgebiete — kompakte, gruppierte Linkliste (Hub-and-Spoke:
+              jede der 30 weiteren Objektart-Seiten ist von hier crawlbar,
+              ohne den Hub mit 35 Riesen-Karten zu fluten). */}
+          <Reveal className="mt-14">
+            <h3 className="text-lg font-semibold text-fg">Alle Spezialgebiete</h3>
+            <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(EXPERTEN_CLUSTER_LABEL).map(([cluster, label]) => {
+                const seiten = expertenSeiten.filter(
+                  (s) => s.cluster === cluster && !expertenFlaggschiffe.some((f) => f.slug === s.slug),
+                );
+                if (seiten.length === 0) return null;
+                return (
+                  <div key={cluster}>
+                    <div className="text-[0.62rem] uppercase tracking-[0.18em] text-faint">{label}</div>
+                    <ul className="mt-3 space-y-2">
+                      {seiten.map((s) => (
+                        <li key={s.slug}>
+                          <Link
+                            href={`/verkaufen/${s.slug}`}
+                            className="text-sm text-muted transition-colors hover:text-accent"
+                          >
+                            {s.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
             </div>
           </Reveal>
         </Container>
