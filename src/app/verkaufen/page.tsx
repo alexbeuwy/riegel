@@ -7,6 +7,7 @@ import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
 import { photos } from "@/lib/photos";
+import { expertenSeiten } from "@/lib/experten";
 
 export const metadata = {
   title: "Immobilie verkaufen",
@@ -168,6 +169,49 @@ export default function VerkaufenPage() {
               </ul>
             </div>
           </div>
+        </Container>
+      </section>
+
+      {/* Spezialisiert auf Ihre Immobilienart — Verweis auf /verkaufen/[typ] */}
+      <section className="py-20">
+        <Container>
+          <Reveal className="mb-10 max-w-2xl space-y-4">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Spezialisierung
+            </span>
+            <h2 className="text-2xl font-semibold sm:text-3xl">
+              Spezialisiert auf Ihre Immobilienart
+            </h2>
+            <p className="text-muted">
+              Vom Mehrfamilienhaus bis zur Nachlassimmobilie: Jede Objektart hat
+              ihre eigenen Käufergruppen, Bewertungsfaktoren und rechtlichen
+              Rahmenbedingungen — wir kennen sie.
+            </p>
+          </Reveal>
+          <Reveal>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {expertenSeiten.map((s) => (
+                <Link
+                  key={s.slug}
+                  href={`/verkaufen/${s.slug}`}
+                  className="group rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-accent/50"
+                >
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-accent/30 bg-accent/[0.08] text-accent">
+                    <Icon name={s.icon} size={20} />
+                  </span>
+                  <div className="mt-4 text-[0.62rem] uppercase tracking-[0.18em] text-faint">
+                    Die Experten für
+                  </div>
+                  <h3 className="mt-1 text-lg font-semibold text-fg">{s.label}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{s.teaser}</p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent">
+                    Mehr erfahren
+                    <Icon name="arrowRight" size={15} className="transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </Reveal>
         </Container>
       </section>
 
