@@ -33,7 +33,49 @@ export const site = {
   // Primär-Navigation (Portal = #1)
   nav: [
     { href: "/immobilien", label: "Immobilien" },
-    { href: "/verkaufen", label: "Verkaufen" },
+    {
+      href: "/verkaufen",
+      label: "Verkaufen",
+      // Mega-Menü (wie Immobilienbewertung): Hub + die 5 Experten-Seiten.
+      children: [
+        {
+          href: "/verkaufen",
+          label: "Immobilie verkaufen",
+          desc: "Ihr Verkauf in fünf klaren Schritten",
+          icon: "handshake",
+        },
+        {
+          href: "/verkaufen/mehrfamilienhaus",
+          label: "Mehrfamilienhäuser",
+          desc: "Zinshäuser & vermietete Wohnobjekte",
+          icon: "building",
+        },
+        {
+          href: "/verkaufen/gewerbeimmobilie",
+          label: "Gewerbeimmobilien",
+          desc: "Büro, Handel, Logistik & Spezialobjekte",
+          icon: "chart",
+        },
+        {
+          href: "/verkaufen/wohn-und-geschaeftshaus",
+          label: "Wohn- & Geschäftshäuser",
+          desc: "Gemischt genutzte Objekte richtig bewerten",
+          icon: "home",
+        },
+        {
+          href: "/verkaufen/anlageimmobilie",
+          label: "Anlageimmobilien",
+          desc: "Kapitalanlagen bis zum Direktankauf",
+          icon: "trend",
+        },
+        {
+          href: "/verkaufen/nachlassimmobilie",
+          label: "Nachlass & Erbe",
+          desc: "Erbengemeinschaften sicher begleitet",
+          icon: "shield",
+        },
+      ],
+    },
     {
       href: "/rechner",
       label: "Immobilienbewertung",
