@@ -29,7 +29,7 @@ export const geoArticles = data as GeoArticle[];
  * `new Date()` (das bei jedem Deploy fälschlich „frisch" meldet).
  */
 export const GEO_CONTENT_PUBLISHED = "2026-06-20";
-export const GEO_CONTENT_UPDATED = "2026-07-10";
+export const GEO_CONTENT_UPDATED = "2026-07-20";
 
 export const standorte = (): GeoArticle[] => geoArticles.filter((a) => a.kind === "standort");
 export const ratgeber = (): GeoArticle[] => geoArticles.filter((a) => a.kind === "ratgeber");

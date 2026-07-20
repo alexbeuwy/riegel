@@ -40,6 +40,7 @@ const RATGEBER_ICON: Record<string, IconName> = Object.fromEntries(
  */
 const RATGEBER_RULES: { key: string; test: RegExp }[] = [
   { key: "makler", test: /^bester-immobilienmakler/ },
+  { key: "makler", test: /^fragenkatalog-makler/ },
   { key: "recht", test: /scheidung|geerbt|erbe/ },
   { key: "energie", test: /energie/ },
   { key: "vermieten", test: /vermiet/ },
