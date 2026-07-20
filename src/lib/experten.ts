@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/icon";
+import { photos } from "@/lib/photos";
 
 /**
  * „Die Experten für [Objektart]" — verkäufergerichtete Spezialisierungs-Seiten
@@ -6,6 +7,16 @@ import type { IconName } from "@/components/icon";
  * (Experten-Idee, USP-Profil, Verkäufer-Fragenkatalog) — keine erfundenen
  * Fakten, keine Aussagen über Wettbewerber.
  */
+
+/**
+ * BunnyCDN-Assets, die (noch) nicht in photos.ts gemappt sind — hier lokal
+ * referenziert, damit diese Seite ohne Änderung an photos.ts auskommt.
+ * Existenz aller drei Dateien am 2026-07-20 per HTTP 200 verifiziert.
+ */
+const CDN = "https://riegel.b-cdn.net";
+const fotoHausLightrays = `${CDN}/Riegel-Haus-lightrays.webp`;
+const fotoModelFrau = `${CDN}/Model-Frau-In-Wohnung.webp`;
+const fotoPaarVorHaus = `${CDN}/Paar-vor-Haus-schaut-auf-Smartphone.webp`;
 
 export interface ExpertenUsp {
   icon: IconName;
@@ -16,6 +27,23 @@ export interface ExpertenUsp {
 export interface ExpertenFaq {
   q: string;
   a: string;
+}
+
+export interface ExpertenFoto {
+  src: string;
+  alt: string;
+  /** CSS object-position, falls der Bildausschnitt nicht mittig sitzen soll. */
+  position?: string;
+}
+
+/** Vertiefende Inhalts-Sektion (Zick-Zack-Layout auf der Seite). */
+export interface ExpertenVertiefung {
+  eyebrow: string;
+  titel: string;
+  absaetze: string[];
+  /** Optionale Checkliste unter den Absätzen. */
+  punkte?: string[];
+  foto: ExpertenFoto;
 }
 
 export interface ExpertenSeite {
@@ -35,9 +63,27 @@ export interface ExpertenSeite {
   metaTitle: string;
   metaDescription: string;
   icon: IconName;
-  /** Hero-Subline — verkäufergerichtet, seriös. */
+  /**
+   * Großer akira-Display-Claim (Wortwitz, ohne „RIEGEL"/„Experten") — rein
+   * visuelles Element ÜBER der h1. Die sichtbare h1 bleibt aus SEO-Gründen
+   * die Subline („RIEGEL – Die Experten für …").
+   */
+  claim: string;
+  /** Exakter Teilstring des Claims, der im Akzentton gesetzt wird. */
+  claimAkzent?: string;
+  /** Sichtbare h1 unter dem Claim — Inter/Body-Font, font-medium, text-muted. */
+  subline: string;
+  /** Hero-Hintergrundfoto (BunnyCDN), je Seite ein anderes Motiv. */
+  heroFoto: ExpertenFoto;
+  /** Hero-Einordnung (2–3 Sätze) — verkäufergerichtet, seriös. */
   intro: string;
   usps: ExpertenUsp[];
+  /** Zwei vertiefende Inhalts-Sektionen (Zick-Zack) — Fakten aus den Quellen. */
+  vertiefung: ExpertenVertiefung[];
+  /** Überschrift über den Referenzobjekten, je Typ leicht variiert. */
+  referenzHeading: string;
+  /** Schlagwörter für das Bewertungs-Spotlight (Zitat-Auswahl). */
+  spotlightKeywords: string[];
   /** „Wir vermarkten"-Chips, bewusst auf 8–12 Begriffe destilliert. */
   chips: string[];
   faq: ExpertenFaq[];
@@ -89,8 +135,50 @@ export const expertenSeiten: ExpertenSeite[] = [
     metaDescription:
       "Mehrfamilienhaus oder Zinshaus verkaufen in der Metropolregion Rhein-Neckar: fundierte Marktwertermittlung, 121.000+ aktive Suchaufträge, auf Wunsch Direktankauf. Riegel Immobilien.",
     icon: "home",
+    claim: "Wie Vermieter sein zum Geschäftsmodell wird.",
+    claimAkzent: "Geschäftsmodell",
+    subline: "RIEGEL – Die Experten für Mehrfamilienhäuser & Zinshäuser",
+    heroFoto: {
+      src: fotoHausLightrays,
+      alt: "Wohnhaus im abendlichen Gegenlicht — Riegel Immobilien",
+      position: "50% 42%",
+    },
     intro:
       "Sie möchten ein Mehrfamilienhaus oder Zinshaus verkaufen? Wir vermarkten vermietete Wohnobjekte in der Metropolregion Rhein-Neckar — mit fundierter Wertermittlung, vorgemerkten Kaufinteressenten und Begleitung bis zum Notartermin.",
+    vertiefung: [
+      {
+        eyebrow: "Wertermittlung",
+        titel: "Was Ihr Mietshaus wirklich wert ist",
+        absaetze: [
+          "Beim Mehrfamilienhaus zählt mehr als der Quadratmeterpreis: Neben Lage, Grundstück, Baujahr und Zustand fließen die Höhe der Mieteinnahmen, die Inhalte der Mietverträge, die Mieterstruktur und mögliche Entwicklungspotenziale in die Bewertung ein. Erst die Gesamtheit dieser Faktoren ergibt einen realistischen, marktgerechten Angebotspreis.",
+          "Methodische Grundlage sind die anerkannten Verfahren der Immobilienwertermittlungsverordnung (ImmoWertV) — insbesondere das Ertragswert-, Vergleichswert- und Sachwertverfahren. Als Datenbasis dienen unter anderem die Kaufpreissammlungen der regionalen Gutachterausschüsse, Bodenrichtwerte (BORIS), aktuelle Grundstücksmarktberichte und professionelle Bewertungssoftware — ergänzt um unsere eigenen Verkaufserfahrungen aus der Metropolregion Rhein-Neckar.",
+        ],
+        punkte: [
+          "Strategischer Angebotspreis und realistisch erzielbarer Verkaufspreis werden getrennt ausgewiesen",
+          "Auf Wunsch als schriftliche Marktwertanalyse mit nachvollziehbarer Herleitung",
+          "Persönliche Besichtigung vor Ort statt automatisiertem Datenbankwert",
+        ],
+        foto: {
+          src: photos.analyse1,
+          alt: "Bewertung vor Ort: Beratung mit iPad im zu bewertenden Objekt",
+          position: "50% 30%",
+        },
+      },
+      {
+        eyebrow: "Vermarktung",
+        titel: "Verkauf im vermieteten Zustand",
+        absaetze: [
+          "Ein bewohntes Haus verkauft man nicht gegen seine Mieter, sondern mit ihnen. Sämtliche Besichtigungstermine stimmen wir direkt mit den Mietern ab und berücksichtigen deren zeitliche Möglichkeiten — die gesamte Organisation übernehmen wir. Es finden grundsätzlich Einzelbesichtigungen statt; Foto-, Video- oder Drohnenaufnahmen entstehen nur mit Zustimmung der Mieter.",
+          "Je nach Objekt und Mietverhältnissen sprechen wir zwei Käufergruppen an: Kapitalanleger, die auf stabile Mieteinnahmen Wert legen — oder Erwerber, die eine Einheit selbst nutzen und die übrigen Wohnungen vermieten möchten. Bei realistischer Preisgestaltung liegt die Vermarktungsdauer in der Regel bei bis zu etwa 14 Wochen; über den Stand informieren wir Sie mindestens einmal pro Woche.",
+        ],
+        foto: {
+          src: fotoModelFrau,
+          alt: "Vermietete Wohnung — Besichtigungen in Abstimmung mit den Mietern",
+        },
+      },
+    ],
+    referenzHeading: "Aktuelle Mandate aus dieser Objektklasse",
+    spotlightKeywords: ["haus", "verkauf", "schnell"],
     usps: [
       uspSuchauftraege("Mehrfamilienhäuser und Zinshäuser"),
       uspWertermittlung,
@@ -158,8 +246,50 @@ export const expertenSeiten: ExpertenSeite[] = [
     metaDescription:
       "Gewerbeimmobilie verkaufen: Bürogebäude, Einzelhandel, Logistik, Hotel oder Pflegeimmobilie. Diskrete Off-Market-Vermarktung, bonitätsgeprüfte Investoren, Netzwerk zu Banken und Gutachtern.",
     icon: "layers",
+    claim: "Aus Quadratmetern werden Renditen.",
+    claimAkzent: "Renditen",
+    subline: "RIEGEL – Die Experten für Gewerbeimmobilien",
+    heroFoto: {
+      src: photos.broschuerePortrait,
+      alt: "Beratungsgespräch mit RIEGEL-Mappe über den Dächern von Speyer",
+      position: "50% 28%",
+    },
     intro:
       "Sie möchten eine Gewerbeimmobilie verkaufen — vom Bürogebäude bis zur Logistikhalle? Wir sprechen gezielt qualifizierte Investoren an, vermarkten auf Wunsch diskret ohne öffentliche Inserate und begleiten Sie von der Bewertung bis zum Notartermin.",
+    vertiefung: [
+      {
+        eyebrow: "Diskretion",
+        titel: "Off-Market: Verkauf ohne Schaufenster",
+        absaetze: [
+          "Nicht jede Gewerbeimmobilie gehört ins Schaufenster: Ein öffentliches Inserat kann Mieter, Mitarbeiter und Geschäftspartner beunruhigen. Auf Wunsch vermarkten wir Ihr Objekt deshalb vollständig off-market — ohne öffentliche Inserate, über die gezielte Ansprache vorgemerkter, bonitätsgeprüfter Kaufinteressenten.",
+          "Grundlage sind unsere Datenbank mit über 121.000 aktiven Suchaufträgen und ein über Jahrzehnte gewachsenes Netzwerk aus privaten Investoren, Family Offices, institutionellen Anlegern und Projektentwicklern. So wechseln Objekte häufig den Eigentümer, bevor sie öffentlich gelistet werden.",
+        ],
+        foto: {
+          src: photos.modelWohnung,
+          alt: "Diskrete Vermarktung — Objektpräsentation abseits der öffentlichen Portale",
+          position: "70% center",
+        },
+      },
+      {
+        eyebrow: "Käuferprüfung",
+        titel: "Geprüfte Käufer, belastbarer Abschluss",
+        absaetze: [
+          "Ein Verkauf ist erst so sicher wie sein Käufer. Deshalb qualifizieren wir Kaufinteressenten vor: Wir prüfen Ernsthaftigkeit und grundsätzliche Kaufbereitschaft frühzeitig und fordern — soweit erforderlich — Finanzierungsbestätigungen oder Nachweise der finanzierenden Bank an.",
+          "Hinzu kommt die gesetzlich vorgeschriebene Identifizierung der Vertragsparteien nach dem Geldwäschegesetz (GwG), die wir im Verkaufsprozess entsprechend den gesetzlichen Anforderungen dokumentieren. Bis zur notariellen Beurkundung koordinieren wir Käufer, Verkäufer und Notariat — inklusive Vertragsentwurf zur vorherigen Prüfung durch beide Seiten.",
+        ],
+        punkte: [
+          "Vorqualifizierung aller Kaufinteressenten vor der Besichtigung",
+          "Finanzierungsnachweis bzw. Bankbestätigung vor dem Abschluss",
+          "GwG-Identifizierung und Dokumentation im Verkaufsprozess",
+        ],
+        foto: {
+          src: photos.dokumente,
+          alt: "Unterlagen, Grundrisse und Prüfung — Vorbereitung des Verkaufs",
+        },
+      },
+    ],
+    referenzHeading: "Aktuelle Gewerbe-Mandate",
+    spotlightKeywords: ["kompetent", "professionell", "verkauf"],
     usps: [
       uspInvestorenNetzwerk,
       {
@@ -230,8 +360,45 @@ export const expertenSeiten: ExpertenSeite[] = [
     metaDescription:
       "Wohn- und Geschäftshaus verkaufen in der Metropolregion Rhein-Neckar: Bewertung gemischter Nutzung, passende Käufergruppen, Vermarktung mit Rücksicht auf Ihre Mieter. Riegel Immobilien.",
     icon: "building",
+    claim: "Unten Umsatz. Oben Zuhause.",
+    claimAkzent: "Oben Zuhause.",
+    subline: "RIEGEL – Die Experten für Wohn- und Geschäftshäuser",
+    heroFoto: {
+      src: fotoPaarVorHaus,
+      alt: "Eigentümerpaar vor seinem Haus mit Blick aufs Smartphone",
+      position: "50% 35%",
+    },
     intro:
       "Wohnen und Gewerbe unter einem Dach: Wir bewerten beide Ertragsbausteine Ihres Wohn- und Geschäftshauses realistisch, finden die passende Käufergruppe und organisieren die Vermarktung mit Rücksicht auf Ihre Mieter.",
+    vertiefung: [
+      {
+        eyebrow: "Bewertung",
+        titel: "Zwei Erträge, ein Marktwert",
+        absaetze: [
+          "Ladenfläche im Erdgeschoss, Wohnungen darüber: Ein Wohn- und Geschäftshaus hat zwei Ertragsquellen — und beide gehören sauber bewertet. In die Marktwertanalyse fließen die Mieteinnahmen aus Wohn- und Gewerbeeinheiten, die Inhalte der bestehenden Mietverträge, die Mieterstruktur sowie Lage, Zustand und Flächen des Hauses ein.",
+          "Methodisch stützen wir uns auf die anerkannten Verfahren der Immobilienwertermittlungsverordnung (ImmoWertV) — bei ertragsorientierten Objekten insbesondere das Ertragswertverfahren — sowie auf die Kaufpreissammlungen der Gutachterausschüsse, Bodenrichtwerte und aktuelle Marktdaten. Auf Wunsch erhalten Sie die Marktwertanalyse schriftlich, mit transparent hergeleitetem Angebotspreis.",
+        ],
+        foto: {
+          src: photos.wertReportDay,
+          alt: "Eigentümer lesen die schriftliche Marktwertanalyse im Wert-Report",
+        },
+      },
+      {
+        eyebrow: "Zielgruppe",
+        titel: "Die richtige Käufergruppe entscheidet",
+        absaetze: [
+          "Kapitalanleger mit Blick auf stabile Erträge — oder ein Erwerber, der die Gewerbefläche selbst nutzt und die Wohnungen vermietet? Welche Zielgruppe am besten passt, richtet sich nach den individuellen Eigenschaften Ihres Hauses. Und danach richtet sich unsere gesamte Vermarktungsstrategie.",
+          "Wir erreichen beide Gruppen: über unsere eigene Interessentendatenbank, das marktführende Immobilienportal, unsere Immobilien-App und Social-Media-Kanäle — bei geeigneten Objekten ergänzt um professionelle Immobilienvideos. Besichtigungen organisieren wir vollständig selbst, ausschließlich einzeln und in Abstimmung mit Ihren Mietern.",
+        ],
+        foto: {
+          src: photos.analyse2,
+          alt: "Beratung im Objekt — Vermarktungsstrategie am iPad",
+          position: "50% 30%",
+        },
+      },
+    ],
+    referenzHeading: "Aktuelle Mandate: Wohnen & Gewerbe",
+    spotlightKeywords: ["haus", "verkauf"],
     usps: [
       {
         icon: "calculator",
@@ -301,8 +468,49 @@ export const expertenSeiten: ExpertenSeite[] = [
     metaDescription:
       "Anlageimmobilie oder Investmentimmobilie verkaufen: exklusives Netzwerk aus Family Offices und institutionellen Anlegern, 121.000+ Suchaufträge, Direktankauf durch angeschlossene Investorenfirmen.",
     icon: "trend",
+    claim: "Beton schlägt Sparbuch.",
+    claimAkzent: "Beton",
+    subline: "RIEGEL – Die Experten für Anlage- & Investmentimmobilien",
+    heroFoto: {
+      src: photos.heroKitchenDark,
+      alt: "Investor prüft Objektdaten am iPad — abendliche Szene mit blauem Licht",
+      position: "62% center",
+    },
     intro:
       "Vom einzelnen Renditeobjekt bis zum Portfolio: Wir vermarkten Anlage- und Investmentimmobilien gezielt und auf Wunsch diskret — mit eigenem Investorennetzwerk, vorgemerkten Käufern und der Option auf Direktankauf.",
+    vertiefung: [
+      {
+        eyebrow: "Direktankauf",
+        titel: "Wenn der Makler selbst kaufen kann",
+        absaetze: [
+          "Zwei angeschlossene Investorenfirmen kaufen Wohnanlagen und größere Objekte aktiv für den eigenen Bestand oder zur Entwicklung an. Das verändert die Ausgangslage für Verkäufer grundlegend: Im passenden Fall tritt RIEGEL nicht als Vermittler auf, sondern selbst als Käufer.",
+          "Die Investorensicht kennen wir dadurch aus eigener Erfahrung — vom Ankaufsprofil bis zur Bestandsentwicklung. Ob eine Vermittlung an unser Netzwerk oder ein Direktankauf für Sie das bessere Ergebnis bringt, besprechen wir offen und ohne Umwege.",
+        ],
+        foto: {
+          src: photos.wertReportNight,
+          alt: "Abendliche Beratung mit der RIEGEL-Broschüre vor Stadtlichtern",
+        },
+      },
+      {
+        eyebrow: "Datenbank",
+        titel: "121.000 Suchaufträge: verkauft, bevor es ein Inserat gibt",
+        absaetze: [
+          "Bevor eine Anlageimmobilie öffentlich sichtbar wird, gleichen wir sie mit unserer Datenbank ab: über 121.000 aktive Suchaufträge, laufend ergänzt um neue Interessenten über unsere Website, Immobilienportale, Social Media, regionale Netzwerke und Empfehlungen aus dem Kundenstamm.",
+          "Passende Kontakte sprechen wir gezielt und persönlich an — abgestimmt auf Suchprofil, Budget und Nutzung. So finden viele Objekte ihren Käufer, bevor sie öffentlich gelistet werden; auf Wunsch bleibt die Vermarktung vollständig diskret.",
+        ],
+        punkte: [
+          "Datenbank-Abgleich vor dem ersten öffentlichen Inserat",
+          "Gezielte, persönliche Ansprache passender Suchprofile",
+          "Auf Wunsch vollständig diskrete Off-Market-Vermarktung",
+        ],
+        foto: {
+          src: photos.rechnerHero,
+          alt: "Makler am Rechner mit großer Wert-Anzeige — Datenbank-Vorvermarktung",
+        },
+      },
+    ],
+    referenzHeading: "Aktuelle Anlage-Mandate",
+    spotlightKeywords: ["wohnung", "schnell", "verkauf"],
     usps: [
       {
         icon: "handshake",
@@ -372,8 +580,50 @@ export const expertenSeiten: ExpertenSeite[] = [
     metaDescription:
       "Geerbte Immobilie verkaufen: Erfahrung mit Erbengemeinschaften und Vor- und Nacherbschaften, Zusammenarbeit mit Rechtsanwälten und Nachlassverwaltern, schriftliche Marktwertanalyse für alle Erben.",
     icon: "shield",
+    claim: "Erben heißt entscheiden.",
+    claimAkzent: "entscheiden.",
+    subline: "RIEGEL – Die Experten für Nachlass- & Erbimmobilien",
+    heroFoto: {
+      src: photos.dokumente,
+      alt: "Grundrisse und Unterlagen einer Nachlassimmobilie",
+      position: "50% 45%",
+    },
     intro:
       "Eine geerbte Immobilie zu verkaufen heißt oft: mehrere Beteiligte, offene rechtliche Fragen und Entscheidungen in einer ohnehin belastenden Zeit. Wir begleiten Erben und Erbengemeinschaften geordnet durch den gesamten Verkauf — in enger Abstimmung mit Rechtsanwälten und Nachlassverwaltern.",
+    vertiefung: [
+      {
+        eyebrow: "Erbengemeinschaft",
+        titel: "Alle Erben, eine Entscheidung",
+        absaetze: [
+          "In der Praxis benennt eine Erbengemeinschaft häufig eine verantwortliche Person, die die Abstimmung übernimmt — für die notarielle Beurkundung sind dann die erforderlichen Beteiligten oder entsprechend bevollmächtigte Personen einzubinden. Ob bereits eine Vollmacht vorliegt, ein Erbe die Organisation übernimmt oder alle gemeinsam handeln: Wir richten den Verkaufsprozess nach Ihrer Konstellation aus.",
+          "Als gemeinsame Entscheidungsgrundlage erstellen wir auf Wunsch eine schriftliche Marktwertanalyse, in der die Bewertungsgrundlagen und die Herleitung des empfohlenen Angebotspreises transparent und nachvollziehbar dargestellt sind — damit alle Erben auf demselben Stand entscheiden.",
+        ],
+        punkte: [
+          "Klare Zuständigkeiten: eine koordinierende Person oder alle gemeinsam",
+          "Vollmachten und Beurkundung frühzeitig mitgedacht",
+          "Schriftliche Marktwertanalyse als gemeinsame Entscheidungsgrundlage",
+        ],
+        foto: {
+          src: photos.wertReport2,
+          alt: "Schriftliche Marktwertanalyse als gemeinsame Entscheidungsgrundlage",
+        },
+      },
+      {
+        eyebrow: "Netzwerk",
+        titel: "Im Verbund mit Fachanwälten und Nachlassverwaltern",
+        absaetze: [
+          "Wir arbeiten regelmäßig mit Fachanwälten — insbesondere für Erbrecht — sowie mit Nachlassverwaltern und weiteren Fachleuten der Nachlassabwicklung zusammen. Über diese Netzwerke werden wir empfohlen und mit der Vermarktung von Nachlassimmobilien beauftragt; zahlreiche haben wir bereits erfolgreich vermittelt.",
+          "Auch die Besonderheiten von Vor- und Nacherbschaften kennen wir aus begleiteten Verkäufen. Klare Kommunikation und strukturierte Abläufe sorgen dafür, dass alle Beteiligten mindestens einmal pro Woche über den Stand informiert sind — bei Bedarf in direkter Abstimmung mit den beteiligten Anwälten oder dem Nachlassverwalter.",
+        ],
+        foto: {
+          src: photos.analyse3,
+          alt: "Abstimmung im Objekt — Begleitung durch den gesamten Verkauf",
+          position: "50% 30%",
+        },
+      },
+    ],
+    referenzHeading: "Aktuelle Verkaufsmandate",
+    spotlightKeywords: ["einschätzung", "beiseite", "verkauf"],
     usps: [
       {
         icon: "shield",
