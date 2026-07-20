@@ -67,7 +67,7 @@ const to = real ? ["info@riegel-immobilien.de", "sissy.riegel@riegel-immobilien.
 const cc = real ? "alex@beuwy.com" : undefined;
 
 const res = await sendMail({
-  to: Array.isArray(to) ? to.join(", ") : to,
+  to,
   ...(cc ? { cc } : {}),
   subject: "Website-Update: Ihre Ideen vom 17.07. sind umgesetzt",
   html,
