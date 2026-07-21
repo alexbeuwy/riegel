@@ -1021,3 +1021,31 @@
   .glow-select-on .glow-select-ring { animation: none; }
   .wiggle-cta { animation: none; }
 }
+
+/* ── Immobilienrechner: statisches Glow-Panel (Ergebnis-Kacheln) ──
+   Ruhige Schwester des Auswahl-Glows: Akzent-Hairline oben, die zu den
+   Ecken ausläuft, plus dezenter radialer Schein hinter der Oberkante.
+   Statisch (kein Spin) — Ergebnisflächen sollen edel wirken, nicht blinken. */
+.glow-panel {
+  position: relative;
+  overflow: hidden;
+}
+.glow-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-accent) 65%, transparent) 50%, transparent);
+}
+.glow-panel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  width: 70%;
+  height: 68px;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%);
+  pointer-events: none;
+}

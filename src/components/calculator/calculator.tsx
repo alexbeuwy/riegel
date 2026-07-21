@@ -165,7 +165,7 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
       // des Marktorts passt fachlich nicht als "Vergleichspreis" für ein
       // ganzes Zinshaus, daher hier auf den Vervielfältiger verweisen.
       if (f.objektart === "mehrfamilienhaus") {
-        return r.vervielfaeltiger != null ? `${r.vervielfaeltiger}× Jahresmiete` : `${r.comparables} Objekte`;
+        return r.vervielfaeltiger != null ? `${nfDE.format(r.vervielfaeltiger)}× Jahresmiete` : `${r.comparables} Objekte`;
       }
       const m = ctx.markt;
       if (!m) return `${r.comparables} Objekte`;
@@ -177,21 +177,21 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
   {
     label: "Marktpreis-Index (12 Monate)",
     sub: "Preistrend wird berechnet",
-    value: (r, _f, ctx) => `+${ctx.markt ? ctx.markt.trendYoyPct : r.trendPct} % p.a.`,
+    value: (r, _f, ctx) => `+${nfDE.format(ctx.markt ? ctx.markt.trendYoyPct : r.trendPct)} % p.a.`,
   },
   {
     label: "Lage- & Infrastruktur-Score",
     sub: "Schulen, ÖPNV, Versorgung",
     // marktdaten führt keinen eigenen Mikrolage-Wert — der Nachfrage-Score
     // (1–10, ebenfalls lage-getrieben) ist der nächstliegende Stellvertreter.
-    value: (r, _f, ctx) => `${ctx.markt ? ctx.markt.nachfrage : r.mikrolage}/10`,
+    value: (r, _f, ctx) => `${nfDE.format(ctx.markt ? ctx.markt.nachfrage : r.mikrolage)}/10`,
   },
   {
     label: "Demografie & Nachfrage",
     sub: "Nachfrageindex der Region",
     value: (_r, _f, ctx) => (ctx.markt ? nachfrageLabel(ctx.markt.nachfrage) : "hohe Nachfrage"),
   },
-  { label: "Zins- & Renditeumfeld", sub: "Finanzierungskonditionen", value: (r) => `${r.rentYieldPct} % Rendite` },
+  { label: "Zins- & Renditeumfeld", sub: "Finanzierungskonditionen", value: (r) => `${nfDE.format(r.rentYieldPct)} % Rendite` },
   { label: "Objekt-Faktoren", sub: "Baujahr, Zustand, Qualität", value: (_r, f) => f.qualitaet },
   { label: "Eigene Transaktionsdatenbank", sub: "Riegel-Referenzobjekte", value: (r) => `${Math.round(r.comparables * 0.6)} Datensätze` },
 ];
@@ -206,12 +206,12 @@ function statTiles(result: ValuationResult): { k: string; v: string; icon: IconN
   const tiles: { k: string; v: string; icon: IconName }[] = [
     { k: "Preis / m²", v: result.pricePerSqm != null ? formatEUR(result.pricePerSqm) : "–", icon: "euro" },
     { k: "Vergleiche", v: `${result.comparables}`, icon: "layers" },
-    { k: "Markttrend", v: `+${result.trendPct} %`, icon: "trend" },
-    { k: "Mikrolage", v: `${result.mikrolage}/10`, icon: "compass" },
+    { k: "Markttrend", v: `+${nfDE.format(result.trendPct)} %`, icon: "trend" },
+    { k: "Mikrolage", v: `${nfDE.format(result.mikrolage)}/10`, icon: "compass" },
     { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
   ];
   if (result.vervielfaeltiger != null) {
-    tiles.push({ k: "Vervielfältiger", v: `${result.vervielfaeltiger}×`, icon: "calculator" });
+    tiles.push({ k: "Vervielfältiger", v: `${nfDE.format(result.vervielfaeltiger)}×`, icon: "calculator" });
   }
   return tiles;
 }
@@ -945,43 +945,48 @@ function Result({
       )}
 
       <div className="relative bg-bg px-6 py-12">
-        <div className="text-center">
-          <div className="text-sm uppercase tracking-[0.25em] text-muted">Geschätzter Marktwert</div>
-          <div className="akira mt-3 text-5xl leading-none text-fg sm:text-7xl lg:text-8xl">{formatEUR(mid)}</div>
-          <div className="mt-4 text-muted">
-            Spanne {formatEUR(result.low)} – {formatEUR(result.high)}
-          </div>
-          <div className="relative mx-auto mt-6 h-2 max-w-md rounded-full bg-surface-2">
-            <div className="absolute inset-y-0 left-[8%] right-[8%] rounded-full bg-gradient-to-r from-accent/30 via-accent to-accent/30" />
-            <div
-              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-accent"
-              style={{ left: `${8 + rangePos * 0.84}%` }}
-            />
-          </div>
-          {b && (
-            // .t-num-d nur auf dem Text-Span (s. Kommentar in SOURCES oben) —
-            // der äußere Flex-Wrapper bleibt unangetastet.
-            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted">
-              <span key={`${b.brw}-${b.zone}`} className="t-num-d">
-                Bodenrichtwert {b.brw} €/m²{b.zone ? ` · Zone ${b.zone}` : ""}
-              </span>
-              <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                {borisPriceRelevant(f.objektart) ? "amtlich · BORIS-RLP" : "informativ · BORIS-RLP"}
-              </span>
+        {/* Wert-Bühne im Glow-Panel-Look der Schritt-1-Objektart-Kacheln (statische
+            Variante ohne Spin, s. .glow-panel in globals.css) — Innenaufbau unangetastet. */}
+        <div className="glow-panel overflow-hidden rounded-2xl border border-border bg-surface/60 px-6 py-10">
+          <div className="text-center">
+            <div className="text-sm uppercase tracking-[0.25em] text-muted">Geschätzter Marktwert</div>
+            <div className="akira mt-3 text-5xl leading-none text-fg sm:text-7xl lg:text-8xl">{formatEUR(mid)}</div>
+            <div className="mt-4 text-muted">
+              Spanne {formatEUR(result.low)} – {formatEUR(result.high)}
             </div>
-          )}
-          {f.objektart === "mehrfamilienhaus" && result.vervielfaeltiger != null && (
-            // .t-num-d nur auf dem Text-Span (s. Kommentar oben) — der äußere
-            // Flex-Wrapper bleibt unangetastet.
-            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted">
-              <span key={result.vervielfaeltiger} className="t-num-d">
-                Ertragswert: Jahresnettokaltmiete × {result.vervielfaeltiger}
-              </span>
-              <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                heuristische Schätzung
-              </span>
+            <div className="relative mx-auto mt-6 h-2 max-w-md rounded-full bg-surface-2">
+              <div className="absolute inset-y-0 left-[8%] right-[8%] rounded-full bg-gradient-to-r from-accent/30 via-accent to-accent/30" />
+              <div
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-accent"
+                style={{ left: `${8 + rangePos * 0.84}%` }}
+              />
             </div>
-          )}
+            {b && (
+              // .t-num-d nur auf dem Text-Span (s. Kommentar in SOURCES oben) —
+              // der äußere Flex-Wrapper bleibt unangetastet. flex-wrap gegen
+              // Overflow bei langen Zonen-Bezeichnungen auf schmalen Screens.
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-muted">
+                <span key={`${b.brw}-${b.zone}`} className="t-num-d">
+                  Bodenrichtwert {b.brw} €/m²{b.zone ? ` · Zone ${b.zone}` : ""}
+                </span>
+                <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                  {borisPriceRelevant(f.objektart) ? "amtlich · BORIS-RLP" : "informativ · BORIS-RLP"}
+                </span>
+              </div>
+            )}
+            {f.objektart === "mehrfamilienhaus" && result.vervielfaeltiger != null && (
+              // .t-num-d nur auf dem Text-Span (s. Kommentar oben) — der äußere
+              // Flex-Wrapper bleibt unangetastet. flex-wrap wie beim Boris-Badge oben.
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-muted">
+                <span key={result.vervielfaeltiger} className="t-num-d">
+                  Ertragswert: Jahresnettokaltmiete × {nfDE.format(result.vervielfaeltiger)}
+                </span>
+                <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                  heuristische Schätzung
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
@@ -990,12 +995,19 @@ function Result({
           }`}
         >
           {tiles.map((s) => (
-            <div key={s.k} className="rounded-xl border border-border bg-surface p-4 text-center">
-              <div className="mb-2 flex justify-center text-accent">
-                <Icon name={s.icon} size={20} />
+            <div key={s.k} className="glow-panel rounded-xl border border-border bg-surface p-4 text-center">
+              <div className="mb-2 flex justify-center">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-accent/25 bg-accent/[0.08] text-accent">
+                  <Icon name={s.icon} size={18} />
+                </span>
               </div>
-              <div className="text-xs uppercase tracking-widest text-faint">{s.k}</div>
-              <div className="mt-1 text-base text-fg">{s.v}</div>
+              {/* Overflow-Schutz nach dem Muster von SecondaryStat (markt-panel.tsx):
+                  kein tracking-widest (frisst Breite), dafür overflow-wrap/hyphens
+                  gegen lange Labels wie „Vervielfältiger" auf schmalen Kacheln. */}
+              <div lang="de" className="min-w-0 text-[0.6rem] uppercase leading-tight text-faint [overflow-wrap:anywhere] hyphens-auto">
+                {s.k}
+              </div>
+              <div className="mt-1 text-base font-semibold text-fg tabular-nums">{s.v}</div>
             </div>
           ))}
         </div>
