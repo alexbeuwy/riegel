@@ -121,10 +121,18 @@ function StatSpanne({ label, min, max }: { label: string; min: number; max: numb
   return (
     <div className="rounded-xl border border-border bg-surface-2 p-5 transition-[transform,border-color] duration-500 hover:-translate-y-0.5 hover:border-accent/40">
       <div className="text-xs uppercase tracking-widest text-faint">{label}</div>
-      <div className="mt-2 flex items-baseline gap-2 text-2xl font-semibold text-fg tabular-nums sm:text-3xl">
+      {/* Die Kachel ist durch max-w-6xl der Seite plus lg:grid-cols-2 und
+          sm:grid-cols-2 im Panel auf gut 200px Innenbreite gedeckelt. Daher
+          text-2xl als Obergrenze (kein sm:text-3xl, das ließe die €/m²-Spanne
+          dort überlaufen) und flex-wrap als Sicherheitsnetz. Der Bindestrich
+          bleibt am Max-Wert, damit er beim seltenen Umbruch nie allein am
+          Zeilenende steht. */}
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-2xl font-semibold text-fg tabular-nums">
         <span>{nf.format(min)}</span>
-        <span className="text-base font-normal text-faint">–</span>
-        <span>{nf.format(max)}</span>
+        <span className="whitespace-nowrap">
+          <span className="mr-2 text-base font-normal text-faint">–</span>
+          {nf.format(max)}
+        </span>
       </div>
     </div>
   );

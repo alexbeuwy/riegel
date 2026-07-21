@@ -195,16 +195,38 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
     // gemessene Chip-Größe genutzt, um kollidierende, niedriger priorisierte
     // Label pro Frame auszublenden (höherer Wohnungspreis bzw. aktuelle
     // Auswahl gewinnt — dieselbe Priorität wie die Punktgröße oben).
+    //
+    // Zwei Hindernis-Arten neben anderen Labels: (1) die Punkt-Hitboxen aller
+    // Orte — IMMER ein Hindernis, unabhängig davon, ob deren eigenes Label
+    // gerade sichtbar ist, sonst ragt ein dicht benachbartes Label unter einen
+    // fremden Punkt und wirkt dort wie ein abgeschnittenes Text-Fragment (s.
+    // Speyer/Hockenheim-Fall); (2) der Kartenrand — der Container ist
+    // `overflow-hidden`, ein dort hinausragendes Label würde sonst hart
+    // gekappt statt sauber zu verschwinden.
     const updateLabelVisibility = () => {
       const GAP = 3;
-      type Box = { slug: string; left: number; right: number; top: number; bottom: number; weight: number };
+      type Rect = { left: number; right: number; top: number; bottom: number };
+      type Box = Rect & { slug: string; weight: number };
+      const containerWidth = ref.current?.clientWidth ?? 0;
+      const containerHeight = ref.current?.clientHeight ?? 0;
+
       const boxes: Box[] = [];
+      const dotBoxes: (Rect & { slug: string })[] = [];
       for (const ort of orte) {
-        const size = labelSize[ort.slug];
         const entry = markersRef.current[ort.slug];
-        if (!size || !entry) continue;
+        if (!entry) continue;
         const p = map.project([ort.lng, ort.lat]);
         const hitSize = parseFloat(entry.el.style.height) || 0;
+        // Dot-Box zentriert am Punkt, gleiche hitSize wie die Hit-Area des Markers.
+        dotBoxes.push({
+          slug: ort.slug,
+          left: p.x - hitSize / 2,
+          right: p.x + hitSize / 2,
+          top: p.y - hitSize / 2,
+          bottom: p.y + hitSize / 2,
+        });
+        const size = labelSize[ort.slug];
+        if (!size) continue;
         const top = p.y + hitSize / 2 + 4;
         boxes.push({
           slug: ort.slug,
@@ -216,15 +238,19 @@ export function AtlasMap({ orte, selectedSlug, onSelect }: AtlasMapProps) {
         });
       }
       boxes.sort((a, b) => b.weight - a.weight);
+      const overlapsRect = (a: Rect, b: Rect) =>
+        a.left < b.right + GAP && a.right > b.left - GAP && a.top < b.bottom + GAP && a.bottom > b.top - GAP;
       const accepted: Box[] = [];
       for (const box of boxes) {
-        const overlaps = accepted.some(
-          (o) =>
-            box.left < o.right + GAP &&
-            box.right > o.left - GAP &&
-            box.top < o.bottom + GAP &&
-            box.bottom > o.top - GAP,
-        );
+        const overlapsLabel = accepted.some((o) => overlapsRect(box, o));
+        // Fremde Punkte zählen immer als Hindernis (auch wenn deren eigenes
+        // Label gerade unsichtbar ist); den eigenen Punkt ignorieren — das
+        // Label sitzt ohnehin direkt darunter (s. `top` oben) und würde sich
+        // sonst grundlos selbst blockieren.
+        const overlapsDot = dotBoxes.some((d) => d.slug !== box.slug && overlapsRect(box, d));
+        const overlapsEdge =
+          box.left < 0 || box.right > containerWidth || box.top < 0 || box.bottom > containerHeight;
+        const overlaps = overlapsLabel || overlapsDot || overlapsEdge;
         const show = !overlaps || box.slug === selectedSlugRef.current;
         if (show) accepted.push(box);
         markersRef.current[box.slug].label.style.opacity = show ? "1" : "0";

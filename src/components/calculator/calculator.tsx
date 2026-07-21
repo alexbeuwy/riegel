@@ -31,7 +31,11 @@ const LocationMap = dynamic(
 
 type Phase = "form" | "analyzing" | "result";
 const ENERGIE = ["A+", "A", "B", "C", "D", "E", "F", "G", "H"];
-const STEP_LABELS = ["Objektart", "Standort", "Eckdaten"];
+// Vier Fortschritts-Knoten: „Rechner aufrufen" gilt mit dem Öffnen bereits
+// als erledigt (psychologischer Vorsprung) — die drei Formularschritte folgen.
+const STEP_NODES = ["Rechner aufrufen", "Objektart", "Standort", "Eckdaten"];
+// Nicht-linearer Fortschritt je Formularschritt (frühe Schritte springen weiter).
+const PROGRESS_PCT = [32, 60, 82];
 
 /** Ladezustand der amtlichen Bodenrichtwert-Abfrage (/api/bodenrichtwert). */
 interface BorisState {
@@ -96,7 +100,7 @@ const OBJEKTARTEN: { key: Objektart; label: string; icon: React.ReactNode }[] = 
   { key: "haus", label: "Haus", icon: <path d="M3 11.5 12 4l9 7.5M5 10v11h14V10M10 21v-6h4v6" /> },
   {
     key: "mehrfamilienhaus",
-    label: "Mehrfamilienhaus",
+    label: "Mehrfamilien­haus",
     icon: (
       <>
         <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 21V9h4a1 1 0 0 1 1 1v11M3 21h18" />
@@ -487,47 +491,100 @@ export function Calculator() {
   if (phase === "result" && result && result.mid > 0)
     return <Result f={f} result={result} onReset={reset} boris={boris} sectionRef={resultRef} />;
 
+  const currentNode = step + 1; // Knoten 0 „Rechner aufrufen" ist mit dem Öffnen erledigt
+  const pct = PROGRESS_PCT[step] ?? PROGRESS_PCT[0];
+
   return (
-    <div className="mx-auto max-w-2xl">
-      <ol role="list" aria-label="Fortschritt der Bewertung" className="mb-8 flex items-center gap-3">
-        {[0, 1, 2].map((s) => (
-          <li key={s} className="flex flex-1 items-center gap-3" aria-current={s === step ? "step" : undefined}>
-            <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${
-                s <= step ? "border-accent bg-accent text-on-accent" : "border-border text-muted"
-              }`}
-            >
-              <span aria-hidden="true">{s + 1}</span>
-              <span className="sr-only">
-                {`Schritt ${s + 1} von 3: ${STEP_LABELS[s]}${s === step ? " (aktuell)" : s < step ? " (abgeschlossen)" : ""}`}
-              </span>
-            </div>
-            {s < 2 && <div aria-hidden="true" className={`h-px flex-1 ${s < step ? "bg-accent" : "bg-border"}`} />}
-          </li>
-        ))}
-      </ol>
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-8">
+        <div className="mb-3 flex items-center justify-between text-xs">
+          <span className="uppercase tracking-[0.2em] text-faint">Schritt {currentNode + 1} von 4</span>
+          <span className="font-medium text-accent">
+            <span key={pct} className="t-num-d tabular-nums">{pct}%</span> erledigt
+          </span>
+        </div>
+        <ol role="list" aria-label="Fortschritt der Bewertung" className="flex items-center gap-2 sm:gap-3">
+          {STEP_NODES.map((label, d) => {
+            const done = d < currentNode;
+            const current = d === currentNode;
+            return (
+              <li key={label} className="flex flex-1 items-center gap-2 sm:gap-3" aria-current={current ? "step" : undefined}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <div
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs transition-colors ${
+                      done
+                        ? "border-accent bg-accent text-on-accent"
+                        : current
+                          ? "border-accent text-accent"
+                          : "border-border text-muted"
+                    }`}
+                  >
+                    {done ? (
+                      <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="m5 12 4 4 10-10" />
+                      </svg>
+                    ) : (
+                      <span aria-hidden="true">{d + 1}</span>
+                    )}
+                    <span className="sr-only">
+                      {`Schritt ${d + 1} von 4: ${label}${current ? " (aktuell)" : done ? " (abgeschlossen)" : ""}`}
+                    </span>
+                  </div>
+                  <span className={`hidden truncate text-xs sm:inline ${current ? "font-medium text-fg" : done ? "text-muted" : "text-faint"}`}>
+                    {label}
+                  </span>
+                </div>
+                {d < STEP_NODES.length - 1 && (
+                  <div aria-hidden="true" className={`h-px flex-1 ${d < currentNode ? "bg-accent" : "bg-border"}`} />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
         {step === 0 && (
           <div className="space-y-6">
             <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Was möchten Sie bewerten?</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {OBJEKTARTEN.map((o) => (
-                <button
-                  key={o.key}
-                  type="button"
-                  aria-pressed={f.objektart === o.key}
-                  onClick={() => set("objektart", o.key)}
-                  className={`press flex flex-col items-center gap-3 rounded-xl border p-5 ${
-                    f.objektart === o.key ? "border-accent bg-surface-2" : "border-border hover:border-accent/50"
-                  }`}
-                >
-                  <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" className={f.objektart === o.key ? "text-accent" : "text-muted"}>
-                    {o.icon}
-                  </svg>
-                  <span className="text-sm text-fg">{o.label}</span>
-                </button>
-              ))}
+              {OBJEKTARTEN.map((o) => {
+                const selected = f.objektart === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => set("objektart", o.key)}
+                    className={`group press relative flex flex-col items-center justify-center gap-2.5 overflow-hidden rounded-xl border p-4 text-center transition-[border-color,background-color,transform] duration-300 ${
+                      selected
+                        ? "glow-select-on border-accent bg-surface-2"
+                        : "border-border hover:-translate-y-0.5 hover:border-accent/50 hover:bg-surface-2/60"
+                    }`}
+                  >
+                    <span aria-hidden="true" className="glow-select-ring" />
+                    <span
+                      className={`relative flex h-11 w-11 items-center justify-center rounded-xl border transition-colors duration-300 ${
+                        selected
+                          ? "border-accent/40 bg-accent/10 text-accent"
+                          : "border-border/70 bg-surface text-muted group-hover:text-accent"
+                      }`}
+                    >
+                      <svg viewBox="0 0 24 24" width={24} height={24} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                        {o.icon}
+                      </svg>
+                    </span>
+                    <span
+                      lang="de"
+                      className={`relative text-[0.8rem] font-medium leading-tight tracking-tight [hyphens:auto] ${
+                        selected ? "text-fg" : "text-muted group-hover:text-fg"
+                      }`}
+                    >
+                      {o.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -754,14 +811,16 @@ export function Calculator() {
           ) : (
             <span />
           )}
-          <button
-            key={errorNonce}
-            type="button"
-            onClick={next}
-            className={`t-input ${error ? "is-shaking" : ""} rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.98]`}
-          >
-            {step < 2 ? "Weiter" : "Bewertung berechnen"}
-          </button>
+          <span className={step < 2 ? "wiggle-cta" : "inline-block"}>
+            <button
+              key={errorNonce}
+              type="button"
+              onClick={next}
+              className={`t-input ${error ? "is-shaking" : ""} rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-[background-color,transform] hover:bg-accent-hover active:scale-[0.98]`}
+            >
+              {step < 2 ? "Weiter" : "Bewertung berechnen"}
+            </button>
+          </span>
         </div>
       </div>
     </div>

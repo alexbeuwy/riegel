@@ -35,16 +35,15 @@ export default function RechnerPage() {
             sizes="100vw"
             className="object-cover object-center"
           />
-          {/* Lesbarkeit: unten in den Seitenhintergrund auslaufen (nahtloser
-              Übergang zum Rechner), links dezent abdunkeln für die Textspalte.
-              Foto ist bereits dunkel — Overlay bewusst leicht (Regel: nicht
-              überdunkeln, sonst geht die Bildwirkung verloren). */}
-          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/55 to-bg/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-bg/60 via-bg/15 to-transparent" />
+          {/* Lesbarkeit: oben/unten in den Seitenhintergrund auslaufen, damit der
+              zentrierte Text auf jedem Bildausschnitt trägt. Foto ist bereits
+              dunkel — Overlay bewusst leicht. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/35" />
+          <div className="absolute inset-0 bg-gradient-to-b from-bg/45 via-transparent to-bg/55" />
         </div>
 
-        <Container className="py-14 sm:py-20">
-          <div className="max-w-2xl">
+        <Container className="py-12 sm:py-16">
+          <div className="mx-auto max-w-3xl text-center">
             <span
               className="reveal-lcp inline-flex items-center gap-2 rounded-full border border-border bg-bg/40 px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted backdrop-blur"
               style={{ animationDelay: "0ms" }}
@@ -53,22 +52,28 @@ export default function RechnerPage() {
               Kostenlos &amp; unverbindlich
             </span>
             <h1
-              className="reveal-lcp mt-6 text-4xl font-semibold leading-[1.05] sm:text-5xl"
+              className="reveal-lcp akira mt-6 text-3xl leading-[0.95] sm:text-4xl lg:text-5xl"
               style={{ animationDelay: "80ms" }}
             >
-              Was ist Ihre Immobilie wert?
+              Was ist Ihre <span className="text-accent">Immobilie</span> wert?
             </h1>
-            <p
-              className="reveal-lcp mt-5 max-w-xl text-lg text-muted"
-              style={{ animationDelay: "160ms" }}
+            <div
+              className="reveal-lcp akira-outline mt-3 text-xl text-fg/70 sm:text-2xl"
+              style={{ animationDelay: "140ms" }}
             >
-              In 60 Sekunden zur datenbasierten Einschätzung — zusammengeführt aus
+              Immobilienrechner
+            </div>
+            <p
+              className="reveal-lcp mx-auto mt-6 max-w-xl text-lg text-muted"
+              style={{ animationDelay: "220ms" }}
+            >
+              In 60 Sekunden zur datenbasierten Einschätzung, zusammengeführt aus
               amtlichen Bodenrichtwerten, Vergleichsobjekten und unserer eigenen
               Transaktionsdatenbank.
             </p>
             <ul
-              className="reveal-lcp mt-7 flex flex-wrap gap-x-5 gap-y-2.5"
-              style={{ animationDelay: "240ms" }}
+              className="reveal-lcp mt-7 flex flex-wrap justify-center gap-x-5 gap-y-2.5"
+              style={{ animationDelay: "300ms" }}
             >
               {TRUST.map((t) => (
                 <li key={t.label} className="flex items-center gap-2 text-sm text-fg/90">
