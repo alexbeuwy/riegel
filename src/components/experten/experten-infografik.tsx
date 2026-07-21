@@ -178,10 +178,20 @@ const MFH_FENSTER = [
   { x: 120, y: 92 },
 ];
 
+/** Was den Kaufpreisfaktor treibt — füllt die rechte Spalte der Beispielrechnung. */
+const KAUFPREISFAKTOREN: { label: string; sub: string }[] = [
+  { label: "Lage & Mikrolage", sub: "Stadt, Viertel, Infrastruktur" },
+  { label: "Zustand & Modernisierung", sub: "Bausubstanz, Energetik, Instandhaltungsstau" },
+  { label: "Mietniveau & Potenzial", sub: "Ist-Miete vs. marktübliche Miete" },
+  { label: "Mieterstruktur & Verträge", sub: "Laufzeiten, Bonität, Fluktuation" },
+  { label: "Leerstand", sub: "Vermietungsstand drückt oder trägt den Faktor" },
+  { label: "Zins- & Marktumfeld", sub: "Nachfrage der Kapitalanleger in der Region" },
+];
+
 function VarianteMehrfamilienhaus({ a }: { a: Anim }) {
   const miete = useCountUp(54_000, a.on, 1200);
-  const faktor = useCountUp(22.5, a.on, 1200);
-  const preis = useCountUp(1_215_000, a.on, 1400);
+  const faktor = useCountUp(15.5, a.on, 1200);
+  const preis = useCountUp(837_000, a.on, 1400);
 
   return (
     <Rahmen
@@ -190,7 +200,7 @@ function VarianteMehrfamilienhaus({ a }: { a: Anim }) {
       titel="Vom Mietertrag zum Kaufpreis"
       caption="Beispielrechnung: Die Jahresnettokaltmiete multipliziert mit einem marktüblichen Faktor ergibt eine erste Kaufpreisindikation — den tatsächlichen Wert Ihres Mehrfamilienhauses ermitteln wir individuell."
     >
-      <div className="mt-6 grid grid-cols-1 items-center gap-8 sm:grid-cols-[240px_minmax(0,1fr)] sm:gap-10">
+      <div className="mt-6 grid grid-cols-1 items-center gap-8 sm:grid-cols-[240px_minmax(0,1fr)] sm:gap-10 lg:grid-cols-[240px_minmax(0,1fr)_minmax(0,1.15fr)]">
         {/* Haus-Querschnitt (dekorativ — die Rechnung rechts trägt den Inhalt) */}
         <svg
           aria-hidden="true"
@@ -290,6 +300,36 @@ function VarianteMehrfamilienhaus({ a }: { a: Anim }) {
           <p className="mt-4 text-[11px] leading-relaxed text-faint" style={fadeRise(a, 1500, 800)}>
             Beispielwerte — der tatsächliche Faktor hängt von Lage, Zustand und Mietstruktur ab.
           </p>
+        </div>
+
+        {/* Kaufpreisfaktoren — füllt die rechte Spalte: was den Faktor treibt.
+            Auf Mobil/Tablet stapelt die Liste unter der Rechnung. */}
+        <div className="min-w-0 border-t border-border pt-6 sm:col-span-2 lg:col-span-1 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+          <p
+            className="text-[0.62rem] uppercase tracking-[0.18em] text-faint"
+            style={fadeRise(a, 900, 700)}
+          >
+            Was den Faktor bestimmt
+          </p>
+          <ul className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-3.5">
+            {KAUFPREISFAKTOREN.map((f, i) => (
+              <li
+                key={f.label}
+                className="flex items-start gap-2.5"
+                style={fadeRise(a, 1000 + i * 130, 700)}
+              >
+                <span
+                  aria-hidden
+                  className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: "var(--color-accent)" }}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fg">{f.label}</span>
+                  <span className="block text-xs leading-snug text-muted">{f.sub}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </Rahmen>
