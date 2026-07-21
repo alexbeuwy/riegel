@@ -5,14 +5,24 @@ import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
 import { COVER_JPG_B64 } from "@/lib/report-assets/cover";
 import { HERO_RAYS_B64, GAUGE_B64, ICONS } from "@/lib/report-assets/visuals";
 import { BORIS_ATTRIBUTION } from "@/lib/boris";
+import type { ReportContext } from "@/lib/report-context";
+import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
 
 /**
- * Mehrseitiger RIEGEL-Marktwert-Report als PDF — als echtes Dokument aufgebaut:
- *   1 Deckblatt   — Luftbild des EINGEGEBENEN Objekts (Esri/Maxar, wie im Rechner)
- *   2 Bewertung   — Wert-Hero, Objekt-/Kennzahlen + Stimmungsbild
- *   3 Preis-Faktoren mit Wirkung
- *   4 Vermarktungszeit & Markttrend
- *   5 Endblatt    — rechtliche Infos, Haftungsausschluss, Ansprechpartner
+ * Mehrseitiger RIEGEL-Marktwert-Report als PDF — als echtes Dokument aufgebaut,
+ * im Stil der Website (dunkler Grund, ein Akzentblau, "Gradient-glow"-Boxen,
+ * "gradient to nothing"-Flächen, AKIRA-Headlines). Seitenzahl ist DYNAMISCH
+ * (5–9 Seiten, s. `total` in buildReportPdf) — optionale Kapitel fallen bei
+ * fehlenden Daten fail-soft weg statt eine leere/kaputte Seite zu zeigen:
+ *   1 Deckblatt          — Luftbild des EINGEGEBENEN Objekts (Esri/Maxar)
+ *   2 Bewertung          — Wert-Hero, Objekt-/Kennzahlen + Stimmungsbild
+ *   3 Preis-Zusammensetzung — Wasserfall/Formel-Grafik (immer, best-effort)
+ *   4 Ihr Markt           — NUR wenn context.markt vorhanden (Preisatlas-Stadt)
+ *   5 Referenzobjekte      — NUR wenn vergleichsobjekte vorhanden
+ *   6 Preis-Faktoren      — die 7 allgemeinen Werttreiber
+ *   7 Vermarktung & Markt — Listen, Trend, RIEGEL-Ablauf-Timeline, CTA
+ *   8 Warum RIEGEL        — NUR wenn context vorhanden (Facts & Figures)
+ *   9 Endblatt            — rechtliche Infos, Haftungsausschluss, Ansprechpartner
  * AKIRA für Headlines (fontkit-Embed), echtes RIEGEL-Logo. Pure-JS (serverless-tauglich).
  */
 export interface ReportData {
@@ -28,6 +38,17 @@ export interface ReportData {
   zustand?: string;
   qualitaet?: string;
   energieklasse?: string;
+  /** Gewählte Ausstattungs-Merkmale aus dem Rechner (z. B. Balkon, Garage). */
+  ausstattung?: string[];
+  /** Werttreiber aus estimateValue (Zustand/Qualität/Baujahr/…, ±%) — Basis
+   * der Preis-Zusammensetzungs-Seite. Bei Mehrfamilienhaus/Grundstück leer. */
+  factors?: { label: string; effectPct: number }[];
+  /** Website-Wissen (Preisatlas-Marktdaten, GEO-Standorttext, RIEGEL-Stats)
+   * aus buildReportContext() — s. lib/report-context.ts. */
+  context?: ReportContext;
+  /** Echte OnOffice-Vergleichsobjekte (max. 3, s. lib/report-objekte.ts) —
+   * ohne Treffer/Mock-Bestand leer, dann entfällt die Referenzobjekte-Seite. */
+  vergleichsobjekte?: ReportVergleichsObjekt[];
   /** Nur bei objektartLabel === "Mehrfamilienhaus" (Ertragswert-Ansatz). */
   jahresnettokaltmiete?: string | number;
   wohneinheiten?: string | number;
@@ -69,10 +90,14 @@ const NEG = rgb(0.85, 0.42, 0.4);
 
 const A4: [number, number] = [595.28, 841.89];
 const M = 48;
-const PAGES = 5;
 
 const eur = (n: number) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+/** Deutsche Dezimalformatierung (Komma statt Punkt) für Kennzahlen wie
+ * Mietrendite/Vervielfältiger — bewusst getrennt von eur() (kein Währungszeichen). */
+const fmtDe = (n: number, maxFrac = 1) => new Intl.NumberFormat("de-DE", { maximumFractionDigits: maxFrac }).format(n);
+/** Ganzzahl deutsch gruppiert (Tausenderpunkt) — für die Facts&Figures-Kacheln. */
+const fmtInt = (n: number) => new Intl.NumberFormat("de-DE").format(Math.round(n));
 
 /** Der Bodenrichtwert fließt nur bei Grundstück/Haus in mid/pricePerSqm ein
  * (s. estimateValue in lib/valuation.ts) — bei Wohnung/Gewerbe ist er im
@@ -195,11 +220,42 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
   const ctx: Ctx = { doc, reg, bold, akira, mark, vibe, satellite, heroRays, gauge, icons };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
 
-  drawCover(ctx, d, objektTitle);
-  drawValuation(ctx, d);
-  drawFactors(ctx);
-  drawMarket(ctx, d, objektTitle);
-  drawLegal(ctx, d, objektTitle);
+  // Vergleichsobjekt-Fotos vorab einbetten: Ctx-Bilder werden beim Zeichnen
+  // synchron gebraucht, embedJpg/embedPng sind aber async — daher hier, VOR
+  // den draw*()-Aufrufen. Fail-soft wie jedes andere Bild-Embed: ein
+  // einzelnes kaputtes Foto kostet nur das Foto, nie die Seite/den Report.
+  const vergleichsobjekte = (d.vergleichsobjekte ?? []).slice(0, 3);
+  const vergleichsFotos: (PDFImage | null)[] = [];
+  for (const obj of vergleichsobjekte) {
+    if (obj.fotoB64 && obj.fotoKind === "jpg") vergleichsFotos.push(await tryEmbedJpg(obj.fotoB64, "Referenzobjekt-Foto"));
+    else if (obj.fotoB64 && obj.fotoKind === "png") vergleichsFotos.push(await tryEmbedPng(obj.fotoB64, "Referenzobjekt-Foto"));
+    else vergleichsFotos.push(null);
+  }
+
+  // Dynamische Seitenzahl statt fixer PAGES-Konstante: optionale Kapitel
+  // fallen bei fehlenden Daten fail-soft weg statt eine leere/kaputte Seite
+  // zu zeigen. IMMER vorhanden: Deckblatt, Bewertung, Preis-Faktoren,
+  // Vermarktung & Markt, Endblatt (5 Basisseiten).
+  const hasComposition = Boolean(
+    (d.factors && d.factors.length > 0) || d.objektartLabel === "Mehrfamilienhaus" || d.objektartLabel === "Grundstück",
+  );
+  const hasMarkt = Boolean(d.context?.markt);
+  const hasVergleich = vergleichsobjekte.length > 0;
+  const hasContext = Boolean(d.context);
+  const total = 5 + (hasComposition ? 1 : 0) + (hasMarkt ? 1 : 0) + (hasVergleich ? 1 : 0) + (hasContext ? 1 : 0);
+
+  let pageNo = 0;
+  const next = () => ++pageNo;
+
+  drawCover(ctx, d, objektTitle, next(), total);
+  drawValuation(ctx, d, next(), total);
+  if (hasComposition) drawComposition(ctx, d, next(), total);
+  if (hasMarkt) drawMarketLocal(ctx, d, next(), total);
+  if (hasVergleich) drawReferenzobjekte(ctx, d, vergleichsFotos, next(), total);
+  drawFactors(ctx, next(), total);
+  drawMarketing(ctx, d, objektTitle, next(), total);
+  if (hasContext) drawWhyRiegel(ctx, d, next(), total);
+  drawLegal(ctx, d, objektTitle, next(), total);
 
   const bytes = await doc.save();
   return Buffer.from(bytes).toString("base64");
@@ -242,6 +298,13 @@ function ellipsize(s: string, font: PDFFont, size: number, maxW: number): string
   while (out.length > 1 && font.widthOfTextAtSize(out + "…", size) > maxW) out = out.slice(0, -1);
   return out + "…";
 }
+/** Größtmögliche Schriftgröße (bis `max`, min. `min`), bei der `s` noch in
+ * `maxW` passt — für AKIRA-Zahlen/-Werte variabler Länge in Kacheln/Boxen. */
+function fitFontSize(font: PDFFont, s: string, maxW: number, max: number, min = 9): number {
+  let size = max;
+  while (size > min && font.widthOfTextAtSize(s, size) > maxW) size -= 0.5;
+  return size;
+}
 function bg(page: PDFPage, w: number, h: number) {
   page.drawRectangle({ x: 0, y: 0, width: w, height: h, color: BG });
 }
@@ -261,26 +324,239 @@ function header(ctx: Ctx, page: PDFPage, w: number, h: number, kicker: string) {
   page.drawLine({ start: { x: M, y }, end: { x: w - M, y }, thickness: 1, color: BORDER });
   return y - 26;
 }
-function footer(ctx: Ctx, page: PDFPage, w: number, pageNo: number) {
+function footer(ctx: Ctx, page: PDFPage, w: number, pageNo: number, total: number) {
   const t = mkText(page);
   page.drawLine({ start: { x: M, y: 54 }, end: { x: w - M, y: 54 }, thickness: 0.5, color: BORDER });
   t("Riegel Immobilien e.K. · Wormser Straße 13, 67346 Speyer · Kaiser-Wilhelm-Straße 16, 67059 Ludwigshafen", M, 40, 7.5, ctx.reg, FAINT);
-  textRight(page, `${pageNo} / ${PAGES}`, w - M, 40, 7.5, ctx.reg, FAINT);
+  textRight(page, `${pageNo} / ${total}`, w - M, 40, 7.5, ctx.reg, FAINT);
 }
 function heading(ctx: Ctx, page: PDFPage, s: string, x: number, y: number, size = 15) {
   mkText(page)(s.toUpperCase(), x, y, size, ctx.akira, FG, 0.5);
 }
 
+/* ── NEUE VISUAL-HELFER (gestufte "Gradients", pdf-lib kann keine echten) ── */
+
+/**
+ * "Gradient to nothing"-Fläche der Website-Infografiken: pdf-lib kennt keine
+ * echten Farbverläufe, deshalb wird in `steps` schmalen Streifen linear
+ * interpolierter Opacity "getreppt" (32 Schritte sind auf dunklem Grund
+ * bandingfrei). `dir` beschreibt, an welcher Kante `oFrom` sitzt: "down"/"up"
+ * beziehen sich auf die Ober-/Unterkante, "right"/"left" auf die Kanten.
+ */
+function fadeRect(
+  page: PDFPage,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: Color,
+  oFrom: number,
+  oTo = 0,
+  steps = 32,
+  dir: "down" | "up" | "right" | "left" = "down",
+) {
+  const n = Math.max(1, Math.floor(steps));
+  if (w <= 0 || h <= 0) return;
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0 : i / (n - 1);
+    const o = Math.max(0, Math.min(1, oFrom + (oTo - oFrom) * t));
+    if (dir === "down" || dir === "up") {
+      const sh = h / n;
+      const sy = dir === "down" ? y + h - (i + 1) * sh : y + i * sh;
+      page.drawRectangle({ x, y: sy, width: w, height: sh + 0.6, color, opacity: o });
+    } else {
+      const sw = w / n;
+      const sx = dir === "right" ? x + i * sw : x + w - (i + 1) * sw;
+      page.drawRectangle({ x: sx, y, width: sw + 0.6, height: h, color, opacity: o });
+    }
+  }
+}
+
+/** Radialer Schein hinter Zahlen/Ecken: konzentrische Kreise von außen (rMax,
+ * Opacity ~0) nach innen (peak) — pdf-lib kennt keine radialen Farbverläufe. */
+function glow(page: PDFPage, cx: number, cy: number, rMax: number, color: Color = ACCENT, peak = 0.045, rings = 14) {
+  const n = Math.max(1, Math.floor(rings));
+  for (let i = n; i >= 1; i--) {
+    const r = (rMax * i) / n;
+    const o = peak * (1 - i / n) ** 1.6; // aussen fast 0, innen peak (weicher Rand)
+    if (o <= 0.002) continue;
+    page.drawCircle({ x: cx, y: cy, size: r, color, opacity: o });
+  }
+}
+
+/** "Gradient-glow-Box" der Website: SURFACE-Grundfläche, 1px BORDER-Rand,
+ * eine 1px Akzent-Hairline oben (Opacity steigt von den Ecken zur Mitte,
+ * gespiegelte fadeRect-Hälften), ein dezenter glow() oben mittig und eine
+ * fadeRect-Fläche, die von oben ins Nichts ausläuft. Ruhig statt neonhaft. */
+function glowPanel(page: PDFPage, x: number, y: number, w: number, h: number, opts: { peak?: number } = {}) {
+  const peak = opts.peak ?? 0.05;
+  page.drawRectangle({ x, y, width: w, height: h, color: SURFACE });
+  const hairH = 1.4;
+  const hy = y + h - hairH;
+  const halfW = w / 2;
+  fadeRect(page, x, hy, halfW, hairH, ACCENT, 0.04, 0.5, 14, "right");
+  fadeRect(page, x + halfW, hy, halfW, hairH, ACCENT, 0.5, 0.04, 14, "right");
+  glow(page, x + w / 2, y + h - 4, Math.min(w, h) * 0.85, ACCENT, Math.min(peak, 0.05), 10);
+  fadeRect(page, x, y + h * 0.6, w, h * 0.4, ACCENT, peak, 0, 18, "down");
+  page.drawRectangle({ x, y, width: w, height: h, borderColor: BORDER, borderWidth: 1 });
+}
+
+/** Horizontaler Balken mit runden Enden (Kapsel-Form) — Rechteck + 2
+ * Randkreise, da pdf-lib keine nativ abgerundeten Balken kennt. */
+function roundBarH(page: PDFPage, x: number, y: number, w: number, h: number, color: Color, opacity = 1) {
+  const r = h / 2;
+  if (w <= h) {
+    page.drawCircle({ x: x + w / 2, y: y + r, size: Math.min(r, w / 2), color, opacity });
+    return;
+  }
+  page.drawRectangle({ x: x + r, y, width: w - h, height: h, color, opacity });
+  page.drawCircle({ x: x + r, y: y + r, size: r, color, opacity });
+  page.drawCircle({ x: x + w - r, y: y + r, size: r, color, opacity });
+}
+
+/** glowPanel-Kachel für eine einzelne Kennzahl: großer AKIRA-Wert, kleines
+ * Uppercase-Label mit Letter-Spacing, optionale Sub-Zeile darunter. */
+function statTile(ctx: Ctx, page: PDFPage, x: number, y: number, w: number, h: number, value: string, label: string, sub?: string) {
+  glowPanel(page, x, y, w, h);
+  const t = mkText(page);
+  const cx = x + w / 2;
+  const valSize = fitFontSize(ctx.akira, value, w - 18, Math.min(21, h * 0.32), 11);
+  const valY = sub ? y + h - 22 - valSize : y + h / 2 - valSize * 0.32;
+  t(value, cx - ctx.akira.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.akira, FG);
+  if (sub) {
+    const s = ellipsize(sub, ctx.reg, 8, w - 18);
+    t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 14, 8, ctx.reg, MUTED);
+  }
+  const lbl = ellipsize(label.toUpperCase(), ctx.reg, 7.5, w - 16);
+  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 7.5) / 2, y + 12, 7.5, ctx.reg, FAINT, 0.6);
+}
+
+/** Sparkline über drawLine-Segmente (Website-MarktPanel-Optik): Fläche
+ * darunter als vertikale fadeRect-Streifen (ACCENT, 0.10 → 0), Endpunkt-
+ * Marker als glow()+Punkt. `points` sind Index-Werte beliebiger Skala. */
+function sparkline(page: PDFPage, x: number, y: number, w: number, h: number, points: number[], color: Color = ACCENT) {
+  const n = points.length;
+  if (n < 2) return;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = Math.max(0.0001, max - min);
+  const stepX = w / (n - 1);
+  const py = (v: number) => y + ((v - min) / range) * h;
+  // Flächenfüllung: je Segment in Sub-Streifen unterteilt, damit die "Treppe"
+  // der schrägen Linie sichtbar folgt statt grob zu blocken.
+  const sub = 4;
+  for (let i = 0; i < n - 1; i++) {
+    const y0 = py(points[i]);
+    const y1 = py(points[i + 1]);
+    for (let s = 0; s < sub; s++) {
+      const t0 = s / sub;
+      const t1 = (s + 1) / sub;
+      const sx = x + i * stepX + t0 * stepX;
+      const sw = stepX / sub;
+      const sTop = y0 + (y1 - y0) * ((t0 + t1) / 2);
+      fadeRect(page, sx, y, sw + 0.5, Math.max(1, sTop - y), color, 0.1, 0, 8, "down");
+    }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    page.drawLine({
+      start: { x: x + i * stepX, y: py(points[i]) },
+      end: { x: x + (i + 1) * stepX, y: py(points[i + 1]) },
+      thickness: 1.6,
+      color,
+      opacity: 0.9,
+    });
+  }
+  const ex = x + w;
+  const ey = py(points[n - 1]);
+  glow(page, ex, ey, 14, color, 0.09, 8);
+  page.drawCircle({ x: ex, y: ey, size: 4.2, color: BG });
+  page.drawCircle({ x: ex, y: ey, size: 4.2, borderColor: color, borderWidth: 1.4 });
+  page.drawCircle({ x: ex, y: ey, size: 1.8, color });
+}
+
+/** Breite/Höhe eines Rundrand-Pills (Chip) VOR dem Zeichnen — für
+ * Zeilenumbruch/Rechtsbündigkeit, s. pill()/chipRow(). Die Breite MUSS
+ * Textbreite + 2×(Endradius + Mindestabstand) sein: die "flache" Mittelzone
+ * zwischen den beiden Randkreisen ist nur `w - h` breit (h = 2×Radius), ein
+ * reines "Textbreite + 2×padX" ohne den Kappen-Durchmesser gegenzurechnen
+ * lässt den Text in die runden Enden hineinlaufen. */
+function pillMeasure(font: PDFFont, label: string, size: number): { w: number; h: number } {
+  const h = size + 9;
+  const r = h / 2;
+  const minPad = 4; // Mindestabstand Text ↔ Kappen-Rand je Seite
+  const textW = font.widthOfTextAtSize(label, size);
+  const w = Math.max(h, textW + 2 * (r + minPad));
+  return { w, h };
+}
+/** Rundrand-Pill (Chip) als EIN geschlossener Rounded-Rect-Pfad (drawSvgPath).
+ * Bewusst kein Rechteck+Vollkreise-Aufbau: bei reiner Outline schneiden die
+ * inneren Kreisbögen der Kappen sonst sichtbar durch den Pill-Innenraum.
+ * Optional gefüllt (Status-Badges), sonst nur Outline. Gibt die Breite zurück. */
+function pill(
+  page: PDFPage,
+  font: PDFFont,
+  label: string,
+  x: number,
+  y: number,
+  size: number,
+  opts: { fg?: Color; border?: Color; fill?: Color } = {},
+): number {
+  const { w, h } = pillMeasure(font, label, size);
+  const r = h / 2;
+  const fg = opts.fg ?? MUTED;
+  const border = opts.border ?? BORDER;
+  // SVG-Koordinaten laufen y-abwärts — drawSvgPath bekommt daher die OBERKANTE.
+  const path =
+    `M ${r} 0 H ${w - r} A ${r} ${r} 0 0 1 ${w} ${r} V ${h - r} ` +
+    `A ${r} ${r} 0 0 1 ${w - r} ${h} H ${r} A ${r} ${r} 0 0 1 0 ${h - r} ` +
+    `V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`;
+  page.drawSvgPath(path, {
+    x,
+    y: y + h,
+    ...(opts.fill ? { color: opts.fill } : {}),
+    borderColor: border,
+    borderWidth: 1,
+  });
+  page.drawText(label, { x: x + (w - font.widthOfTextAtSize(label, size)) / 2, y: y + r - size * 0.36, size, font, color: fg });
+  return w;
+}
+/** Chip-Reihe mit automatischem Zeilenumbruch (Ausstattung, Objekt-Details).
+ * `yTop` ist die Oberkante der ersten Reihe; gibt die y-Position NACH der
+ * letzten Reihe zurück. */
+function chipRow(ctx: Ctx, page: PDFPage, items: string[], x: number, yTop: number, maxW: number, size = 8): number {
+  let cx = x;
+  let cy = yTop;
+  let rowH = size + 9;
+  for (const raw of items) {
+    if (!raw) continue;
+    const label = ellipsize(raw, ctx.reg, size, maxW - 20);
+    const { w: pw, h: ph } = pillMeasure(ctx.reg, label, size);
+    rowH = ph;
+    if (cx > x && cx - x + pw > maxW) {
+      cx = x;
+      cy -= ph + 6;
+    }
+    pill(page, ctx.reg, label, cx, cy - ph, size, { fg: MUTED, border: BORDER });
+    cx += pw + 6;
+  }
+  return cy - rowH - 6;
+}
+
 /* ── Seite 1: DECKBLATT mit Objekt-Luftbild ────────────── */
-function drawCover(ctx: Ctx, d: ReportData, objektTitle: string) {
+function drawCover(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
   const t = mkText(page);
-  let y = header(ctx, page, w, h, "MARKTWERT-REPORT");
+  const standort = d.context?.standortName;
+  let y = header(ctx, page, w, h, standort ? `MARKTWERT-REPORT · ${standort.toUpperCase()}` : "MARKTWERT-REPORT");
 
   heading(ctx, page, "Marktwert-Report", M, y, 30);
-  y -= 40;
+  y -= 14;
+  // Dezente Akzentlinie unter dem Titel — die "gradient to nothing"-Deko der
+  // Website als Unterstreichung statt als Fläche.
+  fadeRect(page, M, y, 220, 2, ACCENT, 0.75, 0, 20, "right");
+  y -= 26;
   t("Persönlich erstellt für", M, y, 10, ctx.reg, MUTED);
   t(d.name || "Sie", M + ctx.reg.widthOfTextAtSize("Persönlich erstellt für ", 10) + 4, y, 10.5, ctx.bold, ACCENT_SOFT);
   y -= 18;
@@ -315,16 +591,21 @@ function drawCover(ctx: Ctx, d: ReportData, objektTitle: string) {
     t(msg, M + bandW / 2 - ctx.reg.widthOfTextAtSize(msg, 11) / 2, bottom + bandH / 2, 11, ctx.reg, FAINT);
   }
   page.drawRectangle({ x: M, y: bottom, width: bandW, height: bandH, borderColor: BORDER, borderWidth: 1 });
-  y = bottom - 22;
+  y = bottom - 20;
+
+  // Kompakte Inhalt-Zeile — die sechs Kernkapitel, Punkt-getrennt.
+  const chapters = ["Bewertung", "Preis-Zusammensetzung", "Ihr Markt", "Preis-Faktoren", "Vermarktung", "Warum RIEGEL"];
+  t(chapters.join("   ·   "), M, y, 8, ctx.reg, FAINT);
+  y -= 20;
 
   t(`Stand: ${d.dateLabel}`, M, y, 9.5, ctx.reg, MUTED);
   textRight(page, "Vertraulich · nur für den Empfänger", w - M, y, 9.5, ctx.reg, FAINT);
 
-  footer(ctx, page, w, 1);
+  footer(ctx, page, w, pageNo, total);
 }
 
 /* ── Seite 2: BEWERTUNG (Wert + Daten + Stimmungsbild) ─── */
-function drawValuation(ctx: Ctx, d: ReportData) {
+function drawValuation(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
@@ -347,6 +628,8 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   page.drawRectangle({ x: M, y: heroBottom, width: 4, height: heroH, color: ACCENT });
 
   const cx = w / 2;
+  // Radialer Schein hinter der großen Wert-Zahl — der fokale Punkt der Seite.
+  glow(page, cx, heroTop - 62, 150, ACCENT, 0.1, 16);
   const lbl = "GESCHÄTZTER MARKTWERT";
   t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 9) / 2, heroTop - 26, 9, ctx.reg, FAINT, 1.5);
   const mid = eur(d.value.mid);
@@ -438,6 +721,17 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   ], M + colW + 24);
 
   let yy = Math.min(a, b) - 8;
+
+  // Ausstattungs-Chips (max. 12) — kleine Rundrand-Pills unter den Objektdaten.
+  if (d.ausstattung && d.ausstattung.length > 0) {
+    const items = d.ausstattung.slice(0, 12).map((s) => toWinAnsi(s)).filter(Boolean);
+    if (items.length > 0) {
+      yy -= 6;
+      yy = chipRow(ctx, page, items, M, yy, w - 2 * M, 8);
+      yy -= 4;
+    }
+  }
+
   for (const line of wrap("Datenbasierte Sofort-Einschätzung aus amtlichen Bodenrichtwerten, regionalen Vergleichsobjekten und der RIEGEL-Transaktionsdatenbank.", ctx.reg, 9.5, w - 2 * M)) {
     t(line, M, yy, 9.5, ctx.reg, MUTED);
     yy -= 13;
@@ -450,14 +744,536 @@ function drawValuation(ctx: Ctx, d: ReportData) {
   const imgH = yy - 70;
   if (ctx.vibe && imgH > 90) {
     page.drawImage(ctx.vibe, { x: M, y: 70, width: w - 2 * M, height: imgH });
+    // Unten ins Dunkel auslaufen lassen (BG 0 → 1 über die unteren 30 % des
+    // Bilds) — der "gradient to nothing"-Hero-Look der Website.
+    fadeRect(page, M, 70, w - 2 * M, imgH * 0.3, BG, 0, 1, 28, "down");
     page.drawRectangle({ x: M, y: 70, width: w - 2 * M, height: imgH, borderColor: BORDER, borderWidth: 1 });
   }
 
-  footer(ctx, page, w, 2);
+  footer(ctx, page, w, pageNo, total);
 }
 
-/* ── Seite 3: PREIS-FAKTOREN ───────────────────────────── */
-function drawFactors(ctx: Ctx) {
+/* ── Seite 3: PREIS-ZUSAMMENSETZUNG ────────────────────── */
+
+/** Rechnet Preis-Faktoren zu einem Wasserfall zurück: In estimateValue wirken
+ * die Faktoren multiplikativ (mid = Basis × Π(1+effectPct/100)) — hier
+ * rückwärts aufgelöst, je Faktor auf volle 1.000 € gerundet. Der letzte
+ * Schritt gleicht die Rundungsdifferenz exakt aus: die Summe der Schritte
+ * MUSS immer `mid` ergeben, sonst wirkt die Grafik unglaubwürdig/falsch. */
+function computeWaterfall(mid: number, factors: { label: string; effectPct: number }[]) {
+  const denom = factors.reduce((acc, f) => acc * (1 + f.effectPct / 100), 1);
+  const basis = Math.round((denom !== 0 ? mid / denom : mid) / 1000) * 1000;
+  let running = basis;
+  const steps = factors.map((f) => {
+    const before = running;
+    let after = before * (1 + f.effectPct / 100);
+    after = Math.round(after / 1000) * 1000;
+    const delta = after - before;
+    running = after;
+    return { label: f.label, effectPct: f.effectPct, delta, before, after };
+  });
+  if (steps.length > 0) {
+    const diff = mid - running;
+    if (diff !== 0) {
+      steps[steps.length - 1].after += diff;
+      steps[steps.length - 1].delta += diff;
+      running = mid;
+    }
+  } else {
+    running = mid;
+  }
+  return { basis, steps, total: running };
+}
+
+/** Multi-Segment-Balken "Wie sich der Wert zusammensetzt": Basis + Faktoren
+ * als Flächen-Anteile nach Betrag (grobe Größenordnung, kein Kreisdiagramm —
+ * pdf-lib kann keine echten Pie-Charts ohne aufwendige Bezier-Handarbeit). */
+function drawCompositionBar(
+  ctx: Ctx,
+  page: PDFPage,
+  x: number,
+  yTop: number,
+  w: number,
+  h: number,
+  basis: number,
+  steps: { label: string; delta: number }[],
+) {
+  const yBot = yTop - h;
+  const pos = steps.filter((s) => s.delta >= 0);
+  const neg = steps.filter((s) => s.delta < 0);
+  const totalMag = basis + steps.reduce((a, s) => a + Math.abs(s.delta), 0) || 1;
+  page.drawRectangle({ x, y: yBot, width: w, height: h, color: SURFACE });
+  let cx = x;
+  const seg = (val: number, kind: "basis" | "pos" | "neg", opacity: number, labelText: string) => {
+    const segW = Math.max(0.6, (Math.abs(val) / totalMag) * w);
+    if (kind === "neg") {
+      page.drawRectangle({ x: cx, y: yBot, width: segW, height: h, color: BORDER });
+      page.drawRectangle({ x: cx, y: yBot, width: segW, height: h, borderColor: NEG, borderWidth: 1 });
+    } else {
+      page.drawRectangle({ x: cx, y: yBot, width: segW, height: h, color: ACCENT, opacity });
+    }
+    if (segW >= 26) {
+      const l = ellipsize(labelText, ctx.reg, 7.5, segW - 2);
+      mkText(page)(l, cx + 2, yBot - 11, 7.5, ctx.reg, MUTED);
+      const valTxt = kind === "basis" ? eur(val) : `${val >= 0 ? "+" : "-"}${eur(Math.abs(val))}`;
+      const valColor = kind === "basis" ? FG : kind === "neg" ? NEG : ACCENT_SOFT;
+      mkText(page)(valTxt, cx + 2, yBot - 21, 8, ctx.bold, valColor);
+    }
+    if (cx > x) page.drawLine({ start: { x: cx, y: yBot }, end: { x: cx, y: yTop }, thickness: 0.75, color: BG });
+    cx += segW;
+  };
+  seg(basis, "basis", 0.32, "Basiswert Lage & Fläche");
+  pos.forEach((s, i) => seg(s.delta, "pos", pos.length <= 1 ? 0.72 : 0.5 + (i / (pos.length - 1)) * 0.45, s.label));
+  neg.forEach((s) => seg(s.delta, "neg", 1, s.label));
+  page.drawRectangle({ x, y: yBot, width: w, height: h, borderColor: BORDER, borderWidth: 1 });
+}
+
+/** Wasserfall-Diagramm: Kategorien Basis → je Faktor → Ergebnis, schwebende
+ * Balken je Delta, dünne gestrichelte Verbinderlinien zwischen den Stufen.
+ * Gibt die y-Position nach dem Diagramm (inkl. Beschriftungszeilen) zurück. */
+function drawWaterfall(
+  ctx: Ctx,
+  page: PDFPage,
+  x: number,
+  yTop: number,
+  w: number,
+  chartH: number,
+  basis: number,
+  steps: { label: string; delta: number; before: number; after: number }[],
+  mid: number,
+): number {
+  const cats = steps.length + 2;
+  const gap = 8;
+  const barW = (w - gap * (cats - 1)) / cats;
+  const allVals = [basis, mid, ...steps.flatMap((s) => [s.before, s.after])];
+  const vMin = Math.min(...allVals);
+  const vMax = Math.max(...allVals);
+  const pad = (vMax - vMin) * 0.15 || vMax * 0.05 || 1;
+  const domMin = vMin - pad;
+  const domMax = vMax + pad;
+  const baseY = yTop - chartH;
+  const yOf = (v: number) => baseY + ((v - domMin) / (domMax - domMin)) * chartH;
+
+  const barLabel = (label: string, sub: string, bx: number, bw: number, color: Color) => {
+    const l = ellipsize(label, ctx.reg, 7.5, bw + 6);
+    mkText(page)(l, bx + bw / 2 - ctx.reg.widthOfTextAtSize(l, 7.5) / 2, baseY - 12, 7.5, ctx.reg, MUTED);
+    const s = ellipsize(sub, ctx.bold, 8.5, bw + 8);
+    mkText(page)(s, bx + bw / 2 - ctx.bold.widthOfTextAtSize(s, 8.5) / 2, baseY - 23, 8.5, ctx.bold, color);
+  };
+
+  let cx = x;
+  const basisY = yOf(basis);
+  page.drawRectangle({ x: cx, y: baseY, width: barW, height: Math.max(1, basisY - baseY), color: ACCENT, opacity: 0.55 });
+  barLabel("Basis", eur(basis), cx, barW, FG);
+  let prevTopX = cx + barW;
+  let prevTopY = basisY;
+  cx += barW + gap;
+
+  for (const s of steps) {
+    const yBefore = yOf(s.before);
+    const yAfter = yOf(s.after);
+    const top = Math.max(yBefore, yAfter);
+    const bot = Math.min(yBefore, yAfter);
+    const positive = s.delta >= 0;
+    page.drawLine({ start: { x: prevTopX, y: yBefore }, end: { x: cx, y: yBefore }, thickness: 0.75, color: BORDER, dashArray: [2, 2] });
+    if (positive) {
+      page.drawRectangle({ x: cx, y: bot, width: barW, height: Math.max(1, top - bot), color: ACCENT, opacity: 0.78 });
+    } else {
+      page.drawRectangle({ x: cx, y: bot, width: barW, height: Math.max(1, top - bot), color: BORDER });
+      page.drawRectangle({ x: cx, y: bot, width: barW, height: Math.max(1, top - bot), borderColor: NEG, borderWidth: 1 });
+    }
+    barLabel(s.label, `${positive ? "+" : "-"}${eur(Math.abs(s.delta))}`, cx, barW, positive ? ACCENT_SOFT : NEG);
+    prevTopX = cx + barW;
+    prevTopY = yAfter;
+    cx += barW + gap;
+  }
+
+  const midY = yOf(mid);
+  page.drawLine({ start: { x: prevTopX, y: prevTopY }, end: { x: cx, y: prevTopY }, thickness: 0.75, color: BORDER, dashArray: [2, 2] });
+  page.drawRectangle({ x: cx, y: baseY, width: barW, height: Math.max(1, midY - baseY), color: ACCENT, opacity: 0.95 });
+  barLabel("Ergebnis", eur(mid), cx, barW, FG);
+
+  page.drawLine({ start: { x, y: baseY }, end: { x: x + w, y: baseY }, thickness: 0.75, color: BORDER });
+  return baseY - 26;
+}
+
+/** Kompakte Tabelle Faktor | Wirkung ±% | Auswirkung (Δ€), rechtsbündig. */
+function drawFactorTable(ctx: Ctx, page: PDFPage, x: number, yTop: number, w: number, steps: { label: string; effectPct: number; delta: number }[]): number {
+  let y = yTop;
+  const t = mkText(page);
+  const col2R = x + w - 130;
+  t("FAKTOR", x, y, 8, ctx.bold, FAINT, 0.6);
+  textRight(page, "WIRKUNG", col2R, y, 8, ctx.bold, FAINT);
+  textRight(page, "AUSWIRKUNG", x + w, y, 8, ctx.bold, FAINT);
+  y -= 6;
+  page.drawLine({ start: { x, y }, end: { x: x + w, y }, thickness: 0.5, color: BORDER });
+  y -= 14;
+  for (const s of steps) {
+    t(ellipsize(s.label, ctx.reg, 9.5, w - 220), x, y, 9.5, ctx.reg, FG);
+    textRight(page, `${s.effectPct >= 0 ? "+" : ""}${s.effectPct} %`, col2R, y, 9.5, ctx.reg, s.effectPct >= 0 ? POS : NEG);
+    textRight(page, `${s.delta >= 0 ? "+" : "-"}${eur(Math.abs(s.delta))}`, x + w, y, 9.5, ctx.bold, FG);
+    y -= 8;
+    page.drawLine({ start: { x, y }, end: { x: x + w, y }, thickness: 0.4, color: BORDER, opacity: 0.6 });
+    y -= 13;
+  }
+  return y;
+}
+
+/** Branch (a): Faktoren vorhanden — Segment-Balken + Wasserfall + Tabelle. */
+function drawFactorComposition(ctx: Ctx, page: PDFPage, factors: { label: string; effectPct: number }[], mid: number, x: number, yTop: number, w: number): number {
+  const { basis, steps } = computeWaterfall(mid, factors);
+  let y = yTop;
+  drawCompositionBar(ctx, page, x, y, w, 26, basis, steps);
+  // Die Segment-Beschriftungen (Label + Wert) reichen bis 26(Balken)+21pt
+  // unter yTop — mit mindestens 16pt Sicherheitsabstand DARUNTER weiterlesen,
+  // sonst überlappt der Caption-Satz mit dem letzten Segment-Wert (z. B. "662.000 €").
+  y -= 26 + 21 + 18;
+  mkText(page)("Basiswert aus Lage & Fläche plus Ihre individuellen Werttreiber ergeben den Marktwert.", x, y, 9, ctx.reg, MUTED);
+  y -= 30;
+  heading(ctx, page, "Schritt für Schritt zum Marktwert", x, y, 11);
+  y -= 16;
+  const chartH = 170;
+  y = drawWaterfall(ctx, page, x, y, w, chartH, basis, steps, mid);
+  y -= 20;
+  heading(ctx, page, "Im Detail", x, y, 11);
+  y -= 18;
+  y = drawFactorTable(ctx, page, x, y, w, steps);
+  return y;
+}
+
+/** Formel-Grafik "A × B = C": glowPanel-Boxen verbunden über AKIRA-Operatoren
+ * (×/=) — gemeinsame Basis für den Ertragswert- und den Grundstücks-Ansatz. */
+function drawFormulaGraphic(
+  ctx: Ctx,
+  page: PDFPage,
+  x: number,
+  yTop: number,
+  w: number,
+  parts: ({ label: string; value: string } | { op: string })[],
+): number {
+  const boxCount = parts.filter((p): p is { label: string; value: string } => "label" in p).length;
+  const opCount = parts.length - boxCount;
+  const opW = 34;
+  const gap = 12;
+  const boxW = (w - opW * opCount - gap * (parts.length - 1)) / boxCount;
+  const boxH = 96;
+  const boxY = yTop - boxH;
+  let cx = x;
+  for (const part of parts) {
+    if ("op" in part) {
+      mkText(page)(part.op, cx + opW / 2 - ctx.akira.widthOfTextAtSize(part.op, 22) / 2, boxY + boxH / 2 - 8, 22, ctx.akira, ACCENT_SOFT);
+      cx += opW + gap;
+      continue;
+    }
+    glowPanel(page, cx, boxY, boxW, boxH);
+    // Label UNTEN im Panel statt oben: glowPanel tönt die oberen ~40% Höhe mit
+    // einem Akzent-Schein ein (s. glowPanel) — FAINT-graue Schrift verliert
+    // darauf Kontrast und wirkte im Rendering wie "kein Label". Unten (reine
+    // SURFACE-Fläche) ist die uppercase-Beschriftung klar lesbar — passend
+    // zum selben Value-oben/Label-unten-Muster wie bei statTile().
+    const lbl = part.label.toUpperCase();
+    const lblLines = wrap(lbl, ctx.reg, 8, boxW - 16);
+    let ly = boxY + 16 + (lblLines.length - 1) * 10;
+    for (const l of lblLines) {
+      mkText(page)(l, cx + boxW / 2 - ctx.reg.widthOfTextAtSize(l, 8) / 2, ly, 8, ctx.reg, FAINT, 0.4);
+      ly -= 10;
+    }
+    const size = fitFontSize(ctx.akira, part.value, boxW - 18, 20, 10);
+    mkText(page)(part.value, cx + boxW / 2 - ctx.akira.widthOfTextAtSize(part.value, size) / 2, boxY + 52, size, ctx.akira, FG);
+    cx += boxW + gap;
+  }
+  return boxY - 16;
+}
+
+/** Branch (b): Mehrfamilienhaus — Ertragswert-Formel statt Faktoren-Wasserfall. */
+function drawErtragswertGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: number, yTop: number, w: number): number {
+  const miete = Number(d.jahresnettokaltmiete ?? 0);
+  const verv = d.value.vervielfaeltiger;
+  const mid = d.value.mid;
+  let y = drawFormulaGraphic(ctx, page, x, yTop, w, [
+    { label: "Jahresnettokaltmiete", value: eur(miete) },
+    { op: "×" },
+    { label: "Vervielfältiger (regional)", value: verv != null ? `${fmtDe(verv)}×` : "–" },
+    { op: "=" },
+    { label: "Ertragswert", value: eur(mid) },
+  ]);
+  y -= 8;
+  for (const line of wrap(
+    "Ertragswert-Ansatz: Wir schätzen aus Ihrer Jahresnettokaltmiete und einem regionalen Vervielfältiger — eine grobe Heuristik, kein Ertragswertgutachten.",
+    ctx.reg,
+    9.5,
+    w,
+  )) {
+    mkText(page)(line, x, y, 9.5, ctx.reg, MUTED);
+    y -= 13;
+  }
+  y -= 12;
+  const woh = Number(d.wohneinheiten ?? 0);
+  const gew = Number(d.gewerbeeinheiten ?? 0);
+  if (woh > 0 || gew > 0) {
+    heading(ctx, page, "Einheiten-Mix", x, y, 11);
+    y -= 22;
+    const totalUnits = woh + gew || 1;
+    const barH = 24;
+    const wWoh = (woh / totalUnits) * w;
+    page.drawRectangle({ x, y: y - barH, width: w, height: barH, color: SURFACE, borderColor: BORDER, borderWidth: 1 });
+    if (woh > 0) page.drawRectangle({ x, y: y - barH, width: wWoh, height: barH, color: ACCENT, opacity: 0.6 });
+    // Gewerbeanteil ist kein Negativ-Faktor — BORDER-Füllung mit ACCENT_SOFT-
+    // Rand statt des NEG/rot-Outline-Stils (der Warnung/Abzug signalisiert).
+    if (gew > 0) {
+      page.drawRectangle({ x: x + wWoh, y: y - barH, width: w - wWoh, height: barH, color: BORDER });
+      page.drawRectangle({ x: x + wWoh, y: y - barH, width: w - wWoh, height: barH, borderColor: ACCENT_SOFT, borderWidth: 1 });
+    }
+    // Beschriftung DARUNTER statt im Balken (konsistent mit den anderen
+    // Segment-Balken der Seite) — inkl. korrekter Ein-/Mehrzahl.
+    const labelY = y - barH - 13;
+    if (woh > 0) mkText(page)(`${woh} Wohneinheit${woh === 1 ? "" : "en"}`, x, labelY, 8.5, ctx.bold, ACCENT_SOFT);
+    if (gew > 0) textRight(page, `${gew} Gewerbeeinheit${gew === 1 ? "" : "en"}`, x + w, labelY, 8.5, ctx.bold, FG);
+    y -= barH + 25;
+  }
+  return y;
+}
+
+/** Branch (c): Grundstück — Fläche × Bodenwert-Niveau = Einschätzung. */
+function drawGrundstueckGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: number, yTop: number, w: number): number {
+  const flaeche = Number(d.grundflaeche ?? 0);
+  const mid = d.value.mid;
+  const amtlich = d.bodenrichtwert;
+  const niveau = amtlich?.brw ?? (flaeche > 0 ? Math.round(mid / flaeche) : d.value.pricePerSqm ?? 0);
+  const niveauLabel = amtlich ? "Bodenwert-Niveau (amtlich, BORIS-RLP)" : "Bodenwert-Niveau (Modellwert)";
+  let y = drawFormulaGraphic(ctx, page, x, yTop, w, [
+    { label: "Grundstücksfläche", value: flaeche ? `${flaeche} m²` : "–" },
+    { op: "×" },
+    { label: niveauLabel, value: niveau ? `${eur(niveau)}/m²` : "–" },
+    { op: "=" },
+    { label: "Einschätzung", value: eur(mid) },
+  ]);
+  y -= 8;
+  for (const line of wrap(
+    "Die Einschätzung nähert sich Ihrem Grundstück über Fläche und Bodenwert-Niveau an. Lage, Zuschnitt und Bebaubarkeit fließen zusätzlich individuell ein.",
+    ctx.reg,
+    9.5,
+    w,
+  )) {
+    mkText(page)(line, x, y, 9.5, ctx.reg, MUTED);
+    y -= 13;
+  }
+  return y - 8;
+}
+
+function drawComposition(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
+  const page = ctx.doc.addPage(A4);
+  const { width: w, height: h } = page.getSize();
+  bg(page, w, h);
+  const t = mkText(page);
+  let y = header(ctx, page, w, h, "PREIS-ZUSAMMENSETZUNG");
+
+  heading(ctx, page, "Wie sich Ihr Wert zusammensetzt", M, y, 16);
+  y -= 24;
+
+  const contentW = w - 2 * M;
+  const factors = d.factors && d.factors.length > 0 ? d.factors : undefined;
+  if (factors) {
+    drawFactorComposition(ctx, page, factors, d.value.mid, M, y, contentW);
+  } else if (d.objektartLabel === "Mehrfamilienhaus") {
+    drawErtragswertGraphic(ctx, page, d, M, y, contentW);
+  } else if (d.objektartLabel === "Grundstück") {
+    drawGrundstueckGraphic(ctx, page, d, M, y, contentW);
+  }
+
+  // Fußzeile-Hinweis: Modell-Näherungsbild, kein Gutachten.
+  let noteY = 82;
+  for (const line of wrap(
+    "Diese Zerlegung ist ein Modell-Näherungsbild unserer Rechner-Engine zur Veranschaulichung der wichtigsten Werttreiber. Sie ist kein Gutachten und keine Verkehrswertermittlung nach § 194 BauGB.",
+    ctx.reg,
+    8.5,
+    contentW,
+  )) {
+    t(line, M, noteY, 8.5, ctx.reg, FAINT);
+    noteY -= 11;
+  }
+
+  footer(ctx, page, w, pageNo, total);
+}
+
+/* ── Seite 4: IHR MARKT (nur mit context.markt) ────────── */
+function drawMarketLocal(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
+  const page = ctx.doc.addPage(A4);
+  const { width: w, height: h } = page.getSize();
+  bg(page, w, h);
+  const t = mkText(page);
+  const markt = d.context!.markt!;
+  const name = toWinAnsi(d.context!.standortName ?? markt.name);
+  let y = header(ctx, page, w, h, "IHR MARKT");
+
+  heading(ctx, page, `Ihr Markt: ${name}`, M, y, 17);
+  y -= 26;
+
+  const contentW = w - 2 * M;
+
+  // Zwei Range-Bars: Wohnung, Haus — Track (BORDER) + ACCENT-Segment min→max,
+  // Objekt-Marker bei passender Objektart, wenn ein eigener €/m²-Wert vorliegt.
+  const rangeRow = (label: string, range: { min: number; max: number }, isMatch: boolean) => {
+    t(label, M, y, 10, ctx.bold, FG);
+    y -= 20;
+    const trackY = y - 5;
+    roundBarH(page, M, trackY, contentW, 10, BORDER);
+    const scaleMin = range.min * 0.85;
+    const scaleMax = range.max * 1.15;
+    const span = Math.max(1, scaleMax - scaleMin);
+    const fMin = (range.min - scaleMin) / span;
+    const fMax = (range.max - scaleMin) / span;
+    roundBarH(page, M + fMin * contentW, trackY, Math.max(6, (fMax - fMin) * contentW), 10, ACCENT, 0.85);
+    t(`${eur(range.min)} / m²`, M, trackY - 16, 8.5, ctx.reg, MUTED);
+    textRight(page, `${eur(range.max)} / m²`, M + contentW, trackY - 16, 8.5, ctx.reg, MUTED);
+    if (isMatch && d.value.pricePerSqm) {
+      const f = Math.min(0.97, Math.max(0.03, (d.value.pricePerSqm - scaleMin) / span));
+      const mx = M + f * contentW;
+      const my = trackY + 5;
+      glow(page, mx, my, 16, ACCENT, 0.09, 10);
+      page.drawCircle({ x: mx, y: my, size: 6, color: BG });
+      page.drawCircle({ x: mx, y: my, size: 6, borderColor: rgb(1, 1, 1), borderWidth: 2 });
+      page.drawCircle({ x: mx, y: my, size: 2.5, color: ACCENT_SOFT });
+      const ml = "Ihr Objekt";
+      t(ml, mx - ctx.bold.widthOfTextAtSize(ml, 7.5) / 2, my + 14, 7.5, ctx.bold, ACCENT_SOFT);
+    }
+    y = trackY - 32;
+  };
+  rangeRow("Wohnung, € / m²", markt.wohnung, d.objektartLabel === "Wohnung");
+  rangeRow("Haus, € / m²", markt.haus, d.objektartLabel === "Haus");
+
+  // Sparkline + Trend-Badge
+  heading(ctx, page, "Preistrend, 12 Monate", M, y, 11);
+  const badge = `+${fmtDe(markt.trendYoyPct)} % p.a.`;
+  const { w: bw } = pillMeasure(ctx.bold, badge, 9);
+  pill(page, ctx.bold, badge, M + contentW - bw, y - 12, 9, { fg: ACCENT_SOFT, border: ACCENT_SOFT });
+  y -= 24;
+  const sparkH = 56;
+  sparkline(page, M, y - sparkH, contentW, sparkH, markt.trend12);
+  y -= sparkH + 30;
+
+  // Stat-Zeile: 3 kleine statTiles
+  const tileGap = 14;
+  const tileW = (contentW - tileGap * 2) / 3;
+  const tileH = 74;
+  statTile(ctx, page, M, y - tileH, tileW, tileH, `${markt.vermarktungszeitTage}`, "Ø Tage bis zum Verkauf");
+  statTile(ctx, page, M + tileW + tileGap, y - tileH, tileW, tileH, `${fmtDe(markt.yieldPct)} %`, "Mietrendite (Modell)");
+  const tile3X = M + 2 * (tileW + tileGap);
+  statTile(ctx, page, tile3X, y - tileH, tileW, tileH, `${markt.nachfrage}/10`, "Nachfrage-Score");
+  // 10 kleine Punkte, davon `nachfrage` in ACCENT.
+  const dotR = 2.1;
+  const dotsW = 10 * (dotR * 2) + 9 * 3;
+  let dx = tile3X + tileW / 2 - dotsW / 2 + dotR;
+  const dotsY = y - tileH + 22;
+  for (let i = 0; i < 10; i++) {
+    const active = i < markt.nachfrage;
+    page.drawCircle({ x: dx, y: dotsY, size: dotR, color: active ? ACCENT : BORDER });
+    dx += dotR * 2 + 3;
+  }
+  y -= tileH + 26;
+
+  // Bodenrichtwert-Zeile: amtlich (falls vorhanden) neben Modellwert.
+  heading(ctx, page, "Bodenrichtwert", M, y, 11);
+  y -= 16;
+  if (d.bodenrichtwert) {
+    t(`Amtlich (BORIS-RLP): ${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}`, M, y, 9.5, ctx.reg, FG);
+    y -= 14;
+    t(`Modellwert Region: ${eur(markt.bodenrichtwert)}/m²`, M, y, 9.5, ctx.reg, MUTED);
+  } else {
+    t(`Modellwert Region: ${eur(markt.bodenrichtwert)}/m² (kein amtlicher Wert für diese Koordinaten ermittelt)`, M, y, 9.5, ctx.reg, MUTED);
+  }
+  y -= 22;
+
+  // Standorttext (max. 2 Absätze aus dem GEO-Artikel der Stadt)
+  if (d.context!.standortText && d.context!.standortText.length > 0) {
+    heading(ctx, page, "Über den Standort", M, y, 11);
+    y -= 16;
+    for (const para of d.context!.standortText.slice(0, 2)) {
+      for (const line of wrap(toWinAnsi(para), ctx.reg, 9.5, contentW)) {
+        t(line, M, y, 9.5, ctx.reg, MUTED);
+        y -= 13;
+      }
+      y -= 6;
+    }
+  }
+
+  const src = `RIEGEL Preisatlas · Stand ${toWinAnsi(d.context!.marktStand)} · Modellwerte, keine Verkehrswertermittlung nach § 194 BauGB.`;
+  t(ellipsize(src, ctx.reg, 8, contentW), M, 82, 8, ctx.reg, FAINT);
+
+  footer(ctx, page, w, pageNo, total);
+}
+
+/* ── Seite: REFERENZOBJEKTE (nur mit vergleichsobjekte) ── */
+function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[], pageNo: number, total: number) {
+  const page = ctx.doc.addPage(A4);
+  const { width: w, height: h } = page.getSize();
+  bg(page, w, h);
+  const t = mkText(page);
+  let y = header(ctx, page, w, h, "REFERENZOBJEKTE");
+
+  heading(ctx, page, "Aus unserer Vermarktung", M, y, 17);
+  y -= 20;
+  for (const line of wrap(
+    "Ein Einblick in aktuelle RIEGEL-Mandate derselben Objektklasse. Diese Objekte sind Vermarktungs-Referenzen und keine Wertermittlungs-Vergleiche.",
+    ctx.reg,
+    9.5,
+    w - 2 * M,
+  )) {
+    t(line, M, y, 9.5, ctx.reg, MUTED);
+    y -= 13;
+  }
+  y -= 14;
+
+  const items = (d.vergleichsobjekte ?? []).slice(0, 3);
+  const contentW = w - 2 * M;
+  const cardH = 118;
+  const cardGap = 16;
+  const photoW = 150;
+  const photoH = 100;
+
+  items.forEach((obj, idx) => {
+    const cardY = y - cardH;
+    glowPanel(page, M, cardY, contentW, cardH);
+    const photoX = M + 14;
+    const photoY = cardY + (cardH - photoH) / 2;
+    const img = fotos[idx] ?? null;
+    if (img) {
+      page.drawImage(img, { x: photoX, y: photoY, width: photoW, height: photoH });
+      page.drawRectangle({ x: photoX, y: photoY, width: photoW, height: photoH, borderColor: BORDER, borderWidth: 1 });
+    } else {
+      page.drawRectangle({ x: photoX, y: photoY, width: photoW, height: photoH, color: SURFACE, borderColor: BORDER, borderWidth: 1 });
+      const mark = "RIEGEL";
+      t(mark, photoX + photoW / 2 - ctx.akira.widthOfTextAtSize(mark, 13) / 2, photoY + photoH / 2 - 5, 13, ctx.akira, FAINT, 1);
+    }
+
+    const textX = photoX + photoW + 20;
+    const textW = M + contentW - textX - 14;
+    const badgeLbl = obj.vermittelt ? "Erfolgreich vermittelt" : "Aktuell im Angebot";
+    const badgeColor = obj.vermittelt ? POS : ACCENT_SOFT;
+    const { w: bw, h: bh } = pillMeasure(ctx.bold, badgeLbl, 8);
+    pill(page, ctx.bold, badgeLbl, M + contentW - 14 - bw, cardY + cardH - 14 - bh, 8, { fg: badgeColor, border: badgeColor });
+
+    const titel = ellipsize(toWinAnsi(obj.titel), ctx.bold, 12, textW - bw - 16);
+    t(titel, textX, cardY + cardH - 26, 12, ctx.bold, FG);
+    t(ellipsize(toWinAnsi(obj.ort), ctx.reg, 9.5, textW), textX, cardY + cardH - 42, 9.5, ctx.reg, MUTED);
+
+    const chips = [obj.preis, obj.flaeche, obj.zimmer].filter((v): v is string => !!v).map((v) => toWinAnsi(v));
+    if (chips.length > 0) chipRow(ctx, page, chips, textX, cardY + cardH - 58, textW, 8);
+
+    y = cardY - cardGap;
+  });
+
+  y -= 6;
+  for (const line of wrap(`Echte Objekte aus der laufenden RIEGEL-Vermarktung (OnOffice), Stand ${d.dateLabel}.`, ctx.reg, 8.5, contentW)) {
+    t(line, M, y, 8.5, ctx.reg, FAINT);
+    y -= 11;
+  }
+
+  footer(ctx, page, w, pageNo, total);
+}
+
+/* ── Seite: PREIS-FAKTOREN ─────────────────────────────── */
+function drawFactors(ctx: Ctx, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
@@ -485,8 +1301,16 @@ function drawFactors(ctx: Ctx) {
   const barW = w - M - barX - 96;
   for (const f of factors) {
     t(f.name, M, y, 10.5, ctx.bold, FG);
-    page.drawRectangle({ x: barX, y: y - 1.5, width: barW, height: 6, color: BORDER });
-    page.drawRectangle({ x: barX, y: y - 1.5, width: barW * f.impact, height: 6, color: ACCENT });
+    const barH = 6;
+    const barY = y - 3;
+    roundBarH(page, barX, barY, barW, barH, BORDER);
+    const fillW = barW * f.impact;
+    const tail = Math.min(28, fillW * 0.6);
+    const r = barH / 2;
+    page.drawCircle({ x: barX + r, y: barY + r, size: r, color: ACCENT });
+    page.drawRectangle({ x: barX + r, y: barY, width: Math.max(0, fillW - r - tail), height: barH, color: ACCENT });
+    // Auslauf nach rechts: die Füllung verblasst ins Nichts statt hart zu enden.
+    fadeRect(page, barX + Math.max(r, fillW - tail), barY, tail, barH, ACCENT, 0.95, 0, 14, "right");
     textRight(page, f.range, w - M, y, 9.5, ctx.bold, ACCENT_SOFT);
     y -= 15;
     for (const line of wrap(f.note, ctx.reg, 9, w - 2 * M)) {
@@ -495,11 +1319,40 @@ function drawFactors(ctx: Ctx) {
     }
     y -= 9;
   }
-  footer(ctx, page, w, 3);
+  footer(ctx, page, w, pageNo, total);
 }
 
-/* ── Seite 4: VERMARKTUNG & MARKT ──────────────────────── */
-function drawMarket(ctx: Ctx, d: ReportData, objektTitle: string) {
+/* ── Seite: VERMARKTUNG & MARKT ────────────────────────── */
+/** Zeichnet die Ablauf-Timeline und gibt die tiefste tatsächlich benutzte
+ * y-Position zurück (über alle Schritte, inkl. Zeilenumbrüche von Label UND
+ * Subtext) — der Aufrufer MUSS diese für den Abstand zum nächsten Block
+ * (CTA-Box) verwenden, sonst kollidiert ein mehrzeiliger Subtext mit ihr. */
+function drawTimeline(ctx: Ctx, page: PDFPage, x: number, y: number, w: number, steps: { label: string; sub: string }[]): number {
+  const n = steps.length;
+  const segW = w / n;
+  page.drawLine({ start: { x: x + segW / 2, y }, end: { x: x + w - segW / 2, y }, thickness: 1, color: BORDER });
+  let minY = y;
+  steps.forEach((s, i) => {
+    const cx = x + segW * i + segW / 2;
+    glow(page, cx, y, 12, ACCENT, 0.08, 8);
+    page.drawCircle({ x: cx, y, size: 4.5, color: BG });
+    page.drawCircle({ x: cx, y, size: 4.5, borderColor: ACCENT, borderWidth: 1.6 });
+    page.drawCircle({ x: cx, y, size: 1.8, color: ACCENT });
+    let ly = y - 20;
+    for (const l of wrap(s.label, ctx.bold, 8.5, segW - 10)) {
+      mkText(page)(l, cx - ctx.bold.widthOfTextAtSize(l, 8.5) / 2, ly, 8.5, ctx.bold, FG);
+      ly -= 11;
+    }
+    for (const l of wrap(s.sub, ctx.reg, 7.5, segW - 10)) {
+      mkText(page)(l, cx - ctx.reg.widthOfTextAtSize(l, 7.5) / 2, ly, 7.5, ctx.reg, MUTED);
+      ly -= 10;
+    }
+    if (ly < minY) minY = ly;
+  });
+  return minY;
+}
+
+function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
@@ -543,12 +1396,30 @@ function drawMarket(ctx: Ctx, d: ReportData, objektTitle: string) {
 
   heading(ctx, page, "Markttrend Rhein-Neckar", M, y, 13);
   y -= 16;
-  const trend = `Einschätzung ${new Date().getFullYear()}: Die Nachfrage in Speyer, Ludwigshafen und der Metropolregion Rhein-Neckar ist bei gut gelegenen Objekten stabil. Energieeffizienz ist zum preisbestimmenden Faktor geworden; das Zinsniveau bremst die Zahlungsbereitschaft, doch energetisch gute und fair bepreiste Immobilien verkaufen sich weiterhin zügig.${d.city ? ` Für ${d.city} sehen wir aktuell ${d.value.trendPct != null ? `rund +${d.value.trendPct} % p. a.` : "eine stabile Entwicklung"}.` : ""}`;
+  // Städte-Einschätzung: deutsches Dezimalkomma (fmtDe) statt JS-Punkt, und
+  // GENAU EIN Satzende — "p. a." trägt seinen Punkt schon selbst, ein
+  // zusätzliches strukturelles "." dahinter ergäbe "..".
+  const cityInsight =
+    d.value.trendPct != null ? `rund +${fmtDe(d.value.trendPct)} % p. a.` : "eine stabile Entwicklung.";
+  const trend = `Einschätzung ${new Date().getFullYear()}: Die Nachfrage in Speyer, Ludwigshafen und der Metropolregion Rhein-Neckar ist bei gut gelegenen Objekten stabil. Energieeffizienz ist zum preisbestimmenden Faktor geworden; das Zinsniveau bremst die Zahlungsbereitschaft, doch energetisch gute und fair bepreiste Immobilien verkaufen sich weiterhin zügig.${d.city ? ` Für ${d.city} sehen wir aktuell ${cityInsight}` : ""}`;
   for (const line of wrap(trend, ctx.reg, 9.5, w - 2 * M)) {
     t(line, M, y, 9.5, ctx.reg, MUTED);
     y -= 13.5;
   }
-  y -= 12;
+  y -= 16;
+
+  // "So läuft es mit RIEGEL" — Ablauf-Timeline zwischen Trend-Absatz und CTA.
+  heading(ctx, page, "So läuft es mit RIEGEL", M, y, 12);
+  y -= 36;
+  const timelineBottom = drawTimeline(ctx, page, M, y, w - 2 * M, [
+    { label: "Vor-Ort-Termin (kostenlos)", sub: "Besichtigung und erste Einschätzung direkt vor Ort." },
+    { label: "Preisstrategie & Unterlagen", sub: "Realistischer Angebotspreis, Exposé und Energieausweis." },
+    { label: "Vermarktung an 121.000+ Suchprofile", sub: "Sichtbarkeit auf ImmoScout24 und in unserer Käuferdatenbank." },
+    { label: "Verhandlung bis Notar", sub: "Von der Kaufzusage bis zur Beurkundung an Ihrer Seite." },
+  ]);
+  // Abstand ab der TATSÄCHLICH tiefsten Zeile (nicht geschätzt) — sonst
+  // kollidiert ein zweizeiliger Subtext (z. B. Schritt 3) mit der CTA-Box.
+  y = timelineBottom - 18;
 
   // CTA-Box
   const ctaH = 76;
@@ -558,11 +1429,83 @@ function drawMarket(ctx: Ctx, d: ReportData, objektTitle: string) {
   t(`${d.name?.split(" ")[0] || "Wir"}, sichern wir gemeinsam den Bestpreis für ${objektTitle}.`, M + 18, y - 43, 12, ctx.bold, FG);
   t("Kostenlose Vor-Ort-Bewertung: riegel-immobilien.de/termin   ·   06232 100 10 10", M + 18, y - 59, 9.5, ctx.reg, MUTED);
 
-  footer(ctx, page, w, 4);
+  footer(ctx, page, w, pageNo, total);
 }
 
-/* ── Seite 5: ENDBLATT (rechtliche Infos) ──────────────── */
-function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string) {
+/* ── Seite: WARUM RIEGEL (Facts & Figures, nur mit context) ── */
+function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
+  const page = ctx.doc.addPage(A4);
+  const { width: w, height: h } = page.getSize();
+  bg(page, w, h);
+  const t = mkText(page);
+  let y = header(ctx, page, w, h, "WARUM RIEGEL");
+
+  heading(ctx, page, "Verkaufen mit RIEGEL", M, y, 18);
+  y -= 30;
+
+  const stats = d.context!.stats;
+  const contentW = w - 2 * M;
+  const gap = 14;
+  const tileW = (contentW - gap * 2) / 3;
+  const tileH = 80;
+  // "12,5 Mio." ist bewusst als kompakte Darstellungsform hardcodiert (die
+  // erlaubte Ausnahme lt. Auftrag) — sie spiegelt stats.immoscoutAufrufe
+  // (>= 12,5 Mio., s. RIEGEL_STATS-Kommentar in lib/riegel-stats.ts).
+  const tiles: [string, string][] = [
+    [`${fmtInt(stats.aktiveSuchauftraege)}+`, "Aktive Suchaufträge"],
+    ["12,5 Mio.", "ImmoScout24-Ausspielungen"],
+    [fmtInt(stats.exposeAufrufe), "Exposé-Aufrufe"],
+    [fmtInt(stats.besichtigungenProJahr), "Besichtigungen pro Jahr"],
+    [`Ø ${stats.oVermarktungstage} Tage`, "bis zum Verkauf"],
+    [fmtInt(stats.googleBewertungen), "Google-Bewertungen"],
+  ];
+  tiles.forEach(([value, label], i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const tx = M + col * (tileW + gap);
+    const ty = y - tileH - row * (tileH + gap);
+    statTile(ctx, page, tx, ty, tileW, tileH, value, label);
+  });
+  y -= tileH * 2 + gap + 28;
+
+  // Auszeichnung-Banner
+  const bannerH = 52;
+  glowPanel(page, M, y - bannerH, contentW, bannerH);
+  t("ImmoScout24 ImmoAward 2025 · Top 21 Makler des Jahres in Deutschland (von über 25.000)", M + 20, y - bannerH / 2 - 4, 10.5, ctx.bold, FG);
+  y -= bannerH + 26;
+
+  // USP-Häkchen-Liste
+  heading(ctx, page, "Ihre Vorteile im Überblick", M, y, 12);
+  y -= 20;
+  for (const raw of d.context!.usps) {
+    const usp = toWinAnsi(raw);
+    // Häkchen: zwei Linien in ACCENT statt eines Icon-Assets.
+    const hx = M + 4;
+    const hy = y + 3;
+    page.drawLine({ start: { x: hx - 4, y: hy }, end: { x: hx - 1, y: hy - 4 }, thickness: 1.6, color: ACCENT });
+    page.drawLine({ start: { x: hx - 1, y: hy - 4 }, end: { x: hx + 6, y: hy + 6 }, thickness: 1.6, color: ACCENT });
+    const lines = wrap(usp, ctx.reg, 9.5, contentW - 24);
+    for (let i = 0; i < lines.length; i++) {
+      t(lines[i], M + 16, y, 9.5, ctx.reg, i === 0 ? FG : MUTED);
+      y -= 13;
+    }
+    y -= 5;
+  }
+  y -= 4;
+
+  // Direktankauf-Callout
+  const calloutH = 56;
+  glowPanel(page, M, y - calloutH, contentW, calloutH);
+  t("DISKRETER VERKAUF", M + 18, y - 22, 8.5, ctx.bold, ACCENT_SOFT, 1);
+  for (const line of wrap("Diskret verkaufen? RIEGEL kauft ausgewählte Objekte über zwei eigene Investorenfirmen direkt an.", ctx.reg, 10, contentW - 40)) {
+    t(line, M + 18, y - 40, 10, ctx.reg, FG);
+  }
+
+  footer(ctx, page, w, pageNo, total);
+}
+
+/* ── Seite: ENDBLATT (rechtliche Infos) ────────────────── */
+function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
@@ -624,5 +1567,5 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string) {
     y -= 6;
   }
 
-  footer(ctx, page, w, 5);
+  footer(ctx, page, w, pageNo, total);
 }

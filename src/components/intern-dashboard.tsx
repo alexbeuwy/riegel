@@ -273,6 +273,10 @@ export function InternDashboard() {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusMap>({});
   const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
   const [fbBusyId, setFbBusyId] = useState<string | null>(null);
+  // PDF-Regeneration je Report-Zeile: Busy- und Fehlerzustand pro id (Set),
+  // damit mehrere Zeilen unabhängig voneinander einen Ladezustand zeigen können.
+  const [reportBusy, setReportBusy] = useState<Set<string>>(new Set());
+  const [reportFailed, setReportFailed] = useState<Set<string>>(new Set());
   const [objekte, setObjekte] = useState<ObjektRow[]>([]);
   const [objSort, setObjSort] = useState<{ key: ObjSortKey; dir: "asc" | "desc" }>({
     key: "status",
@@ -280,6 +284,25 @@ export function InternDashboard() {
   });
   const [objOpen, setObjOpen] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
+
+  // Intern-Zugänge (fest + eingeladen) fürs Konten-Tab: eigener Endpoint
+  // (api/intern/users), unabhängig vom Reports-/Leads-Ladevorgang oben.
+  // usersLoaded ist der Guard fürs einmalige Nachladen bei Tab-Öffnung
+  // (kein useEffect nötig, s. TABS-onClick weiter unten).
+  const [fixedEmails, setFixedEmails] = useState<string[]>([]);
+  const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [usersBusy, setUsersBusy] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ ok: boolean; mailError?: boolean; error?: string } | null>(null);
+  const [removeBusy, setRemoveBusy] = useState<Set<string>>(new Set());
+  // Zwei-Klick-Bestätigung fürs Konto-Löschen OHNE window.confirm: erster Klick
+  // "armiert" die Zeile (Label wechselt 3 s lang auf "Wirklich löschen?"),
+  // zweiter Klick innerhalb des Fensters löscht wirklich.
+  const [deleteArm, setDeleteArm] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState<Set<string>>(new Set());
 
   const [tab, setTab] = useState<Tab>("overview");
   const [rQuery, setRQuery] = useState("");
@@ -398,6 +421,150 @@ export function InternDashboard() {
       if (res.ok && json.ok) setFeedbackStatus(json.feedbackStatus ?? {});
     } finally {
       setFbBusyId(null);
+    }
+  }
+
+  /** PDF-Regeneration einer einzelnen Bewertung — Sissy kann so jeden Report
+   * (auch ohne explizit angefordertes PDF) jederzeit ziehen. Antwort kommt als
+   * Blob, nicht als JSON (anders als die übrigen /api/intern-Routen). */
+  async function downloadReport(id: string) {
+    setReportBusy((prev) => new Set(prev).add(id));
+    try {
+      const res = await fetch("/api/intern/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, id }),
+      });
+      if (!res.ok) throw new Error("Fehler");
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] || `RIEGEL-Report-${id}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      // Verzögert freigeben: sofortiges Revoke direkt nach click() kann in
+      // Safari den noch startenden Download abbrechen.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      setReportFailed((prev) => new Set(prev).add(id));
+      setTimeout(() => {
+        setReportFailed((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, 2500);
+    } finally {
+      setReportBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  /** Feste + eingeladene Intern-Zugänge laden, einmalig bei Öffnen des
+   *  Konten-Tabs (Aufruf steht bei den TABS weiter unten). */
+  async function loadUsers() {
+    setUsersBusy(true);
+    setUsersError(null);
+    try {
+      const res = await fetch("/api/intern/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, action: "list" }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setFixedEmails(json.fixed ?? []);
+      setInvitedEmails(json.invited ?? []);
+    } catch (e) {
+      setUsersError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setUsersBusy(false);
+      setUsersLoaded(true);
+    }
+  }
+
+  async function inviteUser() {
+    const email = inviteEmail.trim();
+    if (!email) return;
+    setInviteBusy(true);
+    setInviteResult(null);
+    try {
+      const res = await fetch("/api/intern/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, action: "invite", email }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setInvitedEmails(json.invited ?? []);
+      setInviteResult({ ok: true, mailError: Boolean(json.mailError) });
+      setInviteEmail("");
+    } catch (e) {
+      setInviteResult({ ok: false, error: e instanceof Error ? e.message : "Fehler" });
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  /** Fail-soft: Netzwerkfehler landen nicht als unhandled rejection, da
+   *  deleteAccount() dies auch ohne await aufruft (Aufräumen nach Löschung). */
+  async function removeInvited(email: string) {
+    setRemoveBusy((prev) => new Set(prev).add(email));
+    try {
+      const res = await fetch("/api/intern/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, action: "remove", email }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) setInvitedEmails(json.invited ?? []);
+    } catch {
+      // fail-soft
+    } finally {
+      setRemoveBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(email);
+        return next;
+      });
+    }
+  }
+
+  /** Konto endgültig löschen, zweistufig: erster Aufruf armiert nur die
+   *  Zeile, der zweite (innerhalb 3 s) löscht wirklich. */
+  async function deleteAccount(id: string, email?: string | null) {
+    if (deleteArm !== id) {
+      setDeleteArm(id);
+      setTimeout(() => setDeleteArm((cur) => (cur === id ? null : cur)), 3000);
+      return;
+    }
+    setDeleteArm(null);
+    setDeleteBusy((prev) => new Set(prev).add(id));
+    try {
+      const res = await fetch("/api/intern/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, action: "delete-account", userId: id }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        setAccounts((prev) => prev.filter((a) => a.id !== id));
+        // Stand die Adresse auch auf der Einladungsliste, dort ebenfalls
+        // entfernen (fail-soft, das Konto ist so oder so schon gelöscht).
+        const lower = email?.toLowerCase();
+        if (lower && invitedEmails.includes(lower)) removeInvited(lower);
+      }
+    } finally {
+      setDeleteBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -588,7 +755,12 @@ export function InternDashboard() {
               <button
                 key={t.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => {
+                  setTab(t.key);
+                  // Intern-Zugänge nur einmal nachladen (Guard über usersLoaded),
+                  // damit ein erneuter Tab-Wechsel keinen Extra-Request auslöst.
+                  if (t.key === "konten" && !usersLoaded) loadUsers();
+                }}
                 className={`relative -mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm transition-colors ${
                   on ? "text-fg" : "text-muted hover:text-fg"
                 }`}
@@ -740,11 +912,22 @@ export function InternDashboard() {
                           {r.price_per_sqm ? <div className="text-xs text-faint">{fmtEur(r.price_per_sqm)}/m²</div> : null}
                         </td>
                         <td className="px-4 py-3">
-                          {r.report_requested && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 px-2 py-0.5 text-xs text-accent">
-                              <Icon name="sparkle" size={12} /> Report
-                            </span>
-                          )}
+                          <div className="flex flex-col items-start gap-1.5">
+                            {r.report_requested && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 px-2 py-0.5 text-xs text-accent">
+                                <Icon name="sparkle" size={12} /> Report
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => downloadReport(r.id)}
+                              disabled={reportBusy.has(r.id)}
+                              className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                            >
+                              <Icon name="doc" size={13} />
+                              {reportFailed.has(r.id) ? "Fehler" : reportBusy.has(r.id) ? "…" : "PDF"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1178,23 +1361,115 @@ export function InternDashboard() {
         {/* ── Konten (per Supabase-Auth registrierte Nutzer) ── */}
         {tab === "konten" && (
           <div>
+            {/* Intern-Zugänge: feste (per Env/Default) + dynamisch eingeladene
+                E-Mail-Freischaltungen fürs /intern-Portal. */}
+            <div className="mb-8 rounded-2xl border border-border bg-surface p-6">
+              <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+                <Icon name="shield" size={16} className="text-accent" /> Intern-Zugänge
+              </div>
+              <p className="mt-1 text-sm text-muted">
+                Wer sich mit einem RIEGEL-Konto unter dieser E-Mail-Adresse anmeldet, kommt direkt ins
+                Intern-Portal, ganz ohne Passwort.
+              </p>
+
+              {usersError && (
+                <p className="mt-3 text-sm text-accent" role="alert">{usersError}</p>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {usersBusy && !usersLoaded ? (
+                  <span className="text-sm text-faint">Lädt …</span>
+                ) : fixedEmails.length === 0 && invitedEmails.length === 0 ? (
+                  <span className="text-sm text-faint">Keine Zugänge geladen.</span>
+                ) : (
+                  <>
+                    {fixedEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-xs text-fg"
+                      >
+                        {email}
+                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[0.65rem] text-accent">fest</span>
+                      </span>
+                    ))}
+                    {invitedEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-fg"
+                      >
+                        {email}
+                        <button
+                          type="button"
+                          onClick={() => removeInvited(email)}
+                          disabled={removeBusy.has(email)}
+                          className="press text-faint transition-colors hover:text-accent disabled:opacity-60"
+                        >
+                          {removeBusy.has(email) ? "…" : "Zugang entziehen"}
+                        </button>
+                      </span>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  inviteUser();
+                }}
+                className="mt-5 flex flex-wrap items-center gap-2"
+              >
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => {
+                    setInviteEmail(e.target.value);
+                    setInviteResult(null);
+                  }}
+                  placeholder="E-Mail-Adresse einladen …"
+                  aria-label="E-Mail-Adresse einladen"
+                  className="min-w-[240px] flex-1 rounded-full border border-border bg-bg px-4 py-2.5 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
+                />
+                <button
+                  type="submit"
+                  disabled={inviteBusy || !inviteEmail.trim()}
+                  className="press inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
+                >
+                  {inviteBusy ? "Sendet …" : "Einladen und Mail senden"}
+                </button>
+              </form>
+              {inviteResult && (
+                <p className={`mt-2 text-sm ${inviteResult.ok ? "text-fg" : "text-accent"}`} role="status">
+                  {inviteResult.ok
+                    ? inviteResult.mailError
+                      ? "Zugang freigeschaltet, Mail konnte nicht gesendet werden."
+                      : "Zugang freigeschaltet und Einladungs-Mail verschickt."
+                    : inviteResult.error || "Fehler beim Einladen."}
+                </p>
+              )}
+            </div>
+
             <Toolbar query={aQuery} setQuery={setAQuery} placeholder="E-Mail …" />
 
             <div className="overflow-x-auto rounded-2xl border border-border">
-              <table className="w-full min-w-[640px] text-left text-sm">
+              <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
-                    {["E-Mail", "Registriert", "Letzter Login", "Bestätigt"].map((h) => (
+                    {["E-Mail", "Registriert", "Letzter Login", "Bestätigt", ""].map((h) => (
                       <th key={h} className="px-4 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAccounts.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">Keine Konten.</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Keine Konten.</td></tr>
                   ) : (
                     filteredAccounts.map((a) => {
                       const confirmed = Boolean(a.email_confirmed_at);
+                      const emailLower = a.email?.toLowerCase();
+                      const isFixed = Boolean(emailLower && fixedEmails.includes(emailLower));
+                      const armed = deleteArm === a.id;
+                      const busy = deleteBusy.has(a.id);
                       return (
                         <tr key={a.id} className="border-t border-border align-top hover:bg-surface/60">
                           <td className="px-4 py-3">
@@ -1218,6 +1493,22 @@ export function InternDashboard() {
                             >
                               {confirmed ? "Ja" : "Nein"}
                             </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => deleteAccount(a.id, a.email)}
+                              disabled={isFixed || busy}
+                              title={isFixed ? "Fester Zugang, kann hier nicht gelöscht werden." : undefined}
+                              className={`press inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors disabled:opacity-50 ${
+                                armed
+                                  ? "border-accent bg-accent/10 text-accent"
+                                  : "border-border text-fg hover:border-accent hover:text-accent"
+                              }`}
+                            >
+                              <Icon name="close" size={13} />
+                              {busy ? "…" : armed ? "Wirklich löschen?" : "Löschen"}
+                            </button>
                           </td>
                         </tr>
                       );

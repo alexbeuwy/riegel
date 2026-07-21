@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { buildReportPdf } from "@/lib/report-pdf";
+import { buildReportContext } from "@/lib/report-context";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
+import { fetchSatellite } from "@/lib/satellite";
+import { buildReportObjekte } from "@/lib/report-objekte";
 
 // pdf-lib/fontkit brauchen echte Node.js-Buffer/Crypto-APIs (kein Edge) UND
 // diese Route macht mehrere sequenzielle externe Aufrufe (Bodenrichtwert bis
@@ -53,34 +56,6 @@ const OBJEKTART_LABEL: Record<string, string> = {
   gewerbe: "Gewerbe",
   mehrfamilienhaus: "Mehrfamilienhaus",
 };
-
-/**
- * Luftbild des Objekts als Base64-JPEG — Esri World Imagery (u. a. Maxar),
- * dieselbe Quelle wie die Satellitenkarte im Rechner, zentriert auf die
- * vom Nutzer eingegebenen Koordinaten. Fehlertolerant (null bei Problemen).
- */
-async function fetchSatellite(lat: number | null, lng: number | null): Promise<string | null> {
-  if (lat == null || lng == null) return null;
-  const latRad = (lat * Math.PI) / 180;
-  const dLon = 150 / (111320 * Math.cos(latRad)); // ~300 m breit
-  const dLat = 90 / 110540; // ~180 m hoch (5:3)
-  const bbox = `${lng - dLon},${lat - dLat},${lng + dLon},${lat + dLat}`;
-  const url =
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export" +
-    `?bbox=${bbox}&bboxSR=4326&imageSR=3857&size=1200,720&format=jpg&f=image`;
-  try {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 9000);
-    const res = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(to);
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 1000) return null; // kein gültiges Bild
-    return buf.toString("base64");
-  } catch {
-    return null;
-  }
-}
 
 /** Bewertungs-Hero (große Zahl + Spanne) als email-sichere Tabelle. */
 function valueHero(mid: number, low: number, high: number, perSqm: number | undefined) {
@@ -231,8 +206,13 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
 <td style="border-radius:999px;background:#015cff;"><a href="https://riegel-immobilien.de/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
 </tr></table>`;
 
-  // Luftbild des EINGEGEBENEN Objekts holen (Esri World Imagery, wie im Rechner).
-  const satelliteB64 = await fetchSatellite(lat, lng);
+  // Luftbild (Esri, wie im Rechner) + echte OnOffice-Vergleichsobjekte parallel
+  // holen — beide fail-soft und unabhängig; sequenziell würde der Interessent
+  // nur unnötig länger auf seine Mail warten.
+  const [satelliteB64, vergleichsobjekte] = await Promise.all([
+    fetchSatellite(lat, lng),
+    buildReportObjekte(objektart, city),
+  ]);
 
   // PDF-Report bauen (markenkonform, dark) — als Anhang an Kunde & RIEGEL.
   let pdfBase64: string | null = null;
@@ -251,6 +231,10 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       zustand,
       qualitaet,
       energieklasse,
+      ausstattung,
+      factors: calc.factors,
+      context: buildReportContext({ city, lat, lng }),
+      vergleichsobjekte,
       jahresnettokaltmiete,
       wohneinheiten,
       gewerbeeinheiten,
@@ -321,7 +305,9 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
   // 3) In Supabase protokollieren (Nachvollziehbarkeit)
   let logged = false;
   if (supabaseServer) {
-    const { error } = await supabaseServer.from("valuation_requests").insert({
+    // Bisheriger Feldstand (heutiges Schema) — als Legacy-Fallback verwendet,
+    // falls die neuen Spalten (s. u.) auf dieser Datenbank noch nicht existieren.
+    const legacyRow = {
       address: address || null,
       city: city || null,
       postcode: postcode || null,
@@ -344,7 +330,27 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
       email,
       phone: phone || null,
       message: message || null,
-    });
+    };
+    const fullRow = {
+      ...legacyRow,
+      energieklasse: energieklasse || null,
+      ausstattung: ausstattung.length ? ausstattung : null,
+      jahresnettokaltmiete: jahresnettokaltmiete ?? null,
+      wohneinheiten: wohneinheiten ?? null,
+      gewerbeeinheiten: gewerbeeinheiten ?? null,
+      comparables,
+      trend_pct: trendPct,
+      mikrolage,
+      vervielfaeltiger: vervielfaeltiger ?? null,
+    };
+    let { error } = await supabaseServer.from("valuation_requests").insert(fullRow);
+    // Migrations-Resilienz: die neuen Spalten existieren evtl. noch nicht auf
+    // dieser Datenbank (Migration noch nicht gelaufen) — dann mit dem
+    // bisherigen Feld-Set erneut versuchen, statt den ganzen Lead zu verlieren.
+    if (error && /column|schema cache/i.test(error.message)) {
+      console.warn("[report] valuation_requests: neue Spalten fehlen noch, Legacy-Insert", error.message);
+      ({ error } = await supabaseServer.from("valuation_requests").insert(legacyRow));
+    }
     if (error) console.error("[report] valuation_requests-Insert fehlgeschlagen:", error.message);
     logged = !error;
   }
