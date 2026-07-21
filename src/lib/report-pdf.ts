@@ -3,6 +3,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
 import { HERO_RAYS_B64, GAUGE_B64, ICONS } from "@/lib/report-assets/visuals";
+import { KITCHEN_JPG_B64, DOCS_JPG_B64 } from "@/lib/report-assets/gallery";
 import { BORIS_ATTRIBUTION } from "@/lib/boris";
 import type { ReportContext } from "@/lib/report-context";
 import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
@@ -94,6 +95,9 @@ const BORDER_GLOW = rgb(0.13, 0.22, 0.45);
 
 const A4: [number, number] = [595.28, 841.89];
 const M = 48;
+// Oberkante des Footer-Bereichs (Trennlinie bei y≈54) — Deko-Bänder müssen
+// darüber enden, damit sie den Footer nicht überzeichnen.
+const bandFloor = 74;
 
 const eur = (n: number) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
@@ -145,6 +149,9 @@ interface Ctx {
   heroRays: PDFImage | null;
   gauge: PDFImage | null;
   icons: Record<string, PDFImage>;
+  /** Dekorative, dunkle Marken-Bänder für Seiten mit viel Weißraum (gallery.ts). */
+  kitchen: PDFImage | null;
+  docs: PDFImage | null;
 }
 
 export async function buildReportPdf(input: ReportData): Promise<string> {
@@ -213,13 +220,15 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
 
   const heroRays = await tryEmbedJpg(HERO_RAYS_B64, "Hero-Rays");
   const gauge = await tryEmbedPng(GAUGE_B64, "Gauge");
+  const kitchen = await tryEmbedJpg(KITCHEN_JPG_B64, "Band:Kitchen");
+  const docs = await tryEmbedJpg(DOCS_JPG_B64, "Band:Docs");
   const icons: Record<string, PDFImage> = {};
   for (const [k, v] of Object.entries(ICONS)) {
     const img = await tryEmbedPng(v, `Icon:${k}`);
     if (img) icons[k] = img;
   }
 
-  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, heroRays, gauge, icons };
+  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, heroRays, gauge, icons, kitchen, docs };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
 
   // Vergleichsobjekt-Fotos vorab einbetten: Ctx-Bilder werden beim Zeichnen
@@ -393,6 +402,60 @@ function glow(page: PDFPage, cx: number, cy: number, rMax: number, color: Color 
     if (o <= 0.002) continue;
     page.drawCircle({ x: cx, y: cy, size: r, color, opacity: o });
   }
+}
+
+/**
+ * Dekoratives, dunkles Marken-Bild-Band für Seiten mit Weißraum unten.
+ * Das Bild wird auf die Zielhöhe zugeschnitten wirkend eingebettet (pdf-lib
+ * kann nicht clippen, daher zeichnen wir das Bild in voller, seiten-korrekter
+ * Breite und legen oben/unten kräftige fadeRect-Flächen in BG-Farbe darüber,
+ * sodass es „ins Dunkel ausläuft" statt hart abzuschneiden — die Website-Optik).
+ * Zeichnet vom oberen Rand `yTop` nach unten und gibt die Unterkante zurück.
+ * Fail-soft: ohne Bild passiert nichts (Rückgabe = yTop).
+ */
+function visualBand(
+  ctx: Ctx,
+  page: PDFPage,
+  img: PDFImage | null,
+  x: number,
+  yTop: number,
+  w: number,
+  bandH: number,
+  caption?: string,
+): number {
+  if (!img) return yTop;
+  const yBottom = yTop - bandH;
+  // Bild seitenkorrekt so skalieren, dass es das Band voll deckt (cover):
+  // Breite = w, Höhe daraus; ist die zu klein, an der Höhe ausrichten.
+  const ratio = img.width / img.height;
+  let dw = w;
+  let dh = w / ratio;
+  if (dh < bandH) {
+    dh = bandH;
+    dw = bandH * ratio;
+  }
+  const dx = x + (w - dw) / 2;
+  const dy = yBottom + (bandH - dh) / 2;
+  // Clip-Ersatz: erst Rahmen-Rechteck als Maske drumherum wäre teuer — wir
+  // zeichnen das Bild und maskieren den Überstand oben/unten mit BG-Flächen.
+  page.drawImage(img, { x: dx, y: dy, width: dw, height: dh });
+  if (dy + dh > yTop) page.drawRectangle({ x, y: yTop, width: w, height: dy + dh - yTop + 1, color: BG });
+  if (dy < yBottom) page.drawRectangle({ x, y: dy - 1, width: w, height: yBottom - dy + 1, color: BG });
+  // Ausläufer ins Dunkel: nur die Ränder in die BG-Farbe verlaufen, damit die
+  // Bildmitte sichtbar bleibt. Oben blendet BG von yTop (opak) nach unten aus
+  // ("down": oFrom liegt oben), unten von yBottom (opak) nach oben ("up").
+  fadeRect(page, x, yTop - bandH * 0.3, w, bandH * 0.3, BG, 1, 0, 28, "down");
+  fadeRect(page, x, yBottom, w, bandH * 0.34, BG, 1, 0, 28, "up");
+  // Dezente Akzent-Hairline oben wie bei glowPanel.
+  fadeRect(page, x, yTop - 1, w / 2, 1, ACCENT, 0, 0.5, 20, "right");
+  fadeRect(page, x + w / 2, yTop - 1, w / 2, 1, ACCENT, 0.5, 0, 20, "right");
+  if (caption) {
+    const cs = 8.5;
+    // Caption sitzt in der unteren, dunkel überblendeten Zone — hell (fast
+    // Weiß) statt MUTED, damit sie auf jedem Bildausschnitt lesbar bleibt.
+    mkText(page)(caption, x + (w - ctx.reg.widthOfTextAtSize(caption, cs)) / 2, yBottom + 12, cs, ctx.reg, rgb(0.85, 0.85, 0.88), 0.5);
+  }
+  return yBottom;
 }
 
 /** "Gradient-glow-Box" der Website: SURFACE-Grundfläche, 1px BORDER-Rand,
@@ -710,7 +773,11 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
       if (!value) continue;
       const ic = ctx.icons[icon];
       if (ic) page.drawImage(ic, { x, y: yy - 1.5, width: 11, height: 11 });
-      t(label, x + 17, yy, 10, ctx.reg, MUTED);
+      // Label darf nie in den rechtsbündigen Wert laufen (langes Label +
+      // langer Wert kollidierten sonst, z. B. „Bodenrichtwert (amtl.,
+      // informativ)" gegen „895 €/m²") — auf die Restbreite kürzen.
+      const valW = ctx.reg.widthOfTextAtSize(value, 10);
+      t(ellipsize(label, ctx.reg, 10, colW - 17 - valW - 10), x + 17, yy, 10, ctx.reg, MUTED);
       textRight(page, value, x + colW, yy, 10, ctx.reg, FG);
       yy -= 7;
       page.drawLine({ start: { x, y: yy }, end: { x: x + colW, y: yy }, thickness: 0.5, color: BORDER });
@@ -746,8 +813,10 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
     // für die Koordinaten kein amtlicher Wert ermittelt werden konnte.
     [
       "tree",
-      brwPriceRelevant(d.objektartLabel) ? "Bodenrichtwert (amtl.)" : "Bodenrichtwert (amtl., informativ)",
-      d.bodenrichtwert ? `${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}` : "",
+      brwPriceRelevant(d.objektartLabel) ? "Bodenrichtwert (amtlich)" : "Bodenrichtwert (informativ)",
+      // Zone bewusst NICHT in dieser schmalen 2-Spalten-Kachel (Kollision mit
+      // dem Label) — sie steht auf dem Ergebnis-Wert-Hero und im Rechtstext.
+      d.bodenrichtwert ? `${eur(d.bodenrichtwert.brw)}/m²` : "",
     ],
   ], M + colW + 24);
 
@@ -1327,6 +1396,13 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
     t(line, M, y, 8.5, ctx.reg, FAINT);
     y -= 11;
   }
+  y -= 14;
+
+  // Weißraum unten (bei nur 1-2 Objekten reichlich) mit einem dunklen
+  // Marken-Band füllen — nur, wenn noch spürbar Platz bis zum Footer ist.
+  if (y - 90 > bandFloor) {
+    visualBand(ctx, page, ctx.kitchen, M, y, contentW, Math.min(240, y - bandFloor), "Regionale Expertise statt Massenabfertigung.");
+  }
 
   footer(ctx, page, w, pageNo, total);
 }
@@ -1485,8 +1561,19 @@ function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   page.drawRectangle({ x: M, y: y - ctaH, width: w - 2 * M, height: ctaH, color: SURFACE, borderColor: ACCENT, borderWidth: 1 });
   page.drawRectangle({ x: M, y: y - ctaH, width: 4, height: ctaH, color: ACCENT });
   t("IHR NÄCHSTER SCHRITT", M + 18, y - 24, 9, ctx.bold, ACCENT_SOFT, 1.2);
-  t(`${d.name?.split(" ")[0] || "Wir"}, sichern wir gemeinsam den Bestpreis für ${objektTitle}.`, M + 18, y - 43, 12, ctx.bold, FG);
+  // Adresse kann lang sein (z. B. „Max-Bill-Straße 3, 67061 Ludwigshafen") —
+  // die ganze CTA-Zeile auf die Box-Innenbreite kürzen, damit sie nie rechts
+  // aus dem Rahmen läuft.
+  const ctaLine = `${d.name?.split(" ")[0] || "Wir"}, sichern wir gemeinsam den Bestpreis für ${objektTitle}.`;
+  t(ellipsize(ctaLine, ctx.bold, 12, w - 2 * M - 36), M + 18, y - 43, 12, ctx.bold, FG);
   t("Kostenlose Vor-Ort-Bewertung: riegel-immobilien.de/termin   ·   06232 100 10 10", M + 18, y - 59, 9.5, ctx.reg, MUTED);
+  y -= ctaH + 26;
+
+  // Diese Seite hat unter der CTA reichlich Weißraum — mit einem dunklen
+  // Marken-Band füllen (die emptieste Report-Seite).
+  if (y - 100 > bandFloor) {
+    visualBand(ctx, page, ctx.docs, M, y, w - 2 * M, Math.min(250, y - bandFloor), "Ihre Immobilie verdient mehr als einen Algorithmus.");
+  }
 
   footer(ctx, page, w, pageNo, total);
 }
@@ -1558,6 +1645,13 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   t("DISKRETER VERKAUF", M + 18, y - 22, 8.5, ctx.bold, ACCENT_SOFT, 1);
   for (const line of wrap("Diskret verkaufen? RIEGEL kauft ausgewählte Objekte über zwei eigene Investorenfirmen direkt an.", ctx.reg, 10, contentW - 40)) {
     t(line, M + 18, y - 40, 10, ctx.reg, FG);
+  }
+  y -= calloutH + 22;
+
+  // Restlichen Weißraum bis zum Footer mit einem dunklen Marken-Band füllen
+  // (nur, wenn noch spürbar Platz ist — sonst bleibt es leer).
+  if (y - 78 > bandFloor) {
+    visualBand(ctx, page, ctx.kitchen, M, y, contentW, Math.min(230, y - bandFloor), "Regionale Expertise. Alles andere ist Fast Food.");
   }
 
   footer(ctx, page, w, pageNo, total);
