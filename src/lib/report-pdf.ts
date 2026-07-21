@@ -2,7 +2,6 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFIm
 import fontkit from "@pdf-lib/fontkit";
 import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
-import { COVER_JPG_B64 } from "@/lib/report-assets/cover";
 import { HERO_RAYS_B64, GAUGE_B64, ICONS } from "@/lib/report-assets/visuals";
 import { BORIS_ATTRIBUTION } from "@/lib/boris";
 import type { ReportContext } from "@/lib/report-context";
@@ -14,8 +13,8 @@ import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
  * "gradient to nothing"-Flächen, AKIRA-Headlines). Seitenzahl ist DYNAMISCH
  * (5–9 Seiten, s. `total` in buildReportPdf) — optionale Kapitel fallen bei
  * fehlenden Daten fail-soft weg statt eine leere/kaputte Seite zu zeigen:
- *   1 Deckblatt          — Luftbild des EINGEGEBENEN Objekts (Esri/Maxar)
- *   2 Bewertung          — Wert-Hero, Objekt-/Kennzahlen + Stimmungsbild
+ *   1 Deckblatt          — dunkle Visual-Seite, zentriertes RIEGEL-Logo + Name
+ *   2 Bewertung          — Wert-Hero, Objekt-/Kennzahlen + Objekt-Luftbild (Esri/Maxar)
  *   3 Preis-Zusammensetzung — Wasserfall/Formel-Grafik (immer, best-effort)
  *   4 Ihr Markt           — NUR wenn context.markt vorhanden (Preisatlas-Stadt)
  *   5 Referenzobjekte      — NUR wenn vergleichsobjekte vorhanden
@@ -87,6 +86,11 @@ const ACCENT = rgb(0.004, 0.361, 1);
 const ACCENT_SOFT = rgb(0.416, 0.631, 1);
 const POS = rgb(0.31, 0.78, 0.47);
 const NEG = rgb(0.85, 0.42, 0.4);
+/** Vorberechneter Zwischenton BORDER↔ACCENT — pdf-lib kennt kein CSS
+ * color-mix(), also ein fest ausgerechnetes rgb() statt des reinen Grau-Rands.
+ * Tönt alle glowPanel-Kacheln (Formel-Boxen, Referenzobjekte, Stat-Tiles …)
+ * dezent Richtung Akzentblau statt neutral grau. */
+const BORDER_GLOW = rgb(0.13, 0.22, 0.45);
 
 const A4: [number, number] = [595.28, 841.89];
 const M = 48;
@@ -137,7 +141,6 @@ interface Ctx {
    * den gesamten Report zum Scheitern bringen — s. tryEmbedPng/tryEmbedJpg
    * in buildReportPdf() und die Fallback-Zeichnung an den jeweiligen Stellen. */
   mark: PDFImage | null;
-  vibe: PDFImage | null;
   satellite: PDFImage | null;
   heroRays: PDFImage | null;
   gauge: PDFImage | null;
@@ -199,7 +202,6 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
   }
 
   const mark = await tryEmbedPng(RIEGEL_MARK_B64, "Logo");
-  const vibe = await tryEmbedJpg(COVER_JPG_B64, "Stimmungsbild");
   let satellite: PDFImage | null = null;
   if (d.satelliteB64) {
     try {
@@ -217,7 +219,7 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
     if (img) icons[k] = img;
   }
 
-  const ctx: Ctx = { doc, reg, bold, akira, mark, vibe, satellite, heroRays, gauge, icons };
+  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, heroRays, gauge, icons };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
 
   // Vergleichsobjekt-Fotos vorab einbetten: Ctx-Bilder werden beim Zeichnen
@@ -248,7 +250,7 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
   const next = () => ++pageNo;
 
   drawCover(ctx, d, objektTitle, next(), total);
-  drawValuation(ctx, d, next(), total);
+  drawValuation(ctx, d, objektTitle, next(), total);
   if (hasComposition) drawComposition(ctx, d, next(), total);
   if (hasMarkt) drawMarketLocal(ctx, d, next(), total);
   if (hasVergleich) drawReferenzobjekte(ctx, d, vergleichsFotos, next(), total);
@@ -277,6 +279,15 @@ function mkText(page: PDFPage) {
 }
 function textRight(page: PDFPage, s: string, xRight: number, y: number, size: number, font: PDFFont, color: Color = FG) {
   page.drawText(s, { x: xRight - font.widthOfTextAtSize(s, size), y, size, font, color });
+}
+/** Breite von Text MIT Zeichenabstand (s. mkText-spacing-Parameter) — plain
+ * font.widthOfTextAtSize() misst ohne den Spacing-Aufschlag zu schmal und
+ * lässt zentrierten Text (Wortmarke, Kicker) optisch aus der Mitte rutschen. */
+function textWidthSpaced(font: PDFFont, s: string, size: number, spacing: number): number {
+  if (spacing <= 0) return font.widthOfTextAtSize(s, size);
+  let w = 0;
+  for (const ch of s) w += font.widthOfTextAtSize(ch, size) + spacing;
+  return w - spacing;
 }
 function wrap(s: string, font: PDFFont, size: number, maxW: number): string[] {
   const words = s.split(" ");
@@ -398,7 +409,7 @@ function glowPanel(page: PDFPage, x: number, y: number, w: number, h: number, op
   fadeRect(page, x + halfW, hy, halfW, hairH, ACCENT, 0.5, 0.04, 14, "right");
   glow(page, x + w / 2, y + h - 4, Math.min(w, h) * 0.85, ACCENT, Math.min(peak, 0.05), 10);
   fadeRect(page, x, y + h * 0.6, w, h * 0.4, ACCENT, peak, 0, 18, "down");
-  page.drawRectangle({ x, y, width: w, height: h, borderColor: BORDER, borderWidth: 1 });
+  page.drawRectangle({ x, y, width: w, height: h, borderColor: BORDER_GLOW, borderWidth: 1 });
 }
 
 /** Horizontaler Balken mit runden Enden (Kapsel-Form) — Rechteck + 2
@@ -417,12 +428,18 @@ function roundBarH(page: PDFPage, x: number, y: number, w: number, h: number, co
 /** glowPanel-Kachel für eine einzelne Kennzahl: großer AKIRA-Wert, kleines
  * Uppercase-Label mit Letter-Spacing, optionale Sub-Zeile darunter. */
 function statTile(ctx: Ctx, page: PDFPage, x: number, y: number, w: number, h: number, value: string, label: string, sub?: string) {
-  glowPanel(page, x, y, w, h);
+  // peak leicht über dem glowPanel()-Standard (0.05 → 0.06): die Kacheln
+  // sollen sichtbarer "gradient-glowen" als die übrigen glowPanel-Flächen.
+  glowPanel(page, x, y, w, h, { peak: 0.06 });
   const t = mkText(page);
   const cx = x + w / 2;
-  const valSize = fitFontSize(ctx.akira, value, w - 18, Math.min(21, h * 0.32), 11);
+  // Wert bewusst NICHT in AKIRA: die Display-Schrift ist bei Ziffern schlecht
+  // lesbar (schmale, stilisierte Formen) — ctx.bold (Helvetica Bold, der
+  // Inter-Extrabold-Ersatz des PDFs) in ACCENT_SOFT setzt den Wert stattdessen
+  // farblich ab, bei gleicher Größe. AKIRA bleibt Headlines vorbehalten.
+  const valSize = fitFontSize(ctx.bold, value, w - 18, Math.min(21, h * 0.32), 11);
   const valY = sub ? y + h - 22 - valSize : y + h / 2 - valSize * 0.32;
-  t(value, cx - ctx.akira.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.akira, FG);
+  t(value, cx - ctx.bold.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.bold, ACCENT_SOFT);
   if (sub) {
     const s = ellipsize(sub, ctx.reg, 8, w - 18);
     t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 14, 8, ctx.reg, MUTED);
@@ -542,70 +559,84 @@ function chipRow(ctx: Ctx, page: PDFPage, items: string[], x: number, yTop: numb
   return cy - rowH - 6;
 }
 
-/* ── Seite 1: DECKBLATT mit Objekt-Luftbild ────────────── */
+/* ── Seite 1: DECKBLATT — dunkle Visual-Seite, zentriertes Logo ────────── */
+/**
+ * Neues Deckblatt (Kunden-Feedback): eine einfache, cleane dunkle Seite mit
+ * einem abgedunkelten Visual statt des Objekt-Luftbilds (das jetzt auf Seite 2
+ * steht, s. drawValuation) und einer Kapitel-Übersicht. Kein header() hier —
+ * das Logo ist stattdessen selbst das zentrale, große Element der Seite.
+ */
 function drawCover(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
   const t = mkText(page);
-  const standort = d.context?.standortName;
-  let y = header(ctx, page, w, h, standort ? `MARKTWERT-REPORT · ${standort.toUpperCase()}` : "MARKTWERT-REPORT");
+  const cx = w / 2;
 
-  heading(ctx, page, "Marktwert-Report", M, y, 30);
-  y -= 14;
-  // Dezente Akzentlinie unter dem Titel — die "gradient to nothing"-Deko der
-  // Website als Unterstreichung statt als Fläche.
-  fadeRect(page, M, y, 220, 2, ACCENT, 0.75, 0, 20, "right");
-  y -= 26;
-  t("Persönlich erstellt für", M, y, 10, ctx.reg, MUTED);
-  t(d.name || "Sie", M + ctx.reg.widthOfTextAtSize("Persönlich erstellt für ", 10) + 4, y, 10.5, ctx.bold, ACCENT_SOFT);
-  y -= 18;
-  t(`Objekt: ${objektTitle}`, M, y, 11, ctx.reg, FG);
-  y -= 24;
-
-  // Luftbild des eingegebenen Objekts (wie im Rechner)
-  const bandW = w - 2 * M;
-  const bandH = 348;
-  const top = y;
-  const bottom = top - bandH;
-  if (ctx.satellite) {
-    page.drawImage(ctx.satellite, { x: M, y: bottom, width: bandW, height: bandH });
-    // Marker in der Bildmitte (Objekt-Position)
-    const cx = M + bandW / 2;
-    const cy = bottom + bandH / 2;
-    page.drawCircle({ x: cx, y: cy, size: 13, color: ACCENT, opacity: 0.22 });
-    page.drawCircle({ x: cx, y: cy, size: 7, color: BG });
-    page.drawCircle({ x: cx, y: cy, size: 7, borderColor: ACCENT_SOFT, borderWidth: 2.5 });
-    page.drawCircle({ x: cx, y: cy, size: 3, color: ACCENT });
-    // Adress-Chip unten links
-    const chip = ellipsize(objektTitle, ctx.bold, 9.5, bandW - 120);
-    const cw = ctx.bold.widthOfTextAtSize(chip, 9.5) + 26;
-    page.drawRectangle({ x: M + 12, y: bottom + 12, width: cw, height: 24, color: BG, opacity: 0.82 });
-    page.drawRectangle({ x: M + 12, y: bottom + 12, width: 3, height: 24, color: ACCENT });
-    t(chip, M + 24, bottom + 20, 9.5, ctx.bold, FG);
-    // Quelle
-    textRight(page, "Luftbild © Esri · Maxar", M + bandW - 10, bottom + 9, 7, ctx.reg, rgb(0.85, 0.85, 0.85));
-  } else {
-    page.drawRectangle({ x: M, y: bottom, width: bandW, height: bandH, color: SURFACE, borderColor: BORDER, borderWidth: 1 });
-    const msg = "Luftbild des Objekts";
-    t(msg, M + bandW / 2 - ctx.reg.widthOfTextAtSize(msg, 11) / 2, bottom + bandH / 2, 11, ctx.reg, FAINT);
+  // Ganzseitiges Hintergrund-Visual (HERO_RAYS): BG-Overlay bei ~55 % Deckkraft
+  // dunkelt es satt ab, zwei fadeRect-Vignetten (oben/unten, BG 0.9 → 0 in die
+  // Mitte) sorgen zusätzlich dafür, dass die Ränder immer dunkel genug für
+  // weiße Schrift bleiben. Ohne Embed (Fail-soft, s. Ctx-Kommentar): reine
+  // BG-Fläche — auf einer ohnehin dunklen, cleanen Seite kein Beinbruch.
+  if (ctx.heroRays) {
+    page.drawImage(ctx.heroRays, { x: 0, y: 0, width: w, height: h });
+    page.drawRectangle({ x: 0, y: 0, width: w, height: h, color: BG, opacity: 0.55 });
+    const vignetteH = h * 0.34;
+    fadeRect(page, 0, h - vignetteH, w, vignetteH, BG, 0.9, 0, 28, "down");
+    fadeRect(page, 0, 0, w, vignetteH, BG, 0.9, 0, 28, "up");
   }
-  page.drawRectangle({ x: M, y: bottom, width: bandW, height: bandH, borderColor: BORDER, borderWidth: 1 });
-  y = bottom - 20;
 
-  // Kompakte Inhalt-Zeile — die sechs Kernkapitel, Punkt-getrennt.
-  const chapters = ["Bewertung", "Preis-Zusammensetzung", "Ihr Markt", "Preis-Faktoren", "Vermarktung", "Warum RIEGEL"];
-  t(chapters.join("   ·   "), M, y, 8, ctx.reg, FAINT);
+  // Logo-Ensemble, zentriert, Schwerpunkt leicht ÜBER der Seitenmitte: Mark
+  // oben (klein, s. report-assets/mark.ts — ohne Hinweis auf eine reinweiße
+  // Variante gehen wir von einem farbigen Mark aus, das deshalb zurückhaltend
+  // bleibt), darunter groß die weiße AKIRA-Wortmarke als dominantes Element.
+  // Reines Weiß (1,1,1) statt FG: FG ist ein warmes Off-White, auf dem
+  // abgedunkelten Foto-Hintergrund soll "RIEGEL" aber strahlend hell stehen.
+  let y = h / 2 + 110;
+  if (ctx.mark) {
+    const mh = 44;
+    const mw = (ctx.mark.width / ctx.mark.height) * mh;
+    page.drawImage(ctx.mark, { x: cx - mw / 2, y: y - mh, width: mw, height: mh });
+    y -= mh + 16;
+  }
+  const word = "RIEGEL";
+  const wordSize = 40;
+  const wordSpacing = 4; // Zeichenabstand-Verhältnis wie im header() (dort 1.5 bei 15pt)
+  const wordW = textWidthSpaced(ctx.akira, word, wordSize, wordSpacing);
+  t(word, cx - wordW / 2, y - wordSize, wordSize, ctx.akira, rgb(1, 1, 1), wordSpacing);
+  y -= wordSize + 30;
+
+  // Akzent-Hairline unter dem Logo, zu beiden Seiten auslaufend — dasselbe
+  // Zwei-Hälften-fadeRect-Muster wie glowPanels obere Hairline, hier nur
+  // freistehend statt an eine Box gebunden.
+  const hairW = 140;
+  const hairH = 1.4;
+  fadeRect(page, cx - hairW / 2, y, hairW / 2, hairH, ACCENT, 0.08, 0.85, 16, "right");
+  fadeRect(page, cx, y, hairW / 2, hairH, ACCENT, 0.85, 0.08, 16, "right");
+  y -= 22;
+
+  const kicker = "MARKTWERT-REPORT";
+  const kickerSpacing = 2;
+  const kickerW = textWidthSpaced(ctx.reg, kicker, 10, kickerSpacing);
+  t(kicker, cx - kickerW / 2, y, 10, ctx.reg, rgb(0.8, 0.8, 0.82), kickerSpacing);
+  y -= 46;
+
+  const praefix = "Erstellt für";
+  t(praefix, cx - ctx.reg.widthOfTextAtSize(praefix, 9) / 2, y, 9, ctx.reg, MUTED);
   y -= 20;
+  const name = d.name || "Sie";
+  t(name, cx - ctx.bold.widthOfTextAtSize(name, 15) / 2, y, 15, ctx.bold, rgb(1, 1, 1));
 
-  t(`Stand: ${d.dateLabel}`, M, y, 9.5, ctx.reg, MUTED);
-  textRight(page, "Vertraulich · nur für den Empfänger", w - M, y, 9.5, ctx.reg, FAINT);
+  // Objekt-/Stand-Zeile mittig über dem footer() — ersetzt die frühere
+  // Kapitel-Übersichtszeile (reine Deckblatt-Deko, keine Nutzerinfo).
+  const infoLine = `Objekt: ${objektTitle} · Stand ${d.dateLabel} · Vertraulich`;
+  t(infoLine, cx - ctx.reg.widthOfTextAtSize(infoLine, 9) / 2, 90, 9, ctx.reg, FAINT);
 
   footer(ctx, page, w, pageNo, total);
 }
 
-/* ── Seite 2: BEWERTUNG (Wert + Daten + Stimmungsbild) ─── */
-function drawValuation(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
+/* ── Seite 2: BEWERTUNG (Wert + Daten + Objekt-Luftbild) ── */
+function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
   const { width: w, height: h } = page.getSize();
   bg(page, w, h);
@@ -705,8 +736,8 @@ function drawValuation(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   const b = section("Kennzahlen", [
     ["euro", "Preis / m²", d.value.pricePerSqm ? eur(d.value.pricePerSqm) : "–"],
     ["layers", "Vergleichsobjekte", d.value.comparables != null ? String(d.value.comparables) : "–"],
-    ["trend", "Markttrend (Lage)", d.value.trendPct != null ? `+${d.value.trendPct} % p.a.` : "–"],
-    ["pin", "Mikrolage", d.value.mikrolage != null ? `${d.value.mikrolage}/10` : "–"],
+    ["trend", "Markttrend (Lage)", d.value.trendPct != null ? `+${fmtDe(d.value.trendPct)} % p.a.` : "–"],
+    ["pin", "Mikrolage", d.value.mikrolage != null ? `${fmtDe(d.value.mikrolage)}/10` : "–"],
     ["chart", "Daten-Konfidenz", d.value.confidence != null ? `${d.value.confidence} %` : "–"],
     // Leerstring statt "–": nur bei Mehrfamilienhaus gesetzt (Ertragswert-
     // Vervielfältiger), Zeile entfällt sonst komplett.
@@ -738,16 +769,44 @@ function drawValuation(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   }
   yy -= 10;
 
-  // Stimmungsbild (Vibe) — bewusst hier, nicht auf dem Deckblatt
-  // (kein Fallback-Zeichnen nötig, wenn das Embed fehlschlägt: Block entfällt
-  // einfach, die Seite bleibt ohne den optionalen Bild-Abschluss valide.)
-  const imgH = yy - 70;
-  if (ctx.vibe && imgH > 90) {
-    page.drawImage(ctx.vibe, { x: M, y: 70, width: w - 2 * M, height: imgH });
-    // Unten ins Dunkel auslaufen lassen (BG 0 → 1 über die unteren 30 % des
-    // Bilds) — der "gradient to nothing"-Hero-Look der Website.
-    fadeRect(page, M, 70, w - 2 * M, imgH * 0.3, BG, 0, 1, 28, "down");
-    page.drawRectangle({ x: M, y: 70, width: w - 2 * M, height: imgH, borderColor: BORDER, borderWidth: 1 });
+  // Objekt-Luftbild (Esri/Maxar) — ersetzt das früher hier gezeigte
+  // Stimmungsbild (COVER_JPG_B64), das auf w × Resthöhe verzerrt gestreckt
+  // wurde. Der Abruf liefert IMMER 1200×720 (5:3) — hier entsprechend im
+  // festen Seitenverhältnis statt verzerrt gezeichnet: volle Inhaltsbreite mit
+  // Höhe = Breite × 0,6, wenn dafür mindestens 120pt Resthöhe da sind, sonst
+  // so schmal, dass Höhe = Resthöhe exakt passt (zentriert). Der zusätzliche
+  // "satH > restH"-Check fängt den Grenzfall ab, in dem 120pt Resthöhe
+  // rechnerisch NICHT für die volle 5:3-Höhe reichen — ohne ihn würde das Bild
+  // nach oben in den Fließtext hineinragen. Bei ctx.satellite == null (Fail-
+  // soft, s. Ctx-Kommentar) entfällt der Block ersatzlos.
+  const restH = yy - 70;
+  if (ctx.satellite && restH >= 40) {
+    const contentW = w - 2 * M;
+    let satW = contentW;
+    let satH = satW * 0.6;
+    if (restH < 120 || satH > restH) {
+      satH = restH;
+      satW = satH / 0.6;
+    }
+    const satX = M + (contentW - satW) / 2;
+    const satY = 70;
+    page.drawImage(ctx.satellite, { x: satX, y: satY, width: satW, height: satH });
+    // Marker in der Bildmitte (Objekt-Position) — Logik vom alten Deckblatt übernommen.
+    const scx = satX + satW / 2;
+    const scy = satY + satH / 2;
+    page.drawCircle({ x: scx, y: scy, size: 13, color: ACCENT, opacity: 0.22 });
+    page.drawCircle({ x: scx, y: scy, size: 7, color: BG });
+    page.drawCircle({ x: scx, y: scy, size: 7, borderColor: ACCENT_SOFT, borderWidth: 2.5 });
+    page.drawCircle({ x: scx, y: scy, size: 3, color: ACCENT });
+    // Adress-Chip unten links
+    const chip = ellipsize(objektTitle, ctx.bold, 9.5, satW - 120);
+    const cw = ctx.bold.widthOfTextAtSize(chip, 9.5) + 26;
+    page.drawRectangle({ x: satX + 12, y: satY + 12, width: cw, height: 24, color: BG, opacity: 0.82 });
+    page.drawRectangle({ x: satX + 12, y: satY + 12, width: 3, height: 24, color: ACCENT });
+    t(chip, satX + 24, satY + 20, 9.5, ctx.bold, FG);
+    // Quelle
+    textRight(page, "Luftbild © Esri · Maxar", satX + satW - 10, satY + 9, 7, ctx.reg, rgb(0.85, 0.85, 0.85));
+    page.drawRectangle({ x: satX, y: satY, width: satW, height: satH, borderColor: BORDER, borderWidth: 1 });
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -993,7 +1052,7 @@ function drawErtragswertGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: numbe
   let y = drawFormulaGraphic(ctx, page, x, yTop, w, [
     { label: "Jahresnettokaltmiete", value: eur(miete) },
     { op: "×" },
-    { label: "Vervielfältiger (regional)", value: verv != null ? `${fmtDe(verv)}×` : "–" },
+    { label: "Vervielfältiger (regional, zustandsabhängig)", value: verv != null ? `${fmtDe(verv)}×` : "–" },
     { op: "=" },
     { label: "Ertragswert", value: eur(mid) },
   ]);
