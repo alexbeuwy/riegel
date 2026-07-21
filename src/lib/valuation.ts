@@ -92,7 +92,11 @@ function baujahrFactor(y?: number): number {
   return 0.88;
 }
 
-const OPTIMISM = 1.06;
+// Deal-orientiert bewusst OHNE pauschalen Markt-Aufschlag (früher 1,06):
+// leicht konservative Einstiegspreise führen eher zum Abschluss als
+// optimistische Wunschwerte, die das Objekt zum Ladenhüter machen
+// (Vorgabe Inhaberseite). Konstante bleibt als dokumentierter Stellhebel.
+const OPTIMISM = 1.0;
 
 /**
  * Deterministischer Regio-Ansatz für die Mietrendite (Basis für den
@@ -109,13 +113,24 @@ function regionalRentYieldPct(basisWohnung: number): number {
 
 /**
  * Ertragswert-Vervielfältiger (Jahresnettokaltmiete × Vervielfältiger ≈
- * Ertragswert) — grobe Heuristik aus 100 / Mietrendite, auf eine für
- * Zinshäuser plausible Bandbreite gedeckelt. Ersetzt KEINE echte
+ * Ertragswert) — DEAL-ORIENTIERT kalibriert: tatsächlich abgeschlossene
+ * Zinshaus-Deals in der Region liegen realistisch bei 15–16fach, bei
+ * Top-Zustand um 18fach, nicht darüber (Vorgabe Inhaberseite; die reine
+ * 100/Rendite-Rechnung landete zuvor bei 22–30 und produzierte
+ * Wunschpreise ohne Abschlusschance).
+ *
+ * Aufbau: das regionale Preisniveau (100/Mietrendite, roh 20–30) wird
+ * linear auf eine Basis von 14,5–16,5 gestaucht; Zustand und Qualität
+ * verschieben gedämpft (+1,3 neuwertig / −1,6 renovierungsbedürftig,
+ * ±0,4 Qualität). Harte Bandbreite 12,5–18. Ersetzt KEINE echte
  * Ertragswertermittlung (Bewirtschaftungskosten, Liegenschaftszins etc.).
  */
-function mfhVervielfaeltiger(basisWohnung: number): number {
-  const v = 100 / regionalRentYieldPct(basisWohnung);
-  return Math.round(Math.min(30, Math.max(18, v)) * 10) / 10;
+function mfhVervielfaeltiger(basisWohnung: number, zustand: Zustand, qualitaet: Qualitaet): number {
+  const raw = 100 / regionalRentYieldPct(basisWohnung);
+  const basis = 14.5 + (Math.min(30, Math.max(20, raw)) - 20) * 0.2;
+  const zAdj = zustand === "neuwertig" ? 1.3 : zustand === "renovierungsbeduerftig" ? -1.6 : 0;
+  const qAdj = qualitaet === "luxus" ? 0.4 : qualitaet === "gehoben" ? 0.2 : qualitaet === "einfach" ? -0.3 : 0;
+  return Math.round(Math.min(18, Math.max(12.5, basis + zAdj + qAdj)) * 10) / 10;
 }
 
 export function regionKey(ort: string): string {
@@ -153,13 +168,13 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     mid = pricePerSqm * (input.grundflaeche ?? 0);
   } else if (input.objektart === "mehrfamilienhaus") {
     // Ertragswert-Ansatz statt Flächen-Rechnung: Jahresnettokaltmiete ×
-    // Vervielfältiger (~ 100 / regionale Mietrendite, gedeckelt 18–30) — s.
-    // mfhVervielfaeltiger(). Zustand/Qualität/Energie fließen bewusst NICHT
-    // ein (kein Schein-Präzisions-Zuschlag auf eine Ertragswertschätzung,
-    // die primär mietbasiert ist); die Werttreiber-Faktoren unten bleiben
-    // deshalb für diesen Objekttyp leer.
+    // Vervielfältiger (deal-orientiert 12,5–18, s. mfhVervielfaeltiger()).
+    // Zustand/Qualität fließen GEDÄMPFT in den Vervielfältiger selbst ein
+    // („Top-Zustand mal 18fach"); die Werttreiber-Faktoren unten bleiben für
+    // diesen Objekttyp trotzdem leer, weil ihr Effekt bereits im Faktor
+    // steckt und nicht doppelt erscheinen darf.
     const miete = Math.max(0, input.jahresnettokaltmiete ?? 0);
-    vervielfaeltiger = mfhVervielfaeltiger(r.wohnung);
+    vervielfaeltiger = mfhVervielfaeltiger(r.wohnung, input.zustand, input.qualitaet);
     mid = miete * vervielfaeltiger;
     pricePerSqm = input.wohnflaeche ? Math.round(mid / input.wohnflaeche) : undefined;
   } else {
