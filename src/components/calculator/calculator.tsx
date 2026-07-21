@@ -497,9 +497,14 @@ export function Calculator() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-8">
-        <div className="mb-3 flex items-center justify-between text-xs">
+        <div className="mb-3 flex items-center justify-between gap-3 text-xs">
           <span className="uppercase tracking-[0.2em] text-faint">Schritt {currentNode + 1} von 4</span>
-          <span className="font-medium text-accent">
+          {/* Fortschritt als Badge (analog zum "amtlich"-Badge im Ergebnis) statt
+              als loser Text in der Ecke. */}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 font-medium text-accent">
+            <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m5 12 4 4 10-10" />
+            </svg>
             <span key={pct} className="t-num-d tabular-nums">{pct}%</span> erledigt
           </span>
         </div>

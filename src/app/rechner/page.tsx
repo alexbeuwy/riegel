@@ -57,15 +57,9 @@ export default function RechnerPage() {
             >
               Was ist Ihre <span className="text-accent">Immobilie</span> wert?
             </h1>
-            <div
-              className="reveal-lcp akira-outline mt-3 text-xl text-fg/70 sm:text-2xl"
-              style={{ animationDelay: "140ms" }}
-            >
-              Immobilienrechner
-            </div>
             <p
-              className="reveal-lcp mx-auto mt-6 max-w-xl text-lg text-muted"
-              style={{ animationDelay: "220ms" }}
+              className="reveal-lcp mx-auto mt-5 max-w-xl text-lg text-muted"
+              style={{ animationDelay: "160ms" }}
             >
               In 60 Sekunden zur datenbasierten Einschätzung, zusammengeführt aus
               amtlichen Bodenrichtwerten, Vergleichsobjekten und unserer eigenen
