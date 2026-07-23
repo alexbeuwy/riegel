@@ -72,11 +72,14 @@ export function ReachChart() {
         <h3 className="text-lg font-semibold text-fg">
           Exposé-Aufrufe auf ImmoScout24
         </h3>
-        <p className="text-xs text-faint">
-          ImmoScout24-Anbieterprofile{stand ? ` · Stand ${stand}` : ""}
+        <p className="text-xs leading-relaxed text-muted">
+          Wie oft die Exposés eines Anbieters auf ImmoScout24 insgesamt
+          aufgerufen wurden: je höher die Reichweite, desto mehr potenzielle
+          Käufer sehen Ihr Objekt.
         </p>
-        <p className="text-[11px] text-faint/70">
-          Öffentlich einsehbar auf den jeweiligen Anbieterprofilen.
+        <p className="text-[11px] text-faint">
+          Quelle: öffentlich einsehbare Aufrufzahlen der jeweiligen
+          ImmoScout24-Anbieterprofile{stand ? `, Stand ${stand}` : ""}.
         </p>
       </div>
 

@@ -10,7 +10,7 @@ import { EngagementBento } from "@/components/engagement-bento";
 export const metadata = {
   title: "Über uns",
   description:
-    "RIEGEL Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Experten an zwei Standorten. Lernen Sie die Familie RIEGEL und das Team kennen.",
+    "RIEGEL Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. Ein eingespieltes Team an zwei Standorten. Lernen Sie die Familie RIEGEL und das Team kennen.",
   alternates: { canonical: "/ueber-uns" },
 };
 
@@ -43,24 +43,15 @@ const familie = [
   },
 ];
 
-// Das übrige Team — vorübergehend als Platzhalter (18 Experten gesamt).
-// Profile/Fotos folgen; Rollenbereiche real abgebildet.
-// 14 Platzhalter + 4 Familie = 18 Experten. Namen/Porträts folgen.
-const teamRollen = [
-  "Immobilienberatung Speyer",
-  "Immobilienberatung Ludwigshafen",
-  "Vertrieb & Akquise",
-  "Backoffice & Organisation",
-  "Marketing & Social Media",
-  "Finanzierungsberatung",
-  "Objektaufbereitung & Fotografie",
-  "Empfang & Kundenservice",
-  "Bewertung & Analyse",
-  "Vertragswesen",
-  "Drohnen- & Videoproduktion",
-  "Kundenbetreuung",
-  "Social Media & Content",
-  "Assistenz der Geschäftsleitung",
+// Backoffice & Organisation — echte Kolleginnen (Namen & Porträts von der
+// Live-Seite riegel-immobilien.de/unternehmensgruppe/ übernommen). Sie halten
+// Abläufe, Termine und Kundenbetreuung im Hintergrund zusammen.
+const kolleginnen = [
+  { name: "Vaida Laschke", role: "Backoffice", img: "/images/team/vaida-laschke.jpg" },
+  { name: "Tanja Knab", role: "Backoffice", img: "/images/team/tanja-knab.jpg" },
+  { name: "Magdalena Czerwinski", role: "Backoffice", img: "/images/team/magdalena-czerwinski.jpg" },
+  { name: "Carina Büßecker", role: "Backoffice", img: "/images/team/carina-buessecker.jpg" },
+  { name: "Annika Redmann", role: "Backoffice", img: "/images/team/annika-redmann.jpg" },
 ];
 
 const werte: { icon: IconName; title: string; text: string }[] = [
@@ -166,7 +157,7 @@ export default function UeberUnsPage() {
               Das Team
             </span>
             <h2 className="text-2xl font-semibold sm:text-3xl">
-              18 Experten an zwei Standorten
+              Unser Team an zwei Standorten
             </h2>
             <p className="text-muted">
               Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team aus
@@ -190,15 +181,35 @@ export default function UeberUnsPage() {
               </figcaption>
             </figure>
           </Reveal>
-          <Reveal className="mt-6 flex flex-wrap gap-2">
-            {teamRollen.map((rolle) => (
-              <span
-                key={rolle}
-                className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted"
-              >
-                {rolle}
-              </span>
-            ))}
+
+          {/* Backoffice & Organisation — echte Kolleginnen (Fotos + Namen) */}
+          <Reveal className="mt-12">
+            <h3 className="text-sm uppercase tracking-[0.2em] text-muted">
+              Backoffice &amp; Organisation
+            </h3>
+            <div className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
+              {kolleginnen.map((m, i) => (
+                <Reveal key={m.name} delay={i * 70}>
+                  <figure className="group">
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-border">
+                      <Image
+                        src={m.img}
+                        alt={m.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                        className="object-cover object-[center_25%] transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+                      />
+                    </div>
+                    <figcaption className="mt-3">
+                      <div className="text-sm font-semibold leading-tight text-fg">
+                        {m.name}
+                      </div>
+                      <div className="text-xs text-accent">{m.role}</div>
+                    </figcaption>
+                  </figure>
+                </Reveal>
+              ))}
+            </div>
           </Reveal>
         </Container>
       </section>
