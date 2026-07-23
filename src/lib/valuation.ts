@@ -235,6 +235,10 @@ export const AUSSTATTUNG_OPTIONEN = [
   "Kamin",
   "Smart Home",
   "Photovoltaik",
+  // Solarthermie = Warmwasser/Heizung über Sonnenkollektoren, bewusst getrennt
+  // von Photovoltaik (Strom) — beides kann parallel vorhanden sein.
+  "Solarthermie (Warmwasser)",
+  "Pool",
   "Barrierefrei",
   "Sauna / Wellness",
 ];

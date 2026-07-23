@@ -1516,7 +1516,7 @@ function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   const left = list("Verkürzt die Zeit", [
     "Realistischer, marktgerechter Angebotspreis von Anfang an",
     "Professionelle Fotos, Grundrisse & aussagekräftiges Exposé",
-    "Home Staging und ein aufgeräumter erster Eindruck",
+    "KI-gestütztes Home Staging und ein aufgeräumter erster Eindruck",
     "Vorgemerkte, geprüfte Interessenten aus dem Netzwerk",
     "Gute Energieklasse & vollständige Unterlagen",
   ], M, POS);
