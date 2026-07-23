@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { CtaBand } from "@/components/cta-band";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { FeedbackHighlight } from "@/components/feedback-highlight";
 import { FavoritesProvider } from "@/components/favorites";
 import { SavedSearchesProvider } from "@/components/saved-searches";
 import { AuthProvider } from "@/components/auth";
@@ -148,6 +149,10 @@ export default function RootLayout({
                 {/* Nur fürs Team: rendert `null`, solange kein lokales Flag gesetzt
                     ist (s. feedback-widget.tsx) — für normale Besucher ohne jede Wirkung. */}
                 <FeedbackWidget />
+                {/* Deep-Link-Ziel aus der Feedback-Mail (?fb=…): scrollt zur Stelle,
+                    markiert sie rot und bietet den Claude-Code-Prompt an. Ohne
+                    Parameter rendert die Komponente `null`. */}
+                <FeedbackHighlight />
               </SavedSearchesProvider>
             </FavoritesProvider>
           </AuthProvider>

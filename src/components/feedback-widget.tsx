@@ -37,6 +37,10 @@ interface Target {
   area: string;
   anchorX: number;
   anchorY: number;
+  /** Strukturierte Wiederfind-Daten für den Deep-Link/Highlight (s. API + feedback-highlight.tsx). */
+  text: string;
+  path: string;
+  yPct: number;
 }
 
 function isNarrowViewport(): boolean {
@@ -69,10 +73,15 @@ function cssPath(start: Element): string {
   return parts.join(" > ");
 }
 
-function describeTarget(el: Element, xPct: number, yPct: number): string {
+function describeTarget(el: Element, xPct: number, yPct: number): { area: string; text: string; path: string } {
   const tag = el.tagName.toLowerCase();
   const text = (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
-  return `<${tag}>${text ? ` "${text}"` : ""} · ${cssPath(el)} · ca. ${xPct}%/${yPct}% der Seite`;
+  const path = cssPath(el);
+  return {
+    area: `<${tag}>${text ? ` "${text}"` : ""} · ${path} · ca. ${xPct}%/${yPct}% der Seite`,
+    text,
+    path,
+  };
 }
 
 // Feste Position unten rechts, spürbar über dem WhatsApp-FAB (bottom-5/h-14,
@@ -163,7 +172,8 @@ export function FeedbackWidget() {
         0,
         100,
       );
-      setTarget({ area: describeTarget(el, xPct, yPct), anchorX: e.clientX, anchorY: e.clientY });
+      const { area, text, path } = describeTarget(el, xPct, yPct);
+      setTarget({ area, anchorX: e.clientX, anchorY: e.clientY, text, path, yPct });
       setStep("composing");
     };
     const onKey = (e: KeyboardEvent) => {
@@ -228,6 +238,9 @@ export function FeedbackWidget() {
           comment: value,
           pageUrl: `${window.location.pathname}${window.location.search}`,
           area: target?.area || undefined,
+          // Strukturierter Locator für den Deep-Link/Highlight in der Mail
+          // (feedback-highlight.tsx findet die Stelle darüber wieder).
+          loc: target ? { text: target.text, path: target.path, y: target.yPct } : undefined,
         }),
       });
       if (!res.ok) throw new Error("send failed");

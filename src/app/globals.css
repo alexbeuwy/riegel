@@ -1029,10 +1029,29 @@
   animation: riegel-caret-blink 1.1s steps(1) infinite;
 }
 
+/* ── Feedback-Deep-Link: rote Puls-Markierung der kommentierten Stelle ──
+   Nach Klick auf „Seite öffnen" in der Feedback-Mail umrandet ein rotes,
+   pulsierendes Overlay-Rechteck die gemeinte Stelle (feedback-highlight.tsx
+   erzeugt das Element per JS und positioniert es absolut). Rein visuell,
+   pointer-events:none, damit die Seite darunter bedienbar bleibt. */
+@keyframes riegel-feedback-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.55), 0 0 0 1px rgba(229, 72, 77, 0.9) inset; }
+  70% { box-shadow: 0 0 0 14px rgba(229, 72, 77, 0), 0 0 0 1px rgba(229, 72, 77, 0.9) inset; }
+  100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0), 0 0 0 1px rgba(229, 72, 77, 0.9) inset; }
+}
+.feedback-hl-outline {
+  z-index: 85;
+  border: 2px solid #e5484d;
+  border-radius: 10px;
+  pointer-events: none;
+  animation: riegel-feedback-pulse 1.4s ease-out 4;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .glow-select-on .glow-select-ring { animation: none; }
   .wiggle-cta { animation: none; }
   .caret-blink { animation: none; opacity: 1; }
+  .feedback-hl-outline { animation: none; box-shadow: 0 0 0 1px rgba(229, 72, 77, 0.9) inset; }
 }
 
 /* ── Immobilienrechner: statisches Glow-Panel (Ergebnis-Kacheln) ──

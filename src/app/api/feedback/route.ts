@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { encodeFeedbackLocator, FEEDBACK_PARAM } from "@/lib/feedback-locator";
 
 // Nur beim HTML-Rendern escapen — DB bekommt Rohwerte.
 const esc = (s: unknown) =>
@@ -38,6 +39,18 @@ export async function POST(req: Request) {
   const comment = clean(b.comment, 4000);
   const pageUrl = clean(b.pageUrl, 500);
   const area = clean(b.area, 500);
+  // Strukturierter Locator (optional, nur wenn eine Stelle gewählt wurde) —
+  // baut den Deep-Link, der auf der Live-Seite direkt zur Stelle scrollt,
+  // sie rot markiert und einen Claude-Code-Prompt anbietet.
+  const locRaw = (b.loc ?? null) as { text?: unknown; path?: unknown; y?: unknown } | null;
+  const loc =
+    locRaw && typeof locRaw === "object"
+      ? {
+          text: clean(locRaw.text, 120),
+          path: clean(locRaw.path, 240),
+          y: Math.max(0, Math.min(100, Math.round(Number(locRaw.y)) || 0)),
+        }
+      : null;
 
   if (!comment) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
@@ -47,7 +60,15 @@ export async function POST(req: Request) {
   // ASSET_BASE (riegel.vercel.app) statt SITE_URL (riegel-immobilien.de) —
   // SITE_URL liefert laut email.ts aktuell 404, der Link in der Mail muss
   // aber tatsächlich anklickbar sein.
-  const ctaHref = `${emailTargets.ASSET_BASE.replace(/\/$/, "")}${path}`;
+  const base = emailTargets.ASSET_BASE.replace(/\/$/, "");
+  let ctaHref = `${base}${path}`;
+  if (loc) {
+    const fb = encodeFeedbackLocator({ y: loc.y, text: loc.text, path: loc.path, comment });
+    // URL sauber zusammensetzen (path kann bereits eine Query enthalten).
+    const u = new URL(ctaHref);
+    u.searchParams.set(FEEDBACK_PARAM, fb);
+    ctaHref = u.toString();
+  }
   // Seiten-Kommentare gehen an Alex, Sissy im CC (per Env überschreibbar).
   const to = process.env.FEEDBACK_TO || "alex@beuwy.com";
   const cc = process.env.FEEDBACK_CC || "sissy.riegel@riegel-immobilien.de";
