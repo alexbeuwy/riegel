@@ -50,17 +50,40 @@ export function readRadiusKm(sp: ReadParams): number {
 }
 
 /**
+ * Geokoordinaten des gewählten Orts aus der URL (`ort_lat`/`ort_lng`) — von
+ * der Ort-Combobox beim Übernehmen eines Photon-Vorschlags gesetzt. Damit
+ * funktioniert die Umkreissuche auch um Orte OHNE aktuellen Objektbestand
+ * (cityCentroid hätte dort keinen Anker und fiele auf Exakt-Matching zurück).
+ */
+export function readCenter(sp: ReadParams): LatLng | null {
+  const lat = parseFloat(sp.get("ort_lat") ?? "");
+  const lng = parseFloat(sp.get("ort_lng") ?? "");
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
+/**
  * Ort setzen bzw. entfernen und dabei Exakt-/Umkreis-Modus konsistent halten.
  * Bei aktivem Umkreis bleibt der Ort in `umkreis_ort` (nicht in `ort`, sonst
  * würde der Server wieder exakt filtern).
  */
-export function setCity(p: URLSearchParams, city: string): void {
+export function setCity(p: URLSearchParams, city: string, geo?: LatLng): void {
   if (!city) {
-    // Kein Ort → auch kein Umkreis
+    // Kein Ort → auch kein Umkreis, keine Koordinaten
     p.delete("ort");
     p.delete("umkreis_ort");
     p.delete("umkreis");
+    p.delete("ort_lat");
+    p.delete("ort_lng");
     return;
+  }
+  // Koordinaten des neuen Orts mitführen (Combobox/Photon) bzw. veraltete
+  // des vorherigen Orts entfernen — sie gehören immer zum AKTUELLEN Ort.
+  if (geo) {
+    p.set("ort_lat", geo.lat.toFixed(5));
+    p.set("ort_lng", geo.lng.toFixed(5));
+  } else {
+    p.delete("ort_lat");
+    p.delete("ort_lng");
   }
   if (readRadiusKm(p) > 0) {
     p.set("umkreis_ort", city);
@@ -131,13 +154,21 @@ export function cityCentroid(estates: Estate[], city: string): LatLng | null {
  *   erweitert die Treffer nur, verkleinert sie nie).
  * - Nachbarobjekte kommen dazu, wenn ihre geo-Koordinate innerhalb des Radius
  *   um das Zentrum liegt.
- * - Ohne bestimmbaren Centroid (kein City-Objekt mit geo): sauberer Rückfall
+ * - `fallbackCenter` (Photon-Koordinaten aus der Ort-Combobox, s. readCenter):
+ *   greift, wenn der Ort keinen eigenen Bestand hat — so funktioniert die
+ *   Umkreissuche auch um bestandsfreie Orte (wichtig für Suchaufträge).
+ * - Ohne bestimmbaren Centroid UND ohne fallbackCenter: sauberer Rückfall
  *   auf exaktes City-Matching (bisheriges Verhalten).
  */
-export function filterByRadius(estates: Estate[], city: string, km: number): Estate[] {
+export function filterByRadius(
+  estates: Estate[],
+  city: string,
+  km: number,
+  fallbackCenter?: LatLng | null,
+): Estate[] {
   const c = city.trim().toLowerCase();
   if (!c || km <= 0) return estates;
-  const center = cityCentroid(estates, city);
+  const center = cityCentroid(estates, city) ?? fallbackCenter ?? null;
   if (!center) return estates.filter((e) => e.city.toLowerCase() === c);
   return estates.filter((e) => {
     if (e.city.toLowerCase() === c) return true;

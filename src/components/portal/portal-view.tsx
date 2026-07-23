@@ -9,7 +9,7 @@ import { PortalCard } from "@/components/portal/portal-card";
 import { Icon } from "@/components/icon";
 import { MapConsentGate, useConsent } from "@/components/consent";
 import type { MapBounds } from "@/components/portal/portal-map";
-import { filterByRadius, readRadiusKm } from "@/components/portal/umkreis";
+import { filterByRadius, readCenter, readRadiusKm } from "@/components/portal/umkreis";
 
 const PortalMap = dynamic(
   () => import("@/components/portal/portal-map").then((m) => m.PortalMap),
@@ -62,10 +62,14 @@ export function PortalView({ estates }: { estates: Estate[] }) {
   const sp = useSearchParams();
   const umkreisKm = readRadiusKm(sp);
   const umkreisCity = sp.get("umkreis_ort") ?? "";
+  // Photon-Koordinaten des Combobox-Orts (Fallback-Zentrum): Umkreissuche
+  // funktioniert damit auch um Orte ohne aktuellen Objektbestand.
+  const umkreisCenter = readCenter(sp);
   const baseEstates = useMemo(() => {
-    if (umkreisKm > 0 && umkreisCity) return filterByRadius(estates, umkreisCity, umkreisKm);
+    if (umkreisKm > 0 && umkreisCity) return filterByRadius(estates, umkreisCity, umkreisKm, umkreisCenter);
     return estates;
-  }, [estates, umkreisKm, umkreisCity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- umkreisCenter ist als Objekt nie referenzstabil; lat/lng decken die Änderung ab
+  }, [estates, umkreisKm, umkreisCity, umkreisCenter?.lat, umkreisCenter?.lng]);
 
   // Treffer-Zahl (Umkreis-korrekt) an die Geschwister-Komponenten broadcasten:
   // ActiveChips zeigt sie als „X Objekte", FilterBar im Sheet-Button. PortalView

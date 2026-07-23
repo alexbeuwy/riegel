@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatEUR } from "@/lib/format";
 import { MoreFilters, MoreFiltersFields, selectCls } from "@/components/portal/more-filters";
 import { Segmented } from "@/components/segmented";
+import { OrtCombobox } from "@/components/portal/ort-combobox";
 import { Icon, type IconName } from "@/components/icon";
 import { activeChips, type FilterState } from "@/lib/portal-filter";
 import {
@@ -164,7 +165,9 @@ export function FilterBar({
 
   // Ort + Umkreis brauchen einen eigenen Mutations-Pfad, weil der Ort je nach
   // Modus in `ort` (exakt) oder `umkreis_ort` (Radius) liegt — s. umkreis.ts.
-  const setCityParam = (v: string) => update((p) => setCity(p, v));
+  // geo = Photon-Koordinaten aus der Combobox (Umkreis um bestandsfreie Orte).
+  const setCityParam = (v: string, geo?: { lat: number; lng: number }) =>
+    update((p) => setCity(p, v, geo));
   const setUmkreisParam = (v: string) => update((p) => setRadius(p, v));
 
   // Aktuell gewählter Ort (aus `ort` ODER `umkreis_ort`) und Umkreis-Wert.
@@ -255,10 +258,6 @@ export function FilterBar({
   const preise = filters.typ === "miete" ? MIETE_PREISE : KAUF_PREISE;
   const priceLabel = (p: number) => (filters.typ === "miete" ? `${p} €` : formatEUR(p));
 
-  const ortOptions: [string, string][] = [
-    ["", "Alle Orte"],
-    ...orte.map((o) => [o, o] as [string, string]),
-  ];
   const preisMinOptions: [string, string][] = [
     ["", "Preis ab"],
     ...preise.map((p) => [p.toString(), priceLabel(p)] as [string, string]),
@@ -341,13 +340,11 @@ export function FilterBar({
             onChange={(v) => set("typ_obj", v)}
             options={OBJEKTART_OPTIONS}
           />
-          <Select
-            label="Ort"
-            icon="pin"
-            value={selectedCity}
-            onChange={setCityParam}
-            options={ortOptions}
-          />
+          {/* Ort: Combobox statt Vorauswahl — freie Städte per Autocomplete
+              (Suchauftrag kann Orte ohne aktuellen Bestand abdecken). */}
+          <div className="shrink-0">
+            <OrtCombobox value={selectedCity} onChange={setCityParam} knownOrte={orte} />
+          </div>
           {/* Umkreis: nur sichtbar, wenn ein Ort gewählt ist. */}
           {selectedCity && (
             <Select
@@ -475,11 +472,11 @@ export function FilterBar({
                   onChange={(v) => set("typ_obj", v)}
                   options={OBJEKTART_OPTIONS}
                 />
-                <SheetSelect
-                  label="Ort"
+                <OrtCombobox
+                  variant="sheet"
                   value={selectedCity}
                   onChange={setCityParam}
-                  options={ortOptions}
+                  knownOrte={orte}
                 />
                 {selectedCity && (
                   <SheetSelect
