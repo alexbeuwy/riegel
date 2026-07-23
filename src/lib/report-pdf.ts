@@ -64,6 +64,11 @@ export interface ReportData {
     confidence?: number;
     /** Ertragswert-Vervielfältiger — nur bei Mehrfamilienhaus gesetzt. */
     vervielfaeltiger?: number;
+    /** Gestaffelte Grundstücksanrechnung (übergroßes Grundstück) — nur bei
+     * Haus/Grundstück mit Fläche gesetzt, s. grundstuecksStaffel() in
+     * lib/valuation.ts. Basis des Staffel-Hinweises auf der
+     * Preis-Zusammensetzungs-Seite. */
+    grundstuecksAnrechnung?: { baulandM2: number; mehrflaecheM2: number; gartenlandM2: number; wert: number };
   };
   dateLabel: string;
   /** Luftbild des Objekts (Base64-JPEG, Esri World Imagery an den Rechner-Koordinaten). */
@@ -1162,13 +1167,24 @@ function drawErtragswertGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: numbe
   return y;
 }
 
-/** Branch (c): Grundstück — Fläche × Bodenwert-Niveau = Einschätzung. */
+/** Branch (c): Grundstück — Fläche × angerechnetes Ø-Niveau = Einschätzung.
+ * Seit der gestaffelten Anrechnung (grundstuecksStaffel in lib/valuation.ts)
+ * gilt Fläche × amtlicher BRW ≠ mid bei übergroßen Grundstücken — die
+ * Formel-Grafik zeigt deshalb das EFFEKTIVE Ø-Niveau (mid / Fläche), damit
+ * die Gleichung im PDF rechnerisch aufgeht; der amtliche Rohwert und die
+ * Staffel-Aufschlüsselung stehen im erklärenden Text darunter. */
 function drawGrundstueckGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: number, yTop: number, w: number): number {
   const flaeche = Number(d.grundflaeche ?? 0);
   const mid = d.value.mid;
   const amtlich = d.bodenrichtwert;
-  const niveau = amtlich?.brw ?? (flaeche > 0 ? Math.round(mid / flaeche) : d.value.pricePerSqm ?? 0);
-  const niveauLabel = amtlich ? "Bodenwert-Niveau (amtlich, BORIS-RLP)" : "Bodenwert-Niveau (Modellwert)";
+  const anr = d.value.grundstuecksAnrechnung;
+  const gestaffelt = !!anr && (anr.mehrflaecheM2 > 0 || anr.gartenlandM2 > 0);
+  const niveau = flaeche > 0 ? Math.round(mid / flaeche) : d.value.pricePerSqm ?? 0;
+  const niveauLabel = gestaffelt
+    ? "Angerechnetes Bodenwert-Niveau (Ø, gestaffelt)"
+    : amtlich
+      ? "Bodenwert-Niveau (amtlich, BORIS-RLP)"
+      : "Bodenwert-Niveau (Modellwert)";
   let y = drawFormulaGraphic(ctx, page, x, yTop, w, [
     { label: "Grundstücksfläche", value: flaeche ? `${flaeche} m²` : "–" },
     { op: "×" },
@@ -1177,8 +1193,11 @@ function drawGrundstueckGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: numbe
     { label: "Einschätzung", value: eur(mid) },
   ]);
   y -= 8;
+  const staffelSatz = gestaffelt
+    ? ` Übergroße Flächen fließen gestaffelt ein: ${anr.baulandM2} m² Bauland voll, ${anr.mehrflaecheM2} m² Mehrfläche anteilig${anr.gartenlandM2 > 0 ? `, ${anr.gartenlandM2} m² als Gartenland` : ""}.${amtlich ? ` Amtlicher Bodenrichtwert: ${eur(amtlich.brw)}/m².` : ""}`
+    : "";
   for (const line of wrap(
-    "Die Einschätzung nähert sich Ihrem Grundstück über Fläche und Bodenwert-Niveau an. Lage, Zuschnitt und Bebaubarkeit fließen zusätzlich individuell ein.",
+    `Die Einschätzung nähert sich Ihrem Grundstück über Fläche und Bodenwert-Niveau an. Lage, Zuschnitt und Bebaubarkeit fließen zusätzlich individuell ein.${staffelSatz}`,
     ctx.reg,
     9.5,
     w,

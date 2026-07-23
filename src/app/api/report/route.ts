@@ -161,7 +161,7 @@ export async function POST(req: Request) {
     },
     { bodenrichtwert: boris?.brw ?? undefined },
   );
-  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger } = calc;
+  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger, grundstuecksAnrechnung } = calc;
   if (!mid || mid <= 0) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
@@ -248,6 +248,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
         mikrolage,
         confidence,
         vervielfaeltiger,
+        grundstuecksAnrechnung,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
       bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,

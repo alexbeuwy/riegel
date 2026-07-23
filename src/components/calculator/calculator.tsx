@@ -123,7 +123,8 @@ interface SourceCtx {
   markt?: MarktOrt;
 }
 
-/** Bodenrichtwert fließt nur bei Grundstück (voll) und Haus (Grundstücksanteil)
+/** Bodenrichtwert fließt nur bei Grundstück und Haus (jeweils gestaffelt
+ * angerechnet, s. grundstuecksStaffel in lib/valuation.ts)
  * tatsächlich in mid/pricePerSqm ein (s. estimateValue in lib/valuation.ts) —
  * bei Wohnung/Gewerbe/Mehrfamilienhaus (Ertragswert-Ansatz, mietbasiert) ist
  * er rein informativ, der "amtlich"-Badge muss das kennzeichnen statt
@@ -277,7 +278,17 @@ export function Calculator() {
     const override = estimateValue(lastInputRef.current, { bodenrichtwert: boris.data.brw });
     setResult((prev) =>
       prev
-        ? { ...prev, low: override.low, mid: override.mid, high: override.high, pricePerSqm: override.pricePerSqm, bodenrichtwert: override.bodenrichtwert }
+        ? {
+            ...prev,
+            low: override.low,
+            mid: override.mid,
+            high: override.high,
+            pricePerSqm: override.pricePerSqm,
+            bodenrichtwert: override.bodenrichtwert,
+            // Staffel-Aufschlüsselung hängt vom BRW ab — mitziehen, sonst
+            // zeigt der Transparenz-Hinweis nach dem Nachladen alte Werte.
+            grundstuecksAnrechnung: override.grundstuecksAnrechnung,
+          }
         : prev,
     );
   }, [boris.data]);
@@ -974,6 +985,23 @@ function Result({
                 </span>
               </div>
             )}
+            {result.grundstuecksAnrechnung &&
+              (result.grundstuecksAnrechnung.mehrflaecheM2 > 0 || result.grundstuecksAnrechnung.gartenlandM2 > 0) && (
+                // Transparenz bei übergroßen Grundstücken: die Staffel (voll /
+                // Mehrfläche / Gartenland, s. grundstuecksStaffel in
+                // lib/valuation.ts) wird offen ausgewiesen, damit nachvollziehbar
+                // ist, dass NICHT die Gesamtfläche zum vollen Bodenrichtwert
+                // eingeht. Normale Umbrüche, kein Overflow möglich.
+                <p className="mx-auto mt-3 max-w-md text-xs leading-relaxed text-muted">
+                  Übergroßes Grundstück gestaffelt angerechnet:{" "}
+                  {nfDE.format(result.grundstuecksAnrechnung.baulandM2)} m² Bauland voll,{" "}
+                  {nfDE.format(result.grundstuecksAnrechnung.mehrflaecheM2)} m² Mehrfläche anteilig
+                  {result.grundstuecksAnrechnung.gartenlandM2 > 0
+                    ? `, ${nfDE.format(result.grundstuecksAnrechnung.gartenlandM2)} m² als Gartenland`
+                    : ""}
+                  .
+                </p>
+              )}
             {f.objektart === "mehrfamilienhaus" && result.vervielfaeltiger != null && (
               // .t-num-d nur auf dem Text-Span (s. Kommentar oben) — der äußere
               // Flex-Wrapper bleibt unangetastet. flex-wrap wie beim Boris-Badge oben.

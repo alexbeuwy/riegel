@@ -2,6 +2,15 @@
  * Bewertungs-Engine v2 (heuristisch, regionale €/m²-Basis + viele Faktoren).
  * Bewusst leicht höher angesetzt (Verkaufsargument); klar als Schätzung
  * deklariert — KEIN Verkehrswertgutachten. Client-seitig.
+ *
+ * v2.1: Übergroße Grundstücke werden GESTAFFELT angerechnet (nur der
+ * baulandtypische Teil trägt den vollen Bodenrichtwert, Mehrflächen
+ * reduziert, Restflächen als Gartenland — s. grundstuecksStaffel()), und
+ * der amtliche Bodenrichtwert dämpft/hebt als Mikrolagen-Proxy die
+ * Gebäude-€/m²-Basis (s. lageFaktor in estimateValue). Beides motiviert
+ * durch einen echten Fall: EFH mit 3.247 m² Grundstück (davon nur ~1.300 m²
+ * Bauland, Rest Gartenland) wurde zuvor mit vollem BRW auf die Gesamtfläche
+ * bewertet — Ergebnis 1,67 Mio. € statt realistischer ~650 Tsd. €.
  */
 export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
 export type Zustand = "neuwertig" | "gepflegt" | "renovierungsbeduerftig";
@@ -37,6 +46,19 @@ export interface ValuationFactor {
   effectPct: number; // +/- in %
 }
 
+/**
+ * Aufschlüsselung der gestaffelten Grundstücksanrechnung (m² je Stufe +
+ * resultierender €-Wert) — Grundlage für die Transparenz-Hinweise in
+ * Rechner-UI und PDF-Report („übergroßes Grundstück").
+ */
+export interface GrundstuecksAnrechnung {
+  baulandM2: number;
+  mehrflaecheM2: number;
+  gartenlandM2: number;
+  /** Summe der drei Stufen in € (bei Haus inkl. der 0,6-Dämpfung). */
+  wert: number;
+}
+
 export interface ValuationResult {
   low: number;
   mid: number;
@@ -53,6 +75,9 @@ export interface ValuationResult {
   /** Ertragswert-Vervielfältiger (Jahresnettokaltmiete × Vervielfältiger = Ertragswert),
    * nur bei objektart === "mehrfamilienhaus" gesetzt — s. mfhVervielfaeltiger(). */
   vervielfaeltiger?: number;
+  /** Gestaffelte Grundstücksanrechnung — nur bei objektart "haus" oder
+   * "grundstueck" mit grundflaeche > 0 gesetzt (s. grundstuecksStaffel()). */
+  grundstuecksAnrechnung?: GrundstuecksAnrechnung;
   factors: ValuationFactor[];
 }
 
@@ -133,6 +158,51 @@ function mfhVervielfaeltiger(basisWohnung: number, zustand: Zustand, qualitaet: 
   return Math.round(Math.min(18, Math.max(12.5, basis + zAdj + qAdj)) * 10) / 10;
 }
 
+/**
+ * Gartenland-Satz in €/m² für nicht baulandtypische Restflächen — grob am
+ * BRW-Niveau orientiert (6 %), geklemmt auf das in der Region übliche
+ * Gartenland-Band von 5–15 €/m² (Praxisbeispiel Kleinkarlbach: 7 €/m²).
+ */
+function gartenlandSatz(brw: number): number {
+  return Math.min(15, Math.max(5, Math.round(brw * 0.06)));
+}
+
+/** Staffelgrenzen (m²): bis wohin voller Ansatz, bis wohin Mehrfläche. */
+const STAFFEL = {
+  haus: { voll: 700, mehrBis: 1400, mehrSatz: 0.25 },
+  grundstueck: { voll: 1000, mehrBis: 2500, mehrSatz: 0.35 },
+} as const;
+
+/**
+ * Gestaffelte Grundstücksanrechnung („übergroßes Grundstück") — Standard-
+ * Bewertungspraxis: nur die baulandtypische Teilfläche trägt den vollen
+ * Bodenrichtwert, eine begrenzte Mehrfläche (übergroßer Hausgarten,
+ * Arrondierung) wird deutlich reduziert angesetzt, alles darüber nur noch
+ * zum Gartenland-Satz. Ohne diese Staffel wurde z. B. ein EFH mit 3.247 m²
+ * Grundstück (davon real nur ~1.300 m² Bauland) mit BRW × Gesamtfläche
+ * bewertet und landete bei 1,67 Mio. € statt ~650 Tsd. €.
+ *
+ * Bei art "haus" bleibt die bisherige 0,6-Dämpfung auf dem Bauland-Anteil
+ * erhalten (der Gebäude-€/m² enthält bereits implizit einen Lageanteil) —
+ * Grundstücke bis 700 m² rechnen dadurch exakt wie zuvor, die Kalibrierung
+ * normaler Fälle ändert sich nicht.
+ */
+export function grundstuecksStaffel(
+  flaeche: number,
+  brw: number,
+  art: "haus" | "grundstueck",
+): GrundstuecksAnrechnung {
+  const s = STAFFEL[art];
+  const vollSatz = art === "haus" ? 0.6 : 1.0;
+  const baulandM2 = Math.min(Math.max(flaeche, 0), s.voll);
+  const mehrflaecheM2 = Math.min(Math.max(flaeche - s.voll, 0), s.mehrBis - s.voll);
+  const gartenlandM2 = Math.max(flaeche - s.mehrBis, 0);
+  const wert = Math.round(
+    baulandM2 * vollSatz * brw + mehrflaecheM2 * s.mehrSatz * brw + gartenlandM2 * gartenlandSatz(brw),
+  );
+  return { baulandM2, mehrflaecheM2, gartenlandM2, wert };
+}
+
 export function regionKey(ort: string): string {
   const o = (ort || "").toLowerCase();
   for (const k of Object.keys(REGIONS)) if (o.includes(k)) return k;
@@ -162,10 +232,17 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   let pricePerSqm: number | undefined;
   let mid: number;
   let vervielfaeltiger: number | undefined;
+  let grundstuecksAnrechnung: GrundstuecksAnrechnung | undefined;
 
   if (input.objektart === "grundstueck") {
-    pricePerSqm = Math.round(boden * (1 + ausstBonus) * OPTIMISM);
-    mid = pricePerSqm * (input.grundflaeche ?? 0);
+    // Gestaffelte Bodenbewertung (s. grundstuecksStaffel): bis 1.000 m² voll,
+    // bis 2.500 m² zu 35 %, darüber Gartenland-Satz. pricePerSqm ist damit
+    // das EFFEKTIVE Ø-Niveau über die Gesamtfläche (mid / Fläche) — der rohe
+    // amtliche Wert bleibt im Feld `bodenrichtwert` erhalten.
+    const flaeche = input.grundflaeche ?? 0;
+    grundstuecksAnrechnung = flaeche > 0 ? grundstuecksStaffel(flaeche, boden, "grundstueck") : undefined;
+    mid = Math.round((grundstuecksAnrechnung?.wert ?? 0) * (1 + ausstBonus) * OPTIMISM);
+    pricePerSqm = flaeche > 0 ? Math.round(mid / flaeche) : Math.round(boden * (1 + ausstBonus) * OPTIMISM);
   } else if (input.objektart === "mehrfamilienhaus") {
     // Ertragswert-Ansatz statt Flächen-Rechnung: Jahresnettokaltmiete ×
     // Vervielfältiger (deal-orientiert 12,5–18, s. mfhVervielfaeltiger()).
@@ -179,10 +256,24 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     pricePerSqm = input.wohnflaeche ? Math.round(mid / input.wohnflaeche) : undefined;
   } else {
     const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
-    pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM);
+    // Mikrolagen-Faktor: der amtliche Bodenrichtwert (falls via opts geliefert)
+    // ist der beste verfügbare Indikator dafür, ob die konkrete Lage über oder
+    // unter dem regionalen Modellniveau liegt — gerade für Dörfer, die auf
+    // DEFAULT_REGION zurückfallen (Beispiel Kleinkarlbach: BRW 260 vs.
+    // Modell 400 → Gebäudebasis sinkt von 3.200 auf ~2.580 €/m², was dem
+    // Marktniveau dort entspricht). sqrt dämpft bewusst: Gebäudewerte streuen
+    // schwächer als Bodenwerte. Klemme 0,72–1,15 gegen Ausreißer (z. B.
+    // gewerbliche BRW-Zonen). Ohne amtlichen Wert ist boden === r.boden und
+    // der Faktor exakt 1 — Verhalten dann unverändert.
+    const lageFaktor = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+    pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor);
     mid = pricePerSqm * (input.wohnflaeche ?? 0);
     if (input.objektart === "haus" && input.grundflaeche) {
-      mid += Math.round(boden * 0.6 * input.grundflaeche);
+      // Grundstücksanteil gestaffelt statt pauschal BRW × 0,6 × Gesamtfläche
+      // (übergroße Grundstücke, s. grundstuecksStaffel) — bis 700 m² rechnet
+      // die Staffel exakt wie die alte Formel.
+      grundstuecksAnrechnung = grundstuecksStaffel(input.grundflaeche, boden, "haus");
+      mid += grundstuecksAnrechnung.wert;
     }
   }
 
@@ -213,6 +304,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     mikrolage: Math.round((7.2 + Math.random() * 2.4) * 10) / 10,
     rentYieldPct: Math.round((2.8 + Math.random() * 1.6) * 10) / 10,
     vervielfaeltiger,
+    grundstuecksAnrechnung,
     factors,
   };
 }
