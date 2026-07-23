@@ -17,6 +17,21 @@
 import type { Estate } from "@/lib/mock-estates";
 import { getEstateData, getVerkaufteReferenzen } from "@/lib/estates";
 import { fetchEstateImageUrls } from "@/lib/onoffice";
+import { distanceKm } from "@/lib/geo-distance";
+
+/**
+ * Relevanz-Kontext des bewerteten Objekts — je mehr davon vorliegt, desto
+ * passender die Auswahl. Eingeführt nach echtem Fehlgriff: eine 563-Tsd-€-
+ * Bewertung in Kleinkarlbach bekam drei verkaufte 120-150-Tsd-€-Wohnungen
+ * als Referenzen, eine davon aus Mosbach (~75 km) — ohne Nähe- und
+ * Preis-Signal gewann der pauschale Verkauft-Bonus.
+ */
+export interface ReferenzZiel {
+  lat?: number;
+  lng?: number;
+  /** Schätzwert (mid) der Bewertung — Basis der Preisnähe. */
+  preis?: number;
+}
 
 const eur = (n: number) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
@@ -81,6 +96,7 @@ export async function buildReportObjekte(
   objektart: string,
   city?: string,
   limit = 3,
+  ziel?: ReferenzZiel,
 ): Promise<ReportVergleichsObjekt[]> {
   try {
     const [{ estates, source }, verkaufte] = await Promise.all([getEstateData(), getVerkaufteReferenzen()]);
@@ -90,7 +106,7 @@ export async function buildReportObjekte(
     const seen = new Set(aktive.map((e) => e.id));
     const pool = [...aktive, ...verkaufte.filter((e) => !seen.has(e.id))];
     if (pool.length === 0) return [];
-    return await selectReportObjekte(pool, objektart, city, limit);
+    return await selectReportObjekte(pool, objektart, city, limit, ziel);
   } catch {
     return [];
   }
@@ -107,6 +123,7 @@ export async function selectReportObjekte(
   objektart: string,
   city?: string,
   limit = 3,
+  ziel?: ReferenzZiel,
 ): Promise<ReportVergleichsObjekt[]> {
   try {
     const cityNorm = (city ?? "").trim().toLowerCase();
@@ -120,8 +137,28 @@ export async function selectReportObjekte(
         // Abgeschlossene Verkäufe sind die stärkste Referenz („erfolgreich
         // vermittelt") — bevorzugen, besonders in Kombination mit Orts-Treffer.
         if (e.status === "verkauft" || e.status === "vermietet") score += 2;
+        // Nähe zum bewerteten Objekt: Referenzen aus der direkten Umgebung
+        // überzeugen; weit entfernte (z. B. Mosbach, ~75 km) wirken beliebig
+        // und fliegen über die Negativ-Schwelle unten raus.
+        if (ziel?.lat != null && ziel?.lng != null && e.geo) {
+          const d = distanceKm(ziel.lat, ziel.lng, e.geo.lat, e.geo.lng);
+          if (d <= 15) score += 2;
+          else if (d <= 35) score += 1;
+          else if (d > 60) score -= 3;
+        }
+        // Preisnähe zum Schätzwert: eine 120-Tsd-€-Wohnung ist keine Referenz
+        // für ein 560-Tsd-€-Objekt — Faktor ≤2 belohnen, >3,5 hart abwerten.
+        if (ziel?.preis && ziel.preis > 0 && e.price != null && e.price > 0) {
+          const ratio = Math.max(e.price / ziel.preis, ziel.preis / e.price);
+          if (ratio <= 2) score += 1;
+          else if (ratio > 3.5) score -= 3;
+        }
         return { e, score };
       })
+      // Negative Scores sind aktiv schlechte Referenzen (zu weit weg und/oder
+      // Preisklasse daneben): lieber weniger Referenzen zeigen als absurde —
+      // ohne Treffer entfällt die Referenzobjekte-Seite ohnehin sauber.
+      .filter((x) => x.score >= 0)
       .sort((a, b) => b.score - a.score || b.e.updatedAt.localeCompare(a.e.updatedAt))
       .slice(0, limit)
       .map((x) => x.e);

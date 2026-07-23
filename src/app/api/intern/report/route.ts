@@ -148,7 +148,11 @@ export async function POST(req: Request) {
   const [satelliteB64, boris, vergleichsobjekte] = await Promise.all([
     fetchSatellite(lat, lng),
     lat != null && lng != null && isInRlpBbox(lat, lng) ? fetchBodenrichtwert(lat, lng) : Promise.resolve(null),
-    buildReportObjekte(row.objektart ?? "", row.city ?? undefined),
+    buildReportObjekte(row.objektart ?? "", row.city ?? undefined, 3, {
+      lat: lat ?? undefined,
+      lng: lng ?? undefined,
+      preis: mid,
+    }),
   ]);
 
   // Stand der ANFRAGE, nicht heute — der Report soll die Situation zum

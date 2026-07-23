@@ -555,8 +555,9 @@ function mapEstateRecord(record: OnOfficeEstateRecord, statusOverride?: EstateSt
   // IS24-Marketing-Präfix entfernen: "Sie hier? Wir auch!" zielt auf Portal-
   // Konkurrenz-Listen — auf der EIGENEN Website wäre er auf jeder Karte reine
   // Redundanz und killt die Scanbarkeit. (Nur Anzeige hier; CRM bleibt unberührt.)
-  // Tolerant ggü. Tippvarianten im CRM: "Sie hier ? Wir auch !" (QA-Fund, 3 Objekte).
-  const title = str(el.objekttitel).replace(/^\s*sie\s*hier\s*\?\s*wir\s*auch\s*!\s*/i, "").trim() || "Ohne Titel";
+  // Tolerant ggü. Tippvarianten im CRM: "Sie hier ? Wir auch !" (QA-Fund, 3
+  // Objekte) und "Sie hier? Wir auch?" (Fragezeichen-Variante im Verkauft-Pool).
+  const title = str(el.objekttitel).replace(/^\s*sie\s*hier\s*\?\s*wir\s*auch\s*[!?]\s*/i, "").trim() || "Ohne Titel";
   const marketingType = mapMarketingType(str(el.vermarktungsart));
   const category = mapCategory(str(el.objektart));
   const objectType = prettifyKey(str(el.objekttyp)) || undefined;
