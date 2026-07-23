@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { engagement } from "@/lib/photos";
 
 /**
@@ -33,7 +33,7 @@ const TILES: Tile[] = [
     src: engagement.hoffenheim,
     alt: "RIEGEL-Immobilien-Trikot der TSG 1899 Hoffenheim",
     label: "TSG 1899 Hoffenheim",
-    sub: "Bundesliga-Partner seit 2016",
+    sub: "Bundesliga-Partnerschaft",
     span: "col-span-1 row-span-2",
     from: "asm-r",
   },
@@ -108,41 +108,51 @@ const TILES: Tile[] = [
 
 export function EngagementBento() {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [inView, setInView] = useState(false);
 
+  // Scroll-GEKOPPELTE Montage: statt Einmal-Reveal setzt ein rAF-gedrosselter
+  // Scroll-Handler den Grid-Fortschritt --p (0..1) aus der Scrollposition; das
+  // CSS interpoliert daraus je Kachel die Verschiebung/Blur. Kein setState →
+  // kein Re-Render, nur DOM-Style. Bei reduced-motion bleibt es unangetastet
+  // sichtbar (die .asm-live-Klasse wird gar nicht erst gesetzt).
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sofort sichtbar bei reduced-motion, einmalig, kein Cascading-Render (Präzedenz: reveal.tsx/modal.tsx)
-      setInView(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setInView(true);
-            io.disconnect();
-          }
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.classList.add("asm-live");
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight || 1;
+      // p=0, wenn die Oberkante bei ~92% der Höhe steht; p=1, wenn sie ~22%
+      // hoch gescrollt ist. Der 0,70-vh-Bereich macht die Montage bewusst
+      // „langsam" und über das Scrollen hinweg sichtbar.
+      const p = Math.max(0, Math.min(1, (vh * 0.92 - rect.top) / (vh * 0.7)));
+      el.style.setProperty("--p", p.toFixed(3));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   return (
     <div
       ref={ref}
-      className={`asm-grid ${inView ? "is-in" : ""} grid auto-rows-[128px] grid-cols-2 gap-3 sm:auto-rows-[150px] sm:grid-cols-3 lg:grid-cols-4`}
+      className="asm-grid grid auto-rows-[128px] grid-cols-2 gap-3 sm:auto-rows-[150px] sm:grid-cols-3 lg:grid-cols-4"
     >
       {TILES.map((t, i) => (
         <div
           key={i}
           className={`asm-tile ${t.from} ${t.span} group relative overflow-hidden rounded-2xl border border-border`}
-          style={{ transitionDelay: `${i * 45}ms` }}
+          style={{ ["--start"]: (i * 0.055).toFixed(3) } as CSSProperties}
         >
           {t.kind === "img" ? (
             <>
