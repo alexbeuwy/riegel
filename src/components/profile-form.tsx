@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { useAuth } from "@/components/auth";
 import { supabase } from "@/lib/supabase";
+import { searchAddress } from "@/lib/geocode";
 
 type Rolle = "eigennutzer" | "kapitalanlage" | "verkauf";
 // An das echte Portal angeglichen: genau die vier Kategorien, die es im Bestand
@@ -50,6 +51,131 @@ function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () 
       {on && <Icon name="check" size={14} />}
       {label}
     </button>
+  );
+}
+
+/**
+ * Freie Standort-Eingabe hinter den Regionen-Chips (Kundenwunsch): eine leere
+ * Bubble in Chip-Form mit umlaufendem Glow (derselbe .glow-select-ring wie die
+ * Objektart-Kacheln des Rechners und die Startseiten-Boxen) und blinkendem
+ * Eingabe-Strich plus ausgegrautem „Standort eingeben…" — damit sofort klar
+ * ist, dass hier BELIEBIGE Städte ergänzt werden können, nicht nur die
+ * Vorauswahl. Vorschläge via Photon (/api/geocode, DSGVO-Proxy), Enter oder
+ * Klick übernimmt; der Ort erscheint dann als aktiver Chip.
+ */
+function RegionInput({ onAdd }: { onAdd: (city: string) => void }) {
+  const [text, setText] = useState("");
+  const [focus, setFocus] = useState(false);
+  const [items, setItems] = useState<string[]>([]);
+  const [hi, setHi] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const suggest = (q: string) => {
+    abortRef.current?.abort();
+    if (q.trim().length < 3) {
+      setItems([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    searchAddress(q, ctrl.signal).then((results) => {
+      if (ctrl.signal.aborted) return;
+      const seen = new Set<string>();
+      const cities: string[] = [];
+      for (const r of results) {
+        const c = r.city.trim();
+        if (!c || seen.has(c.toLowerCase())) continue;
+        seen.add(c.toLowerCase());
+        cities.push(c);
+      }
+      setItems(cities.slice(0, 6));
+      setHi(0);
+    });
+  };
+
+  const apply = (city: string) => {
+    const c = city.trim();
+    if (!c) return;
+    onAdd(c);
+    setText("");
+    setItems([]);
+  };
+
+  return (
+    <div className="relative">
+      {/* Chip-Bubble mit umlaufendem Glow — glow-select-on aktiviert den Spin. */}
+      <span className="glow-select-on relative inline-flex items-center rounded-full border border-accent/50 bg-surface-2">
+        <span className="glow-select-ring" aria-hidden />
+        {/* Blinkender Eingabe-Strich, solange leer und nicht fokussiert. */}
+        {!focus && text === "" && (
+          <span aria-hidden className="caret-blink pointer-events-none absolute left-3.5 text-accent">
+            |
+          </span>
+        )}
+        <input
+          type="text"
+          role="combobox"
+          aria-expanded={items.length > 0}
+          aria-controls="region-input-listbox"
+          aria-autocomplete="list"
+          aria-label="Weiteren Standort eingeben"
+          placeholder={focus ? "Standort eingeben…" : " Standort eingeben…"}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            suggest(e.target.value);
+          }}
+          onFocus={() => setFocus(true)}
+          onBlur={() => {
+            setFocus(false);
+            setTimeout(() => setItems([]), 120);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" && items.length) {
+              e.preventDefault();
+              setHi((h) => Math.min(h + 1, items.length - 1));
+            } else if (e.key === "ArrowUp" && items.length) {
+              e.preventDefault();
+              setHi((h) => Math.max(h - 1, 0));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              apply(items.length ? items[hi] : text);
+            } else if (e.key === "Escape") {
+              setText("");
+              setItems([]);
+            }
+          }}
+          className="w-44 rounded-full bg-transparent px-3.5 py-2 text-sm text-fg outline-none placeholder:text-faint"
+        />
+      </span>
+      {items.length > 0 && (
+        <ul
+          id="region-input-listbox"
+          role="listbox"
+          className="absolute left-0 top-[calc(100%+6px)] z-40 max-h-60 w-56 overflow-auto rounded-xl border border-border bg-surface p-1.5 shadow-xl"
+        >
+          {items.map((c, i) => (
+            <li key={c} role="option" aria-selected={i === hi}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  apply(c);
+                }}
+                onMouseEnter={() => setHi(i)}
+                className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  i === hi ? "bg-accent/10 text-fg" : "text-fg"
+                }`}
+              >
+                {c}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -180,14 +306,38 @@ export function ProfileForm() {
             </div>
           </div>
 
-          {/* Regionen */}
+          {/* Regionen — Vorauswahl aus dem Live-Bestand PLUS frei ergänzte
+              Standorte (RegionInput-Bubble). Eigene Orte erscheinen als aktive
+              Chips und lassen sich per Klick wieder entfernen. */}
           <div className="mt-6 space-y-2">
             <span className="text-sm text-muted">Bevorzugte Regionen</span>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {regionen.map((r) => (
                 <Chip key={r} label={r} on={p.regionen.includes(r)} onClick={() => toggle("regionen", r)} />
               ))}
+              {p.regionen
+                .filter((r) => !regionen.some((x) => x.toLowerCase() === r.toLowerCase()))
+                .map((r) => (
+                  <Chip key={r} label={r} on onClick={() => toggle("regionen", r)} />
+                ))}
+              <RegionInput
+                onAdd={(city) => {
+                  // Deckt sich der freie Ort mit einem Vorauswahl-Chip, wird
+                  // dieser aktiviert statt einen Duplikat-Chip zu erzeugen.
+                  const known = regionen.find((x) => x.toLowerCase() === city.toLowerCase());
+                  const ziel = known ?? city;
+                  setP((s) =>
+                    s.regionen.some((x) => x.toLowerCase() === ziel.toLowerCase())
+                      ? s
+                      : { ...s, regionen: [...s.regionen, ziel] },
+                  );
+                }}
+              />
             </div>
+            <p className="text-xs text-faint">
+              Ihr Wunschort ist nicht dabei? Einfach eintippen — wir informieren Sie,
+              sobald dort etwas Passendes hereinkommt.
+            </p>
           </div>
 
           {/* Preis + Zimmer */}

@@ -7,8 +7,13 @@ import { useInViewOnce, useCountUp } from "@/components/count-up";
 /**
  * Reichweiten-Vergleich „Exposé-Aufrufe auf ImmoScout24" — Balken 1 (RIEGEL) und
  * jeder weitere Wettbewerber sind ein reines Config-Array: ein neuer Makler ist
- * eine zusätzliche Zeile, kein Layout-Umbau. Sortierung erfolgt automatisch
- * absteigend, die Skala ist linear auf den größten Wert (aktuell RIEGEL).
+ * eine zusätzliche Zeile, kein Layout-Umbau. Die Skala ist linear auf den
+ * größten Wert (aktuell RIEGEL).
+ *
+ * Reihenfolge: RIEGEL immer oben; die Wettbewerber BEWUSST NICHT nach
+ * Aufrufzahlen sortiert, sondern in der manuell gepflegten Array-Reihenfolge —
+ * der Makler aus Neustadt steht auf Wunsch von Manfred ganz unten. Wer die
+ * Reihenfolge ändern will, sortiert einfach das Array um.
  *
  * Rechtlich zulässige vergleichende Werbung: ausschließlich reale, auf den
  * ImmoScout24-Anbieterprofilen öffentlich einsehbare Zahlen, mit Datum — keine
@@ -29,14 +34,16 @@ export const REACH_DATA: ReachEntry[] = [
   // von Alex direkt abgelesen). Zwei Makler sitzen am selben Ort
   // (Ludwigshafen) -> „I"/„II", damit die Balken einen eindeutigen React-Key
   // behalten und optisch unterscheidbar bleiben.
-  { name: "Makler aus Neustadt", value: 64_423 },
+  // Reihenfolge = Anzeige-Reihenfolge (keine automatische Sortierung, s. o.);
+  // Neustadt bewusst als letzte Zeile (Vorgabe Manfred).
   { name: "Makler aus Heidelberg", value: 53_509 },
   { name: "Makler aus Ludwigshafen I", value: 44_125 },
   { name: "Makler aus Mannheim", value: 36_473 },
   { name: "Makler aus Ludwigshafen II", value: 33_203 },
   { name: "Makler aus Speyer", value: 28_801 },
-  // Weiterer Makler? Einfach eine Zeile ergänzen — Sortierung und Skala
-  // passen sich automatisch an (Maximalwert = längster Balken).
+  { name: "Makler aus Neustadt", value: 64_423 },
+  // Weiterer Makler? Einfach eine Zeile an der gewünschten Position ergänzen —
+  // die Skala passt sich automatisch an (Maximalwert = längster Balken).
 ];
 
 const nf = new Intl.NumberFormat("de-DE");
@@ -47,8 +54,10 @@ const subscribeNoop = () => () => {};
 
 export function ReachChart() {
   const [ref, inView] = useInViewOnce<HTMLDivElement>(0.35);
-  const sorted = [...REACH_DATA].sort((a, b) => b.value - a.value);
-  const max = sorted[0]?.value ?? 1;
+  // RIEGEL (highlight) immer oben, danach die manuelle Array-Reihenfolge —
+  // bewusst KEINE Zahlen-Sortierung (Vorgabe Manfred, s. Kopfkommentar).
+  const sorted = [...REACH_DATA.filter((e) => e.highlight), ...REACH_DATA.filter((e) => !e.highlight)];
+  const max = Math.max(...REACH_DATA.map((e) => e.value), 1);
 
   // „Stand" = heutiger Tag, hydrationssicher: der Server rendert leer
   // (getServerSnapshot ""), der Client ersetzt es nach der Hydration durch das

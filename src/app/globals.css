@@ -1017,9 +1017,22 @@
   animation: riegel-cta-wiggle 4.5s ease-in-out infinite;
 }
 
+/* ── Suchprofil: „Standort eingeben"-Bubble — blinkender Eingabe-Strich ──
+   Harter An/Aus-Blink (steps) wie ein Terminal-Cursor, sichtbar solange die
+   leere Bubble nicht fokussiert ist: signalisiert „hier kann man tippen".
+   Bei Fokus übernimmt der echte Text-Caret des Inputs. */
+@keyframes riegel-caret-blink {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret-blink {
+  animation: riegel-caret-blink 1.1s steps(1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .glow-select-on .glow-select-ring { animation: none; }
   .wiggle-cta { animation: none; }
+  .caret-blink { animation: none; opacity: 1; }
 }
 
 /* ── Immobilienrechner: statisches Glow-Panel (Ergebnis-Kacheln) ──
