@@ -8,7 +8,7 @@ import { site } from "@/lib/site";
 export const metadata = {
   title: "Standorte & Regionen",
   description:
-    "Immobilie verkaufen in Speyer, Ludwigshafen, Germersheim, Frankenthal und der gesamten Metropolregion Rhein-Neckar — Ihr lokaler Immobilienmakler Riegel Immobilien.",
+    "Immobilie verkaufen in Speyer, Ludwigshafen, Germersheim, Frankenthal und der gesamten Metropolregion Rhein-Neckar — Ihr lokaler Immobilienmakler RIEGEL Immobilien.",
   alternates: { canonical: "/standorte" },
 };
 

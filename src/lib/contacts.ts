@@ -2,7 +2,7 @@ import { site } from "@/lib/site";
 
 /**
  * Ansprechpartner für Objektdetail, Kontakt & Termin.
- * Echte Familie Riegel mit echten Porträts — baut „gewohnten" Portal-Trust auf
+ * Echte Familie RIEGEL mit echten Porträts — baut „gewohnten" Portal-Trust auf
  * (Avatar + Name + Rolle + Kontakt, wie bei ImmoScout & Co.).
  */
 export interface Contact {
@@ -18,7 +18,7 @@ export interface Contact {
 
 export const contacts: Contact[] = [
   {
-    name: "Christoph Riegel",
+    name: "Christoph RIEGEL",
     role: "Verkauf & Vermarktung",
     image: "/images/team/christoph.jpg",
     phone: site.locations[0].phone,
@@ -27,7 +27,7 @@ export const contacts: Contact[] = [
     greeting: "Ich freue mich auf Ihre Anfrage.",
   },
   {
-    name: "Sissy Riegel",
+    name: "Sissy RIEGEL",
     role: "Marketing & Kundenbetreuung",
     image: "/images/team/sissy.jpg",
     phone: site.locations[1].phone,
@@ -36,7 +36,7 @@ export const contacts: Contact[] = [
     greeting: "Ich freue mich auf Ihre Anfrage.",
   },
   {
-    name: "Manfred Riegel",
+    name: "Manfred RIEGEL",
     role: "Gründer · Regionaldirektor BVFI",
     image: "/images/team/manfred.jpg",
     phone: site.locations[0].phone,
@@ -44,7 +44,7 @@ export const contacts: Contact[] = [
     greeting: "Persönlich für Sie da.",
   },
   {
-    name: "Sylwia Riegel",
+    name: "Sylwia RIEGEL",
     role: "Geschäftsleitung",
     image: "/images/team/sylwia.jpg",
     phone: site.locations[1].phone,

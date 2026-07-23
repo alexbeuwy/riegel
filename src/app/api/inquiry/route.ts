@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     logged = !error;
   }
 
-  // 2) Benachrichtigung an Riegel + Bestätigung an den Absender (best effort).
+  // 2) Benachrichtigung an RIEGEL + Bestätigung an den Absender (best effort).
   const internal = await sendMail({
     subject: `Objektanfrage: ${objektTitel || "Immobilie"}`,
     replyTo: email,
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
 
   await sendMail({
     to: email,
-    subject: "Ihre Anfrage bei Riegel Immobilien",
+    subject: "Ihre Anfrage bei RIEGEL Immobilien",
     html: emailLayout({
       heading: `Danke, ${esc(name.split(" ")[0]) || "schön"}!`,
       intro: `Ihre Anfrage zu „${esc(objektTitel) || "der Immobilie"}“ ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages.`,

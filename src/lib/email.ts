@@ -125,7 +125,7 @@ export function emailLayout(opts: {
 <tr><td style="padding:34px 32px 8px;"><h1 style="margin:0 0 14px;color:#141724;font-size:30px;font-weight:800;line-height:1.25;text-transform:uppercase;letter-spacing:1px;">${opts.heading}</h1>${
     opts.intro ? `<p style="margin:0 0 18px;color:#5a6072;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
   }${opts.bodyHtml ?? ""}${cta}</td></tr>
-<tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;"><p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">Riegel Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>
+<tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;"><p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">RIEGEL Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>
 </table></td></tr></table></body></html>`;
 }
 

@@ -595,7 +595,7 @@ function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
   const rawDistrict = str(el.regionaler_zusatz);
   const district = (/^[\["']*ind[A-Z0-9]/i.test(rawDistrict) ? "" : rawDistrict) || districtFromOrt || undefined;
 
-  // DATENSCHUTZ (Vorgabe Sissy Riegel): Die genaue Anschrift eines Objekts darf
+  // DATENSCHUTZ (Vorgabe Sissy RIEGEL): Die genaue Anschrift eines Objekts darf
   // NIRGENDS im Portal auftauchen — auch nicht als exakte Karten-Koordinate im
   // Seiten-Quelltext. Deshalb werden die OnOffice-Koordinaten hier serverseitig
   // (a) auf 2 Nachkommastellen (~1 km) gerundet — verlustbehaftet, also NICHT

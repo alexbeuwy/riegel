@@ -4,7 +4,7 @@ import { Container } from "@/components/container";
 export const metadata = {
   title: "Datenschutzerklärung",
   description:
-    "Datenschutzerklärung von Riegel Immobilien — umfassende Informationen zur Verarbeitung personenbezogener Daten nach DSGVO und TDDDG.",
+    "Datenschutzerklärung von RIEGEL Immobilien — umfassende Informationen zur Verarbeitung personenbezogener Daten nach DSGVO und TDDDG.",
   alternates: { canonical: "/datenschutz" },
 };
 
@@ -69,7 +69,7 @@ export default function DatenschutzPage() {
 
           <div className={prose}>
             <p>
-              Wir freuen uns über Ihr Interesse an Riegel Immobilien. Der Schutz Ihrer
+              Wir freuen uns über Ihr Interesse an RIEGEL Immobilien. Der Schutz Ihrer
               personenbezogenen Daten ist uns ein wichtiges Anliegen. Nachfolgend informieren wir
               Sie ausführlich über Art, Umfang und Zweck der Verarbeitung personenbezogener Daten
               auf dieser Website sowie im Rahmen unserer Maklertätigkeit gemäß der
@@ -81,7 +81,7 @@ export default function DatenschutzPage() {
             <p>
               Verantwortlicher im Sinne des Art. 4 Nr. 7 DSGVO ist:
               <br />
-              <strong>Riegel Immobilien</strong>, Inhaberin Sylwia Riegel
+              <strong>RIEGEL Immobilien</strong>, Inhaberin Sylwia RIEGEL
               <br />
               Wormser Straße 13, 67346 Speyer
               <br />

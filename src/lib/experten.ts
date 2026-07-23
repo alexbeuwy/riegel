@@ -142,16 +142,16 @@ const flaggschiffe: ExpertenSeite[] = [
     teaser: "Vermietete Wohnobjekte marktgerecht bewertet und an vorgemerkte Kapitalanleger vermittelt.",
     h1: "Die Experten für Mehrfamilienhäuser & Zinshäuser",
     h1Display: "Die Experten für Mehrfamilien\u00ADhäuser & Zins\u00ADhäuser",
-    metaTitle: "Die Experten für Mehrfamilienhäuser & Zinshäuser | Riegel Immobilien",
+    metaTitle: "Die Experten für Mehrfamilienhäuser & Zinshäuser | RIEGEL Immobilien",
     metaDescription:
-      "Mehrfamilienhaus oder Zinshaus verkaufen in der Metropolregion Rhein-Neckar: fundierte Marktwertermittlung, 121.000+ aktive Suchaufträge, auf Wunsch Direktankauf. Riegel Immobilien.",
+      "Mehrfamilienhaus oder Zinshaus verkaufen in der Metropolregion Rhein-Neckar: fundierte Marktwertermittlung, 121.000+ aktive Suchaufträge, auf Wunsch Direktankauf. RIEGEL Immobilien.",
     icon: "home",
     claim: "Wie Vermieter sein zum Geschäftsmodell wird.",
     claimAkzent: "Geschäftsmodell",
     subline: "RIEGEL – Die Experten für Mehrfamilienhäuser & Zinshäuser",
     heroFoto: {
       src: fotoHausLightrays,
-      alt: "Wohnhaus im abendlichen Gegenlicht — Riegel Immobilien",
+      alt: "Wohnhaus im abendlichen Gegenlicht — RIEGEL Immobilien",
       position: "50% 42%",
     },
     intro:
@@ -254,7 +254,7 @@ const flaggschiffe: ExpertenSeite[] = [
     teaser: "Vom Bürogebäude bis zur Logistikhalle — diskret vermarktet an geprüfte Investoren.",
     h1: "Die Experten für Gewerbeimmobilien",
     h1Display: "Die Experten für Gewerbe\u00ADimmobilien",
-    metaTitle: "Die Experten für Gewerbeimmobilien | Riegel Immobilien",
+    metaTitle: "Die Experten für Gewerbeimmobilien | RIEGEL Immobilien",
     metaDescription:
       "Gewerbeimmobilie verkaufen: Bürogebäude, Einzelhandel, Logistik, Hotel oder Pflegeimmobilie. Diskrete Off-Market-Vermarktung, bonitätsgeprüfte Investoren, Netzwerk zu Banken und Gutachtern.",
     icon: "layers",
@@ -369,9 +369,9 @@ const flaggschiffe: ExpertenSeite[] = [
     teaser: "Wohnen und Gewerbe unter einem Dach — beide Ertragsbausteine realistisch bewertet.",
     h1: "Die Experten für Wohn- und Geschäftshäuser",
     h1Display: "Die Experten für Wohn- und Geschäfts\u00ADhäuser",
-    metaTitle: "Die Experten für Wohn- und Geschäftshäuser | Riegel Immobilien",
+    metaTitle: "Die Experten für Wohn- und Geschäftshäuser | RIEGEL Immobilien",
     metaDescription:
-      "Wohn- und Geschäftshaus verkaufen in der Metropolregion Rhein-Neckar: Bewertung gemischter Nutzung, passende Käufergruppen, Vermarktung mit Rücksicht auf Ihre Mieter. Riegel Immobilien.",
+      "Wohn- und Geschäftshaus verkaufen in der Metropolregion Rhein-Neckar: Bewertung gemischter Nutzung, passende Käufergruppen, Vermarktung mit Rücksicht auf Ihre Mieter. RIEGEL Immobilien.",
     icon: "building",
     claim: "Unten Umsatz. Oben Zuhause.",
     claimAkzent: "Oben Zuhause.",
@@ -478,7 +478,7 @@ const flaggschiffe: ExpertenSeite[] = [
     teaser: "Vom einzelnen Renditeobjekt bis zum Portfolio — mit Investorennetzwerk und Direktankauf.",
     h1: "Die Experten für Anlage- & Investmentimmobilien",
     h1Display: "Die Experten für Anlage- & Investment\u00ADimmobilien",
-    metaTitle: "Die Experten für Anlage- & Investmentimmobilien | Riegel Immobilien",
+    metaTitle: "Die Experten für Anlage- & Investmentimmobilien | RIEGEL Immobilien",
     metaDescription:
       "Anlageimmobilie oder Investmentimmobilie verkaufen: exklusives Netzwerk aus Family Offices und institutionellen Anlegern, 121.000+ Suchaufträge, Direktankauf durch angeschlossene Investorenfirmen.",
     icon: "trend",
@@ -591,7 +591,7 @@ const flaggschiffe: ExpertenSeite[] = [
     teaser: "Geordneter Verkauf für Erben und Erbengemeinschaften — in Abstimmung mit Rechtsanwälten und Nachlassverwaltern.",
     h1: "Die Experten für Nachlass- & Erbimmobilien",
     h1Display: "Die Experten für Nachlass- & Erb\u00ADimmobilien",
-    metaTitle: "Die Experten für Nachlass- & Erbimmobilien | Riegel Immobilien",
+    metaTitle: "Die Experten für Nachlass- & Erbimmobilien | RIEGEL Immobilien",
     metaDescription:
       "Geerbte Immobilie verkaufen: Erfahrung mit Erbengemeinschaften und Vor- und Nacherbschaften, Zusammenarbeit mit Rechtsanwälten und Nachlassverwaltern, schriftliche Marktwertanalyse für alle Erben.",
     icon: "shield",

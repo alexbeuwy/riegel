@@ -1,5 +1,5 @@
 /**
- * Riegel Icon-System — eine kohärente, handgezeichnete Line-Art-Familie
+ * RIEGEL Icon-System — eine kohärente, handgezeichnete Line-Art-Familie
  * (24er-Raster, runde Enden, currentColor) passend zur „Waves"-Ästhetik.
  * Bewusst ohne schwere Icon-Library: volle Kontrolle über Stil & Bundle.
  */

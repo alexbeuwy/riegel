@@ -73,7 +73,7 @@ export async function POST(req: Request) {
 
   await sendMail({
     to: email,
-    subject: "Ihr Wunschtermin bei Riegel Immobilien",
+    subject: "Ihr Wunschtermin bei RIEGEL Immobilien",
     html: emailLayout({
       heading: "Terminanfrage erhalten",
       intro: `Vielen Dank! Wir bestätigen Ihren Wunschtermin (${esc(type) || "Termin"} am ${esc(date)} um ${esc(time)} Uhr) in Kürze persönlich.`,

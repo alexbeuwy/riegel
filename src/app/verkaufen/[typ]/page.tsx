@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ typ: stri
   if (!s) return { title: "Verkaufen" };
   const url = `/verkaufen/${s.slug}`;
   return {
-    // absolute: metaTitle enthält die Marke bereits → kein doppeltes „| Riegel Immobilien".
+    // absolute: metaTitle enthält die Marke bereits → kein doppeltes „| RIEGEL Immobilien".
     title: { absolute: s.metaTitle },
     description: s.metaDescription,
     alternates: { canonical: url },

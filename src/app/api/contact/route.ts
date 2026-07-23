@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
 
-  // 1) Benachrichtigung an Riegel
+  // 1) Benachrichtigung an RIEGEL
   const internal = await sendMail({
     subject: `Neue Anfrage: ${topic || "Kontakt"} — ${name}`,
     replyTo: email,
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
   // 2) Bestätigung an den Absender (best effort)
   await sendMail({
     to: email,
-    subject: "Ihre Anfrage bei Riegel Immobilien",
+    subject: "Ihre Anfrage bei RIEGEL Immobilien",
     html: emailLayout({
       heading: `Danke, ${esc(name.split(" ")[0]) || "schön"}!`,
       intro:

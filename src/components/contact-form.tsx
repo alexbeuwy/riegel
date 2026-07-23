@@ -76,7 +76,7 @@ function ContactFormInner() {
       cur.push({ ...f, createdAt: Date.now() });
       localStorage.setItem(key, JSON.stringify(cur));
     } catch {}
-    // Echte Zustellung an Riegel + Bestätigung an den Absender (Resend, serverseitig).
+    // Echte Zustellung an RIEGEL + Bestätigung an den Absender (Resend, serverseitig).
     // Erst nach Erfolg bestätigen — keine Schein-Bestätigung bei Fehlern.
     setBusy(true);
     try {

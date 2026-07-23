@@ -22,8 +22,8 @@ export function AnsprechpartnerCard({
 }) {
   const wa = whatsappHref(
     context
-      ? `Hallo Riegel Immobilien, ich interessiere mich für: ${context}`
-      : "Hallo Riegel Immobilien, ich habe eine Anfrage.",
+      ? `Hallo RIEGEL Immobilien, ich interessiere mich für: ${context}`
+      : "Hallo RIEGEL Immobilien, ich habe eine Anfrage.",
   );
   const telHref = `tel:${contact.phone.replace(/\s+/g, "")}`;
 

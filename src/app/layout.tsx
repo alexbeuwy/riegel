@@ -78,10 +78,10 @@ const orgJsonLd = {
   image: `${site.url}/images/standorte/buero-1.jpg`,
   logo: `${site.url}/icon.png`,
   // Büro-Koordinaten (straßengenau) für Local-SEO; Öffnungszeiten folgen,
-  // sobald Riegel sie bestätigt (nicht erfinden).
+  // sobald RIEGEL sie bestätigt (nicht erfinden).
   location: site.locations.map((l, i) => ({
     "@type": "Place",
-    name: `Riegel Immobilien ${l.city}`,
+    name: `RIEGEL Immobilien ${l.city}`,
     address: { "@type": "PostalAddress", streetAddress: l.street, postalCode: l.zip, addressLocality: l.city, addressCountry: "DE" },
     telephone: l.phone,
     geo: {
@@ -103,12 +103,12 @@ const orgJsonLd = {
   ].filter(Boolean),
   // Echte Personen mit Rolle/Entität (E-E-A-T) — Klarnamen aus /ueber-uns.
   founder: [
-    { "@type": "Person", name: "Manfred Riegel", jobTitle: "Gründer · Regionaldirektor BVFI" },
-    { "@type": "Person", name: "Sylwia Riegel", jobTitle: "Geschäftsleitung" },
+    { "@type": "Person", name: "Manfred RIEGEL", jobTitle: "Gründer · Regionaldirektor BVFI" },
+    { "@type": "Person", name: "Sylwia RIEGEL", jobTitle: "Geschäftsleitung" },
   ],
   employee: [
-    { "@type": "Person", name: "Sissy Riegel", jobTitle: "Marketing" },
-    { "@type": "Person", name: "Christoph Riegel", jobTitle: "Verkauf" },
+    { "@type": "Person", name: "Sissy RIEGEL", jobTitle: "Marketing" },
+    { "@type": "Person", name: "Christoph RIEGEL", jobTitle: "Verkauf" },
   ],
 };
 

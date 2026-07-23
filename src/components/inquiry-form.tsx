@@ -47,7 +47,7 @@ export function InquiryForm({ objektTitel, objektId }: { objektTitel: string; ob
       cur.push({ ...f, objektTitel, objektId, createdAt: Date.now() });
       localStorage.setItem(key, JSON.stringify(cur));
     } catch {}
-    // Echte Zustellung an Riegel + Bestätigung an den Absender (Resend,
+    // Echte Zustellung an RIEGEL + Bestätigung an den Absender (Resend,
     // serverseitig) sowie best-effort Übergabe an OnOffice.
     setBusy(true);
     try {

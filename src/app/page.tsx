@@ -160,7 +160,7 @@ export default async function HomePage() {
               <Magnetic>
                 <GhostCta href="/immobilien">Immobilien entdecken</GhostCta>
               </Magnetic>
-              <GhostCta href="/verkaufen">Verkaufen mit Riegel</GhostCta>
+              <GhostCta href="/verkaufen">Verkaufen mit RIEGEL</GhostCta>
             </div>
           </div>
         </Container>
@@ -412,7 +412,7 @@ export default async function HomePage() {
                   </footer>
                 </blockquote>
               </Reveal>
-              {/* Kompakte Bewertungs-Liste — wie gut Riegel überall bewertet ist. */}
+              {/* Kompakte Bewertungs-Liste — wie gut RIEGEL überall bewertet ist. */}
               <Reveal delay={160}>
                 <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2.5">
                   {TRUST_PLATFORMS.map((p) => (
@@ -432,7 +432,7 @@ export default async function HomePage() {
                 <div className="group relative overflow-hidden rounded-3xl border border-border transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_24px_48px_-20px_rgba(1,92,255,0.35)]">
                   <Image
                     src={photos.wertReport2}
-                    alt="Beratungsgespräch mit Riegel Immobilien"
+                    alt="Beratungsgespräch mit RIEGEL Immobilien"
                     width={1100}
                     height={1300}
                     sizes="(max-width: 1024px) 50vw, 28vw"
@@ -540,13 +540,13 @@ export default async function HomePage() {
               <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-xl border border-border">
                 <Image
                   src="/images/team/gruppe.jpg"
-                  alt="Das Team von Riegel Immobilien"
+                  alt="Das Team von RIEGEL Immobilien"
                   fill
                   sizes="(max-width: 1024px) 100vw, 45vw"
                   className="object-cover"
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/80 to-transparent p-4">
-                  <span className="text-sm text-fg">Familie &amp; Team Riegel — zwei Standorte, eine Region.</span>
+                  <span className="text-sm text-fg">Familie &amp; Team RIEGEL — zwei Standorte, eine Region.</span>
                 </div>
               </div>
             </Reveal>
@@ -555,7 +555,7 @@ export default async function HomePage() {
               <Eyebrow>Persönlich</Eyebrow>
               <h2 className="akira text-3xl sm:text-5xl">Regional verwurzelt</h2>
               <p className="text-lg text-muted">
-                Riegel Immobilien steht für persönliche Betreuung und echte
+                RIEGEL Immobilien steht für persönliche Betreuung und echte
                 Marktkenntnis in Speyer, Ludwigshafen und der gesamten
                 Metropolregion Rhein-Neckar. Wir begleiten Sie mit Diskretion und Erfahrung —
                 vom ersten Gespräch bis zur Schlüsselübergabe.

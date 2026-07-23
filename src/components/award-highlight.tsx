@@ -24,7 +24,7 @@ export function AwardHighlight() {
             </p>
             <p className="mt-4 text-muted">
               Auch wenn es mit dem Pokal nicht geklappt hat — für uns als Familie
-              Riegel ist der größte Dank an unser Team gerichtet. Im nächsten Jahr
+              RIEGEL ist der größte Dank an unser Team gerichtet. Im nächsten Jahr
               greifen wir neu an.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -39,7 +39,7 @@ export function AwardHighlight() {
               ))}
             </div>
           </div>
-          {/* Zwei echte Hochkant-Fotos (Christoph & Alex Riegel) statt Platzhalter —
+          {/* Zwei echte Hochkant-Fotos (Christoph & Alex RIEGEL) statt Platzhalter —
               als Diptychon nebeneinander, füllen die Bildspalte. Von BunnyCDN
               (riegel.b-cdn.net, in next.config als remotePattern erlaubt). */}
           <div className="relative order-1 grid min-h-[340px] grid-cols-2 gap-1 overflow-hidden lg:order-2 lg:min-h-full">
@@ -50,7 +50,7 @@ export function AwardHighlight() {
               <div key={src} className="relative">
                 <Image
                   src={src}
-                  alt="Christoph und Alex Riegel beim ImmoAward 2025"
+                  alt="Christoph und Alex RIEGEL beim ImmoAward 2025"
                   fill
                   sizes="(max-width: 1024px) 50vw, 25vw"
                   className="object-cover object-top"

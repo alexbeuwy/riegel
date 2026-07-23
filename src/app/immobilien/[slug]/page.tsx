@@ -182,7 +182,7 @@ export default async function EstateDetailPage({
                   <p className="whitespace-pre-line text-muted">{estate.locationDescription}</p>
                 )}
                 {estate.city && (
-                  // Datenschutz (Vorgabe Sissy Riegel): NUR auf den Ort verlinken,
+                  // Datenschutz (Vorgabe Sissy RIEGEL): NUR auf den Ort verlinken,
                   // niemals auf die exakte Adresse/Koordinate. Reiner Link statt
                   // eingebetteter Karte — kein Consent nötig, Datenübertragung
                   // erst beim bewussten Klick.

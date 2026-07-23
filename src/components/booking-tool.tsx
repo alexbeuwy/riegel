@@ -175,11 +175,11 @@ function BookingToolInner() {
     const ics = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Riegel Immobilien//Termin//DE",
+      "PRODID:-//RIEGEL Immobilien//Termin//DE",
       "BEGIN:VEVENT",
       `DTSTART:${fmt(start)}`,
       `DTEND:${fmt(end)}`,
-      `SUMMARY:${type} – Riegel Immobilien`,
+      `SUMMARY:${type} – RIEGEL Immobilien`,
       `DESCRIPTION:${type} (${modeMeta.label}) für ${name}`,
       `LOCATION:${locationLabel.replace(/,/g, "\\,")}`,
       "END:VEVENT",
@@ -197,7 +197,7 @@ function BookingToolInner() {
     const { start, end, fmt } = eventDates();
     const p = new URLSearchParams({
       action: "TEMPLATE",
-      text: `${type} – Riegel Immobilien`,
+      text: `${type} – RIEGEL Immobilien`,
       dates: `${fmt(start)}/${fmt(end)}`,
       details: `${type} (${modeMeta.label})`,
       location: locationLabel,
@@ -272,7 +272,7 @@ function BookingToolInner() {
             <Icon name="calendar" size={22} />
           </span>
           <div>
-            <div className="text-sm font-semibold text-fg">Riegel Immobilien</div>
+            <div className="text-sm font-semibold text-fg">RIEGEL Immobilien</div>
             <div className="text-xs text-faint">Beratung & Besichtigung</div>
           </div>
         </div>

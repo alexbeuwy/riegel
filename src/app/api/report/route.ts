@@ -200,7 +200,7 @@ export async function POST(req: Request) {
 
   const disclaimer = `<p style="margin:18px 0 0;color:#6b7590;font-size:12px;line-height:1.6;">
 Unverbindliche, datenbasierte Sofort-Einschätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
-Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
+Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
 
   const ctaBtn = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 4px;"><tr>
 <td style="border-radius:999px;background:#015cff;"><a href="https://riegel-immobilien.de/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
@@ -268,7 +268,7 @@ Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose,
   const customer = await sendMail({
     to: email,
     replyTo: emailTargets.TO,
-    subject: `Ihr Marktwert-Report${city ? ` · ${city}` : ""} — Riegel Immobilien`,
+    subject: `Ihr Marktwert-Report${city ? ` · ${city}` : ""} — RIEGEL Immobilien`,
     attachments,
     html: emailLayout({
       heading: "Ihr persönlicher Marktwert-Report",

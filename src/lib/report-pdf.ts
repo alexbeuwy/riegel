@@ -170,7 +170,7 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   doc.setTitle("RIEGEL Marktwert-Report");
-  doc.setAuthor("Riegel Immobilien");
+  doc.setAuthor("RIEGEL Immobilien");
 
   const reg = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -347,7 +347,7 @@ function header(ctx: Ctx, page: PDFPage, w: number, h: number, kicker: string) {
 function footer(ctx: Ctx, page: PDFPage, w: number, pageNo: number, total: number) {
   const t = mkText(page);
   page.drawLine({ start: { x: M, y: 54 }, end: { x: w - M, y: 54 }, thickness: 0.5, color: BORDER });
-  t("Riegel Immobilien e.K. · Wormser Straße 13, 67346 Speyer · Kaiser-Wilhelm-Straße 16, 67059 Ludwigshafen", M, 40, 7.5, ctx.reg, FAINT);
+  t("RIEGEL Immobilien e.K. · Wormser Straße 13, 67346 Speyer · Kaiser-Wilhelm-Straße 16, 67059 Ludwigshafen", M, 40, 7.5, ctx.reg, FAINT);
   textRight(page, `${pageNo} / ${total}`, w - M, 40, 7.5, ctx.reg, FAINT);
 }
 function heading(ctx: Ctx, page: PDFPage, s: string, x: number, y: number, size = 15) {
@@ -1665,7 +1665,7 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   const t = mkText(page);
   let y = header(ctx, page, w, h, "ANBIETER & RECHTLICHES");
 
-  heading(ctx, page, "Riegel Immobilien", M, y, 16);
+  heading(ctx, page, "RIEGEL Immobilien", M, y, 16);
   y -= 22;
 
   const colW = (w - 2 * M - 24) / 2;
@@ -1673,8 +1673,8 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   let yl = y;
   const line = (s: string, x: number, yy: number, size = 9.5, font = ctx.reg, color: Color = MUTED) => t(s, x, yy, size, font, color);
   line("ANBIETER", M, yl, 9, ctx.bold, ACCENT_SOFT); yl -= 16;
-  line("Riegel Immobilien e.K.", M, yl, 11, ctx.bold, FG); yl -= 15;
-  line("Inhaberin: Sylwia Riegel", M, yl); yl -= 14;
+  line("RIEGEL Immobilien e.K.", M, yl, 11, ctx.bold, FG); yl -= 15;
+  line("Inhaberin: Sylwia RIEGEL", M, yl); yl -= 14;
   line("Wormser Straße 13, 67346 Speyer", M, yl); yl -= 13;
   line("Tel. 06232 100 10 10", M, yl); yl -= 16;
   line("Kaiser-Wilhelm-Straße 16, 67059 Ludwigshafen", M, yl); yl -= 13;

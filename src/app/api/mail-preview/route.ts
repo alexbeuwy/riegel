@@ -84,7 +84,7 @@ function buildVariant(type: string): { subject: string; html: string } | null {
     // Spiegelt api/contact/route.ts, Mail 2 (Bestätigung an den Absender).
     case "confirm":
       return {
-        subject: "Ihre Anfrage bei Riegel Immobilien",
+        subject: "Ihre Anfrage bei RIEGEL Immobilien",
         html: emailLayout({
           heading: `Danke, ${esc(LEAD.name.split(" ")[0])}!`,
           intro:
@@ -170,9 +170,9 @@ function buildVariant(type: string): { subject: string; html: string } | null {
       ]);
       const disclaimer = `<p style="margin:18px 0 0;color:#6b7590;font-size:12px;line-height:1.6;">
 Unverbindliche, datenbasierte Sofort-Einschätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
-Für einen belastbaren Verkaufspreis erstellt Riegel Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
+Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
       return {
-        subject: `Ihr Marktwert-Report · Speyer — Riegel Immobilien`,
+        subject: `Ihr Marktwert-Report · Speyer — RIEGEL Immobilien`,
         html: emailLayout({
           heading: "Ihr persönlicher Marktwert-Report",
           intro: `Vielen Dank, ${esc(LEAD.name.split(" ")[0])}! Hier ist Ihre Sofort-Einschätzung für ${esc(OBJ.adresse)} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,

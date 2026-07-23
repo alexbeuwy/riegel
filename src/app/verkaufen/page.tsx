@@ -12,7 +12,7 @@ import { expertenSeiten, expertenFlaggschiffe, EXPERTEN_CLUSTER_LABEL } from "@/
 export const metadata = {
   title: "Immobilie verkaufen",
   description:
-    "Verkaufen Sie Ihre Immobilie in Speyer, Ludwigshafen und der Metropolregion Rhein-Neckar zum bestmöglichen Preis — mit professioneller Vermarktung und persönlicher Begleitung von Riegel Immobilien.",
+    "Verkaufen Sie Ihre Immobilie in Speyer, Ludwigshafen und der Metropolregion Rhein-Neckar zum bestmöglichen Preis — mit professioneller Vermarktung und persönlicher Begleitung von RIEGEL Immobilien.",
   alternates: { canonical: "/verkaufen" },
 };
 
@@ -57,7 +57,7 @@ export default function VerkaufenPage() {
         <div className="absolute inset-0 -z-10">
           <Image
             src={photos.modelWohnung}
-            alt="Premium-Wohnraum mit blauem Lichtakzent — Riegel Immobilien"
+            alt="Premium-Wohnraum mit blauem Lichtakzent — RIEGEL Immobilien"
             fill
             priority
             sizes="100vw"
@@ -105,7 +105,7 @@ export default function VerkaufenPage() {
             <div className="relative overflow-hidden rounded-3xl border border-border">
               <Image
                 src={photos.broschuerePortrait}
-                alt="Persönliche Verkaufsberatung von Riegel Immobilien"
+                alt="Persönliche Verkaufsberatung von RIEGEL Immobilien"
                 width={900}
                 height={1120}
                 sizes="(max-width: 1024px) 100vw, 520px"
@@ -136,7 +136,7 @@ export default function VerkaufenPage() {
             <div className="relative overflow-hidden rounded-3xl border border-border">
               <Image
                 src={photos.dokumente}
-                alt="Aufbereitung von Grundrissen und Unterlagen bei Riegel Immobilien"
+                alt="Aufbereitung von Grundrissen und Unterlagen bei RIEGEL Immobilien"
                 width={1400}
                 height={780}
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -247,12 +247,12 @@ export default function VerkaufenPage() {
         </Container>
       </section>
 
-      {/* Warum Riegel (Bento) */}
+      {/* Warum RIEGEL (Bento) */}
       <section className="border-t border-border bg-surface/40 py-20 sm:py-28">
         <Container>
           <Reveal className="mb-12 max-w-2xl space-y-4">
             <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-              Warum Riegel
+              Warum RIEGEL
             </span>
             <h2 className="text-2xl font-semibold sm:text-3xl">
               Erfahrung, die sich für Sie auszahlt

@@ -34,7 +34,7 @@ export default function WiderrufPage() {
               Um Ihr Widerrufsrecht auszuüben, müssen Sie uns
             </p>
             <p>
-              <strong>RIEGEL Immobilien</strong>, Inhaberin Sylwia Riegel, Wormser Straße 13,
+              <strong>RIEGEL Immobilien</strong>, Inhaberin Sylwia RIEGEL, Wormser Straße 13,
               67346 Speyer, E-Mail:{" "}
               <a href="mailto:info@riegel-immobilien.de">info@riegel-immobilien.de</a>,
               Telefon: 06232 100 10 10
@@ -79,7 +79,7 @@ export default function WiderrufPage() {
               und senden Sie es zurück.)
             </p>
             <div className="rounded-xl border border-border bg-surface p-5 text-sm">
-              <p>An RIEGEL Immobilien, Inhaberin Sylwia Riegel, Wormser Straße 13, 67346 Speyer, info@riegel-immobilien.de:</p>
+              <p>An RIEGEL Immobilien, Inhaberin Sylwia RIEGEL, Wormser Straße 13, 67346 Speyer, info@riegel-immobilien.de:</p>
               <p className="mt-3">
                 Hiermit widerrufe(n) ich/wir (*) den von mir/uns (*) abgeschlossenen Vertrag
                 über die Erbringung der folgenden Dienstleistung (*):

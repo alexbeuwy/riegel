@@ -12,7 +12,7 @@ export const metadata = { title: "Kontakt", alternates: { canonical: "/kontakt" 
 
 export default function KontaktPage() {
   const wa = whatsappHref();
-  const contact = contacts.find((c) => c.name === "Sissy Riegel") ?? contacts[0];
+  const contact = contacts.find((c) => c.name === "Sissy RIEGEL") ?? contacts[0];
   return (
     <>
       <PageIntro eyebrow="Kontakt" title="Sprechen wir über Ihre Immobilie">
@@ -124,7 +124,7 @@ export default function KontaktPage() {
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <Image
                       src={i === 0 ? "/images/standorte/speyer.jpg" : "/images/standorte/ludwigshafen.jpg"}
-                      alt={`Riegel Immobilien Büro ${l.city}`}
+                      alt={`RIEGEL Immobilien Büro ${l.city}`}
                       fill
                       sizes="(max-width: 640px) 100vw, 45vw"
                       className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"

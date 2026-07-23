@@ -193,7 +193,7 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
   },
   { label: "Zins- & Renditeumfeld", sub: "Finanzierungskonditionen", value: (r) => `${nfDE.format(r.rentYieldPct)} % Rendite` },
   { label: "Objekt-Faktoren", sub: "Baujahr, Zustand, Qualität", value: (_r, f) => f.qualitaet },
-  { label: "Eigene Transaktionsdatenbank", sub: "Riegel-Referenzobjekte", value: (r) => `${Math.round(r.comparables * 0.6)} Datensätze` },
+  { label: "Eigene Transaktionsdatenbank", sub: "RIEGEL-Referenzobjekte", value: (r) => `${Math.round(r.comparables * 0.6)} Datensätze` },
 ];
 
 /**

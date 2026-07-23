@@ -20,11 +20,11 @@ export interface NavItem {
  * (siehe RELAUNCH-LOG "Nächste Schritte").
  */
 export const site = {
-  name: "Riegel Immobilien",
-  legalName: "Riegel Immobilien",
+  name: "RIEGEL Immobilien",
+  legalName: "RIEGEL Immobilien",
   tagline: "Immobilien mit regionaler Expertise",
   description:
-    "Riegel Immobilien — Ihr Immobilienmakler in Speyer und Ludwigshafen. Verkauf, Bewertung und Beratung mit regionaler Expertise.",
+    "RIEGEL Immobilien — Ihr Immobilienmakler in Speyer und Ludwigshafen. Verkauf, Bewertung und Beratung mit regionaler Expertise.",
   // TODO: finale Produktions-Domain bestätigen
   url: "https://riegel-immobilien.de",
   locales: "de-DE",

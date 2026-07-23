@@ -494,7 +494,7 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
             <div className="overflow-hidden rounded-2xl border border-accent/30 bg-surface">
               <Image
                 src={article.kind === "standort" ? photos.wertReportDay : photos.wertReportNight}
-                alt="Riegel Immobilien – persönliche Bewertung"
+                alt="RIEGEL Immobilien – persönliche Bewertung"
                 width={560}
                 height={360}
                 sizes="280px"
@@ -503,7 +503,7 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
             <div className="p-6">
               <div className="flex items-center gap-2 text-sm text-accent">
                 <Icon name="sparkle" size={18} />
-                {article.kind === "standort" && article.ort ? article.ort : "Riegel Immobilien"}
+                {article.kind === "standort" && article.ort ? article.ort : "RIEGEL Immobilien"}
               </div>
               <h3 className="mt-3 text-lg font-semibold text-fg">Kostenlose Bewertung anfordern</h3>
               <p className="mt-2 text-sm text-muted">Datenbasiert, regional und unverbindlich — Ergebnis in 60 Sekunden.</p>

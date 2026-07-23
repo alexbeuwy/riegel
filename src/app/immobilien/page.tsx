@@ -9,7 +9,7 @@ import { filterEstates, parseFilters, type SearchParamsObj } from "@/lib/portal-
 export const metadata = {
   title: "Immobilien",
   description:
-    "Alle Immobilienangebote von Riegel Immobilien — filtern nach Typ, Preis, Ort, Zimmern und Fläche, mit interaktiver Karte. Keine Weiterleitung.",
+    "Alle Immobilienangebote von RIEGEL Immobilien — filtern nach Typ, Preis, Ort, Zimmern und Fläche, mit interaktiver Karte. Keine Weiterleitung.",
   alternates: { canonical: "/immobilien" },
 };
 

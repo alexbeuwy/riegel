@@ -9,33 +9,33 @@ import { photos } from "@/lib/photos";
 export const metadata = {
   title: "Über uns",
   description:
-    "Riegel Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Experten an zwei Standorten. Lernen Sie die Familie Riegel und das Team kennen.",
+    "RIEGEL Immobilien — inhabergeführtes Familienunternehmen, regional verwurzelt in Speyer und Ludwigshafen. 18 Experten an zwei Standorten. Lernen Sie die Familie RIEGEL und das Team kennen.",
   alternates: { canonical: "/ueber-uns" },
 };
 
-// Familie Riegel — echte Namen & Rollen (Live-Seite). Manfred=Vater, Sylwia=Mutter,
-// Sissy & Christoph = die Riegel-Kinder.
+// Familie RIEGEL — echte Namen & Rollen (Live-Seite). Manfred=Vater, Sylwia=Mutter,
+// Sissy & Christoph = die RIEGEL-Kinder.
 const familie = [
   {
-    name: "Manfred Riegel",
+    name: "Manfred RIEGEL",
     role: "Gründer · Regionaldirektor BVFI",
     relation: "Vater",
     img: "/images/team/manfred.jpg",
   },
   {
-    name: "Sylwia Riegel",
+    name: "Sylwia RIEGEL",
     role: "Geschäftsleitung",
     relation: "Mutter",
     img: "/images/team/sylwia.jpg",
   },
   {
-    name: "Sissy Riegel",
+    name: "Sissy RIEGEL",
     role: "Marketing",
     relation: "Tochter",
     img: "/images/team/sissy.jpg",
   },
   {
-    name: "Christoph Riegel",
+    name: "Christoph RIEGEL",
     role: "Verkauf",
     relation: "Sohn",
     img: "/images/team/christoph.jpg",
@@ -83,8 +83,8 @@ const werte: { icon: IconName; title: string; text: string }[] = [
 export default function UeberUnsPage() {
   return (
     <>
-      <PageIntro eyebrow="Über uns" title="Die Familie Riegel — und ein Team, das Ihre Region kennt">
-        Riegel Immobilien ist inhabergeführt und seit über 20&nbsp;Jahren in Speyer,
+      <PageIntro eyebrow="Über uns" title="Die Familie RIEGEL — und ein Team, das Ihre Region kennt">
+        RIEGEL Immobilien ist inhabergeführt und seit über 20&nbsp;Jahren in Speyer,
         Ludwigshafen und der Region verwurzelt — regional zuhause, national
         vernetzt. Als Familienunternehmen mit Immobilienexperten an zwei
         Standorten verbinden wir persönliche Betreuung mit echter Marktkenntnis.
@@ -95,7 +95,7 @@ export default function UeberUnsPage() {
         <Container>
           <Reveal className="mb-10">
             <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-              Familie Riegel
+              Familie RIEGEL
             </span>
           </Reveal>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -182,7 +182,7 @@ export default function UeberUnsPage() {
                     <Icon name="users" size={20} />
                   </span>
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-fg">Team Riegel</div>
+                    <div className="truncate text-sm font-medium text-fg">Team RIEGEL</div>
                     <div className="truncate text-xs text-muted">{rolle}</div>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export default function UeberUnsPage() {
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <Image
                       src={i === 0 ? "/images/standorte/speyer.jpg" : "/images/standorte/ludwigshafen.jpg"}
-                      alt={`Riegel Immobilien Büro ${l.city}`}
+                      alt={`RIEGEL Immobilien Büro ${l.city}`}
                       fill
                       sizes="(max-width: 1024px) 100vw, 50vw"
                       className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
@@ -248,7 +248,7 @@ export default function UeberUnsPage() {
               <div key={img.src} className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-border">
                 <Image
                   src={img.src}
-                  alt={`Riegel Immobilien — ${img.label}`}
+                  alt={`RIEGEL Immobilien — ${img.label}`}
                   fill
                   sizes="(max-width: 640px) 100vw, 33vw"
                   className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"

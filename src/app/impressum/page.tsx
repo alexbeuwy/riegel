@@ -15,7 +15,7 @@ export default function ImpressumPage() {
           <div className="mx-auto mb-8 max-w-3xl rounded-xl border border-accent/40 bg-surface p-4 text-sm text-muted">
             ⚠️ <strong className="text-fg">Entwurf</strong> — vor Veröffentlichung anwaltlich
             prüfen lassen. Mit [eckigen Klammern] markierte Felder (Aufsichtsbehörde,
-            USt-IdNr. etc.) müssen von Riegel Immobilien ergänzt/bestätigt werden.
+            USt-IdNr. etc.) müssen von RIEGEL Immobilien ergänzt/bestätigt werden.
           </div>
 
           <div className={prose}>
@@ -23,7 +23,7 @@ export default function ImpressumPage() {
             <p>
               <strong>RIEGEL Immobilien</strong>
               <br />
-              Inhaberin: Sylwia Riegel
+              Inhaberin: Sylwia RIEGEL
               <br />
               Wormser Straße 13
               <br />
