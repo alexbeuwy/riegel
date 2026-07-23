@@ -1049,3 +1049,36 @@
   background: radial-gradient(ellipse at center, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%);
   pointer-events: none;
 }
+
+/* ── Über uns: Engagement-Bento „setzt sich beim Scroll zusammen" ──
+   Jede Kachel startet leicht aus einer Richtung verschoben + blur, und snappt
+   beim In-View zackig an ihren Platz (kurze Dauer, enge Verzögerungsstaffel via
+   inline transition-delay). Richtung kommt aus der .asm-l/-r/-u/-d-Startklasse.
+   Reduced-Motion: sofort sichtbar, keine Bewegung. */
+.asm-tile {
+  opacity: 0;
+  transform: translate(var(--asm-x, 0), var(--asm-y, 0)) scale(0.965);
+  filter: blur(2px);
+  transition:
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+.asm-tile.asm-l { --asm-x: -26px; --asm-y: 6px; }
+.asm-tile.asm-r { --asm-x: 26px;  --asm-y: 6px; }
+.asm-tile.asm-u { --asm-x: 0px;   --asm-y: -22px; }
+.asm-tile.asm-d { --asm-x: 0px;   --asm-y: 24px; }
+.asm-grid.is-in .asm-tile {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .asm-tile {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+}

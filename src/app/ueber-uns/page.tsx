@@ -4,7 +4,8 @@ import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
-import { photos } from "@/lib/photos";
+import { photos, engagement } from "@/lib/photos";
+import { EngagementBento } from "@/components/engagement-bento";
 
 export const metadata = {
   title: "Über uns",
@@ -157,41 +158,68 @@ export default function UeberUnsPage() {
         </Container>
       </section>
 
-      {/* Das Team (Platzhalter) */}
+      {/* Das Team — echtes Gruppenfoto */}
       <section className="border-t border-border bg-surface/40 py-16 sm:py-20">
         <Container>
-          <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-xl space-y-3">
-              <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-                Das Team
-              </span>
-              <h2 className="text-2xl font-semibold sm:text-3xl">
-                Ihre freundlichen Experten an unseren Standorten
-              </h2>
-              <p className="text-muted">
-                Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team.
-                Die vollständigen Profile und Fotos folgen in Kürze.
-              </p>
-            </div>
+          <Reveal className="mb-8 max-w-xl space-y-3">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Das Team
+            </span>
+            <h2 className="text-2xl font-semibold sm:text-3xl">
+              18 Experten an zwei Standorten
+            </h2>
+            <p className="text-muted">
+              Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team aus
+              Beratung, Vertrieb, Marketing und Backoffice.
+            </p>
           </Reveal>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {teamRollen.map((rolle, i) => (
-              <Reveal key={rolle} delay={i * 40}>
-                <div className="flex h-full items-center gap-3 rounded-xl border border-border bg-surface p-4">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2 text-faint">
-                    <Icon name="users" size={20} />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-fg">Team RIEGEL</div>
-                    <div className="truncate text-xs text-muted">{rolle}</div>
-                  </div>
-                </div>
-              </Reveal>
+          <Reveal>
+            <figure className="group relative overflow-hidden rounded-3xl border border-border">
+              <Image
+                src={engagement.teamGruppe}
+                alt="Das Team von RIEGEL Immobilien"
+                width={1536}
+                height={669}
+                sizes="(max-width: 1024px) 100vw, 1100px"
+                className="h-auto w-full object-cover"
+              />
+              <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/80 via-bg/20 to-transparent p-5 sm:p-6">
+                <span className="text-sm text-fg/90">
+                  Ein Team aus Speyer und Ludwigshafen — für Sie da.
+                </span>
+              </figcaption>
+            </figure>
+          </Reveal>
+          <Reveal className="mt-6 flex flex-wrap gap-2">
+            {teamRollen.map((rolle) => (
+              <span
+                key={rolle}
+                className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted"
+              >
+                {rolle}
+              </span>
             ))}
-          </div>
-          <p className="mt-6 text-xs text-faint">
-            Platzhalter — Namen &amp; Porträts der Kollegen werden ergänzt.
-          </p>
+          </Reveal>
+        </Container>
+      </section>
+
+      {/* Engagement & Sponsoring — Bento, „setzt sich beim Scroll zusammen" */}
+      <section className="border-t border-border py-16 sm:py-20">
+        <Container>
+          <Reveal className="mb-10 max-w-2xl space-y-3">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Engagement &amp; Sponsoring
+            </span>
+            <h2 className="text-2xl font-semibold leading-snug sm:text-3xl">
+              Regional engagiert und verwurzelt, <span className="text-accent">national</span>{" "}
+              vernetzt und tätig.
+            </h2>
+            <p className="text-muted">
+              Seit über 20&nbsp;Jahren zeigen wir Gesicht — im lokalen Vereinsleben
+              genauso wie auf der großen Bühne der Bundesliga.
+            </p>
+          </Reveal>
+          <EngagementBento />
         </Container>
       </section>
 

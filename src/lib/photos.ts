@@ -32,3 +32,26 @@ export const photos = {
   analyse2: `${CDN}/RIEGEL_Home-Analyse-2.webp`,
   analyse3: `${CDN}/RIEGEL_Home-Analyse-3.webp`,
 } as const;
+
+/**
+ * Engagement & Sponsoring + Büro-Impressionen (Über-uns-Bento). Echte RIEGEL-
+ * Aufnahmen auf BunnyCDN. Beschriftungen spiegeln nur, was auf den Bildern
+ * belegbar ist (Trikot „2016", Fahrzeug-Branding etc.) — nichts erfunden.
+ */
+export const engagement = {
+  /** Echtes Team-Gruppenfoto (Banner 2.3:1) — ersetzt die Platzhalter im Team-Bereich. */
+  teamGruppe: `${CDN}/Mitarbeiter-1.webp`,
+  hoffenheim: `${CDN}/Riegel-Immobilien-Sponsor-TSG-Hoffenheim.webp`,
+  autoGewonnen: `${CDN}/Riegel-Auto-Gewonnen-Immobilien.webp`,
+  vwGewinnspiel: `${CDN}/Riegel-Immobilien-VW-UP-Gewinnspiel.webp`,
+  bandenwerbung: `${CDN}/Riegel-Immobilien-Bandenwerbung-Bundesliga-scaled.webp`,
+  plakat: `${CDN}/Riegel-Plakat-Out-of-Home-scaled.webp`,
+  event: `${CDN}/Riegel-Immobilien-Event.webp`,
+  wein: `${CDN}/RIEGEL-Wein-scaled.webp`,
+  officeWide1: `${CDN}/BEU03470-scaled.webp`,
+  officeWide2: `${CDN}/BEU03471-scaled.webp`,
+  officeWide3: `${CDN}/BEU03473-scaled.webp`,
+  officeWide4: `${CDN}/BEU03474-scaled.webp`,
+  officeTall1: `${CDN}/BEU03463-scaled.webp`,
+  officeTall2: `${CDN}/BEU03466-scaled.webp`,
+} as const;
