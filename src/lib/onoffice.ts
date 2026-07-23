@@ -540,12 +540,16 @@ async function fetchEstateRecords(): Promise<OnOfficeEstateRecord[]> {
   return records;
 }
 
-function mapEstateRecord(record: OnOfficeEstateRecord): Estate | null {
+function mapEstateRecord(record: OnOfficeEstateRecord, statusOverride?: EstateStatus): Estate | null {
   const el = record.elements ?? {};
   const id = str(record.id ?? el.Id);
   if (!id) return null;
 
-  const status = mapStatus2(str(el.status2));
+  // statusOverride: für den Verkauft-Referenzen-Pull (fetchVerkaufteReferenzen)
+  // — dort sind archivierte/deaktivierte Datensätze mit verkauft=1 gerade
+  // erwünscht, mapStatus2 würde sie verwerfen. Der Override erzwingt
+  // "verkauft"; die Fremd-/Entzogen-Fälle filtert der Aufrufer vorher raus.
+  const status = statusOverride ?? mapStatus2(str(el.status2));
   if (status === null) return null; // archiviert/inaktiv/entzogen/fremdvermarktet -> nicht veröffentlichen
 
   // IS24-Marketing-Präfix entfernen: "Sie hier? Wir auch!" zielt auf Portal-
@@ -962,4 +966,72 @@ export async function fetchOnOfficeEstates(): Promise<Estate[] | null> {
   }
 
   return deduped;
+}
+
+/* ─────────────────────  Verkaufte Referenzobjekte  ───────────────────── */
+
+/**
+ * Von RIEGEL VERKAUFTE Objekte — unabhängig vom Veröffentlichungs-/CRM-Status,
+ * also auch deaktivierte/archivierte Alt-Verkäufe (Filter: persistentes
+ * Boolean-Feld verkauft=1, dasselbe wie im „Bisher verkauft"-Zähler des
+ * Live-Tickers). Zweck: echte Verkaufs-Referenzen inkl. Fotos für den
+ * PDF-Report („wir haben hier gerade verkauft" ist das stärkste Argument,
+ * gerade in kleinen Orten wie Kleinkarlbach — Anfrage Inhaberseite).
+ *
+ * Fremdvermarktete/entzogene Datensätze (status2 fremd_verkauft_vermietet /
+ * auftrag_entzogen) werden ausgeschlossen — das sind keine RIEGEL-Erfolge.
+ * `null` = nicht konfiguriert oder API-Fehler (Aufrufer cached nur Erfolge).
+ *
+ * BEWUSST OHNE Bilder: bei bis zu 200 Alt-Verkäufen wäre der
+ * estatepictures-Batch unverhältnismäßig teuer (~0,17 s/Objekt serverseitig).
+ * Der Report braucht Fotos nur für die ≤3 AUSGEWÄHLTEN Referenzen —
+ * dafür gibt es fetchEstateImageUrls() (lazy, s. report-objekte.ts).
+ */
+export async function fetchVerkaufteReferenzen(limit = LIST_LIMIT): Promise<Estate[] | null> {
+  if (!isOnOfficeEnabled) return null;
+
+  const t0 = Date.now();
+  const data = await callOnOffice<OnOfficeEstateData>("estate", "read", {
+    data: ESTATE_FIELDS,
+    filter: { verkauft: [{ op: "=", val: 1 }] },
+    listlimit: Math.min(limit, LIST_LIMIT),
+    listoffset: 0,
+    sortby: "geaendert_am",
+    sortorder: "DESC",
+    estatelanguage: "DEU",
+  });
+  if (!data) return null;
+  const records = data.records ?? [];
+  console.info(`[onoffice] verkauft read: ${records.length} Records in ${Date.now() - t0}ms`);
+  if (records.length === 0) return null;
+
+  const NICHT_RIEGEL = new Set(["fremd_verkauft_vermietet", "auftrag_entzogen"]);
+  const mapped: Estate[] = [];
+  for (const record of records) {
+    const status2 = str(record.elements?.status2);
+    if (NICHT_RIEGEL.has(status2)) continue;
+    const estate = mapEstateRecord(record, "verkauft");
+    if (estate) mapped.push(estate);
+  }
+  if (mapped.length === 0) return null;
+
+  // Gleiche Dedup-Stufe wie fetchOnOfficeEstates (CRM-Dubletten, s. o.).
+  const byKey = new Map<string, Estate>();
+  for (const estate of mapped) {
+    const key = `${estate.title.toLowerCase()}|${estate.price ?? ""}|${estate.postcode}`;
+    const existing = byKey.get(key);
+    if (!existing || estate.updatedAt > existing.updatedAt) byKey.set(key, estate);
+  }
+  const deduped = [...byKey.values()];
+  deduped.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return deduped;
+}
+
+/**
+ * Bild-URLs für einzelne Objekt-Ids nachladen (estatepictures) — exportierte
+ * dünne Hülle um fetchEstateImages für die Lazy-Foto-Auflösung der
+ * Report-Referenzen (funktioniert auch für deaktivierte/archivierte Objekte).
+ */
+export async function fetchEstateImageUrls(ids: string[]): Promise<Map<string, string[]>> {
+  return fetchEstateImages(ids);
 }

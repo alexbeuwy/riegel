@@ -7,7 +7,7 @@
  */
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { fetchOnOfficeEstates, fetchLiveTickerCounts } from "@/lib/onoffice";
+import { fetchOnOfficeEstates, fetchLiveTickerCounts, fetchVerkaufteReferenzen } from "@/lib/onoffice";
 import { mockEstates, ESTATE_ORTE, type Estate } from "@/lib/mock-estates";
 
 export type EstateSource = "onoffice" | "mock";
@@ -61,6 +61,32 @@ export const getEstateData = cache(async (): Promise<EstateData> => {
     // unstable_cache den weiterhin aus — hier landen wir nur, wenn es noch
     // NIE einen erfolgreichen Abruf gab und der aktuelle auch scheitert.
     return { estates: mockEstates, source: "mock" };
+  }
+});
+
+// Verkaufte Referenzobjekte (inkl. deaktivierter/archivierter Alt-Verkäufe,
+// s. fetchVerkaufteReferenzen) — eigener Cache-Key/Tag, längere Revalidierung
+// (Verkäufe ändern sich selten). Gleiches Muster wie oben: NUR Erfolge cachen.
+const getCachedVerkaufteReferenzen = unstable_cache(
+  async (): Promise<Estate[]> => {
+    const live = await fetchVerkaufteReferenzen();
+    if (!live) throw new Error("onoffice_verkauft_unavailable");
+    return live;
+  },
+  ["estates-verkauft-v1"],
+  { revalidate: 3600, tags: ["estates-verkauft"] },
+);
+
+/**
+ * Von RIEGEL verkaufte Objekte als Referenz-Pool (PDF-Report). Leeres Array
+ * bei Fehler/Mock-Betrieb — Ehrlichkeitspflicht: es erscheinen nie erfundene
+ * Verkaufs-Referenzen.
+ */
+export const getVerkaufteReferenzen = cache(async (): Promise<Estate[]> => {
+  try {
+    return await getCachedVerkaufteReferenzen();
+  } catch {
+    return [];
   }
 });
 

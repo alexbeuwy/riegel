@@ -1,7 +1,11 @@
 /**
  * Vergleichsobjekte für den PDF-Marktwert-Report — echte Objekte aus der
- * laufenden RIEGEL-Vermarktung (OnOffice), passend zur bewerteten Objektart,
- * bevorzugt aus derselben Stadt. NUR in Server-Routen importieren (zieht
+ * laufenden RIEGEL-Vermarktung PLUS von RIEGEL bereits VERKAUFTE Objekte
+ * (auch deaktivierte/archivierte, s. getVerkaufteReferenzen) — passend zur
+ * bewerteten Objektart, bevorzugt aus derselben Stadt. Verkaufte Referenzen
+ * bekommen einen Score-Bonus: „hier gerade verkauft" ist das stärkste
+ * Argument, gerade in kleinen Orten (Anfrage Inhaberseite, Fall
+ * Kleinkarlbach). NUR in Server-Routen importieren (zieht
  * getEstateData/OnOffice mit).
  *
  * Ehrlichkeitspflicht wie überall (Live-Ticker, Experten-Seiten): läuft der
@@ -11,7 +15,8 @@
  * Einzelfehler (Timeout, unbekanntes Format) kostet nur das Foto, nie den Report.
  */
 import type { Estate } from "@/lib/mock-estates";
-import { getEstateData } from "@/lib/estates";
+import { getEstateData, getVerkaufteReferenzen } from "@/lib/estates";
+import { fetchEstateImageUrls } from "@/lib/onoffice";
 
 const eur = (n: number) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
@@ -78,9 +83,14 @@ export async function buildReportObjekte(
   limit = 3,
 ): Promise<ReportVergleichsObjekt[]> {
   try {
-    const { estates, source } = await getEstateData();
-    if (source !== "onoffice") return [];
-    return await selectReportObjekte(estates, objektart, city, limit);
+    const [{ estates, source }, verkaufte] = await Promise.all([getEstateData(), getVerkaufteReferenzen()]);
+    // Aktiver Pool nur bei echter OnOffice-Quelle (nie Mock-Inserate);
+    // verkaufte Referenzen kommen ohnehin ausschließlich live aus OnOffice.
+    const aktive = source === "onoffice" ? estates : [];
+    const seen = new Set(aktive.map((e) => e.id));
+    const pool = [...aktive, ...verkaufte.filter((e) => !seen.has(e.id))];
+    if (pool.length === 0) return [];
+    return await selectReportObjekte(pool, objektart, city, limit);
   } catch {
     return [];
   }
@@ -107,11 +117,30 @@ export async function selectReportObjekte(
         if (e.marketingType === "kauf") score += 2; // der Report richtet sich an Verkaufsinteressierte
         if (cityNorm && e.city.trim().toLowerCase() === cityNorm) score += 3;
         if (e.images.length > 0) score += 1;
+        // Abgeschlossene Verkäufe sind die stärkste Referenz („erfolgreich
+        // vermittelt") — bevorzugen, besonders in Kombination mit Orts-Treffer.
+        if (e.status === "verkauft" || e.status === "vermietet") score += 2;
         return { e, score };
       })
       .sort((a, b) => b.score - a.score || b.e.updatedAt.localeCompare(a.e.updatedAt))
       .slice(0, limit)
       .map((x) => x.e);
+
+    // Lazy-Foto-Auflösung: der Verkauft-Pool kommt OHNE Bild-URLs (s.
+    // fetchVerkaufteReferenzen) — für die wenigen AUSGEWÄHLTEN Referenzen
+    // die URLs jetzt nachladen (ein estatepictures-Call für ≤3 Ids).
+    // Fail-soft: ohne URLs bleibt nur das Foto leer, nie die Referenz.
+    const ohneBilder = gewaehlt.filter((e) => e.images.length === 0).map((e) => e.id);
+    if (ohneBilder.length > 0) {
+      try {
+        const urls = await fetchEstateImageUrls(ohneBilder);
+        for (const e of gewaehlt) {
+          if (e.images.length === 0) e.images = urls.get(e.id) ?? [];
+        }
+      } catch {
+        // Fotos entfallen, Referenzen bleiben.
+      }
+    }
 
     return await Promise.all(
       gewaehlt.map(async (e) => {
