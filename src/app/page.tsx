@@ -537,16 +537,20 @@ export default async function HomePage() {
         <Container>
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <Reveal>
-              <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-xl border border-border">
+              {/* Echtes Beratungsfoto statt des zusammengesetzten Team-Collagen-
+                  Bilds (Feedback Sissy: „Das Bild muss raus"): Beraterin mit
+                  RIEGEL-Bewertungsmappe, im Hintergrund der Speyerer Dom.
+                  Natives 16:9 (2752x1536), kein Crop-Verlust. */}
+              <div className="relative mx-auto aspect-[16/9] w-full max-w-xl overflow-hidden rounded-xl border border-border">
                 <Image
-                  src="/images/team/gruppe.jpg"
-                  alt="Das Team von RIEGEL Immobilien"
+                  src={photos.wertReport4}
+                  alt="Persönliche RIEGEL-Beratung am Telefon mit Blick auf den Speyerer Dom"
                   fill
                   sizes="(max-width: 1024px) 100vw, 45vw"
                   className="object-cover"
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/80 to-transparent p-4">
-                  <span className="text-sm text-fg">Familie &amp; Team RIEGEL — zwei Standorte, eine Region.</span>
+                  <span className="text-sm text-fg">Persönliche Beratung mit Blick auf Speyer: zwei Standorte, eine Region.</span>
                 </div>
               </div>
             </Reveal>
