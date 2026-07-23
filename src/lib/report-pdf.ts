@@ -1360,8 +1360,12 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
 
   heading(ctx, page, "Aus unserer Vermarktung", M, y, 17);
   y -= 20;
+  // Entschärfte Copy (Feedback Manfred): NICHT mehr „derselben Objektklasse"
+  // versprechen — die Karten tragen stattdessen eine ehrliche Einordnung je
+  // Objekt („Vergleichbares Objekt" vs. „Referenz aus der Region") plus die
+  // echte Distanz. Referenzen belegen Vermarktungserfolg, keine Gleichwertigkeit.
   for (const line of wrap(
-    "Ein Einblick in aktuelle RIEGEL-Mandate derselben Objektklasse. Diese Objekte sind Vermarktungs-Referenzen und keine Wertermittlungs-Vergleiche.",
+    "Ausgewählte Objekte aus unserer Vermarktung in Ihrer Region: direkt Vergleichbares ist entsprechend gekennzeichnet, alle übrigen sind Referenzen unserer Verkaufsarbeit. Keines davon ist ein Wertermittlungs-Vergleich.",
     ctx.reg,
     9.5,
     w - 2 * M,
@@ -1406,6 +1410,19 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
 
     const chips = [obj.preis, obj.flaeche, obj.zimmer].filter((v): v is string => !!v).map((v) => toWinAnsi(v));
     if (chips.length > 0) chipRow(ctx, page, chips, textX, cardY + cardH - 58, textW, 8);
+
+    // Ehrliche Einordnung unten links (s. ReportVergleichsObjekt.einordnung):
+    // „Vergleichbares Objekt" akzentuiert, „Referenz aus der Region" neutral —
+    // die Distanz als schlichter Text daneben (eigene Zeile statt Chip-Reihe,
+    // sonst bricht die Reihe um und kollidiert mit dem Badge).
+    const einLbl = obj.einordnung === "vergleich" ? "Vergleichbares Objekt" : "Referenz aus der Region";
+    const einColor = obj.einordnung === "vergleich" ? ACCENT_SOFT : MUTED;
+    const { w: ew, h: eh } = pillMeasure(ctx.bold, einLbl, 8);
+    pill(page, ctx.bold, einLbl, textX, cardY + 12, 8, { fg: einColor, border: einColor });
+    if (obj.distanzKm != null) {
+      const distLbl = obj.distanzKm <= 1 ? "direkt vor Ort" : `ca. ${obj.distanzKm} km von Ihrem Objekt`;
+      t(distLbl, textX + ew + 10, cardY + 12 + (eh - 8) / 2 + 1, 8, ctx.reg, FAINT);
+    }
 
     y = cardY - cardGap;
   });

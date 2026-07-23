@@ -152,6 +152,7 @@ export async function POST(req: Request) {
       lat: lat ?? undefined,
       lng: lng ?? undefined,
       preis: mid,
+      flaeche: n(row.wohnflaeche),
     }),
   ]);
 

@@ -211,9 +211,10 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
   // nur unnötig länger auf seine Mail warten.
   const [satelliteB64, vergleichsobjekte] = await Promise.all([
     fetchSatellite(lat, lng),
-    // Ziel-Kontext (Koordinaten + Schätzwert) für die Relevanz-Auswahl:
-    // nahe, preisähnliche Referenzen statt beliebiger Verkaufs-Erfolge.
-    buildReportObjekte(objektart, city, 3, { lat: lat ?? undefined, lng: lng ?? undefined, preis: mid }),
+    // Ziel-Kontext (Koordinaten + Schätzwert + Wohnfläche) für die Relevanz-
+    // Auswahl: nahe, preis- und größenähnliche Referenzen statt beliebiger
+    // Verkaufs-Erfolge; Basis der ehrlichen Einordnung im PDF.
+    buildReportObjekte(objektart, city, 3, { lat: lat ?? undefined, lng: lng ?? undefined, preis: mid, flaeche: wohnflaeche }),
   ]);
 
   // PDF-Report bauen (markenkonform, dark) — als Anhang an Kunde & RIEGEL.
