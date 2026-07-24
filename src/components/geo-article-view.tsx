@@ -388,6 +388,17 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
               </section>
             )}
 
+            {/* Standard-Hinweis unter jedem Artikel (Sissy/T7): redaktionelle
+                Inhalte sind Orientierung, keine Beratung im rechtlichen Sinn. */}
+            <p className="mt-10 border-t border-border pt-5 text-xs leading-relaxed text-faint">
+              Hinweis: Dieser Beitrag dient der allgemeinen Orientierung und ersetzt keine
+              Rechts-, Steuer- oder Finanzberatung. Alle Preis- und Kostenangaben sind
+              ca.-Werte ohne Gewähr (Stand bei Veröffentlichung); maßgeblich sind immer die
+              individuellen Umstände Ihres Objekts und die jeweils aktuelle Rechtslage.
+              Für verbindliche Auskünfte wenden Sie sich bitte an die jeweilige Fachstelle,
+              für eine persönliche Einschätzung Ihrer Immobilie gern direkt an uns.
+            </p>
+
             {/* Verwandte Seiten — interne Verlinkung gegen Sackgassen (SEO + UX) */}
             {related.length > 0 && (
               <section className="mt-12">
@@ -493,8 +504,8 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
             )}
             <div className="overflow-hidden rounded-2xl border border-accent/30 bg-surface">
               <Image
-                src={article.kind === "standort" ? photos.wertReportDay : photos.wertReportNight}
-                alt="RIEGEL Immobilien – persönliche Bewertung"
+                src={article.kind === "standort" ? photos.analyse2 : photos.analyse1}
+                alt="RIEGEL Immobilien – Beratung und Bewertung vor Ort"
                 width={560}
                 height={360}
                 sizes="280px"

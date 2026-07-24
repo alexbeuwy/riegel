@@ -129,6 +129,37 @@ export function SiteFooter() {
           </div>
         </Container>
 
+        {/* Rechtshinweise (Sissy/T14): Haftung, KI-Transparenz (EU-KI-Verordnung),
+            Barrierefreiheit. Formulierungen bewusst zurückhaltend, die finale
+            anwaltliche Abstimmung übernimmt das RIEGEL-Team. */}
+        <div className="border-t border-border/60">
+          <Container className="grid gap-4 py-6 text-[0.7rem] leading-relaxed text-faint md:grid-cols-3">
+            <p>
+              <span className="font-medium text-muted">Hinweis:</span> Alle Inhalte dieser
+              Website dienen der allgemeinen Information und stellen keine Rechts-, Steuer-
+              oder Finanzberatung dar. Preisangaben, Marktdaten und Bewertungsergebnisse
+              sind unverbindliche Orientierungswerte ohne Gewähr.
+            </p>
+            <p>
+              <span className="font-medium text-muted">KI-Hinweis:</span> Einzelne Funktionen
+              dieser Website, etwa der Online-Preisrechner und automatisch erstellte
+              Wertreports, nutzen KI-gestützte Systeme. Deren Ergebnisse sind automatisiert
+              erzeugte, unverbindliche Einschätzungen und ersetzen weder ein Gutachten noch
+              eine persönliche Beratung (Transparenzhinweis nach der Verordnung (EU)
+              2024/1689, KI-Verordnung).
+            </p>
+            <p>
+              <span className="font-medium text-muted">Barrierefreiheit:</span> Wir arbeiten
+              fortlaufend daran, diese Website möglichst barrierearm zu gestalten. Wenn Sie
+              auf Barrieren stoßen, freuen wir uns über einen Hinweis an{" "}
+              <a href={`mailto:${site.email}`} className="underline decoration-border underline-offset-2 transition-colors hover:text-fg">
+                {site.email}
+              </a>
+              .
+            </p>
+          </Container>
+        </div>
+
         {/* Schlussleiste */}
         <div className="border-t border-border/60">
           <Container className="flex flex-col items-center justify-between gap-3 py-6 text-xs text-faint sm:flex-row">
