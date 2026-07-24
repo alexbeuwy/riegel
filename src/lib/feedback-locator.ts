@@ -10,8 +10,10 @@
  * Kurze Schlüssel halten die URL mailclient-tauglich klein.
  */
 export interface FeedbackLocator {
-  /** yPct: vertikale Position (0..100) der Stelle als Fallback-Scrollziel. */
+  /** yPct: vertikale Position (0..100) der Klickstelle (Pin + Fallback-Scroll). */
   y: number;
+  /** xPct: horizontale Position (0..100, viewport-relativ) der Klickstelle (Pin). */
+  x: number;
   /** Text-Ausschnitt des Elements (Primär-Anker fürs Wiederfinden). */
   t: string;
   /** Grober CSS-Pfad (max. 4 Ebenen, s. feedback-widget.tsx cssPath). */
@@ -39,17 +41,52 @@ function b64urlDecode(s: string): string {
 
 export function encodeFeedbackLocator(loc: {
   y: number;
+  x: number;
   text: string;
   path: string;
   comment: string;
 }): string {
   const payload: FeedbackLocator = {
     y: Math.round(loc.y) || 0,
+    x: Math.round(loc.x) || 0,
     t: (loc.text || "").slice(0, 120),
     p: (loc.path || "").slice(0, 240),
     c: (loc.comment || "").slice(0, COMMENT_CAP),
   };
   return b64urlEncode(JSON.stringify(payload));
+}
+
+/**
+ * Fertiger Claude-Code-Prompt zu einer Feedback-Stelle — geteilt zwischen dem
+ * Deep-Link-Popup (feedback-highlight.tsx) und dem Intern-Ticket-Board.
+ */
+export function buildFeedbackPrompt(path: string, loc: FeedbackLocator): string {
+  const stelle = loc.t ? `„${loc.t}"${loc.p ? ` (${loc.p})` : ""}` : loc.p || "siehe unten";
+  const kontext = [`Seite: ${path}`, `Stelle: ${stelle}`];
+  if (loc.y) kontext.push(`Ungefähre Klickposition: ${loc.x}% von links, ${loc.y}% der Seitenhöhe.`);
+  return [
+    "Änderung auf der RIEGEL-Website umsetzen.",
+    "",
+    ...kontext,
+    "",
+    "Feedback vom Team:",
+    loc.c || "(kein Kommentartext übermittelt)",
+    "",
+    "Bitte die zuständige Komponente/Datei finden und die Änderung sauber umsetzen (tsc/eslint/Build grün, dann committen und pushen).",
+  ].join("\n");
+}
+
+/**
+ * Menschlichen `area`-String des Feedback-Widgets (z. B.
+ * `<span> "Text…" · main#content > section.py-24 · ca. 34%/87% der Seite`)
+ * zurück in Locator-Bausteine parsen — für Alt-Tickets im Intern-Board, deren
+ * strukturierter Locator nur in der Mail steckt. `null`, wenn das Format nicht
+ * passt (dann gibt es im Board nur den Prompt ohne Deep-Link).
+ */
+export function parseFeedbackArea(area: string): { t: string; p: string; x: number; y: number } | null {
+  const m = area.match(/^<[^>]+>(?:\s+"([^"]*)")?\s+·\s+(.+?)\s+·\s+ca\.\s+(\d+)%\/(\d+)%/);
+  if (!m) return null;
+  return { t: m[1] ?? "", p: m[2] ?? "", x: Number(m[3]) || 50, y: Number(m[4]) || 0 };
 }
 
 export function decodeFeedbackLocator(raw: string | null | undefined): FeedbackLocator | null {
@@ -60,6 +97,7 @@ export function decodeFeedbackLocator(raw: string | null | undefined): FeedbackL
     const o = parsed as Record<string, unknown>;
     return {
       y: typeof o.y === "number" ? o.y : 0,
+      x: typeof o.x === "number" ? o.x : 50,
       t: typeof o.t === "string" ? o.t : "",
       p: typeof o.p === "string" ? o.p : "",
       c: typeof o.c === "string" ? o.c : "",

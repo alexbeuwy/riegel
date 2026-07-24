@@ -1046,6 +1046,20 @@
   pointer-events: none;
   animation: riegel-feedback-pulse 1.4s ease-out 4;
 }
+/* Präziser Klickpunkt-Pin (feedback-highlight.tsx): kleiner roter Punkt mit
+   dauerhaft pulsierendem Ring GENAU an der kommentierten Stelle — auch wenn
+   das umgebende Element groß ist, bleibt der gemeinte Punkt eindeutig. */
+.feedback-hl-pin {
+  z-index: 86;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 9999px;
+  background: #e5484d;
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.35);
+  pointer-events: none;
+  animation: riegel-feedback-pulse 1.4s ease-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .glow-select-on .glow-select-ring { animation: none; }

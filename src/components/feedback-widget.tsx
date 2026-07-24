@@ -41,6 +41,7 @@ interface Target {
   text: string;
   path: string;
   yPct: number;
+  xPct: number;
 }
 
 function isNarrowViewport(): boolean {
@@ -173,7 +174,7 @@ export function FeedbackWidget() {
         100,
       );
       const { area, text, path } = describeTarget(el, xPct, yPct);
-      setTarget({ area, anchorX: e.clientX, anchorY: e.clientY, text, path, yPct });
+      setTarget({ area, anchorX: e.clientX, anchorY: e.clientY, text, path, yPct, xPct });
       setStep("composing");
     };
     const onKey = (e: KeyboardEvent) => {
@@ -240,7 +241,7 @@ export function FeedbackWidget() {
           area: target?.area || undefined,
           // Strukturierter Locator für den Deep-Link/Highlight in der Mail
           // (feedback-highlight.tsx findet die Stelle darüber wieder).
-          loc: target ? { text: target.text, path: target.path, y: target.yPct } : undefined,
+          loc: target ? { text: target.text, path: target.path, y: target.yPct, x: target.xPct } : undefined,
         }),
       });
       if (!res.ok) throw new Error("send failed");

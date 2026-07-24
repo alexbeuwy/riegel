@@ -2,54 +2,60 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
-import { decodeFeedbackLocator, FEEDBACK_PARAM, type FeedbackLocator } from "@/lib/feedback-locator";
+import { buildFeedbackPrompt, decodeFeedbackLocator, FEEDBACK_PARAM, type FeedbackLocator } from "@/lib/feedback-locator";
 
 /**
  * Gegenstück zum Feedback-Widget: Landet man über den „Seite öffnen"-Link aus
  * der Feedback-Mail auf der Seite (Query `?fb=…`), scrollt diese Komponente zur
- * kommentierten Stelle, umrandet sie mit einer roten Puls-Animation und zeigt
- * ein Popup mit Sissys Kommentar plus einem Button, der einen fertigen
- * Claude-Code-Prompt in die Zwischenablage legt (Wunsch Alex).
+ * kommentierten Stelle, setzt einen präzisen roten Pin GENAU auf den Klickpunkt
+ * (damit unmissverständlich ist, was gemeint ist) und umrandet zusätzlich das
+ * konkret angeklickte Element. Ein Popup zeigt den Kommentar plus einen Button,
+ * der einen fertigen Claude-Code-Prompt in die Zwischenablage legt (Wunsch Alex).
  *
- * Wiederfinden defensiv, in dieser Reihenfolge: (1) CSS-Pfad, davon das Element,
- * dessen Text den gespeicherten Ausschnitt enthält; (2) irgendein Element mit
- * passendem Text; (3) grobes Scrollziel über die gespeicherte y-Position. So
- * bleibt der Sprung nützlich, selbst wenn sich Markup seit dem Kommentar
- * leicht geändert hat.
+ * Wiederfinden bewusst präzise: unter allen Elementen, deren Text den
+ * gespeicherten Ausschnitt enthält (bzw. den CSS-Pfad treffen), wird das
+ * FLÄCHENMÄSSIG KLEINSTE gewählt — sonst würde ein großer Container markiert
+ * und man sähe nicht, was genau gemeint ist. Ohne Textanker (z. B. Bild-Klick)
+ * greift elementFromPoint an der gespeicherten Klickposition. Der Pin sitzt
+ * immer exakt auf der Klickstelle, unabhängig vom gefundenen Element.
  */
 
+const flaeche = (el: Element): number => {
+  const r = el.getBoundingClientRect();
+  return r.width * r.height;
+};
+
+/** Kleinstes sinnvolles Element zur gespeicherten Stelle (s. Kopfkommentar). */
 function findElement(loc: FeedbackLocator): HTMLElement | null {
   const wanted = loc.t.trim().toLowerCase();
-  // (1) CSS-Pfad + Textabgleich
+  const candidates: HTMLElement[] = [];
+
+  if (wanted.length >= 3) {
+    // Alle Elemente, deren Text den Ausschnitt enthält — das kleinste ist am
+    // präzisesten (Blatt-Element statt Container).
+    document.querySelectorAll<HTMLElement>("body *").forEach((el) => {
+      const t = (el.textContent ?? "").trim().toLowerCase();
+      if (t && t.includes(wanted)) candidates.push(el);
+    });
+  }
   if (loc.p) {
     try {
-      const byPath = Array.from(document.querySelectorAll<HTMLElement>(loc.p));
-      if (byPath.length === 1 && !wanted) return byPath[0];
-      const hit = byPath.find((el) => (el.textContent ?? "").toLowerCase().includes(wanted));
-      if (hit) return hit;
-      if (byPath.length > 0 && !wanted) return byPath[0];
+      document.querySelectorAll<HTMLElement>(loc.p).forEach((el) => candidates.push(el));
     } catch {
-      // Ungültiger Selektor (z. B. Sonderzeichen in Klassen) — weiter zu (2).
+      // ungültiger Selektor -> ignorieren
     }
   }
-  // (2) Textabgleich über gängige Block-Elemente
-  if (wanted.length >= 4) {
-    const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>("section, article, div, p, h1, h2, h3, figure, img, li, a, button"),
-    );
-    // Das TEXTLICH kleinste passende Element bevorzugen (präzisere Stelle).
-    let best: HTMLElement | null = null;
-    let bestLen = Infinity;
-    for (const el of candidates) {
-      const t = (el.textContent ?? "").toLowerCase();
-      if (t.includes(wanted) && t.length < bestLen) {
-        best = el;
-        bestLen = t.length;
-      }
+
+  let best: HTMLElement | null = null;
+  let bestArea = Infinity;
+  for (const el of candidates) {
+    const a = flaeche(el);
+    if (a > 0 && a < bestArea) {
+      best = el;
+      bestArea = a;
     }
-    if (best) return best;
   }
-  return null;
+  return best;
 }
 
 export function FeedbackHighlight() {
@@ -71,13 +77,36 @@ export function FeedbackHighlight() {
 
     // Element nach dem ersten Paint suchen (Bilder/Layout gesetzt). setData
     // läuft im rAF-Callback (asynchron) — keine synchrone Effekt-State-Änderung.
-    let outline: HTMLElement | null = null;
+    const marks: HTMLElement[] = [];
     const raf = requestAnimationFrame(() => {
-      const el = findElement(decoded);
+      // Absolute Klickposition im Dokument: y ist dokumenthöhen-relativ
+      // gespeichert, x viewportbreiten-relativ (Seiten scrollen nie horizontal).
+      const doc = document.documentElement;
+      const pinX = (decoded.x / 100) * doc.clientWidth;
+      const pinY = (decoded.y / 100) * doc.scrollHeight;
+
+      let el = findElement(decoded);
+      // Zu grob (mehr als ~50% der Viewportfläche, z. B. ganze Content-Spalte)
+      // oder gar nichts gefunden: an der Klickposition nachschärfen.
+      const zuGrob = (e: HTMLElement) => {
+        const r = e.getBoundingClientRect();
+        return r.width * r.height > window.innerWidth * window.innerHeight * 0.5;
+      };
+      if (!el || zuGrob(el)) {
+        window.scrollTo({ top: pinY - window.innerHeight / 2 });
+        const hit = document.elementFromPoint(
+          Math.min(pinX, window.innerWidth - 2),
+          Math.max(0, Math.min(pinY - window.scrollY, window.innerHeight - 2)),
+        );
+        if (hit instanceof HTMLElement && !zuGrob(hit)) el = hit;
+        else if (el && zuGrob(el)) el = null; // lieber nur Pin als riesige Umrandung
+      }
+
+      // Umrandung NUR um ein präzises Element — nie um ganze Spalten.
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         const rect = el.getBoundingClientRect();
-        outline = document.createElement("div");
+        const outline = document.createElement("div");
         outline.className = "feedback-hl-outline";
         Object.assign(outline.style, {
           position: "absolute",
@@ -87,23 +116,32 @@ export function FeedbackHighlight() {
           height: `${rect.height + 12}px`,
         });
         document.body.appendChild(outline);
+        marks.push(outline);
       } else {
-        // Kein Element gefunden: wenigstens grob zur gespeicherten Höhe scrollen.
-        window.scrollTo({ top: (document.documentElement.scrollHeight * decoded.y) / 100 - window.innerHeight / 2, behavior: "smooth" });
+        window.scrollTo({ top: pinY - window.innerHeight / 2, behavior: "smooth" });
       }
+
+      // Präziser Pin IMMER exakt auf der Klickstelle — damit ist auch bei
+      // grobem Element-Match unmissverständlich, was gemeint war.
+      const pin = document.createElement("div");
+      pin.className = "feedback-hl-pin";
+      Object.assign(pin.style, { position: "absolute", left: `${pinX}px`, top: `${pinY}px` });
+      document.body.appendChild(pin);
+      marks.push(pin);
+
       setData({ loc: decoded, path: pathname });
     });
 
     return () => {
       cancelAnimationFrame(raf);
-      outline?.remove();
+      marks.forEach((m) => m.remove());
     };
   }, []);
 
   if (!data) return null;
   const { loc, path } = data;
 
-  const prompt = buildPrompt(path, loc);
+  const prompt = buildFeedbackPrompt(path, loc);
 
   const copy = async () => {
     try {
@@ -174,18 +212,3 @@ export function FeedbackHighlight() {
   );
 }
 
-function buildPrompt(path: string, loc: FeedbackLocator): string {
-  const stelle = loc.t ? `„${loc.t}"${loc.p ? ` (${loc.p})` : ""}` : loc.p || "siehe unten";
-  const kontext = [`Seite: ${path}`, `Stelle: ${stelle}`];
-  if (loc.y) kontext.push(`Ungefähre Position: ${loc.y}% der Seitenhöhe.`);
-  return [
-    "Änderung auf der RIEGEL-Website umsetzen.",
-    "",
-    ...kontext,
-    "",
-    "Feedback vom Team:",
-    loc.c || "(kein Kommentartext übermittelt)",
-    "",
-    "Bitte die zuständige Komponente/Datei finden und die Änderung sauber umsetzen (tsc/eslint/Build grün, dann committen und pushen).",
-  ].join("\n");
-}

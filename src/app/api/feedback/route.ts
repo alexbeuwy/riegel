@@ -42,13 +42,15 @@ export async function POST(req: Request) {
   // Strukturierter Locator (optional, nur wenn eine Stelle gewählt wurde) —
   // baut den Deep-Link, der auf der Live-Seite direkt zur Stelle scrollt,
   // sie rot markiert und einen Claude-Code-Prompt anbietet.
-  const locRaw = (b.loc ?? null) as { text?: unknown; path?: unknown; y?: unknown } | null;
+  const locRaw = (b.loc ?? null) as { text?: unknown; path?: unknown; y?: unknown; x?: unknown } | null;
+  const pct = (v: unknown) => Math.max(0, Math.min(100, Math.round(Number(v)) || 0));
   const loc =
     locRaw && typeof locRaw === "object"
       ? {
           text: clean(locRaw.text, 120),
           path: clean(locRaw.path, 240),
-          y: Math.max(0, Math.min(100, Math.round(Number(locRaw.y)) || 0)),
+          y: pct(locRaw.y),
+          x: pct(locRaw.x),
         }
       : null;
 
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
   const base = emailTargets.ASSET_BASE.replace(/\/$/, "");
   let ctaHref = `${base}${path}`;
   if (loc) {
-    const fb = encodeFeedbackLocator({ y: loc.y, text: loc.text, path: loc.path, comment });
+    const fb = encodeFeedbackLocator({ y: loc.y, x: loc.x, text: loc.text, path: loc.path, comment });
     // URL sauber zusammensetzen (path kann bereits eine Query enthalten).
     const u = new URL(ctaHref);
     u.searchParams.set(FEEDBACK_PARAM, fb);

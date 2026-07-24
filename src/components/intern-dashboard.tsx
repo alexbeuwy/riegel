@@ -5,6 +5,7 @@ import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
 import type { FeedbackStatusMap, FeedbackState } from "@/lib/intern-feedback";
+import { buildFeedbackPrompt, encodeFeedbackLocator, parseFeedbackArea, FEEDBACK_PARAM } from "@/lib/feedback-locator";
 
 interface ReportRow {
   id: string;
@@ -1339,7 +1340,7 @@ export function InternDashboard() {
                         {entry?.note && (
                           <p className="mt-1.5 text-xs text-accent">Notiz: {entry.note}</p>
                         )}
-                        <div className="mt-3">
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => toggleFeedback(f.id, done ? "open" : "done")}
@@ -1349,6 +1350,11 @@ export function InternDashboard() {
                             <Icon name={done ? "close" : "check"} size={13} />
                             {done ? "Wieder öffnen" : "Als erledigt markieren"}
                           </button>
+                          <FeedbackTicketActions
+                            pageUrl={f.page_url ?? "/"}
+                            area={f.area ?? ""}
+                            comment={f.comment}
+                          />
                         </div>
                       </div>
                     );
@@ -1522,5 +1528,89 @@ export function InternDashboard() {
         )}
       </Container>
     </section>
+  );
+}
+
+/**
+ * Aktions-Buttons je Feedback-Ticket (Wunsch Alex: Sissys Korrekturen direkt
+ * aus dem Board heraus anstoßen):
+ * - „Stelle ansehen": öffnet die Live-Seite mit dem ?fb=-Deep-Link — scrollt
+ *   zur kommentierten Stelle, markiert sie (Outline + Klickpunkt-Pin) und
+ *   zeigt den Kommentar. Der Locator wird aus dem gespeicherten area-String
+ *   rekonstruiert (parseFeedbackArea).
+ * - „Prompt kopieren": legt den fertigen Umsetzungs-Prompt für Claude Code in
+ *   die Zwischenablage — einfügen, Enter, Claude setzt die Änderung um.
+ */
+function FeedbackTicketActions({
+  pageUrl,
+  area,
+  comment,
+}: {
+  pageUrl: string;
+  area: string;
+  comment: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const parsed = area ? parseFeedbackArea(area) : null;
+  const loc = {
+    t: parsed?.t ?? "",
+    p: parsed?.p ?? "",
+    x: parsed?.x ?? 50,
+    y: parsed?.y ?? 0,
+    c: comment,
+  };
+
+  const viewHref = (() => {
+    if (!parsed) return null;
+    const fb = encodeFeedbackLocator({ y: loc.y, x: loc.x, text: loc.t, path: loc.p, comment });
+    const sep = pageUrl.includes("?") ? "&" : "?";
+    return `${pageUrl}${sep}${FEEDBACK_PARAM}=${fb}`;
+  })();
+
+  const copyPrompt = async () => {
+    const prompt = buildFeedbackPrompt(pageUrl, loc);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      // Clipboard blockiert (ältere Browser): unsichtbares Textarea-Fallback.
+      const ta = document.createElement("textarea");
+      ta.value = prompt;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      } catch {
+        /* aufgeben */
+      }
+      ta.remove();
+    }
+  };
+
+  return (
+    <>
+      {viewHref && (
+        <a
+          href={viewHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent"
+        >
+          <Icon name="pin" size={13} />
+          Stelle ansehen
+        </a>
+      )}
+      <button
+        type="button"
+        onClick={copyPrompt}
+        className="press inline-flex items-center gap-1.5 rounded-full border border-accent/50 px-3 py-1.5 text-xs text-accent transition-colors hover:bg-accent hover:text-on-accent"
+      >
+        <Icon name={copied ? "check" : "doc"} size={13} />
+        {copied ? "Prompt kopiert" : "Prompt für Claude Code kopieren"}
+      </button>
+    </>
   );
 }
