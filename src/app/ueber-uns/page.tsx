@@ -229,7 +229,7 @@ export default function UeberUnsPage() {
                 <div className="group overflow-hidden rounded-2xl border border-border bg-surface">
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <Image
-                      src={i === 0 ? "/images/standorte/speyer.jpg" : "/images/standorte/ludwigshafen.jpg"}
+                      src={i === 0 ? photos.standortSpeyer : photos.standortLudwigshafen}
                       alt={`RIEGEL Immobilien Büro ${l.city}`}
                       fill
                       sizes="(max-width: 1024px) 100vw, 50vw"

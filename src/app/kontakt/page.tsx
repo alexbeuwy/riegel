@@ -6,6 +6,7 @@ import { ContactForm } from "@/components/contact-form";
 import { AnsprechpartnerCard } from "@/components/ansprechpartner-card";
 import { Icon } from "@/components/icon";
 import { contacts } from "@/lib/contacts";
+import { photos } from "@/lib/photos";
 import { site, whatsappHref } from "@/lib/site";
 
 export const metadata = { title: "Kontakt", alternates: { canonical: "/kontakt" } };
@@ -123,7 +124,7 @@ export default function KontaktPage() {
                 <div key={l.city} className="group overflow-hidden rounded-2xl border border-border bg-surface">
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <Image
-                      src={i === 0 ? "/images/standorte/speyer.jpg" : "/images/standorte/ludwigshafen.jpg"}
+                      src={i === 0 ? photos.standortSpeyer : photos.standortLudwigshafen}
                       alt={`RIEGEL Immobilien Büro ${l.city}`}
                       fill
                       sizes="(max-width: 640px) 100vw, 45vw"

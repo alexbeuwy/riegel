@@ -34,6 +34,10 @@ export const photos = {
   /** Landscape, dunkel — modernes Haus mit RIEGEL-Pylon und blauen Lichtspuren
    *  (Mega-Menü-Karte „Alle Spezialgebiete", dunkler Hintergrund für weiße Headline). */
   hausLightrays: `${CDN}/Riegel-Haus-lightrays.webp`,
+  /** Ladenlokal Speyer mit neuem CI-Logo (Standort-Außenfoto, Kontakt/Über-uns). */
+  standortSpeyer: `${CDN}/RIEGEL-Speyer-KI.webp`,
+  /** Ladenlokal Ludwigshafen mit neuem CI-Logo (Standort-Außenfoto, Kontakt/Über-uns). */
+  standortLudwigshafen: `${CDN}/RIEGEL-Ludwigshafen-KI.webp`,
 } as const;
 
 /**
