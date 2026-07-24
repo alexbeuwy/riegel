@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { Modal } from "@/components/modal";
 import { useAuth } from "@/components/auth";
 import { type Provision } from "@/lib/mock-estates";
+import {
+  BUYER_FIELDS,
+  buyerToMetadata,
+  buyerValidationError,
+  readBuyerDetails,
+  type BuyerDetails,
+} from "@/lib/buyer-details";
 
 /**
  * Exposé-Box auf der Objekt-Detailseite — der Konto-Anreiz im Kaufprozess:
@@ -30,13 +37,24 @@ export function ExposeCta({
   live: boolean;
   provision: Provision;
 }) {
-  const { enabled, ready, user, session } = useAuth();
+  const { enabled, ready, user, session, updateProfile } = useAuth();
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  // Provisionszustimmung (Pflicht-Haken) + Nachweis-Stammdaten für den Dialog.
+  const [consent, setConsent] = useState(false);
+  const [buyer, setBuyer] = useState<BuyerDetails>(() => readBuyerDetails(user?.user_metadata));
+
+  // Beim Öffnen des Dialogs die aktuellen Konto-Stammdaten übernehmen (Nutzer
+  // kann fehlende Angaben direkt hier ergänzen, ohne den Flow zu verlassen).
+  useEffect(() => {
+    if (!confirmOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Vorbefüllung beim Öffnen, keine Render-Schleife (Präzedenz: reveal.tsx/modal.tsx)
+    setBuyer(readBuyerDetails(user?.user_metadata));
+  }, [confirmOpen, user]);
 
   // Ohne Live-Objekt kein Exposé; ohne konfigurierte Konten kein Gate —
   // dann lieber gar nichts zeigen statt in eine Sackgasse zu führen.
@@ -84,6 +102,7 @@ export function ExposeCta({
     } else {
       setError(null);
       setConfirmError(null);
+      setConsent(false); // Haken pro Vorgang neu setzen
       setConfirmOpen(true);
     }
   }
@@ -93,16 +112,29 @@ export function ExposeCta({
   // der Dialog und der eigentliche Download startet.
   async function confirmAndDownload() {
     if (confirming || busy || !session) return;
+    if (!consent) {
+      setConfirmError("Bitte bestätigen Sie die Provisionsvereinbarung mit dem Haken.");
+      return;
+    }
+    const buyerErr = buyerValidationError(buyer);
+    if (buyerErr) {
+      setConfirmError(buyerErr);
+      return;
+    }
     setConfirmError(null);
     setConfirming(true);
     try {
+      // Ergänzte/korrigierte Stammdaten dauerhaft im Konto speichern (damit sie
+      // beim nächsten Objekt vorbefüllt sind) — Fehler hier blockieren den
+      // Download nicht, die Daten gehen ohnehin mit in die Bestätigung.
+      await updateProfile(buyerToMetadata(buyer));
       const res = await fetch(`/api/expose/confirm`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ slug }),
+        body: JSON.stringify({ slug, buyer: buyerToMetadata(buyer), consent: true }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
@@ -223,8 +255,57 @@ export function ExposeCta({
           <p>
             Mit Absenden Ihrer Bestätigung wird eine automatisierte E-Mail an
             den Anbieter und Sie in Kopie gesendet, die die
-            Provisionsvereinbarung enthält.
+            Provisionsvereinbarung samt Ihren Kontaktdaten enthält.
           </p>
+
+          {/* Nachweis-Stammdaten: aus dem Konto vorbefüllt, hier prüf-/ergänzbar.
+              Vollständige Angaben sind Voraussetzung für einen sauberen
+              Provisionsnachweis (wie bei OnOffice/IS24). */}
+          <div className="rounded-xl border border-border bg-surface-2/60 p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted">
+              Ihre Angaben für den Nachweis
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {BUYER_FIELDS.map((f) => (
+                <label key={f.key} className={`block space-y-1 ${f.wide ? "col-span-2" : ""}`}>
+                  <span className="text-[0.7rem] text-muted">{f.label}</span>
+                  <input
+                    type={f.key === "phone" ? "tel" : "text"}
+                    inputMode={f.key === "zip" ? "numeric" : f.key === "phone" ? "tel" : "text"}
+                    autoComplete={f.autoComplete}
+                    value={buyer[f.key]}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setBuyer((b) => ({ ...b, [f.key]: v }));
+                      setConfirmError(null);
+                    }}
+                    placeholder={f.placeholder}
+                    disabled={confirming}
+                    className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Pflicht-Haken: aktive Zustimmung zur Provisionsvereinbarung. */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3.5 text-fg">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => {
+                setConsent(e.target.checked);
+                setConfirmError(null);
+              }}
+              disabled={confirming}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+            />
+            <span className="text-xs leading-relaxed">
+              Ich beauftrage den Anbieter provisionspflichtig und stimme der
+              Provisionsvereinbarung zu dieser Immobilie ({provisionText}) aktiv zu.
+            </span>
+          </label>
+
           <p className="text-xs text-faint">
             Hinweis: Die Provisionsvereinbarung kommt nur zwischen Ihnen und dem
             Anbieter zustande.
@@ -248,8 +329,8 @@ export function ExposeCta({
             <button
               type="button"
               onClick={confirmAndDownload}
-              disabled={confirming}
-              className="press inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
+              disabled={confirming || !consent}
+              className="press inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
               {confirming && (
                 <span

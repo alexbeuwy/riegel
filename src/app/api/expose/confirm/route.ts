@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { getEstateBySlug } from "@/lib/estates";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
+import { readBuyerDetails, buyerValidationError } from "@/lib/buyer-details";
 
 /**
  * Aktive Bestätigung der Provisionsvereinbarung VOR dem Exposé-Download
@@ -82,10 +83,22 @@ export async function POST(req: Request) {
     (estate.provision.buyerPct != null ? `${estate.provision.buyerPct} %` : "Auf Anfrage.");
   const objectUrl = `${emailTargets.ASSET_BASE}/immobilien/${estate.slug}`;
   const userEmail = user.email ?? "";
-  const userName =
-    (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
-    (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
-    "";
+
+  // Nachweis-Stammdaten: bevorzugt aus dem (validierten) Request-Body, sonst aus
+  // user_metadata — der Client speichert sie parallel via updateProfile, aber
+  // das Token kann noch die alten Werte tragen. Vollständigkeit ist Pflicht.
+  const bodyBuyer = readBuyerDetails((body.buyer ?? null) as Record<string, unknown> | null);
+  const metaBuyer = readBuyerDetails(user.user_metadata as Record<string, unknown> | undefined);
+  const buyer = buyerValidationError(bodyBuyer) === null ? bodyBuyer : metaBuyer;
+  if (buyerValidationError(buyer) !== null) {
+    return NextResponse.json(
+      { ok: false, error: "Bitte vervollständigen Sie Ihre Kontaktdaten für den Provisionsnachweis." },
+      { status: 422 },
+    );
+  }
+  const fullName = `${buyer.firstName} ${buyer.lastName}`.trim();
+  const anschrift = `${buyer.street}, ${buyer.zip} ${buyer.city}`.trim();
+
   const timestamp =
     new Date().toLocaleString("de-DE", {
       timeZone: "Europe/Berlin",
@@ -98,8 +111,11 @@ export async function POST(req: Request) {
     { label: "Ort", value: esc([estate.postcode, estate.city].filter(Boolean).join(" ")) },
     { label: "Objekt-ID", value: esc(estate.externalId ?? estate.id) },
     { label: "Provision", value: esc(provisionText) },
-    { label: "Bestätigt von", value: esc(userName) },
+    { label: "Bestätigt von", value: esc(fullName) },
+    { label: "Anschrift", value: esc(anschrift) },
+    { label: "Telefon", value: esc(buyer.phone) },
     { label: "E-Mail", value: esc(userEmail) },
+    { label: "Zustimmung", value: "aktiv bestätigt (Haken gesetzt)" },
     { label: "Zeitpunkt", value: esc(timestamp) },
   ]);
 

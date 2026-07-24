@@ -8,6 +8,7 @@ import { PageIntro } from "@/components/page-intro";
 import { Icon } from "@/components/icon";
 import { useAuth } from "@/components/auth";
 import { ProfileForm } from "@/components/profile-form";
+import { BUYER_FIELDS, EMPTY_BUYER, buyerToMetadata, buyerValidationError, type BuyerDetails } from "@/lib/buyer-details";
 
 const inputCls =
   "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
@@ -36,6 +37,13 @@ function KontoInner() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Käufer-Stammdaten (nur bei Registrierung) — für den Provisionsnachweis,
+  // dieselben Angaben wie bei OnOffice/ImmoScout (s. lib/buyer-details.ts).
+  const [buyer, setBuyer] = useState<BuyerDetails>(EMPTY_BUYER);
+  const setBuyerField = (k: keyof BuyerDetails, v: string) => {
+    setBuyer((b) => ({ ...b, [k]: v }));
+    setError(null);
+  };
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const [info, setInfo] = useState<string | null>(null);
@@ -94,6 +102,11 @@ function KontoInner() {
     setInfo(null);
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
     if (password.length < 8) return fail("Passwort: mindestens 8 Zeichen.");
+    // Bei Registrierung sind die Nachweis-Stammdaten Pflicht (Provisionsanspruch).
+    if (mode === "register") {
+      const buyerErr = buyerValidationError(buyer);
+      if (buyerErr) return fail(buyerErr);
+    }
     setBusy(true);
     // Bestätigungslink zurück auf diese Seite (inkl. ?next=) — sonst verliert
     // z. B. der Exposé-CTA-Flow nach der Pflicht-E-Mail-Bestätigung sein Ziel.
@@ -101,7 +114,10 @@ function KontoInner() {
       typeof window !== "undefined"
         ? `${window.location.origin}/konto${next ? `?next=${encodeURIComponent(next)}` : ""}`
         : undefined;
-    const res = mode === "login" ? await signIn(email, password) : await signUp(email, password, redirectTo);
+    const res =
+      mode === "login"
+        ? await signIn(email, password)
+        : await signUp(email, password, redirectTo, buyerToMetadata(buyer));
     setBusy(false);
     if (res.error) return fail(res.error);
     if (mode === "register" && "needsConfirm" in res && res.needsConfirm) {
@@ -298,6 +314,35 @@ function KontoInner() {
                     <span className="text-sm text-muted">Passwort</span>
                     <input className={inputCls} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(null); }} placeholder="mind. 8 Zeichen" />
                   </label>
+
+                  {/* Nachweis-Stammdaten: nur bei Registrierung, damit ein
+                      Provisionsanspruch bei provisionspflichtigen Objekten
+                      sauber dokumentiert werden kann (wie bei OnOffice/IS24). */}
+                  {mode === "register" && (
+                    <div className="space-y-3 rounded-xl border border-border bg-surface-2/50 p-4">
+                      <p className="text-xs text-muted">
+                        Für den Exposé-Versand und einen möglichen Provisionsnachweis
+                        benötigen wir Ihre Kontaktdaten — dieselben Angaben wie auf den
+                        Portalen.
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {BUYER_FIELDS.map((f) => (
+                          <label key={f.key} className={`block space-y-1.5 ${f.wide ? "col-span-2" : ""}`}>
+                            <span className="text-xs text-muted">{f.label}</span>
+                            <input
+                              className={inputCls}
+                              type={f.key === "phone" ? "tel" : "text"}
+                              inputMode={f.key === "zip" ? "numeric" : f.key === "phone" ? "tel" : "text"}
+                              autoComplete={f.autoComplete}
+                              value={buyer[f.key]}
+                              onChange={(e) => setBuyerField(f.key, e.target.value)}
+                              placeholder={f.placeholder}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {mode === "login" && (

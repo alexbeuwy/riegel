@@ -15,9 +15,15 @@ interface AuthState {
     /** Ziel-URL für den Bestätigungslink (z. B. /konto?next=/immobilien/…) —
      *  sonst landet der Nutzer nach der E-Mail-Bestätigung im Nirgendwo. */
     emailRedirectTo?: string,
+    /** Käufer-Stammdaten für den Provisionsnachweis → user_metadata
+     *  (s. lib/buyer-details.ts, buyerToMetadata). */
+    data?: Record<string, string>,
   ) => Promise<{ error: string | null; needsConfirm?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** user_metadata der aktiven Session ergänzen/aktualisieren (z. B. fehlende
+   *  Nachweis-Stammdaten vor dem Exposé-Download nacherfassen). */
+  updateProfile: (data: Record<string, string>) => Promise<{ error: string | null }>;
   /** Löst den Supabase-Reset-Mail-Versand aus (verrät nie, ob das Konto
    *  existiert — die Erfolgsmeldung ist immer gleich). redirectTo führt
    *  zurück auf /konto/passwort, wo die Recovery-Session landet. */
@@ -48,15 +54,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, emailRedirectTo?: string) => {
+  const signUp = useCallback(
+    async (email: string, password: string, emailRedirectTo?: string, meta?: Record<string, string>) => {
+      if (!supabase) return { error: "Konten sind noch nicht aktiviert." };
+      const options =
+        emailRedirectTo || meta
+          ? { options: { ...(emailRedirectTo && { emailRedirectTo }), ...(meta && { data: meta }) } }
+          : {};
+      const { data, error } = await supabase.auth.signUp({ email, password, ...options });
+      if (error) return { error: error.message };
+      return { error: null, needsConfirm: !data.session };
+    },
+    [],
+  );
+
+  const updateProfile = useCallback(async (data: Record<string, string>) => {
     if (!supabase) return { error: "Konten sind noch nicht aktiviert." };
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      ...(emailRedirectTo && { options: { emailRedirectTo } }),
-    });
-    if (error) return { error: error.message };
-    return { error: null, needsConfirm: !data.session };
+    const { error } = await supabase.auth.updateUser({ data });
+    return { error: error ? error.message : null };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -94,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut,
         resetPassword,
         updatePassword,
+        updateProfile,
       }}
     >
       {children}
