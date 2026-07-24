@@ -5,7 +5,7 @@ import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
 import type { FeedbackStatusMap, FeedbackState } from "@/lib/intern-feedback";
-import { buildFeedbackPrompt, encodeFeedbackLocator, parseFeedbackArea, FEEDBACK_PARAM } from "@/lib/feedback-locator";
+import { buildFeedbackPrompt, buildFeedbackBatchPrompt, encodeFeedbackLocator, parseFeedbackArea, FEEDBACK_PARAM } from "@/lib/feedback-locator";
 
 interface ReportRow {
   id: string;
@@ -1261,27 +1261,39 @@ export function InternDashboard() {
         {/* ── Feedback (On-Page-Kommentare von Sissy) ── */}
         {tab === "feedback" && (
           <div className="space-y-5">
-            <div className="flex gap-1.5">
-              {(
-                [
-                  ["all", `Alle (${feedback.length})`],
-                  ["open", `Offen (${fbOpenCount})`],
-                  ["done", `Erledigt (${feedback.length - fbOpenCount})`],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setFbFilter(key)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                    fbFilter === key
-                      ? "border-accent bg-accent/10 text-accent"
-                      : "border-border text-muted hover:border-accent/40"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex gap-1.5">
+                {(
+                  [
+                    ["all", `Alle (${feedback.length})`],
+                    ["open", `Offen (${fbOpenCount})`],
+                    ["done", `Erledigt (${feedback.length - fbOpenCount})`],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFbFilter(key)}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                      fbFilter === key
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border text-muted hover:border-accent/40"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Sammel-Prompt: ALLE offenen Tickets in einem Kopiervorgang —
+                  eine Claude-Code-Session arbeitet die Liste ab (Wunsch Alex:
+                  nicht 10x einzeln kopieren). */}
+              {fbOpenCount > 0 && (
+                <FeedbackBatchCopy
+                  tickets={feedback
+                    .filter((f) => (feedbackStatus[f.id]?.status ?? "open") !== "done")
+                    .map((f) => ({ pageUrl: f.page_url ?? "/", area: f.area ?? "", comment: f.comment }))}
+                />
+              )}
             </div>
 
             {feedback.length === 0 ? (
@@ -1612,5 +1624,50 @@ function FeedbackTicketActions({
         {copied ? "Prompt kopiert" : "Prompt für Claude Code kopieren"}
       </button>
     </>
+  );
+}
+
+/**
+ * Sammel-Kopier-Button für den Feedback-Tab: legt ALLE offenen Tickets als
+ * einen einzigen Umsetzungs-Prompt in die Zwischenablage (s.
+ * buildFeedbackBatchPrompt) — einmal in Claude Code einfügen statt jedes
+ * Ticket einzeln zu kopieren; eine Session arbeitet die Liste ab.
+ */
+function FeedbackBatchCopy({
+  tickets,
+}: {
+  tickets: { pageUrl: string; area: string; comment: string }[];
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    const prompt = buildFeedbackBatchPrompt(tickets);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = prompt;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      } catch {
+        /* aufgeben */
+      }
+      ta.remove();
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="press inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent-hover"
+    >
+      <Icon name={copied ? "check" : "doc"} size={13} />
+      {copied ? "Sammel-Prompt kopiert" : `Alle offenen als Prompt kopieren (${tickets.length})`}
+    </button>
   );
 }

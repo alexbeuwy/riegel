@@ -77,6 +77,37 @@ export function buildFeedbackPrompt(path: string, loc: FeedbackLocator): string 
 }
 
 /**
+ * Sammel-Prompt über MEHRERE offene Feedback-Tickets — ein Kopiervorgang, eine
+ * Claude-Code-Session für alle Punkte (token-effizienter als Einzel-Aufträge:
+ * der Codebase-Kontext wird nur einmal aufgebaut, ein Build/Commit am Ende).
+ */
+export function buildFeedbackBatchPrompt(
+  tickets: { pageUrl: string; area: string; comment: string }[],
+): string {
+  const bloecke = tickets.map((t, i) => {
+    const parsed = t.area ? parseFeedbackArea(t.area) : null;
+    const stelle = parsed?.t
+      ? `„${parsed.t}"${parsed.p ? ` (${parsed.p})` : ""}`
+      : parsed?.p || t.area || "keine Stelle markiert (allgemeiner Kommentar)";
+    const pos = parsed ? `Ungefähre Klickposition: ${parsed.x}% von links, ${parsed.y}% der Seitenhöhe.` : null;
+    return [
+      `--- Ticket ${i + 1} von ${tickets.length} ---`,
+      `Seite: ${t.pageUrl || "/"}`,
+      `Stelle: ${stelle}`,
+      ...(pos ? [pos] : []),
+      "Kommentar:",
+      t.comment,
+    ].join("\n");
+  });
+  return [
+    `Feedback-Tickets von der RIEGEL-Website umsetzen (${tickets.length} offene Kommentare vom Team).`,
+    "",
+    ...bloecke.flatMap((b) => [b, ""]),
+    "Bitte alle Tickets nacheinander umsetzen: je Ticket die zuständige Komponente/Datei finden und die Änderung sauber machen. Am Ende einmal tsc/eslint/Build grün, dann committen und pushen. Tickets, die unklar oder mehrdeutig sind, NICHT raten, sondern am Ende gesammelt als Rückfragen auflisten.",
+  ].join("\n");
+}
+
+/**
  * Menschlichen `area`-String des Feedback-Widgets (z. B.
  * `<span> "Text…" · main#content > section.py-24 · ca. 34%/87% der Seite`)
  * zurück in Locator-Bausteine parsen — für Alt-Tickets im Intern-Board, deren
