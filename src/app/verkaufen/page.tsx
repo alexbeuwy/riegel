@@ -6,7 +6,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
-import { photos } from "@/lib/photos";
+import { photos, engagement } from "@/lib/photos";
 import { expertenSeiten, expertenFlaggschiffe, EXPERTEN_CLUSTER_LABEL } from "@/lib/experten";
 
 export const metadata = {
@@ -16,36 +16,45 @@ export const metadata = {
   alternates: { canonical: "/verkaufen" },
 };
 
-const steps: { n: string; icon: IconName; title: string; text: string }[] = [
+// Bilder: echte RIEGEL-Assets vom CDN je Schritt (statt der Icon-Platzhalter).
+const steps: { n: string; icon: IconName; title: string; text: string; image: string; imageClass?: string }[] = [
   {
     n: "01",
     icon: "calculator",
     title: "Bewertung",
     text: "Kostenfreie, fundierte Markteinschätzung Ihrer Immobilie — datenbasiert und regional verankert.",
+    image: photos.rechnerHero,
   },
   {
     n: "02",
     icon: "doc",
     title: "Aufbereitung",
     text: "Professionelle Fotos, aussagekräftiges Exposé und alle Unterlagen sauber zusammengestellt.",
+    image: photos.dokumente,
   },
   {
     n: "03",
     icon: "search",
     title: "Vermarktung",
     text: "Gezielte, diskrete Ansprache passender Interessenten über Portale und unser eigenes Netzwerk.",
+    // Echtes RIEGEL-Out-of-Home-Plakat (Hochformat) — Ausschnitt aufs Plakat legen.
+    image: engagement.plakat,
+    imageClass: "object-[center_35%]",
   },
   {
     n: "04",
     icon: "users",
     title: "Besichtigungen",
     text: "Qualifizierte Interessenten, koordinierte Termine — Sie behalten jederzeit den Überblick.",
+    image: photos.analyse1,
   },
   {
     n: "05",
     icon: "key",
     title: "Abschluss",
     text: "Begleitung bis zum Notartermin und zur Schlüsselübergabe — rechtssicher und stressfrei.",
+    // RIEGEL-eigener Wein — das Präsent zum erfolgreichen Abschluss.
+    image: engagement.wein,
   },
 ];
 
@@ -125,7 +134,7 @@ export default function VerkaufenPage() {
               So läuft Ihr Verkauf — in fünf klaren Schritten
             </h2>
           </Reveal>
-          <ProcessTimeline steps={steps.map(({ icon, title, text }) => ({ icon, title, text }))} />
+          <ProcessTimeline steps={steps.map(({ icon, title, text, image, imageClass }) => ({ icon, title, text, image, imageClass }))} />
         </Container>
       </section>
 
@@ -134,9 +143,11 @@ export default function VerkaufenPage() {
         <Container>
           <div className="grid items-center gap-8 lg:grid-cols-2">
             <div className="relative overflow-hidden rounded-3xl border border-border">
+              {/* dokumente hängt jetzt in der Prozess-Timeline direkt darüber —
+                  hier deshalb das Beratungsfoto statt desselben Bilds zweimal. */}
               <Image
-                src={photos.dokumente}
-                alt="Aufbereitung von Grundrissen und Unterlagen bei RIEGEL Immobilien"
+                src={photos.analyse2}
+                alt="Datenbasierte Bewertung im Beratungsgespräch bei RIEGEL Immobilien"
                 width={1400}
                 height={780}
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -217,7 +228,8 @@ export default function VerkaufenPage() {
               jede der 30 weiteren Objektart-Seiten ist von hier crawlbar,
               ohne den Hub mit 35 Riesen-Karten zu fluten). */}
           <Reveal className="mt-14">
-            <h3 className="text-lg font-semibold text-fg">Alle Spezialgebiete</h3>
+            {/* id = Sprungziel der Mega-Menü-Karte (site.ts nav feature) */}
+            <h3 id="spezialgebiete" className="scroll-mt-28 text-lg font-semibold text-fg">Alle Spezialgebiete</h3>
             <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
               {Object.entries(EXPERTEN_CLUSTER_LABEL).map(([cluster, label]) => {
                 const seiten = expertenSeiten.filter(

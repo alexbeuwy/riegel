@@ -68,6 +68,16 @@ function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => 
               {child.label}
             </Link>
           ))}
+          {item.feature && (
+            <Link
+              href={item.feature.href}
+              onClick={onNavigate}
+              className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-surface-2"
+            >
+              {item.feature.label}
+              <Icon name="arrowRight" size={14} />
+            </Link>
+          )}
         </div>
       </div>
     </div>

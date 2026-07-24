@@ -31,6 +31,9 @@ export const photos = {
   analyse1: `${CDN}/RIEGEL_Home-Analyse-1.webp`,
   analyse2: `${CDN}/RIEGEL_Home-Analyse-2.webp`,
   analyse3: `${CDN}/RIEGEL_Home-Analyse-3.webp`,
+  /** Landscape, dunkel — modernes Haus mit RIEGEL-Pylon und blauen Lichtspuren
+   *  (Mega-Menü-Karte „Alle Spezialgebiete", dunkler Hintergrund für weiße Headline). */
+  hausLightrays: `${CDN}/Riegel-Haus-lightrays.webp`,
 } as const;
 
 /**

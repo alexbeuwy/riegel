@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Container } from "@/components/container";
 import { MobileMenu } from "@/components/mobile-menu";
 import { FavoritesLink } from "@/components/favorites";
@@ -12,8 +13,8 @@ import { site, type NavItem } from "@/lib/site";
 function Wordmark() {
   return (
     <Link href="/" className="flex items-center" aria-label={`${site.name} – Startseite`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       {/* Kurzes "RIEGEL"-Logo (viewBox 1000×200) — größer & gut lesbar */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- SVG, next/image optimiert nicht */}
       <img src="/logo-riegel-short-white.svg" alt={site.name} className="h-7 w-auto sm:h-8" />
     </Link>
   );
@@ -137,28 +138,56 @@ function DesktopNavItem({ item }: { item: NavItem }) {
         id={panelId}
         aria-hidden={!open}
         data-origin="top-left"
-        className={`t-dropdown absolute left-0 top-full z-50 mt-3 w-[440px] max-w-[92vw] rounded-2xl border border-border bg-surface p-2 shadow-2xl ${
-          open ? "is-open" : closing ? "is-closing" : ""
-        }`}
+        className={`t-dropdown absolute left-0 top-full z-50 mt-3 max-w-[92vw] rounded-2xl border border-border bg-surface p-2 shadow-2xl ${
+          item.feature ? "w-[660px]" : "w-[440px]"
+        } ${open ? "is-open" : closing ? "is-closing" : ""}`}
       >
-        <div className="grid grid-cols-2 gap-1">
-          {item.children.map((child) => (
+        <div className={item.feature ? "flex gap-2" : ""}>
+          <div className={`grid grid-cols-2 gap-1 ${item.feature ? "min-w-0 flex-1" : ""}`}>
+            {item.children.map((child) => (
+              <Link
+                key={child.href}
+                href={child.href}
+                tabIndex={open ? undefined : -1}
+                onClick={closeMenu}
+                className="press group flex items-start gap-3 rounded-md p-2.5 transition-colors hover:bg-surface-2"
+              >
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-accent transition-colors group-hover:bg-accent group-hover:text-on-accent">
+                  <Icon name={child.icon} size={19} />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium text-fg">{child.label}</span>
+                  <span className="mt-0.5 text-xs leading-snug text-muted">{child.desc}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+          {item.feature && (
             <Link
-              key={child.href}
-              href={child.href}
+              href={item.feature.href}
               tabIndex={open ? undefined : -1}
               onClick={closeMenu}
-              className="press group flex items-start gap-3 rounded-md p-2.5 transition-colors hover:bg-surface-2"
+              className="press group relative w-[212px] shrink-0 self-stretch overflow-hidden rounded-xl border border-border bg-surface-2"
             >
-              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-accent transition-colors group-hover:bg-accent group-hover:text-on-accent">
-                <Icon name={child.icon} size={19} />
-              </span>
-              <span className="flex flex-col">
-                <span className="text-sm font-medium text-fg">{child.label}</span>
-                <span className="mt-0.5 text-xs leading-snug text-muted">{child.desc}</span>
+              <Image
+                src={item.feature.image}
+                alt=""
+                aria-hidden="true"
+                fill
+                sizes="212px"
+                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+              />
+              <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+              <span className="relative flex h-full min-h-[220px] flex-col justify-end p-4">
+                <span className="text-lg font-bold leading-snug text-white">{item.feature.label}</span>
+                <span className="mt-1.5 text-xs leading-snug text-white/75">{item.feature.desc}</span>
+                <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-white">
+                  Entdecken
+                  <Icon name="arrowRight" size={13} className="transition-transform group-hover:translate-x-0.5" />
+                </span>
               </span>
             </Link>
-          ))}
+          )}
         </div>
       </div>
     </div>

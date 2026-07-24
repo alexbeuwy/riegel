@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/icon";
+import { photos } from "@/lib/photos";
 
 /** Ein Mega-Menü-Eintrag (Icon-Kachel + Titel + 1-Zeilen-Beschreibung). */
 export interface NavChild {
@@ -8,11 +9,20 @@ export interface NavChild {
   readonly icon: IconName;
 }
 
+/** Bild-Karte rechts neben den Icon-Einträgen im Mega-Menü (Feature-Teaser). */
+export interface NavFeature {
+  readonly href: string;
+  readonly label: string;
+  readonly desc: string;
+  readonly image: string;
+}
+
 /** Primär-Nav-Punkt — optional mit Kindern (→ Mega-Menü statt Direktlink). */
 export interface NavItem {
   readonly href: string;
   readonly label: string;
   readonly children?: ReadonlyArray<NavChild>;
+  readonly feature?: NavFeature;
 }
 
 /**
@@ -75,6 +85,14 @@ export const site = {
           icon: "shield",
         },
       ],
+      // Bild-Karte rechts neben den 6 Einträgen: die weiteren ~30
+      // Spezialgebiete sind sonst nur ganz unten auf /verkaufen auffindbar.
+      feature: {
+        href: "/verkaufen#spezialgebiete",
+        label: "Alle Spezialgebiete",
+        desc: "Über 30 Objektarten — von Wohnanlagen bis Projektentwicklung",
+        image: photos.hausLightrays,
+      },
     },
     {
       href: "/rechner",

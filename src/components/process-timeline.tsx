@@ -10,6 +10,8 @@ export interface ProcessStep {
   text: string;
   /** Optionales Bild (z. B. /images/prozess/01.jpg). Sonst stylischer Platzhalter. */
   image?: string;
+  /** Zusätzliche Bild-Klassen, z. B. object-position-Feintuning bei Hochformaten. */
+  imageClass?: string;
 }
 
 /**
@@ -25,8 +27,9 @@ export function ProcessTimeline({ steps }: { steps: ProcessStep[] }) {
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setShown(true);
-      return;
+      // Asynchron (rAF) statt direkt im Effect-Body — react-hooks/set-state-in-effect.
+      const raf = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(raf);
     }
     const io = new IntersectionObserver(
       (entries) => {
@@ -80,7 +83,7 @@ export function ProcessTimeline({ steps }: { steps: ProcessStep[] }) {
                   alt={s.title}
                   fill
                   sizes="(max-width: 1024px) 50vw, 20vw"
-                  className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+                  className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 ${s.imageClass ?? ""}`}
                 />
               ) : (
                 <>
