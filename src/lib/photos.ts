@@ -55,3 +55,24 @@ export const engagement = {
   officeTall1: `${CDN}/BEU03463-scaled.webp`,
   officeTall2: `${CDN}/BEU03466-scaled.webp`,
 } as const;
+
+/**
+ * Mitarbeiter-Porträts (Über-uns-Team) — einheitlicher, professioneller Satz
+ * von Sissy im BunnyCDN-Ordner „Portraits Mitarbeiter" (Leerzeichen im Pfad +
+ * Dateinamen daher als %20 kodiert). Alle quadratisch (750er/1125er). Loana
+ * Sabielny hat noch kein Foto (Platzhalter-Kachel auf der Seite).
+ */
+const PORTRAIT_DIR = `${CDN}/Portraits%20Mitarbeiter`;
+export const portraits = {
+  manfred: `${PORTRAIT_DIR}/Manfred.webp`,
+  sylwia: `${PORTRAIT_DIR}/Sylwia.webp`,
+  sissy: `${PORTRAIT_DIR}/Sissy.webp`,
+  annika: `${PORTRAIT_DIR}/Annika.webp`,
+  carina: `${PORTRAIT_DIR}/Carina%20Buessecker.webp`,
+  magdalena: `${PORTRAIT_DIR}/Magdalena.webp`,
+  vanessa: `${PORTRAIT_DIR}/Vanessa.webp`,
+  lorenz: `${PORTRAIT_DIR}/Lorenz%20Hoell.webp`,
+  helena: `${PORTRAIT_DIR}/Helena.webp`,
+  julien: `${PORTRAIT_DIR}/Julien.webp`,
+  melanie: `${PORTRAIT_DIR}/Melanie.webp`,
+} as const;
