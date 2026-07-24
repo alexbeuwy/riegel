@@ -8,6 +8,7 @@ import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/l
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
+import { parseDeZahl } from "@/lib/parse-de-zahl";
 
 // pdf-lib/fontkit brauchen echte Node.js-Buffer/Crypto-APIs (kein Edge) UND
 // diese Route macht mehrere sequenzielle externe Aufrufe (Bodenrichtwert bis
@@ -39,10 +40,15 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** Zahl im Bereich [min, max] oder undefined (für Eingaben/Kennzahlen). */
+/**
+ * Zahl im Bereich [min, max] oder undefined (für Eingaben/Kennzahlen).
+ * Nutzt parseDeZahl, damit deutsche Eingaben ("32,35", "1.234") serverseitig
+ * genauso akzeptiert werden wie im Rechner-Client. Nicht für Koordinaten
+ * verwenden (num unten) — dort wäre die Tausenderpunkt-Heuristik falsch.
+ */
 const bounded = (v: unknown, min: number, max: number): number | undefined => {
-  const n = Number(v);
-  return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
+  const n = typeof v === "string" || typeof v === "number" ? parseDeZahl(v) : undefined;
+  return n != null && n >= min && n <= max ? n : undefined;
 };
 
 const OBJEKTARTEN = new Set<Objektart>(["wohnung", "haus", "grundstueck", "gewerbe", "mehrfamilienhaus"]);

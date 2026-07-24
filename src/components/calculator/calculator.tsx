@@ -23,6 +23,7 @@ import { marktortByOrt, type MarktOrt } from "@/lib/marktdaten";
 // Build komplett weg, zieht also kein Server-Modul ins Client-Bundle.
 import type { Bodenrichtwert } from "@/lib/boris";
 import { ReportRequest } from "@/components/calculator/report-request";
+import { parseDeZahl } from "@/lib/parse-de-zahl";
 
 const LocationMap = dynamic(
   () => import("@/components/calculator/location-map").then((m) => m.LocationMap),
@@ -399,11 +400,18 @@ export function Calculator() {
       // Echte Zahlprüfung statt Truthy-Check ("0"/"-5000" sind truthy) —
       // spiegelt die Server-Bound in api/report/route.ts (bounded(…, 100, …)).
       if (f.objektart === "mehrfamilienhaus") {
-        const miete = Number(f.jahresnettokaltmiete);
-        if (!Number.isFinite(miete) || miete < 100) return "Bitte eine gültige Jahresnettokaltmiete angeben (mind. 100 €).";
+        const miete = parseDeZahl(f.jahresnettokaltmiete);
+        if (miete == null || miete < 100) return "Bitte eine gültige Jahresnettokaltmiete angeben (mind. 100 €).";
       }
       if (f.objektart !== "grundstueck" && f.objektart !== "mehrfamilienhaus" && !f.wohnflaeche)
         return "Bitte die Wohnfläche angeben.";
+      // Komma-/Format-Eingaben sind ok (parseDeZahl), aber komplett
+      // unlesbare Werte sauber abfangen statt still ohne Preis zu enden
+      // (Kundenfall Manfred: "32,35" ergab vorher NaN und kein Ergebnis).
+      if (f.wohnflaeche && parseDeZahl(f.wohnflaeche) == null)
+        return "Bitte die Wohnfläche als Zahl angeben (z. B. 120 oder 92,5).";
+      if (f.grundflaeche && parseDeZahl(f.grundflaeche) == null)
+        return "Bitte die Grundstücksfläche als Zahl angeben (z. B. 450).";
     }
     return null;
   }
@@ -430,18 +438,18 @@ export function Calculator() {
       addressLabel: f.address?.label,
       lat: f.address?.lat,
       lng: f.address?.lng,
-      wohnflaeche: f.wohnflaeche ? Number(f.wohnflaeche) : undefined,
-      grundflaeche: f.grundflaeche ? Number(f.grundflaeche) : undefined,
-      zimmer: f.zimmer ? Number(f.zimmer) : undefined,
-      badezimmer: f.badezimmer ? Number(f.badezimmer) : undefined,
-      baujahr: f.baujahr ? Number(f.baujahr) : undefined,
+      wohnflaeche: parseDeZahl(f.wohnflaeche),
+      grundflaeche: parseDeZahl(f.grundflaeche),
+      zimmer: parseDeZahl(f.zimmer),
+      badezimmer: parseDeZahl(f.badezimmer),
+      baujahr: parseDeZahl(f.baujahr),
       zustand: f.zustand,
       qualitaet: f.qualitaet,
       energieklasse: f.energieklasse || undefined,
       ausstattung: f.ausstattung,
-      jahresnettokaltmiete: f.jahresnettokaltmiete ? Number(f.jahresnettokaltmiete) : undefined,
-      wohneinheiten: f.wohneinheiten ? Number(f.wohneinheiten) : undefined,
-      gewerbeeinheiten: f.gewerbeeinheiten ? Number(f.gewerbeeinheiten) : undefined,
+      jahresnettokaltmiete: parseDeZahl(f.jahresnettokaltmiete),
+      wohneinheiten: parseDeZahl(f.wohneinheiten),
+      gewerbeeinheiten: parseDeZahl(f.gewerbeeinheiten),
     };
     lastInputRef.current = input;
     setResult(estimateValue(input));
