@@ -133,10 +133,47 @@ function roundTo25(n: number): number {
   return Math.round(n / 25) * 25;
 }
 
+/**
+ * BELEGTE Preisspannen (€/m² Wohnfläche) — schlagen die Modellformel unten.
+ *
+ * Zwei Quellen:
+ * 1. Vorgabe Manfred (07/2026): „Wir haben Preise in Speyer je nach Lage
+ *    2.500–7.000 € (am Rhein) pro m². So auch in Ludwigshafen, ist halt Lage
+ *    und Zustand."
+ * 2. Eigene abgeschlossene Verkäufe aus OnOffice, ausgewertet mit
+ *    scripts/preisanalyse-onoffice.mts (132 verwertbare Abschlüsse, Stand
+ *    07/2026). Die Auswertung stützt Manfreds Speyer-Spanne (39 Abschlüsse:
+ *    2.232 € min, 3.561 € Median, Spitze darüber) und korrigiert die zuvor
+ *    geschätzten Werte für die übrigen Orte.
+ *
+ * Bei jeder Aktualisierung: Skript neu laufen lassen und die Zahl der
+ * Abschlüsse (n) im Kommentar mitziehen — unter n=5 bleibt es bei der Formel,
+ * weil Min/Max einer Handvoll Verkäufe die echte Streuung nicht abbildet.
+ */
+const SPANNE_BELEGT: Record<string, { wohnung: { min: number; max: number }; haus: { min: number; max: number } }> = {
+  // n=39; Vorgabe Manfred, durch die eigenen Abschlüsse gedeckt.
+  speyer: { wohnung: { min: 2500, max: 7000 }, haus: { min: 2500, max: 7000 } },
+  // n=15; beobachtet 1.697–3.903 €/m², auf 1.700–4.000 gerundet.
+  ludwigshafen: { wohnung: { min: 1700, max: 4000 }, haus: { min: 1700, max: 4000 } },
+  // n=9; beobachtet 1.868–4.992 €/m².
+  roemerberg: { wohnung: { min: 1850, max: 5000 }, haus: { min: 1850, max: 5000 } },
+  // n=5; beobachtet 2.263–3.632 €/m².
+  schifferstadt: { wohnung: { min: 2250, max: 3650 }, haus: { min: 2250, max: 3650 } },
+  // n=5; beobachtet 1.408–3.722 €/m² — die früheren Artikelwerte (bis 4.800 €)
+  // lagen deutlich über allem, was hier real abgeschlossen wurde.
+  dudenhofen: { wohnung: { min: 1400, max: 3750 }, haus: { min: 1400, max: 3750 } },
+};
+
+/**
+ * Modell-Preisspanne um den Basiswert. Bewusst WEIT (−25 %/+40 %): eine Spanne
+ * soll die Streuung nach Lage und Zustand abbilden, nicht eine
+ * scheingenaue Punktlandung. Die frühere ±10 %-Spanne war dafür zu eng — sie
+ * ließ Spitzenlagen komplett aus (Hinweis Manfred, s. SPANNE_BELEGT).
+ * Der Basiswert selbst bleibt unverändert, die Rechner-Engine ist nicht
+ * betroffen (REGION_BASIS ist nur ein Spiegel, s. Kopfkommentar).
+ */
 function spanne(basis: number): { min: number; max: number } {
-  // Engere, konservativere Spanne (±10 % statt −12/+15 %) — die oberen Enden
-  // wirkten zu hoch (Feedback Sissy), die Basiswerte wurden zusätzlich gesenkt.
-  return { min: roundTo25(basis * 0.9), max: roundTo25(basis * 1.1) };
+  return { min: roundTo25(basis * 0.75), max: roundTo25(basis * 1.4) };
 }
 
 /** Jahres-Trend in % — deterministisch aus Hash, plausible Bandbreite 2.6–6.2 %. */
@@ -201,8 +238,9 @@ function buildMarktOrt(slug: string, ort: string): MarktOrt | null {
     name: ort,
     lat: coords.lat,
     lng: coords.lng,
-    wohnung: spanne(basis.wohnung),
-    haus: spanne(basis.haus),
+    // Belegte Spannen der Inhaberseite haben Vorrang vor der Modellformel.
+    wohnung: SPANNE_BELEGT[slug]?.wohnung ?? spanne(basis.wohnung),
+    haus: SPANNE_BELEGT[slug]?.haus ?? spanne(basis.haus),
     bodenrichtwert: Math.round(basis.boden / 5) * 5,
     trendYoyPct,
     trend12: trendCurve(hash, trendYoyPct),
