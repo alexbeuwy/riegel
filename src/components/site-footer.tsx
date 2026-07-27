@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
+import { ConsentSettingsLink } from "@/components/consent";
 import { FooterSocials, type SocialItem } from "@/components/footer-socials";
 import { GeoTeaser } from "@/components/geo-teaser";
 import { site } from "@/lib/site";
@@ -178,8 +179,12 @@ export function SiteFooter() {
             <span>
               © {year} {site.legalName}. Alle Rechte vorbehalten.
             </span>
-            <div className="flex items-center gap-5">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <span className="hidden text-faint sm:inline">Speyer · Ludwigshafen · Rhein-Neckar</span>
+              {/* Widerruf der Cookie-/Karten-Einwilligung muss dauerhaft
+                  erreichbar sein (Art. 7 Abs. 3 DSGVO) — öffnet denselben
+                  Dialog wie „Einstellungen" im Einwilligungsbanner. */}
+              <ConsentSettingsLink className="transition-colors hover:text-fg" />
               <Link href="/widerruf" className="transition-colors hover:text-fg">
                 Widerrufsbelehrung
               </Link>
