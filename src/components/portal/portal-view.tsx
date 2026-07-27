@@ -228,7 +228,12 @@ export function PortalView({ estates }: { estates: Estate[] }) {
                   onClick={() => setVisibleCount((v) => v + CARD_CHUNK)}
                   className="press rounded-full border border-border px-5 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
                 >
-                  Weitere Objekte anzeigen ({Math.min(remaining, CARD_CHUNK)})
+                  {/* Vorher stand hier nur die Größe der NÄCHSTEN Ladung in
+                      Klammern, was sich las, als wären insgesamt nur so viele
+                      Objekte übrig (Hinweis Manfred). Jetzt beide Zahlen. */}
+                  {remaining > CARD_CHUNK
+                    ? `Weitere ${CARD_CHUNK} von ${remaining} anzeigen`
+                    : `Weitere ${remaining} ${remaining === 1 ? "Objekt" : "Objekte"} anzeigen`}
                 </button>
               </div>
             )}

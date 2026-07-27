@@ -18,29 +18,73 @@ export const metadata = {
 // Sissy hochgeladen); Christoph hat noch kein neues Porträt, daher sein
 // bisheriges Foto (Status wird intern geklärt).
 const familie = [
-  { name: "Manfred RIEGEL", role: "Gründer · Regionaldirektor BVFI", relation: "Vater", img: portraits.manfred },
+  { name: "Manfred RIEGEL", role: "Regionaldirektor BVFI", relation: "Vater", img: portraits.manfred },
   { name: "Sylwia RIEGEL", role: "Geschäftsleitung", relation: "Mutter", img: portraits.sylwia },
   { name: "Sissy RIEGEL", role: "Marketing", relation: "Tochter", img: portraits.sissy },
   { name: "Christoph RIEGEL", role: "Verkauf", relation: "Sohn", img: "/images/team/christoph.jpg" },
 ];
 
-// Das Team — echte Besetzung + Porträts (Sissys aktuelle Liste). Reihenfolge:
-// Beratung, Backoffice, Extern, Auszubildende. Loana Sabielny: Porträt folgt
-// (img null → Platzhalter-Kachel).
-const team: { name: string; role: string; img: string | null }[] = [
-  { name: "Lorenz Höll", role: "Beratung", img: portraits.lorenz },
-  { name: "Vanessa Drewnowska", role: "Beratung", img: portraits.vanessa },
-  { name: "Annika Redmann", role: "Backoffice", img: portraits.annika },
-  { name: "Carina Büßecker", role: "Backoffice", img: portraits.carina },
-  { name: "Magdalena Czerwinski", role: "Backoffice", img: portraits.magdalena },
+// Das Team — echte Besetzung + Porträts. Rollenzuordnung nach Manfreds
+// Vorgabe (Sales / Backoffice / Marketing), Reihenfolge wie von ihm genannt.
+// Der Nachwuchs steht bewusst als eigener Block darunter.
+// Loana Sabielny: Porträt folgt (img null → Platzhalter-Kachel).
+type Mitarbeitend = { name: string; role: string; img: string | null };
+
+const team: Mitarbeitend[] = [
+  { name: "Lorenz Höll", role: "Sales", img: portraits.lorenz },
+  { name: "Carina Büßecker", role: "Sales", img: portraits.carina },
+  { name: "Magdalena Czerwinski", role: "Sales", img: portraits.magdalena },
+  { name: "Annika Redmann", role: "Sales", img: portraits.annika },
   // Vaida & Tanja: bisherige Porträts (passen wie gehabt).
-  { name: "Vaida Laschke", role: "Backoffice", img: "/images/team/vaida-laschke.jpg" },
   { name: "Tanja Knab", role: "Backoffice", img: "/images/team/tanja-knab.jpg" },
-  { name: "Helena Sator", role: "Extern", img: portraits.helena },
-  { name: "Julien Brenner", role: "Azubi", img: portraits.julien },
-  { name: "Melanie Oblonk", role: "Azubi", img: portraits.melanie },
-  { name: "Loana Sabielny", role: "Azubi", img: null },
+  { name: "Vaida Laschke", role: "Backoffice", img: "/images/team/vaida-laschke.jpg" },
+  { name: "Vanessa Drewnowska", role: "Marketing", img: portraits.vanessa },
+  { name: "Helena Sator", role: "Marketing", img: portraits.helena },
 ];
+
+const nachwuchs: Mitarbeitend[] = [
+  { name: "Julien Brenner", role: "Auszubildender", img: portraits.julien },
+  { name: "Melanie Oblonk", role: "Auszubildende", img: portraits.melanie },
+  { name: "Loana Sabielny", role: "Auszubildende", img: null },
+];
+
+/** Porträt-Kachel für Team und Nachwuchs. Ohne Foto: Initialen im Marken-Look. */
+function PersonKachel({ m, delay }: { m: Mitarbeitend; delay: number }) {
+  const initialen = m.name
+    .split(/\s+/)
+    .map((t) => t[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <Reveal delay={delay}>
+      <figure className="group">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-2">
+          {m.img ? (
+            <Image
+              src={m.img}
+              alt={m.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover object-top transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            />
+          ) : (
+            // Platzhalter, solange kein Porträt vorliegt — Initialen statt
+            // eines leeren Rahmens (früher fest „LS", jetzt aus dem Namen).
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-muted">
+              <span className="akira text-3xl text-accent/70">{initialen}</span>
+              <span className="text-[0.65rem] uppercase tracking-widest text-faint">Foto folgt</span>
+            </div>
+          )}
+        </div>
+        <figcaption className="mt-3">
+          <div className="text-sm font-semibold leading-tight text-fg">{m.name}</div>
+          <div className="text-xs text-accent">{m.role}</div>
+        </figcaption>
+      </figure>
+    </Reveal>
+  );
+}
 
 const werte: { icon: IconName; title: string; text: string }[] = [
   {
@@ -64,7 +108,7 @@ export default function UeberUnsPage() {
   return (
     <>
       <PageIntro eyebrow="Über uns" title="Die Familie RIEGEL — und ein Team, das Ihre Region kennt">
-        RIEGEL Immobilien ist inhabergeführt und seit über 20&nbsp;Jahren in Speyer,
+        RIEGEL Immobilien ist inhabergeführt und seit Jahrzehnten in Speyer,
         Ludwigshafen und der Region verwurzelt — regional zuhause, national
         vernetzt. Als Familienunternehmen mit Immobilienexperten an zwei
         Standorten verbinden wir persönliche Betreuung mit echter Marktkenntnis.
@@ -105,14 +149,59 @@ export default function UeberUnsPage() {
         </Container>
       </section>
 
+      {/* Das Team — steht bewusst weit oben (Vorgabe Manfred), direkt nach der
+          Familie: die Menschen sind das Argument, nicht die Bildstrecken. */}
+      <section className="border-t border-border bg-surface/40 py-16 sm:py-20">
+        <Container>
+          <Reveal className="mb-10 max-w-xl space-y-3">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Das Team
+            </span>
+            <h2 className="text-2xl font-semibold sm:text-3xl">Die Menschen hinter RIEGEL</h2>
+            <p className="text-muted">
+              Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team aus
+              Sales, Marketing und Backoffice — persönlich erreichbar an beiden
+              Standorten.
+            </p>
+          </Reveal>
+
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            {team.map((m, i) => (
+              <PersonKachel key={m.name} m={m} delay={(i % 4) * 70} />
+            ))}
+          </div>
+
+          {/* Nachwuchs als eigener Block (Vorgabe Manfred) */}
+          <Reveal className="mb-6 mt-14 max-w-xl space-y-3">
+            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+              Unser Nachwuchs
+            </span>
+            <h3 className="text-xl font-semibold text-fg sm:text-2xl">
+              Wir bilden selbst aus
+            </h3>
+            <p className="text-muted">
+              Wir bilden <span className="text-fg">Kaufleute für Büromanagement</span> und{" "}
+              <span className="text-fg">Immobilienkaufleute</span> aus — Nachwuchs aus der
+              Region, für die Region.
+            </p>
+          </Reveal>
+
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            {nachwuchs.map((m, i) => (
+              <PersonKachel key={m.name} m={m} delay={(i % 4) * 70} />
+            ))}
+          </div>
+        </Container>
+      </section>
+
       {/* In der Beratung — echte Fotos */}
       <section className="py-16 sm:py-20">
         <Container>
           <Reveal className="mb-8 max-w-2xl">
-            <h2 className="text-2xl font-semibold sm:text-3xl">Nah dran — in der Beratung</h2>
+            <h2 className="text-2xl font-semibold sm:text-3xl">Nah dran – in der Beratung</h2>
             <p className="mt-3 text-muted">
-              Ob am Küchentisch, vor Ort oder digital: Wir nehmen uns Zeit und
-              erklären jede Zahl, bis sie sitzt.
+              Ob am Küchentisch, bei Ihnen vor Ort oder digital: Wir nehmen uns Zeit,
+              hören genau zu und erklären jede Zahl verständlich und nachvollziehbar.
             </p>
           </Reveal>
           <Reveal>
@@ -137,63 +226,6 @@ export default function UeberUnsPage() {
         </Container>
       </section>
 
-      {/* Das Team — echte Besetzung mit Porträts (kein Gruppenfoto mehr) */}
-      <section className="border-t border-border bg-surface/40 py-16 sm:py-20">
-        <Container>
-          <Reveal className="mb-10 max-w-xl space-y-3">
-            <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
-              Das Team
-            </span>
-            <h2 className="text-2xl font-semibold sm:text-3xl">
-              Die Menschen hinter RIEGEL
-            </h2>
-            <p className="text-muted">
-              Hinter jedem erfolgreichen Verkauf steht ein eingespieltes Team aus
-              Beratung, Marketing und Backoffice — persönlich erreichbar an beiden
-              Standorten.
-            </p>
-          </Reveal>
-
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-            {team.map((m, i) => (
-              <Reveal key={m.name} delay={(i % 4) * 70}>
-                <figure className="group">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-2">
-                    {m.img ? (
-                      <Image
-                        src={m.img}
-                        alt={m.name}
-                        fill
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        className="object-cover object-top transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-                      />
-                    ) : (
-                      // Platzhalter für Loana Sabielny (Foto folgt) — Initialen
-                      // im Marken-Look statt eines leeren Rahmens.
-                      <div className="flex h-full flex-col items-center justify-center gap-2 text-muted">
-                        <span className="akira text-3xl text-accent/70">LS</span>
-                        <span className="text-[0.65rem] uppercase tracking-widest text-faint">Foto folgt</span>
-                      </div>
-                    )}
-                  </div>
-                  <figcaption className="mt-3">
-                    <div className="text-sm font-semibold leading-tight text-fg">{m.name}</div>
-                    <div className="text-xs text-accent">{m.role}</div>
-                  </figcaption>
-                </figure>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal className="mt-8">
-            <p className="text-sm text-muted">
-              Wir bilden aus: <span className="text-fg">Kaufleute für Büromanagement</span> und{" "}
-              <span className="text-fg">Immobilienkaufleute</span> — Nachwuchs aus der Region, für die Region.
-            </p>
-          </Reveal>
-        </Container>
-      </section>
-
       {/* Engagement & Sponsoring — Bento, „setzt sich beim Scroll zusammen" */}
       <section className="border-t border-border py-16 sm:py-20">
         <Container>
@@ -206,7 +238,7 @@ export default function UeberUnsPage() {
               vernetzt und tätig.
             </h2>
             <p className="text-muted">
-              Seit über 20&nbsp;Jahren zeigen wir Gesicht — im lokalen Vereinsleben
+              Seit Jahrzehnten zeigen wir Gesicht — im lokalen Vereinsleben
               genauso wie auf der großen Bühne der Bundesliga.
             </p>
           </Reveal>

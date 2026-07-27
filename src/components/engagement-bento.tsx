@@ -71,13 +71,10 @@ const TILES: Tile[] = [
     span: "col-span-1 row-span-1",
     from: "asm-r",
   },
-  {
-    kind: "fact",
-    big: "20+ Jahre",
-    label: "regionales Engagement",
-    span: "col-span-1 row-span-1",
-    from: "asm-u",
-  },
+  // Die Kachel „20+ Jahre / regionales Engagement" ist entfallen (Hinweis
+  // Manfred): eine Jahreszahl passte nicht zu den übrigen Kacheln, die
+  // konkrete Engagements zeigen. Die Aussage steht weiterhin im Fließtext
+  // darüber, dort jetzt als „seit Jahrzehnten".
   {
     kind: "img",
     src: engagement.wein,

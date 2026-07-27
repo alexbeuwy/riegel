@@ -144,6 +144,8 @@ export async function POST(req: Request) {
     ? (b.vermietungsstand as Vermietungsstand)
     : "vermietet";
   const leerstehendeWohnflaeche = bounded(b.leerstehendeWohnflaeche, 1, 30_000);
+  // Gewerbe: Hallen-/Lageranteil an der Nutzfläche (s. HALLEN_FAKTOR in valuation.ts).
+  const hallenflaeche = bounded(b.hallenflaeche, 1, 100_000);
   if (objektart === "mehrfamilienhaus") {
     const brauchtMiete = vermietungsstand !== "leer";
     if (brauchtMiete && jahresnettokaltmiete == null) {
@@ -187,6 +189,7 @@ export async function POST(req: Request) {
       gewerbeeinheiten,
       vermietungsstand: objektart === "mehrfamilienhaus" ? vermietungsstand : undefined,
       leerstehendeWohnflaeche: vermietungsstand === "teilweise" ? leerstehendeWohnflaeche : undefined,
+      hallenflaeche: objektart === "gewerbe" ? hallenflaeche : undefined,
     },
     { bodenrichtwert: boris?.brw ?? undefined },
   );

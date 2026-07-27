@@ -78,6 +78,8 @@ interface FormState {
   vermietungsstand: Vermietungsstand;
   /** MFH + "teilweise": leerstehende Wohnfläche in m². */
   leerstehendeWohnflaeche: string;
+  /** Nur Gewerbe: Hallen-/Lageranteil an der Nutzfläche in m². */
+  hallenflaeche: string;
 }
 
 const EMPTY: FormState = {
@@ -98,6 +100,7 @@ const EMPTY: FormState = {
   gewerbeeinheiten: "",
   vermietungsstand: "vermietet",
   leerstehendeWohnflaeche: "",
+  hallenflaeche: "",
 };
 
 // "building"-Icon aus components/icon.tsx (Pfaddaten 1:1 übernommen, keine
@@ -487,6 +490,7 @@ export function Calculator() {
         f.objektart === "mehrfamilienhaus" && f.vermietungsstand === "teilweise"
           ? parseDeZahl(f.leerstehendeWohnflaeche)
           : undefined,
+      hallenflaeche: f.objektart === "gewerbe" ? parseDeZahl(f.hallenflaeche) : undefined,
     };
     lastInputRef.current = input;
     setResult(estimateValue(input));
@@ -754,8 +758,15 @@ export function Calculator() {
             <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Eckdaten der Immobilie</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {f.objektart !== "grundstueck" && (
-                <Field label="Wohnfläche (m²)">
-                  <input className={inputCls} inputMode="numeric" value={f.wohnflaeche} onChange={(e) => set("wohnflaeche", e.target.value)} placeholder="z. B. 120" />
+                // Bei Gewerbe heißt die Fläche Nutzfläche, nicht Wohnfläche.
+                <Field label={f.objektart === "gewerbe" ? "Nutzfläche gesamt (m²)" : "Wohnfläche (m²)"}>
+                  <input
+                    className={inputCls}
+                    inputMode="numeric"
+                    value={f.wohnflaeche}
+                    onChange={(e) => set("wohnflaeche", e.target.value)}
+                    placeholder={f.objektart === "gewerbe" ? "z. B. 900" : "z. B. 120"}
+                  />
                 </Field>
               )}
               {f.objektart !== "wohnung" && (
@@ -828,7 +839,21 @@ export function Calculator() {
                   </Field>
                 </>
               )}
-              {f.objektart !== "grundstueck" && (
+              {/* Gewerbe: Hallen-/Lageranteil statt Zimmer und Badezimmer
+                  (Hinweis Manfred: Bürogebäude mit Halle, ehemaliges Autohaus).
+                  Die Bürofläche ergibt sich als Rest aus der Nutzfläche. */}
+              {f.objektart === "gewerbe" && (
+                <Field label="Davon Hallen-/Lagerfläche (m²)">
+                  <input
+                    className={inputCls}
+                    inputMode="numeric"
+                    value={f.hallenflaeche}
+                    onChange={(e) => set("hallenflaeche", e.target.value)}
+                    placeholder="z. B. 400"
+                  />
+                </Field>
+              )}
+              {f.objektart !== "grundstueck" && f.objektart !== "gewerbe" && (
                 <>
                   <Field label="Zimmer">
                     <input className={inputCls} inputMode="numeric" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 4" />
@@ -836,6 +861,10 @@ export function Calculator() {
                   <Field label="Badezimmer">
                     <input className={inputCls} inputMode="numeric" value={f.badezimmer} onChange={(e) => set("badezimmer", e.target.value)} placeholder="z. B. 2" />
                   </Field>
+                </>
+              )}
+              {f.objektart !== "grundstueck" && (
+                <>
                   <Field label="Baujahr">
                     <input className={inputCls} inputMode="numeric" value={f.baujahr} onChange={(e) => set("baujahr", e.target.value)} placeholder="z. B. 1998" />
                   </Field>

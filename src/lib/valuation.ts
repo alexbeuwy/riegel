@@ -55,6 +55,13 @@ export interface ValuationInput {
   vermietungsstand?: Vermietungsstand;
   /** Nur "mehrfamilienhaus" + "teilweise": leerstehende Wohnfläche in m². */
   leerstehendeWohnflaeche?: number;
+  /**
+   * Nur "gewerbe": Anteil Hallen-/Lagerfläche an der Gesamtnutzfläche in m².
+   * Hallen erzielen deutlich niedrigere €/m² als Büroflächen — ohne diese
+   * Aufteilung wurde ein Bürogebäude mit Halle wie reine Bürofläche bewertet
+   * (Hinweis Manfred: Objekte in Bensheim und Edenkoben).
+   */
+  hallenflaeche?: number;
 }
 
 export interface ValuationFactor {
@@ -231,6 +238,15 @@ function marktmieteM2(basisWohnung: number, zustand: Zustand, qualitaet: Qualita
 const LEERSTAND_ABSCHLAG_MAX_PCT = 8;
 
 /**
+ * Anteil des Büro-Quadratmeterpreises, mit dem Hallen- und Lagerflächen
+ * angesetzt werden. Hallen sind einfacher konstruiert, schlechter
+ * drittverwendbar und erzielen in der Region regelmäßig nur einen Bruchteil
+ * des Büro-Niveaus; 0,45 liegt im üblichen Korridor und ist bewusst
+ * konservativ. Heuristik, kein Ersatz für eine Sachwertermittlung.
+ */
+const HALLEN_FAKTOR = 0.45;
+
+/**
  * Gartenland-Satz in €/m² für nicht baulandtypische Restflächen — grob am
  * BRW-Niveau orientiert (6 %), geklemmt auf das in der Region übliche
  * Gartenland-Band von 5–15 €/m² (Praxisbeispiel Kleinkarlbach: 7 €/m²).
@@ -367,7 +383,18 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // der Faktor exakt 1 — Verhalten dann unverändert.
     const lageFaktor = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
     pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor);
-    mid = pricePerSqm * (input.wohnflaeche ?? 0);
+    const flaeche = input.wohnflaeche ?? 0;
+    if (input.objektart === "gewerbe" && input.hallenflaeche && input.hallenflaeche > 0) {
+      // Gewerbe mit Hallenanteil: Halle/Lager wird mit HALLEN_FAKTOR des
+      // Büro-Niveaus angesetzt. pricePerSqm bleibt der ausgewiesene
+      // Büro-Satz; das effektive Mittel liegt darunter und ergibt sich aus
+      // mid / Gesamtfläche.
+      const halle = Math.min(input.hallenflaeche, flaeche);
+      const rest = Math.max(flaeche - halle, 0);
+      mid = pricePerSqm * rest + Math.round(pricePerSqm * HALLEN_FAKTOR) * halle;
+    } else {
+      mid = pricePerSqm * flaeche;
+    }
     if (input.objektart === "haus" && input.grundflaeche) {
       // Grundstücksanteil gestaffelt statt pauschal BRW × 0,6 × Gesamtfläche
       // (übergroße Grundstücke, s. grundstuecksStaffel) — bis 700 m² rechnet

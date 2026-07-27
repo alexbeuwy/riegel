@@ -195,6 +195,46 @@ if (f11.mid !== f4.mid) {
   console.log(`❌ F11: "vermietet" (${f11.mid}) muss F4 ohne Angabe (${f4.mid}) entsprechen`);
 }
 
+/* F12 — Gewerbe mit Hallenanteil (Hinweis Manfred: Bürogebäude mit Halle).
+   900 m² gesamt, davon 600 m² Halle → Halle zählt nur mit 45 % des
+   Büro-Satzes. Muss deutlich unter der reinen Büro-Bewertung liegen. */
+const f12buero = run({
+  objektart: "gewerbe",
+  ort: "Ludwigshafen",
+  wohnflaeche: 900,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+const f12halle = run({
+  objektart: "gewerbe",
+  ort: "Ludwigshafen",
+  wohnflaeche: 900,
+  hallenflaeche: 600,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+if (!(f12halle.mid < f12buero.mid)) {
+  failures++;
+  console.log(`❌ F12: Hallenanteil muss den Wert senken (${f12halle.mid} vs. ${f12buero.mid})`);
+}
+check("F12 Gewerbe 900 m², davon 600 m² Halle", f12halle.mid, 1_000_000, 1_400_000);
+// Ohne Hallenangabe muss exakt wie zuvor gerechnet werden (keine Regression).
+const f12ohne = run({
+  objektart: "gewerbe",
+  ort: "Ludwigshafen",
+  wohnflaeche: 900,
+  hallenflaeche: 0,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+if (f12ohne.mid !== f12buero.mid) {
+  failures++;
+  console.log(`❌ F12: hallenflaeche 0 muss wie ohne Angabe rechnen (${f12ohne.mid} vs. ${f12buero.mid})`);
+}
+
 /* Invarianten. */
 for (const [name, r] of [["F1", f1], ["F2", f2], ["F3", f3], ["F4", f4], ["F5", f5], ["F8", f8], ["F9", f9], ["F10", f10]] as const) {
   if (!(r.low < r.mid && r.mid < r.high)) {
