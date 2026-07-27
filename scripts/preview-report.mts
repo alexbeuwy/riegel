@@ -13,6 +13,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { PDFDocument } from "pdf-lib";
 import { buildReportPdf, type ReportData } from "../src/lib/report-pdf";
 import { buildReportContext } from "../src/lib/report-context";
+import { estimateValue } from "../src/lib/valuation";
 import type { ReportVergleichsObjekt } from "../src/lib/report-objekte";
 
 const OUT_DIR = "/tmp/claude-0/-home-user-riegel/93995920-053c-5324-b000-7153d2fd2ad6/scratchpad/report-preview";
@@ -135,6 +136,49 @@ const ohneKontextFixture: ReportData = {
   dateLabel,
 };
 
+// ── Fixture 4: LEERSTEHENDES Mehrfamilienhaus (Rückfrage Manfred) — keine
+//    Mieteinnahmen, die Engine setzt die marktübliche Miete selbst an. Werte
+//    bewusst NICHT handgeschrieben, sondern aus estimateValue() gezogen, damit
+//    das PDF genau das zeigt, was der Rechner rechnet. ──
+const leerCalc = estimateValue({
+  objektart: "mehrfamilienhaus",
+  ort: "Ludwigshafen",
+  wohnflaeche: 420,
+  vermietungsstand: "leer",
+  zustand: "renovierungsbeduerftig",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+const mfhLeerFixture: ReportData = {
+  name: "Herr Riegel",
+  address: "Beispielstraße 7, 67059 Ludwigshafen",
+  city: "Ludwigshafen",
+  postcode: "67059",
+  objektartLabel: "Mehrfamilienhaus",
+  wohnflaeche: 420,
+  baujahr: 1965,
+  zustand: "renovierungsbedürftig",
+  qualitaet: "normal",
+  // Keine jahresnettokaltmiete: das Haus steht leer — genau der Fall, der
+  // vorher 0 € ergab.
+  wohneinheiten: 6,
+  factors: [],
+  context: buildReportContext({ city: "Ludwigshafen", lat: 49.4774, lng: 8.4452 }),
+  value: {
+    low: leerCalc.low,
+    mid: leerCalc.mid,
+    high: leerCalc.high,
+    pricePerSqm: leerCalc.pricePerSqm,
+    comparables: leerCalc.comparables,
+    trendPct: leerCalc.trendPct,
+    mikrolage: leerCalc.mikrolage,
+    confidence: leerCalc.confidence,
+    vervielfaeltiger: leerCalc.vervielfaeltiger,
+    mietAnsatz: leerCalc.mietAnsatz,
+  },
+  dateLabel,
+};
+
 async function run(name: string, fixture: ReportData) {
   const pdfBase64 = await buildReportPdf(fixture);
   const bytes = Buffer.from(pdfBase64, "base64");
@@ -161,10 +205,19 @@ const results = await Promise.all([
   run("haus.pdf", hausFixture),
   run("mfh.pdf", mfhFixture),
   run("ohne-kontext.pdf", ohneKontextFixture),
+  run("mfh-leerstand.pdf", mfhLeerFixture),
 ]);
 
 if (results[2] > 7) {
   throw new Error(`ohne-kontext.pdf hat ${results[2]} Seiten — erwartet ≤ 7 (Ihr-Markt-Seite muss ohne Stadt-Treffer entfallen).`);
 }
 
-console.log("OK — alle drei Fixtures ohne Throw durchgelaufen.");
+// Kern der Rückfrage Manfred: ein leerstehendes MFH muss einen Preis liefern.
+if (!leerCalc.mid || leerCalc.mid <= 0) {
+  throw new Error("mfh-leerstand: Engine liefert 0 € — Leerstands-Ansatz greift nicht.");
+}
+console.log(
+  `Leerstand-Fixture: ${leerCalc.mietAnsatz?.marktmieteM2} €/m²/Monat angesetzt → ${leerCalc.mid.toLocaleString("de-DE")} € (${leerCalc.pricePerSqm} €/m², −${leerCalc.mietAnsatz?.abschlagPct} %)`,
+);
+
+console.log("OK — alle vier Fixtures ohne Throw durchgelaufen.");

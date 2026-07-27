@@ -121,8 +121,82 @@ const f8 = run(
 );
 check("F8 EFH Ludwigshafen-Rand 160/900 (BRW 300)", f8.mid, 440_000, 510_000);
 
+/* F9 — MFH LEERSTEHEND (Rückfrage Manfred): ohne Mieteinnahmen ergab der
+   Ertragswert-Zweig früher 0 €. Jetzt setzt die Engine für die leere Fläche
+   eine marktübliche Miete an (LU: 2.850/380 = 7,50 €/m²) und zieht 8 %
+   Leerstandsabschlag ab: 400 m² × 7,50 × 12 = 36.000 € × 14,8 × 0,92. */
+const f9 = run({
+  objektart: "mehrfamilienhaus",
+  ort: "Ludwigshafen",
+  wohnflaeche: 400,
+  vermietungsstand: "leer",
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+check("F9 MFH Ludwigshafen 400 m² LEER (ohne Mietangabe)", f9.mid, 460_000, 520_000);
+if (f9.mid <= 0) {
+  failures++;
+  console.log("❌ F9: leerstehendes MFH muss einen Preis liefern (war 0 €)");
+}
+if (f9.mietAnsatz?.abschlagPct !== 8 || f9.mietAnsatz?.istMiete !== 0) {
+  failures++;
+  console.log(`❌ F9 MietAnsatz: ${JSON.stringify(f9.mietAnsatz)} (erwartet abschlagPct 8, istMiete 0)`);
+}
+
+/* F10 — MFH TEILWEISE vermietet: Ist-Miete plus Marktmiete der leeren Fläche,
+   Abschlag nur anteilig (100 von 400 m² leer → 2 %). */
+const f10 = run({
+  objektart: "mehrfamilienhaus",
+  ort: "Ludwigshafen",
+  wohnflaeche: 400,
+  jahresnettokaltmiete: 27_000,
+  vermietungsstand: "teilweise",
+  leerstehendeWohnflaeche: 100,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+if (f10.mietAnsatz?.abschlagPct !== 2) {
+  failures++;
+  console.log(`❌ F10 Abschlag: ${f10.mietAnsatz?.abschlagPct} % (erwartet 2 %)`);
+}
+if (f10.mietAnsatz?.ansatzMiete !== 27_000 + 9_000) {
+  failures++;
+  console.log(`❌ F10 Ansatzmiete: ${f10.mietAnsatz?.ansatzMiete} (erwartet 36.000)`);
+}
+// Teilleerstand muss zwischen Vollvermietung und Vollleerstand liegen.
+const f10voll = run({
+  objektart: "mehrfamilienhaus",
+  ort: "Ludwigshafen",
+  wohnflaeche: 400,
+  jahresnettokaltmiete: 36_000,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+if (!(f9.mid < f10.mid && f10.mid < f10voll.mid)) {
+  failures++;
+  console.log(`❌ Invariante Leerstand: leer ${f9.mid} < teilweise ${f10.mid} < vermietet ${f10voll.mid} verletzt`);
+}
+
+/* F11 — Rückwärtskompatibilität: "vermietet" explizit === ohne Angabe. */
+const f11 = run({
+  objektart: "mehrfamilienhaus",
+  ort: "Speyer",
+  jahresnettokaltmiete: 60_000,
+  vermietungsstand: "vermietet",
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+if (f11.mid !== f4.mid) {
+  failures++;
+  console.log(`❌ F11: "vermietet" (${f11.mid}) muss F4 ohne Angabe (${f4.mid}) entsprechen`);
+}
+
 /* Invarianten. */
-for (const [name, r] of [["F1", f1], ["F2", f2], ["F3", f3], ["F4", f4], ["F5", f5], ["F8", f8]] as const) {
+for (const [name, r] of [["F1", f1], ["F2", f2], ["F3", f3], ["F4", f4], ["F5", f5], ["F8", f8], ["F9", f9], ["F10", f10]] as const) {
   if (!(r.low < r.mid && r.mid < r.high)) {
     failures++;
     console.log(`❌ Invariante low<mid<high verletzt bei ${name}`);
@@ -143,6 +217,12 @@ console.log(
   `\nDetails F1: Bauland ${f1.grundstuecksAnrechnung?.baulandM2} m², Mehrfläche ${f1.grundstuecksAnrechnung?.mehrflaecheM2} m², Gartenland ${f1.grundstuecksAnrechnung?.gartenlandM2} m² → ${nf.format(f1.grundstuecksAnrechnung?.wert ?? 0)} €`,
 );
 console.log(`Details F5: Ø-Niveau ${nf.format(f5.pricePerSqm ?? 0)} €/m² (roher BRW bleibt ${f5.bodenrichtwert} €/m²)`);
+console.log(
+  `Details F9 (leer): Marktmiete ${f9.mietAnsatz?.marktmieteM2} €/m²/Monat → ${nf.format(f9.mietAnsatz?.marktmieteGeschaetzt ?? 0)} €/Jahr, Abschlag ${f9.mietAnsatz?.abschlagPct} % → ${nf.format(f9.mid)} € (${nf.format(f9.pricePerSqm ?? 0)} €/m²)`,
+);
+console.log(
+  `Details F10 (teilweise): Ist ${nf.format(f10.mietAnsatz?.istMiete ?? 0)} € + Markt ${nf.format(f10.mietAnsatz?.marktmieteGeschaetzt ?? 0)} € = ${nf.format(f10.mietAnsatz?.ansatzMiete ?? 0)} €, Abschlag ${f10.mietAnsatz?.abschlagPct} % → ${nf.format(f10.mid)} €`,
+);
 
 if (failures > 0) {
   console.error(`\n${failures} Prüfung(en) fehlgeschlagen.`);

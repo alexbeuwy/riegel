@@ -64,6 +64,18 @@ export interface ReportData {
     confidence?: number;
     /** Ertragswert-Vervielfältiger — nur bei Mehrfamilienhaus gesetzt. */
     vervielfaeltiger?: number;
+    /** Zusammensetzung der angesetzten Miete (Ist-Miete + für leerstehende
+     * Flächen angesetzte marktübliche Miete, Leerstandsabschlag) — nur bei
+     * Mehrfamilienhaus, s. MietAnsatz in lib/valuation.ts. */
+    mietAnsatz?: {
+      istMiete: number;
+      marktmieteGeschaetzt: number;
+      marktmieteM2: number;
+      leerstandM2: number;
+      leerstandAnteil: number;
+      abschlagPct: number;
+      ansatzMiete: number;
+    };
     /** Gestaffelte Grundstücksanrechnung (übergroßes Grundstück) — nur bei
      * Haus/Grundstück mit Fläche gesetzt, s. grundstuecksStaffel() in
      * lib/valuation.ts. Basis des Staffel-Hinweises auf der
@@ -802,6 +814,24 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
     // Leerstring statt "–": nur bei Mehrfamilienhaus (Ertragswert-Ansatz)
     // gesetzt, section() blendet die Zeile für alle anderen Objektarten aus.
     ["euro", "Jahresnettokaltmiete", d.jahresnettokaltmiete ? `${eur(Number(d.jahresnettokaltmiete))}/Jahr` : ""],
+    // Vermietungsstand nur zeigen, wenn Leerstand im Spiel ist — bei voll
+    // vermieteten Objekten wäre die Zeile redundant zur Miete darüber.
+    [
+      "layers",
+      "Vermietungsstand",
+      d.value.mietAnsatz && d.value.mietAnsatz.leerstandM2 > 0
+        ? d.value.mietAnsatz.leerstandAnteil >= 1
+          ? "leer stehend"
+          : `teilweise vermietet (${fmtDe(d.value.mietAnsatz.leerstandM2)} m² leer)`
+        : "",
+    ],
+    [
+      "euro",
+      "Angesetzte Marktmiete",
+      d.value.mietAnsatz && d.value.mietAnsatz.marktmieteGeschaetzt > 0
+        ? `${eur(d.value.mietAnsatz.marktmieteGeschaetzt)}/Jahr (${fmtDe(d.value.mietAnsatz.marktmieteM2)} €/m²)`
+        : "",
+    ],
     ["layers", "Wohneinheiten", d.wohneinheiten ? String(d.wohneinheiten) : ""],
     ["building", "Gewerbeeinheiten", d.gewerbeeinheiten ? String(d.gewerbeeinheiten) : ""],
   ], M);
@@ -1120,23 +1150,43 @@ function drawFormulaGraphic(
 
 /** Branch (b): Mehrfamilienhaus — Ertragswert-Formel statt Faktoren-Wasserfall. */
 function drawErtragswertGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: number, yTop: number, w: number): number {
-  const miete = Number(d.jahresnettokaltmiete ?? 0);
+  const ma = d.value.mietAnsatz;
+  const hatLeerstand = !!ma && ma.marktmieteGeschaetzt > 0;
+  // Bei Leerstand ist die bewertungsrelevante Miete nicht die Ist-Miete,
+  // sondern Ist-Miete + von uns angesetzte Marktmiete der leeren Flächen.
+  const miete = hatLeerstand ? ma!.ansatzMiete : Number(d.jahresnettokaltmiete ?? 0);
   const verv = d.value.vervielfaeltiger;
   const mid = d.value.mid;
   let y = drawFormulaGraphic(ctx, page, x, yTop, w, [
-    { label: "Jahresnettokaltmiete", value: eur(miete) },
+    { label: hatLeerstand ? "Angesetzte Jahresmiete" : "Jahresnettokaltmiete", value: eur(miete) },
     { op: "×" },
     { label: "Vervielfältiger (regional, zustandsabhängig)", value: verv != null ? `${fmtDe(verv)}×` : "–" },
+    // Als Faktor (0,92) statt „−8 %" ausgeben: mit dem ×-Operator davor wäre
+    // „× −8 %" mathematisch falsch gelesen.
+    ...(hatLeerstand && ma!.abschlagPct > 0
+      ? ([
+          { op: "×" },
+          {
+            // Als Faktor mit ZWEI Dezimalstellen (0,92) — fmtDe rundet sonst
+            // auf 0,9 und die Formel würde nicht mehr aufgehen. Label kurz
+            // halten, sonst bricht es in der schmalen Kachel unschön um.
+            label: "Faktor Leerstand",
+            value: fmtDe(Math.round((1 - ma!.abschlagPct / 100) * 100) / 100, 2),
+          },
+        ] as const)
+      : []),
     { op: "=" },
     { label: "Ertragswert", value: eur(mid) },
   ]);
   y -= 8;
-  for (const line of wrap(
-    "Ertragswert-Ansatz: Wir schätzen aus Ihrer Jahresnettokaltmiete und einem regionalen Vervielfältiger — eine grobe Heuristik, kein Ertragswertgutachten.",
-    ctx.reg,
-    9.5,
-    w,
-  )) {
+  // Leerstand transparent machen: welcher Teil ist Ist-Miete, welchen Teil
+  // haben WIR angesetzt und mit welchem €/m²-Satz.
+  const erklaerung = hatLeerstand
+    ? `Ertragswert-Ansatz bei Leerstand: Für ${fmtDe(ma!.leerstandM2)} m² nicht vermietete Wohnfläche haben wir eine marktübliche Miete von ${fmtDe(ma!.marktmieteM2)} €/m² im Monat angesetzt (${eur(ma!.marktmieteGeschaetzt)} im Jahr)${
+        ma!.istMiete > 0 ? ` zusätzlich zur aktuellen Miete von ${eur(ma!.istMiete)}` : ""
+      }. Für fehlenden Cashflow und Vermietungsrisiko sind ${fmtDe(ma!.abschlagPct)} % abgezogen. Grobe Heuristik, kein Ertragswertgutachten.`
+    : "Ertragswert-Ansatz: Wir schätzen aus Ihrer Jahresnettokaltmiete und einem regionalen Vervielfältiger — eine grobe Heuristik, kein Ertragswertgutachten.";
+  for (const line of wrap(erklaerung, ctx.reg, 9.5, w)) {
     mkText(page)(line, x, y, 9.5, ctx.reg, MUTED);
     y -= 13;
   }

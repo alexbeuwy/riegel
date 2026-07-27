@@ -15,6 +15,7 @@ import {
   type Qualitaet,
   type ValuationInput,
   type ValuationResult,
+  type Vermietungsstand,
   type Zustand,
 } from "@/lib/valuation";
 import { marktortByOrt, type MarktOrt } from "@/lib/marktdaten";
@@ -73,6 +74,10 @@ interface FormState {
   jahresnettokaltmiete: string;
   wohneinheiten: string;
   gewerbeeinheiten: string;
+  /** MFH: Vermietungsstand steuert, ob eine Ist-Miete gebraucht wird. */
+  vermietungsstand: Vermietungsstand;
+  /** MFH + "teilweise": leerstehende Wohnfläche in m². */
+  leerstehendeWohnflaeche: string;
 }
 
 const EMPTY: FormState = {
@@ -91,6 +96,8 @@ const EMPTY: FormState = {
   jahresnettokaltmiete: "",
   wohneinheiten: "",
   gewerbeeinheiten: "",
+  vermietungsstand: "vermietet",
+  leerstehendeWohnflaeche: "",
 };
 
 // "building"-Icon aus components/icon.tsx (Pfaddaten 1:1 übernommen, keine
@@ -400,8 +407,26 @@ export function Calculator() {
       // Echte Zahlprüfung statt Truthy-Check ("0"/"-5000" sind truthy) —
       // spiegelt die Server-Bound in api/report/route.ts (bounded(…, 100, …)).
       if (f.objektart === "mehrfamilienhaus") {
-        const miete = parseDeZahl(f.jahresnettokaltmiete);
-        if (miete == null || miete < 100) return "Bitte eine gültige Jahresnettokaltmiete angeben (mind. 100 €).";
+        // Bei Leerstand ist die Wohnfläche die Rechengrundlage (wir setzen die
+        // marktübliche Miete selbst an), bei Vermietung die Ist-Miete.
+        if (f.vermietungsstand === "leer") {
+          const wfl = parseDeZahl(f.wohnflaeche);
+          if (wfl == null || wfl < 10)
+            return "Bitte die Wohnfläche angeben — daraus schätzen wir die marktübliche Miete.";
+        } else {
+          const miete = parseDeZahl(f.jahresnettokaltmiete);
+          if (miete == null || miete < 100) return "Bitte eine gültige Jahresnettokaltmiete angeben (mind. 100 €).";
+        }
+        if (f.vermietungsstand === "teilweise") {
+          const wfl = parseDeZahl(f.wohnflaeche);
+          if (wfl == null || wfl < 10)
+            return "Bitte die Wohnfläche angeben — daraus schätzen wir die Miete der leerstehenden Flächen.";
+          const leer = parseDeZahl(f.leerstehendeWohnflaeche);
+          if (leer == null || leer <= 0)
+            return "Bitte die leerstehende Wohnfläche angeben (z. B. 120).";
+          if (leer >= wfl)
+            return 'Die leerstehende Fläche muss kleiner als die Gesamtwohnfläche sein — sonst bitte „Leer stehend" wählen.';
+        }
       }
       if (f.objektart !== "grundstueck" && f.objektart !== "mehrfamilienhaus" && !f.wohnflaeche)
         return "Bitte die Wohnfläche angeben.";
@@ -447,9 +472,19 @@ export function Calculator() {
       qualitaet: f.qualitaet,
       energieklasse: f.energieklasse || undefined,
       ausstattung: f.ausstattung,
-      jahresnettokaltmiete: parseDeZahl(f.jahresnettokaltmiete),
+      // Bei Vollleerstand eine evtl. vorher eingetippte Miete NICHT mitsenden
+      // (sonst zählt sie trotz "leer stehend" weiter mit).
+      jahresnettokaltmiete:
+        f.objektart === "mehrfamilienhaus" && f.vermietungsstand === "leer"
+          ? undefined
+          : parseDeZahl(f.jahresnettokaltmiete),
       wohneinheiten: parseDeZahl(f.wohneinheiten),
       gewerbeeinheiten: parseDeZahl(f.gewerbeeinheiten),
+      vermietungsstand: f.objektart === "mehrfamilienhaus" ? f.vermietungsstand : undefined,
+      leerstehendeWohnflaeche:
+        f.objektart === "mehrfamilienhaus" && f.vermietungsstand === "teilweise"
+          ? parseDeZahl(f.leerstehendeWohnflaeche)
+          : undefined,
     };
     lastInputRef.current = input;
     setResult(estimateValue(input));
@@ -725,17 +760,49 @@ export function Calculator() {
               )}
               {f.objektart === "mehrfamilienhaus" && (
                 <>
-                  {/* Ertragswert-Ansatz: Jahresnettokaltmiete ist die zentrale
-                      Eingabe (Pflicht), Wohn-/Gewerbeeinheiten nur Kontext. */}
-                  <Field label="Jahresnettokaltmiete (€/Jahr)">
-                    <input
+                  {/* Vermietungsstand steuert den Ertragswert-Ansatz: bei
+                      Leerstand braucht der Eigentümer KEINE Miete zu erfinden,
+                      dann setzen wir für die leeren Flächen selbst eine
+                      marktübliche Miete an (Rückfrage Manfred). */}
+                  <Field label="Vermietungsstand">
+                    <select
                       className={inputCls}
-                      inputMode="numeric"
-                      value={f.jahresnettokaltmiete}
-                      onChange={(e) => set("jahresnettokaltmiete", e.target.value)}
-                      placeholder="z. B. 48000"
-                    />
+                      value={f.vermietungsstand}
+                      onChange={(e) => set("vermietungsstand", e.target.value as Vermietungsstand)}
+                    >
+                      <option value="vermietet">Vollständig vermietet</option>
+                      <option value="teilweise">Teilweise vermietet</option>
+                      <option value="leer">Leer stehend / keine Mieteinnahmen</option>
+                    </select>
                   </Field>
+                  {f.vermietungsstand !== "leer" && (
+                    <Field
+                      label={
+                        f.vermietungsstand === "teilweise"
+                          ? "Aktuelle Jahresnettokaltmiete (€/Jahr)"
+                          : "Jahresnettokaltmiete (€/Jahr)"
+                      }
+                    >
+                      <input
+                        className={inputCls}
+                        inputMode="numeric"
+                        value={f.jahresnettokaltmiete}
+                        onChange={(e) => set("jahresnettokaltmiete", e.target.value)}
+                        placeholder="z. B. 48000"
+                      />
+                    </Field>
+                  )}
+                  {f.vermietungsstand === "teilweise" && (
+                    <Field label="Davon leerstehende Wohnfläche (m²)">
+                      <input
+                        className={inputCls}
+                        inputMode="numeric"
+                        value={f.leerstehendeWohnflaeche}
+                        onChange={(e) => set("leerstehendeWohnflaeche", e.target.value)}
+                        placeholder="z. B. 120"
+                      />
+                    </Field>
+                  )}
                   <Field label="Wohneinheiten">
                     <input
                       className={inputCls}
@@ -814,8 +881,11 @@ export function Calculator() {
             )}
             {f.objektart === "mehrfamilienhaus" && (
               <p className="text-xs text-faint">
-                Ertragswert-Ansatz: Wir schätzen aus Ihrer Jahresnettokaltmiete und einem regionalen
-                Vervielfältiger — eine grobe Heuristik, kein Ertragswertgutachten.
+                {f.vermietungsstand === "vermietet"
+                  ? "Ertragswert-Ansatz: Wir schätzen aus Ihrer Jahresnettokaltmiete und einem regionalen Vervielfältiger — eine grobe Heuristik, kein Ertragswertgutachten."
+                  : f.vermietungsstand === "teilweise"
+                    ? "Ertragswert-Ansatz: Für die leerstehende Fläche setzen wir eine marktübliche Miete Ihrer Region an und ziehen anteilig einen Abschlag für das Vermietungsrisiko ab. Grobe Heuristik, kein Ertragswertgutachten."
+                    : "Kein Problem ohne Mieteinnahmen: Wir setzen für die gesamte Wohnfläche eine marktübliche Miete Ihrer Region an und ziehen einen Abschlag für den Leerstand ab. Sie müssen keine Miete schätzen. Grobe Heuristik, kein Ertragswertgutachten."}
               </p>
             )}
           </div>
@@ -1015,12 +1085,30 @@ function Result({
               // Flex-Wrapper bleibt unangetastet. flex-wrap wie beim Boris-Badge oben.
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-muted">
                 <span key={result.vervielfaeltiger} className="t-num-d">
-                  Ertragswert: Jahresnettokaltmiete × {nfDE.format(result.vervielfaeltiger)}
+                  Ertragswert:{" "}
+                  {result.mietAnsatz && result.mietAnsatz.marktmieteGeschaetzt > 0
+                    ? "angesetzte Jahresmiete"
+                    : "Jahresnettokaltmiete"}{" "}
+                  × {nfDE.format(result.vervielfaeltiger)}
                 </span>
                 <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
                   heuristische Schätzung
                 </span>
               </div>
+            )}
+            {/* Leerstand transparent aufschlüsseln: welcher Teil ist Ist-Miete,
+                welchen Teil haben WIR angesetzt, und was kostet der Leerstand. */}
+            {result.mietAnsatz && result.mietAnsatz.marktmieteGeschaetzt > 0 && (
+              <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-faint">
+                Für {nfDE.format(result.mietAnsatz.leerstandM2)} m² leerstehende Wohnfläche haben wir
+                eine marktübliche Miete von {nfDE.format(result.mietAnsatz.marktmieteM2)} €/m² im Monat
+                angesetzt ({formatEUR(result.mietAnsatz.marktmieteGeschaetzt)} im Jahr)
+                {result.mietAnsatz.istMiete > 0
+                  ? ` zusätzlich zu Ihrer aktuellen Miete von ${formatEUR(result.mietAnsatz.istMiete)}`
+                  : ""}
+                . Für das Vermietungsrisiko haben wir {nfDE.format(result.mietAnsatz.abschlagPct)} %
+                abgezogen.
+              </p>
             )}
           </div>
         </div>

@@ -4,7 +4,13 @@ import { buildReportPdf } from "@/lib/report-pdf";
 import { buildReportContext } from "@/lib/report-context";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
+import {
+  estimateValue,
+  type Objektart,
+  type Zustand,
+  type Qualitaet,
+  type Vermietungsstand,
+} from "@/lib/valuation";
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
@@ -54,6 +60,7 @@ const bounded = (v: unknown, min: number, max: number): number | undefined => {
 const OBJEKTARTEN = new Set<Objektart>(["wohnung", "haus", "grundstueck", "gewerbe", "mehrfamilienhaus"]);
 const ZUSTAENDE = new Set<Zustand>(["neuwertig", "gepflegt", "renovierungsbeduerftig"]);
 const QUALITAETEN = new Set<Qualitaet>(["einfach", "normal", "gehoben", "luxus"]);
+const VERMIETUNGSSTAENDE = new Set<Vermietungsstand>(["vermietet", "teilweise", "leer"]);
 
 const OBJEKTART_LABEL: Record<string, string> = {
   wohnung: "Wohnung",
@@ -126,13 +133,25 @@ export async function POST(req: Request) {
   const lat = num(b.lat);
   const lng = num(b.lng);
 
-  // Mehrfamilienhaus: Ertragswert-Ansatz statt Flächen-Rechnung — die
-  // Jahresnettokaltmiete ist hier die Pflichtangabe (s. calculator.tsx).
+  // Mehrfamilienhaus: Ertragswert-Ansatz statt Flächen-Rechnung. Pflichtangabe
+  // ist je nach Vermietungsstand die Ist-Miete ODER die Wohnfläche — bei
+  // Leerstand setzt die Engine die marktübliche Miete selbst an, dann ist die
+  // Wohnfläche die Rechengrundlage (s. calculator.tsx / valuation.ts).
   const jahresnettokaltmiete = bounded(b.jahresnettokaltmiete, 100, 20_000_000);
   const wohneinheiten = bounded(b.wohneinheiten, 1, 500);
   const gewerbeeinheiten = bounded(b.gewerbeeinheiten, 0, 200);
-  if (objektart === "mehrfamilienhaus" && jahresnettokaltmiete == null) {
-    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  const vermietungsstand = VERMIETUNGSSTAENDE.has(b.vermietungsstand as Vermietungsstand)
+    ? (b.vermietungsstand as Vermietungsstand)
+    : "vermietet";
+  const leerstehendeWohnflaeche = bounded(b.leerstehendeWohnflaeche, 1, 30_000);
+  if (objektart === "mehrfamilienhaus") {
+    const brauchtMiete = vermietungsstand !== "leer";
+    if (brauchtMiete && jahresnettokaltmiete == null) {
+      return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+    }
+    if (vermietungsstand !== "vermietet" && wohnflaeche == null) {
+      return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+    }
   }
 
   // Amtlichen Bodenrichtwert VOR der Nachrechnung laden (gleicher Cache wie
@@ -161,13 +180,17 @@ export async function POST(req: Request) {
       qualitaet,
       energieklasse: energieklasse || undefined,
       ausstattung,
-      jahresnettokaltmiete,
+      // Bei Vollleerstand eine mitgesendete Miete verwerfen — sonst würde sie
+      // trotz "leer stehend" in den Ertragswert einfließen.
+      jahresnettokaltmiete: vermietungsstand === "leer" ? undefined : jahresnettokaltmiete,
       wohneinheiten,
       gewerbeeinheiten,
+      vermietungsstand: objektart === "mehrfamilienhaus" ? vermietungsstand : undefined,
+      leerstehendeWohnflaeche: vermietungsstand === "teilweise" ? leerstehendeWohnflaeche : undefined,
     },
     { bodenrichtwert: boris?.brw ?? undefined },
   );
-  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger, grundstuecksAnrechnung } = calc;
+  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger, mietAnsatz, grundstuecksAnrechnung } = calc;
   if (!mid || mid <= 0) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
@@ -191,6 +214,22 @@ export async function POST(req: Request) {
     { label: "Qualität", value: esc(qualitaet) },
     { label: "Energieklasse", value: esc(energieklasse) },
     { label: "Jahresnettokaltmiete", value: jahresnettokaltmiete ? `${eur(jahresnettokaltmiete)}/Jahr` : "" },
+    {
+      label: "Vermietungsstand",
+      value:
+        mietAnsatz && mietAnsatz.leerstandM2 > 0
+          ? mietAnsatz.leerstandAnteil >= 1
+            ? "leer stehend (Marktmiete angesetzt)"
+            : `teilweise vermietet (${mietAnsatz.leerstandM2} m² leer)`
+          : "",
+    },
+    {
+      label: "Angesetzte Marktmiete",
+      value:
+        mietAnsatz && mietAnsatz.marktmieteGeschaetzt > 0
+          ? `${eur(mietAnsatz.marktmieteGeschaetzt)}/Jahr (${mietAnsatz.marktmieteM2} €/m², −${mietAnsatz.abschlagPct} % Leerstand)`
+          : "",
+    },
     { label: "Wohneinheiten", value: wohneinheiten ? String(wohneinheiten) : "" },
     { label: "Gewerbeeinheiten", value: gewerbeeinheiten ? String(gewerbeeinheiten) : "" },
   ]);
@@ -257,6 +296,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
         mikrolage,
         confidence,
         vervielfaeltiger,
+        mietAnsatz,
         grundstuecksAnrechnung,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),

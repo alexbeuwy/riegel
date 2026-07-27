@@ -15,6 +15,15 @@
 export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
 export type Zustand = "neuwertig" | "gepflegt" | "renovierungsbeduerftig";
 export type Qualitaet = "einfach" | "normal" | "gehoben" | "luxus";
+/**
+ * Vermietungsstand eines Mehrfamilienhauses. Motiviert durch einen echten
+ * Fall (Rückfrage Manfred): leerstehende Zinshäuser ohne Mieteinnahmen
+ * ergaben im Ertragswert-Ansatz 0 €, weil die Jahresnettokaltmiete Pflicht
+ * war — Eigentümer mussten eine „fiktive Miete" erfinden. Bei "leer" und
+ * "teilweise" setzt die Engine für die leerstehenden Flächen selbst eine
+ * marktübliche Miete an (s. marktmieteM2).
+ */
+export type Vermietungsstand = "vermietet" | "teilweise" | "leer";
 
 export interface ValuationInput {
   objektart: Objektart;
@@ -39,6 +48,13 @@ export interface ValuationInput {
   jahresnettokaltmiete?: number;
   wohneinheiten?: number;
   gewerbeeinheiten?: number;
+  /**
+   * Nur "mehrfamilienhaus": Vermietungsstand. Ohne Angabe "vermietet" —
+   * dadurch rechnen bestehende Aufrufe unverändert (Ist-Miete × Faktor).
+   */
+  vermietungsstand?: Vermietungsstand;
+  /** Nur "mehrfamilienhaus" + "teilweise": leerstehende Wohnfläche in m². */
+  leerstehendeWohnflaeche?: number;
 }
 
 export interface ValuationFactor {
@@ -59,6 +75,29 @@ export interface GrundstuecksAnrechnung {
   wert: number;
 }
 
+/**
+ * Wie die Miete im Ertragswert-Ansatz zustande kam — nur bei
+ * objektart "mehrfamilienhaus" gesetzt. Macht in UI und PDF transparent,
+ * welcher Teil tatsächlich erzielte Miete ist und welcher Teil eine von uns
+ * angesetzte marktübliche Miete für leerstehende Flächen.
+ */
+export interface MietAnsatz {
+  /** Tatsächlich erzielte Jahresnettokaltmiete (0 bei Vollleerstand). */
+  istMiete: number;
+  /** Für leerstehende Flächen angesetzte marktübliche Jahresmiete. */
+  marktmieteGeschaetzt: number;
+  /** Dabei angesetzte Monatsmiete je m² (Neuvermietungsniveau). */
+  marktmieteM2: number;
+  /** Leerstehende Wohnfläche in m², auf die sich die Schätzung bezieht. */
+  leerstandM2: number;
+  /** Leerstandsanteil an der Wohnfläche (0–1). */
+  leerstandAnteil: number;
+  /** Abschlag für Vermietungsrisiko/fehlenden Cashflow in % (0–8). */
+  abschlagPct: number;
+  /** Bewertungsrelevante Jahresmiete: istMiete + marktmieteGeschaetzt. */
+  ansatzMiete: number;
+}
+
 export interface ValuationResult {
   low: number;
   mid: number;
@@ -75,6 +114,8 @@ export interface ValuationResult {
   /** Ertragswert-Vervielfältiger (Jahresnettokaltmiete × Vervielfältiger = Ertragswert),
    * nur bei objektart === "mehrfamilienhaus" gesetzt — s. mfhVervielfaeltiger(). */
   vervielfaeltiger?: number;
+  /** Zusammensetzung der angesetzten Miete — nur bei "mehrfamilienhaus". */
+  mietAnsatz?: MietAnsatz;
   /** Gestaffelte Grundstücksanrechnung — nur bei objektart "haus" oder
    * "grundstueck" mit grundflaeche > 0 gesetzt (s. grundstuecksStaffel()). */
   grundstuecksAnrechnung?: GrundstuecksAnrechnung;
@@ -159,6 +200,37 @@ function mfhVervielfaeltiger(basisWohnung: number, zustand: Zustand, qualitaet: 
 }
 
 /**
+ * Marktübliche Netto-Kaltmiete in €/m²/Monat für LEERSTEHENDE Wohnflächen
+ * (Neuvermietungsniveau) — die Engine setzt sie selbst an, damit Eigentümer
+ * leerstehender Zinshäuser keine „fiktive Miete" schätzen müssen.
+ *
+ * Abgeleitet aus dem regionalen Wohnungs-Kaufpreisniveau (basisWohnung / 380),
+ * geklemmt auf 6,50–16 €/m². Der Divisor ist an plausiblen Regionsmieten
+ * kalibriert: Speyer 3.950 → ca. 10,40 €/m², Ludwigshafen 2.850 → ca.
+ * 7,50 €/m², Heidelberg 5.000 → ca. 13,15 €/m².
+ *
+ * Zustand und Qualität wirken bewusst GEDÄMPFTER als bei Kaufpreisen (Mieten
+ * streuen schwächer): ein renovierungsbedürftiges Haus erzielt real weniger
+ * Miete. Hinweis: beide verschieben zusätzlich den Vervielfältiger (s.
+ * mfhVervielfaeltiger). Die kleine Überlappung ist gewollt — sie wirkt in
+ * beide Richtungen konservativ und bleibt wegen der schwachen Faktoren klein.
+ */
+function marktmieteM2(basisWohnung: number, zustand: Zustand, qualitaet: Qualitaet): number {
+  const basis = Math.min(16, Math.max(6.5, basisWohnung / 380));
+  const zAdj = zustand === "neuwertig" ? 1.1 : zustand === "renovierungsbeduerftig" ? 0.85 : 1;
+  const qAdj = qualitaet === "luxus" ? 1.12 : qualitaet === "gehoben" ? 1.06 : qualitaet === "einfach" ? 0.95 : 1;
+  return Math.round(basis * zAdj * qAdj * 100) / 100;
+}
+
+/**
+ * Maximaler Abschlag bei Vollleerstand (%). Begründung: der Käufer bekommt ab
+ * Tag 1 keinen Cashflow, trägt Vermietungsaufwand und -risiko, und die
+ * angesetzte Marktmiete ist ein Neuvermietungswert (also am oberen Rand
+ * dessen, was ein Bestandsobjekt real einbringt). Linear nach Leerstandsanteil.
+ */
+const LEERSTAND_ABSCHLAG_MAX_PCT = 8;
+
+/**
  * Gartenland-Satz in €/m² für nicht baulandtypische Restflächen — grob am
  * BRW-Niveau orientiert (6 %), geklemmt auf das in der Region übliche
  * Gartenland-Band von 5–15 €/m² (Praxisbeispiel Kleinkarlbach: 7 €/m²).
@@ -232,6 +304,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   let pricePerSqm: number | undefined;
   let mid: number;
   let vervielfaeltiger: number | undefined;
+  let mietAnsatz: MietAnsatz | undefined;
   let grundstuecksAnrechnung: GrundstuecksAnrechnung | undefined;
 
   if (input.objektart === "grundstueck") {
@@ -250,10 +323,37 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // („Top-Zustand mal 18fach"); die Werttreiber-Faktoren unten bleiben für
     // diesen Objekttyp trotzdem leer, weil ihr Effekt bereits im Faktor
     // steckt und nicht doppelt erscheinen darf.
-    const miete = Math.max(0, input.jahresnettokaltmiete ?? 0);
+    //
+    // Leerstand: für nicht vermietete Flächen setzen wir eine marktübliche
+    // Miete an (s. marktmieteM2) und ziehen anteilig einen Leerstandsabschlag
+    // ab. Ohne Angabe ist der Stand "vermietet" — dann ist leerM2 = 0, der
+    // Abschlag 0 und die Rechnung identisch zu vorher (Regression F4).
+    const stand = input.vermietungsstand ?? "vermietet";
+    const istMiete = Math.max(0, input.jahresnettokaltmiete ?? 0);
+    const wf = Math.max(0, input.wohnflaeche ?? 0);
+    const leerM2 =
+      stand === "leer"
+        ? wf
+        : stand === "teilweise"
+          ? Math.min(wf, Math.max(0, input.leerstehendeWohnflaeche ?? 0))
+          : 0;
+    const mm2 = marktmieteM2(r.wohnung, input.zustand, input.qualitaet);
+    const marktmieteGeschaetzt = Math.round(leerM2 * mm2 * 12);
+    const leerstandAnteil = wf > 0 ? Math.min(1, leerM2 / wf) : 0;
+    const abschlagPct = Math.round(leerstandAnteil * LEERSTAND_ABSCHLAG_MAX_PCT * 10) / 10;
+    const ansatzMiete = istMiete + marktmieteGeschaetzt;
     vervielfaeltiger = mfhVervielfaeltiger(r.wohnung, input.zustand, input.qualitaet);
-    mid = miete * vervielfaeltiger;
-    pricePerSqm = input.wohnflaeche ? Math.round(mid / input.wohnflaeche) : undefined;
+    mid = ansatzMiete * vervielfaeltiger * (1 - abschlagPct / 100);
+    mietAnsatz = {
+      istMiete,
+      marktmieteGeschaetzt,
+      marktmieteM2: mm2,
+      leerstandM2: Math.round(leerM2),
+      leerstandAnteil,
+      abschlagPct,
+      ansatzMiete,
+    };
+    pricePerSqm = wf ? Math.round(mid / wf) : undefined;
   } else {
     const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
     // Mikrolagen-Faktor: der amtliche Bodenrichtwert (falls via opts geliefert)
@@ -304,6 +404,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     mikrolage: Math.round((7.2 + Math.random() * 2.4) * 10) / 10,
     rentYieldPct: Math.round((2.8 + Math.random() * 1.6) * 10) / 10,
     vervielfaeltiger,
+    mietAnsatz,
     grundstuecksAnrechnung,
     factors,
   };
