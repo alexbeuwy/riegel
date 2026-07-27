@@ -193,10 +193,17 @@ export default function VerkaufenPage() {
             <h2 className="text-2xl font-semibold sm:text-3xl">
               Spezialisiert auf Ihre Immobilienart
             </h2>
+            {/* Einfamilienhaus, Reihenhaus, Doppelhaushälfte und Eigentumswohnung
+                sind unser Kerngeschäft — sie standen hier vorher nicht, wodurch die
+                Sektion klang, als würden wir nur Spezialobjekte machen (Hinweis
+                Manfred). Die Spezialgebiete darunter sind die Ergänzung, nicht der
+                Ersatz. */}
             <p className="text-muted">
-              Vom Mehrfamilienhaus bis zur Nachlassimmobilie: Jede Objektart hat
-              ihre eigenen Käufergruppen, Bewertungsfaktoren und rechtlichen
-              Rahmenbedingungen — wir kennen sie.
+              Einfamilienhaus, Reihenhaus, Doppelhaushälfte oder Eigentumswohnung:
+              Diese Objekte verkaufen wir jeden Tag. Dazu kommt die Erfahrung in
+              Bereichen, die nicht jeder Makler abdeckt — vom Mehrfamilienhaus bis
+              zur Nachlassimmobilie. Jede Objektart hat ihre eigenen Käufergruppen,
+              Bewertungsfaktoren und rechtlichen Rahmenbedingungen. Wir kennen sie.
             </p>
           </Reveal>
           <Reveal>

@@ -138,8 +138,11 @@ function DesktopNavItem({ item }: { item: NavItem }) {
         id={panelId}
         aria-hidden={!open}
         data-origin="top-left"
-        className={`t-dropdown absolute left-0 top-full z-50 mt-3 max-w-[92vw] rounded-2xl border border-border bg-surface p-2 shadow-2xl ${
-          item.feature ? "w-[660px]" : "w-[440px]"
+        // Die breite Variante (mit Bild-Karte) erst ab lg: — zwischen 768 und
+        // 1023 px ist die Desktop-Nav ohnehin schon randvoll, ein 660px-Panel
+        // schob dort die Seite in den horizontalen Scroll.
+        className={`t-dropdown absolute left-0 top-full z-50 mt-3 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface p-2 shadow-2xl ${
+          item.feature ? "w-[440px] lg:w-[660px]" : "w-[440px]"
         } ${open ? "is-open" : closing ? "is-closing" : ""}`}
       >
         <div className={item.feature ? "flex gap-2" : ""}>
@@ -167,7 +170,7 @@ function DesktopNavItem({ item }: { item: NavItem }) {
               href={item.feature.href}
               tabIndex={open ? undefined : -1}
               onClick={closeMenu}
-              className="press group relative w-[212px] shrink-0 self-stretch overflow-hidden rounded-xl border border-border bg-surface-2"
+              className="press group relative hidden w-[212px] shrink-0 self-stretch overflow-hidden rounded-xl border border-border bg-surface-2 lg:block"
             >
               <Image
                 src={item.feature.image}
@@ -222,8 +225,10 @@ export function SiteHeader() {
       <Container className="flex h-20 items-center justify-between gap-6">
         <Wordmark />
 
-        {/* Desktop-Navigation */}
-        <nav className="hidden items-center gap-6 lg:gap-7 md:flex" aria-label="Hauptnavigation">
+        {/* Desktop-Navigation erst ab lg (1024px): bei md (768px) brauchte sie
+            892 px und erzeugte auf Tablets horizontalen Seiten-Scroll. Zwischen
+            768 und 1023 px übernimmt das Burger-Menü. */}
+        <nav className="hidden items-center gap-6 lg:flex lg:gap-7" aria-label="Hauptnavigation">
           {site.nav.map((item) => (
             <DesktopNavItem key={item.href} item={item} />
           ))}
@@ -238,8 +243,8 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        {/* Mobile: Konto + Merkliste + Icon-Swap-Menü */}
-        <div className="flex items-center gap-1 md:hidden">
+        {/* Mobile + Tablet: Konto + Merkliste + Icon-Swap-Menü (s. Nav oben) */}
+        <div className="flex items-center gap-1 lg:hidden">
           <AccountLink className="h-11 w-11" />
           <FavoritesLink />
           <MobileMenu />

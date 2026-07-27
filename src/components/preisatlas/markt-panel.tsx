@@ -152,12 +152,13 @@ function SecondaryStat({
   return (
     <div className="rounded-xl border border-border bg-surface-2 p-4 transition-[transform,border-color] duration-500 hover:-translate-y-0.5 hover:border-accent/40">
       {/* Schmale 3-Spalten-Kacheln: der Label-Text (z. B. „Ø Vermarktungszeit")
-          darf umbrechen, ohne das Tooltip-Icon zu quetschen (items-start +
-          shrink-0). min-w-0 plus overflow-wrap/hyphens sind das Sicherheitsnetz
-          gegen Overflow; knapperes Padding, tracking-normal und die kleinere
-          Schrift halten die langen Wörter aber schon im Normalfall in der Zeile. */}
+          darf an WORTGRENZEN umbrechen, ohne das Tooltip-Icon zu quetschen
+          (items-start + shrink-0). Kein overflow-wrap:anywhere / hyphens mehr
+          (Vorgabe Inhaberseite: keine hässlichen Wortumbrüche) — knapperes
+          Padding, tracking-normal und die kleine Schrift halten die langen
+          Wörter in der Zeile. */}
       <div className="flex items-start gap-1.5 text-[0.65rem] uppercase leading-tight text-faint">
-        <span className="min-w-0 hyphens-auto [overflow-wrap:anywhere]" lang="de">{label}</span>
+        <span className="min-w-0" lang="de">{label}</span>
         {tooltip && tooltipId && (
           <span className="t-tt-wrap shrink-0">
             {/* -m-3/p-3 vergrößert die Trefffläche auf ~40px ohne den 12px-Icon-Look zu verändern. */}

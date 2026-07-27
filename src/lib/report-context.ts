@@ -42,8 +42,46 @@ export interface ReportContext {
 }
 
 /** Absatz-Kürzung an Satzgrenzen (kein hartes Abschneiden mitten im Satz). */
+/**
+ * Die Artikeltexte in geo-articles.json sind Markdown; das PDF rendert aber
+ * reinen Text. Ohne Aufbereitung landeten Auszeichnungen sichtbar im
+ * Kundendokument („**So läuft Ihr Verkauf mit RIEGEL Immobilien:** 1.").
+ *
+ * Deshalb: nur den führenden PROSA-Teil übernehmen und ab der ersten
+ * Listen-, Überschriften- oder Tabellenzeile abschneiden — aufgelöste Listen
+ * ergeben im Fließtext ohnehin nur Satzfragmente. Danach die Inline-Marker
+ * (**fett**, *kursiv*, [Label](url), `Code`) entfernen.
+ */
+function stripMarkdown(text: string): string {
+  const prosa: string[] = [];
+  for (const zeile of text.split("\n")) {
+    if (/^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>\s|\|)/.test(zeile)) break;
+    prosa.push(zeile);
+  }
+  const prosaText = prosa
+    .join(" ")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Ein Satz, der auf ":" endet, kündigt die gerade abgeschnittene Liste an
+  // („So läuft Ihr Verkauf mit RIEGEL Immobilien:") — im PDF bliebe ein
+  // Doppelpunkt ins Leere stehen, daher diesen Einleitungssatz mit entfernen.
+  if (prosaText.endsWith(":")) {
+    const vorher = Math.max(
+      prosaText.lastIndexOf(". "),
+      prosaText.lastIndexOf("! "),
+      prosaText.lastIndexOf("? "),
+    );
+    return vorher > 0 ? prosaText.slice(0, vorher + 1) : "";
+  }
+  return prosaText;
+}
+
 function trimToSentences(text: string, maxChars: number): string {
-  const clean = text.replace(/\s+/g, " ").trim();
+  const clean = stripMarkdown(text);
   if (clean.length <= maxChars) return clean;
   const cut = clean.slice(0, maxChars);
   const lastEnd = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));

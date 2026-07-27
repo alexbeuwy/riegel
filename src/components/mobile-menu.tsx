@@ -126,7 +126,9 @@ export function MobileMenu() {
   }, [open, close]);
 
   return (
-    <div ref={wrapRef} className="relative md:hidden">
+    // lg:hidden (nicht md:hidden) — die Desktop-Nav erscheint erst ab lg, sonst
+    // gäbe es zwischen 768 und 1023 px gar keine Navigation (s. site-header.tsx).
+    <div ref={wrapRef} className="relative lg:hidden">
       <button
         type="button"
         onClick={toggle}

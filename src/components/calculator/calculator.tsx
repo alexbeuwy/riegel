@@ -220,7 +220,9 @@ function statTiles(result: ValuationResult): { k: string; v: string; icon: IconN
     { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
   ];
   if (result.vervielfaeltiger != null) {
-    tiles.push({ k: "Vervielfältiger", v: `${nfDE.format(result.vervielfaeltiger)}×`, icon: "calculator" });
+    // Kurzes Label: „Vervielfältiger" passte nicht in die schmale Kachel und
+    // wurde mitten im Wort umgebrochen. „Ertragsfaktor" ist fachlich dasselbe.
+    tiles.push({ k: "Ertragsfaktor", v: `${nfDE.format(result.vervielfaeltiger)}×`, icon: "calculator" });
   }
   return tiles;
 }
@@ -635,7 +637,10 @@ export function Calculator() {
                     </span>
                     <span
                       lang="de"
-                      className={`relative text-[0.8rem] font-medium leading-tight tracking-tight [hyphens:auto] ${
+                      // Keine automatische Silbentrennung: „Mehrfamilien­haus" trägt
+                      // bereits einen weichen Trennstrich am Kompositum-Fugenpunkt,
+                      // das ist die einzige gewünschte (saubere) Trennstelle.
+                      className={`relative text-[0.8rem] font-medium leading-tight tracking-tight ${
                         selected ? "text-fg" : "text-muted group-hover:text-fg"
                       }`}
                     >
@@ -1125,10 +1130,11 @@ function Result({
                   <Icon name={s.icon} size={18} />
                 </span>
               </div>
-              {/* Overflow-Schutz nach dem Muster von SecondaryStat (markt-panel.tsx):
-                  kein tracking-widest (frisst Breite), dafür overflow-wrap/hyphens
-                  gegen lange Labels wie „Vervielfältiger" auf schmalen Kacheln. */}
-              <div lang="de" className="min-w-0 text-[0.6rem] uppercase leading-tight text-faint [overflow-wrap:anywhere] hyphens-auto">
+              {/* Kein overflow-wrap:anywhere / hyphens mehr (Vorgabe Inhaberseite:
+                  keine hässlichen Wortumbrüche) — es zerlegte lange Labels mitten
+                  im Wort („VERVIELFÄLTIGE / R"). Die Labels sind stattdessen kurz
+                  genug gehalten (s. statTiles), tracking-normal spart die Breite. */}
+              <div lang="de" className="min-w-0 text-[0.6rem] uppercase leading-tight text-faint">
                 {s.k}
               </div>
               <div className="mt-1 text-base font-semibold text-fg tabular-nums">{s.v}</div>

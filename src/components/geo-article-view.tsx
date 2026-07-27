@@ -243,6 +243,9 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
   const url = `${site.url}${basePath}/${article.slug}`;
   const facts = keyFacts(article);
   const heroIcon: IconName = article.kind === "standort" ? "pin" : sectionIcon(article.h1);
+  // Längstes zusammenhängendes Wort der Headline (Bindestrich zählt als
+  // erlaubte Trennstelle) — steuert die Schriftgröße, s. <h1> unten.
+  const langesWortH1 = Math.max(...article.h1.split(/[\s­/-]+/).map((w) => w.length));
   const related = relatedArticles(article);
   const markt = article.kind === "standort" ? marktort(article.slug) : undefined;
 
@@ -315,17 +318,23 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
           <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-accent/30 bg-accent/[0.08] text-accent">
             <Icon name={heroIcon} size={22} />
           </span>
-          {/* Lange Komposita (Akira Expanded ist ein breiter Schriftschnitt) sprengen bei
-              fester text-3xl sonst den 390px-Viewport → clamp() statt Fixgröße + Silbentrennung
-              (lang="de" ist auf <html> gesetzt, s. layout.tsx) mit break-words als Fallback,
-              falls der Browser für ein Wort keine Trennstelle findet. Sehr lange Titel (>65
-              Zeichen) bekommen eine kleinere Basisgröße, damit weniger Wörter mitten im
-              Kompositum getrennt werden müssen. */}
+          {/* KEINE Silbentrennung in der Headline (Vorgabe Inhaberseite): getrennte
+              Wörter wie „VERKAU-FEN" sehen in Akira Expanded schlecht aus. Statt zu
+              trennen wird die Schrift so skaliert, dass auch das LÄNGSTE WORT in
+              eine Zeile passt und nur an Wortgrenzen umgebrochen wird.
+              Zwei Stellhebel: die Gesamtlänge (>65 Zeichen → kleinere Basis) und
+              das längste Einzelwort — Komposita wie „Scheidungsimmobilie" (19
+              Zeichen) sprengen auf 390 px sonst die Zeile und würden trotz
+              deaktivierter Trennung von break-words mitten im Wort zerlegt.
+              Bindestriche zählen als Trennstelle (Rheinland-Pfalz ist unkritisch).
+              break-words bleibt nur als Sicherheitsnetz gegen echten Overflow. */}
           <h1
-            className={`akira mt-5 leading-[1.05] hyphens-auto break-words ${
-              article.h1.length > 65
-                ? "text-[clamp(1.35rem,6.5vw,1.5rem)] sm:text-4xl"
-                : "text-[clamp(1.5rem,7.5vw,1.875rem)] sm:text-5xl"
+            className={`akira mt-5 leading-[1.05] break-words ${
+              langesWortH1 >= 18
+                ? "text-[clamp(1.05rem,4.6vw,1.4rem)] sm:text-[1.9rem] lg:text-4xl"
+                : article.h1.length > 65
+                  ? "text-[clamp(1.2rem,5.6vw,1.5rem)] sm:text-[2rem] lg:text-4xl"
+                  : "text-[clamp(1.3rem,6vw,1.875rem)] sm:text-[2.5rem] lg:text-5xl"
             }`}
           >
             {article.h1}
