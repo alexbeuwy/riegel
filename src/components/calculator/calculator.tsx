@@ -134,14 +134,14 @@ interface SourceCtx {
   markt?: MarktOrt;
 }
 
-/** Bodenrichtwert fließt nur bei Grundstück und Haus (jeweils gestaffelt
+/** Bodenrichtwert fließt bei Grundstück, Haus und Gewerbe (jeweils gestaffelt
  * angerechnet, s. grundstuecksStaffel in lib/valuation.ts)
  * tatsächlich in mid/pricePerSqm ein (s. estimateValue in lib/valuation.ts) —
- * bei Wohnung/Gewerbe/Mehrfamilienhaus (Ertragswert-Ansatz, mietbasiert) ist
+ * bei Wohnung/Mehrfamilienhaus (Ertragswert-Ansatz, mietbasiert) ist
  * er rein informativ, der "amtlich"-Badge muss das kennzeichnen statt
  * fälschlich einen Preiseinfluss zu suggerieren. */
 function borisPriceRelevant(objektart: Objektart): boolean {
-  return objektart === "grundstueck" || objektart === "haus";
+  return objektart === "grundstueck" || objektart === "haus" || objektart === "gewerbe";
 }
 
 const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: FormState, ctx: SourceCtx) => React.ReactNode }[] = [

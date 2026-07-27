@@ -124,11 +124,12 @@ const fmtDe = (n: number, maxFrac = 1) => new Intl.NumberFormat("de-DE", { maxim
 /** Ganzzahl deutsch gruppiert (Tausenderpunkt) — für die Facts&Figures-Kacheln. */
 const fmtInt = (n: number) => new Intl.NumberFormat("de-DE").format(Math.round(n));
 
-/** Der Bodenrichtwert fließt nur bei Grundstück/Haus in mid/pricePerSqm ein
- * (s. estimateValue in lib/valuation.ts) — bei Wohnung/Gewerbe ist er im
- * Report rein informativ, die Kennzahlen-Zeile muss das kennzeichnen. */
+/** Der Bodenrichtwert fließt bei Grundstück, Haus und Gewerbe in
+ * mid/pricePerSqm ein (s. estimateValue in lib/valuation.ts) — bei
+ * Wohnung/Mehrfamilienhaus ist er im Report rein informativ, die
+ * Kennzahlen-Zeile muss das kennzeichnen. */
 function brwPriceRelevant(objektartLabel?: string): boolean {
-  return objektartLabel === "Haus" || objektartLabel === "Grundstück";
+  return objektartLabel === "Haus" || objektartLabel === "Grundstück" || objektartLabel === "Gewerbe";
 }
 
 // Helvetica arbeitet mit WinAnsi — Zeichen außerhalb Latin-1 (ą, ł, Emoji …)

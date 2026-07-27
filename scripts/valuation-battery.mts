@@ -235,6 +235,39 @@ if (f12ohne.mid !== f12buero.mid) {
   console.log(`❌ F12: hallenflaeche 0 muss wie ohne Angabe rechnen (${f12ohne.mid} vs. ${f12buero.mid})`);
 }
 
+/* F13 — Gewerbe MIT Grundstück (Freigabe Alex): Betriebsgrundstücke waren
+   bisher wertlos in der Rechnung. 2.000 m² bei BRW 300 → 1.500 m² voll zu
+   70 %, 500 m² zu 45 %. Muss deutlich über der Bewertung ohne Grundstück
+   liegen, aber unter BRW × Gesamtfläche (Staffel greift). */
+const f13ohne = run(
+  { objektart: "gewerbe", ort: "Ludwigshafen", wohnflaeche: 900, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+  { bodenrichtwert: 300 },
+);
+const f13mit = run(
+  {
+    objektart: "gewerbe",
+    ort: "Ludwigshafen",
+    wohnflaeche: 900,
+    grundflaeche: 2000,
+    zustand: "gepflegt",
+    qualitaet: "normal",
+    ausstattung: [],
+  },
+  { bodenrichtwert: 300 },
+);
+if (!(f13mit.mid > f13ohne.mid)) {
+  failures++;
+  console.log(`❌ F13: Grundstück muss den Gewerbewert erhöhen (${f13mit.mid} vs. ${f13ohne.mid})`);
+}
+const f13anr = f13mit.grundstuecksAnrechnung;
+if (!f13anr || f13anr.wert >= 300 * 2000) {
+  failures++;
+  console.log(`❌ F13: Staffel muss unter BRW × Fläche liegen (${f13anr?.wert} vs. ${300 * 2000})`);
+}
+// Gebäude ca. 1,47 Mio. € (1.628 €/m² × 900) + Grundstück 382.500 €
+// (1.500 × 0,7 × 300 plus 500 × 0,45 × 300).
+check("F13 Gewerbe 900 m² + 2.000 m² Grundstück (BRW 300)", f13mit.mid, 1_780_000, 1_920_000);
+
 /* Invarianten. */
 for (const [name, r] of [["F1", f1], ["F2", f2], ["F3", f3], ["F4", f4], ["F5", f5], ["F8", f8], ["F9", f9], ["F10", f10]] as const) {
   if (!(r.low < r.mid && r.mid < r.high)) {

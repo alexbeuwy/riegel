@@ -151,7 +151,11 @@ function roundTo25(n: number): number {
  * weil Min/Max einer Handvoll Verkäufe die echte Streuung nicht abbildet.
  */
 const SPANNE_BELEGT: Record<string, { wohnung: { min: number; max: number }; haus: { min: number; max: number } }> = {
-  // n=39; Vorgabe Manfred, durch die eigenen Abschlüsse gedeckt.
+  // n=39; Vorgabe Manfred, durch die eigenen Abschlüsse gedeckt. Der höchste
+  // Wert in der Auswertung liegt bei 10.376 €/m² und ist ein echter Abschluss
+  // (bestätigt Alex, Vermittlung Christoph) — also kein Datenfehler. Die
+  // ausgewiesene Obergrenze bleibt bewusst bei 7.000 €/m²: sie soll die
+  // erreichbare Spitze beschreiben, nicht den einzelnen Ausnahmefall.
   speyer: { wohnung: { min: 2500, max: 7000 }, haus: { min: 2500, max: 7000 } },
   // n=15; beobachtet 1.697–3.903 €/m², auf 1.700–4.000 gerundet.
   ludwigshafen: { wohnung: { min: 1700, max: 4000 }, haus: { min: 1700, max: 4000 } },

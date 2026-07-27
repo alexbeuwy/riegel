@@ -259,6 +259,13 @@ function gartenlandSatz(brw: number): number {
 const STAFFEL = {
   haus: { voll: 700, mehrBis: 1400, mehrSatz: 0.25 },
   grundstueck: { voll: 1000, mehrBis: 2500, mehrSatz: 0.35 },
+  // Gewerbe: Betriebsgrundstücke sind typischerweise deutlich größer als
+  // Hausgrundstücke und die Fläche ist betrieblich nutzbar (Hof, Rangier- und
+  // Stellflächen, Zufahrt) — daher eine höhere Vollansatz-Grenze und ein
+  // höherer Satz für die Mehrfläche als beim Haus. Motiviert durch echte
+  // Objekte (Hinweis Manfred: Bürogebäude mit Halle und Grundstück in
+  // Bensheim, ehemaliges Autohaus in Edenkoben).
+  gewerbe: { voll: 1500, mehrBis: 5000, mehrSatz: 0.45 },
 } as const;
 
 /**
@@ -274,14 +281,18 @@ const STAFFEL = {
  * erhalten (der Gebäude-€/m² enthält bereits implizit einen Lageanteil) —
  * Grundstücke bis 700 m² rechnen dadurch exakt wie zuvor, die Kalibrierung
  * normaler Fälle ändert sich nicht.
+ *
+ * Bei art "gewerbe" wird mit 0,7 gedämpft: etwas weniger als beim Haus, weil
+ * der Gewerbe-€/m² den Grundstücksanteil schwächer mitträgt als ein
+ * Hauspreis, aber nicht voll wie beim reinen Grundstück.
  */
 export function grundstuecksStaffel(
   flaeche: number,
   brw: number,
-  art: "haus" | "grundstueck",
+  art: "haus" | "grundstueck" | "gewerbe",
 ): GrundstuecksAnrechnung {
   const s = STAFFEL[art];
-  const vollSatz = art === "haus" ? 0.6 : 1.0;
+  const vollSatz = art === "haus" ? 0.6 : art === "gewerbe" ? 0.7 : 1.0;
   const baulandM2 = Math.min(Math.max(flaeche, 0), s.voll);
   const mehrflaecheM2 = Math.min(Math.max(flaeche - s.voll, 0), s.mehrBis - s.voll);
   const gartenlandM2 = Math.max(flaeche - s.mehrBis, 0);
@@ -400,6 +411,12 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       // (übergroße Grundstücke, s. grundstuecksStaffel) — bis 700 m² rechnet
       // die Staffel exakt wie die alte Formel.
       grundstuecksAnrechnung = grundstuecksStaffel(input.grundflaeche, boden, "haus");
+      mid += grundstuecksAnrechnung.wert;
+    } else if (input.objektart === "gewerbe" && input.grundflaeche) {
+      // Gewerbe rechnete den Grundstückswert bisher gar nicht mit — bei
+      // Betriebsobjekten mit Hof, Stellflächen und Halle ist das ein
+      // wesentlicher Teil des Werts (Hinweis Manfred, Freigabe Alex).
+      grundstuecksAnrechnung = grundstuecksStaffel(input.grundflaeche, boden, "gewerbe");
       mid += grundstuecksAnrechnung.wert;
     }
   }
