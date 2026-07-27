@@ -37,7 +37,7 @@ export const contacts: Contact[] = [
   },
   {
     name: "Manfred RIEGEL",
-    role: "Gründer · Regionaldirektor BVFI",
+    role: "Regionaldirektor BVFI",
     image: "/images/team/manfred.jpg",
     phone: site.locations[0].phone,
     email: site.email,

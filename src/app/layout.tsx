@@ -104,7 +104,9 @@ const orgJsonLd = {
   ].filter(Boolean),
   // Echte Personen mit Rolle/Entität (E-E-A-T) — Klarnamen aus /ueber-uns.
   founder: [
-    { "@type": "Person", name: "Manfred RIEGEL", jobTitle: "Gründer · Regionaldirektor BVFI" },
+    // Ohne „Gründer" (Vorgabe Manfred) — die Rolle muss auch in den
+    // strukturierten Daten stimmen, Google zeigt sie in den Suchergebnissen.
+    { "@type": "Person", name: "Manfred RIEGEL", jobTitle: "Regionaldirektor BVFI" },
     { "@type": "Person", name: "Sylwia RIEGEL", jobTitle: "Geschäftsleitung" },
   ],
   employee: [
