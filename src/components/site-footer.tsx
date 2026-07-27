@@ -130,10 +130,13 @@ export function SiteFooter() {
         </Container>
 
         {/* Rechtshinweise (Sissy/T14): Haftung, KI-Transparenz (EU-KI-Verordnung),
-            Barrierefreiheit. Formulierungen bewusst zurückhaltend, die finale
-            anwaltliche Abstimmung übernimmt das RIEGEL-Team. */}
+            Barrierefreiheit, Urheberrecht. Formulierungen bewusst zurückhaltend,
+            die finale anwaltliche Abstimmung übernimmt das RIEGEL-Team.
+            Der Urheberrechtshinweis ist die Antwort auf die Kopierschutz-Frage
+            (Manfred): technisch lässt sich Text im Web nicht schützen, ohne
+            Google und Screenreader auszusperren — rechtlich schon. */}
         <div className="border-t border-border/60">
-          <Container className="grid gap-4 py-6 text-[0.7rem] leading-relaxed text-faint md:grid-cols-3">
+          <Container className="grid gap-4 py-6 text-[0.7rem] leading-relaxed text-faint md:grid-cols-2 lg:grid-cols-4">
             <p>
               <span className="font-medium text-muted">Hinweis:</span> Alle Inhalte dieser
               Website dienen der allgemeinen Information und stellen keine Rechts-, Steuer-
@@ -156,6 +159,15 @@ export function SiteFooter() {
                 {site.email}
               </a>
               .
+            </p>
+            <p>
+              <span className="font-medium text-muted">Urheberrecht:</span> Alle Texte, Fotos,
+              Grundrisse, Marktdaten und Objektbeschreibungen dieser Website sind
+              urheberrechtlich geschützt. Eine Übernahme, Vervielfältigung oder
+              Weiterverwendung – auch in Auszügen und auch durch automatisierte
+              Auswertung – ist ohne unsere vorherige schriftliche Zustimmung nicht
+              gestattet. Objektfotos dürfen ausschließlich im Rahmen der
+              Vermarktung durch {site.legalName} verwendet werden.
             </p>
           </Container>
         </div>

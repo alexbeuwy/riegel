@@ -7,7 +7,12 @@ import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
 import { photos, engagement } from "@/lib/photos";
-import { expertenSeiten, expertenFlaggschiffe, EXPERTEN_CLUSTER_LABEL } from "@/lib/experten";
+import {
+  expertenSeiten,
+  expertenFlaggschiffe,
+  expertenKernobjekte,
+  EXPERTEN_CLUSTER_LABEL,
+} from "@/lib/experten";
 
 export const metadata = {
   title: "Immobilie verkaufen",
@@ -206,6 +211,32 @@ export default function VerkaufenPage() {
               Bewertungsfaktoren und rechtlichen Rahmenbedingungen. Wir kennen sie.
             </p>
           </Reveal>
+
+          {/* Kerngeschäft zuerst: die vier klassischen Wohnobjektarten in einer
+              eigenen, kompakteren Reihe — sie sollen vor den Spezialgebieten
+              stehen, nicht darin untergehen. */}
+          <Reveal className="mb-10">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {expertenKernobjekte.map((s) => (
+                <Link
+                  key={s.slug}
+                  href={`/verkaufen/${s.slug}`}
+                  className="press group flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 transition-colors hover:border-accent/50"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/[0.08] text-accent">
+                    <Icon name={s.icon} size={18} />
+                  </span>
+                  <span className="min-w-0 text-sm font-medium text-fg">{s.label}</span>
+                  <Icon
+                    name="arrowRight"
+                    size={15}
+                    className="ml-auto shrink-0 text-accent transition-transform group-hover:translate-x-0.5"
+                  />
+                </Link>
+              ))}
+            </div>
+          </Reveal>
+
           <Reveal>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {expertenFlaggschiffe.map((s) => (
@@ -239,8 +270,13 @@ export default function VerkaufenPage() {
             <h3 id="spezialgebiete" className="scroll-mt-28 text-lg font-semibold text-fg">Alle Spezialgebiete</h3>
             <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
               {Object.entries(EXPERTEN_CLUSTER_LABEL).map(([cluster, label]) => {
+                // Flaggschiffe und Kernobjekte stehen schon als Karten oben —
+                // hier nur die verbleibenden Spezialgebiete auflisten.
                 const seiten = expertenSeiten.filter(
-                  (s) => s.cluster === cluster && !expertenFlaggschiffe.some((f) => f.slug === s.slug),
+                  (s) =>
+                    s.cluster === cluster &&
+                    !expertenFlaggschiffe.some((f) => f.slug === s.slug) &&
+                    !expertenKernobjekte.some((k) => k.slug === s.slug),
                 );
                 if (seiten.length === 0) return null;
                 return (

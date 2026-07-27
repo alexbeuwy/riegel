@@ -718,6 +718,17 @@ export const expertenSeiten: ExpertenSeite[] = [...flaggschiffe, ...weitereSeite
 /** Nur die Flaggschiffe (Mega-Menü, prominente Hub-Karten). */
 export const expertenFlaggschiffe: ExpertenSeite[] = flaggschiffe;
 
+/**
+ * Das Kerngeschäft: die vier klassischen Wohnobjektarten. Sie standen anfangs
+ * nur in der langen Spezialgebiete-Liste, wodurch der Hub wirkte, als würden
+ * wir ausschließlich Spezialobjekte machen (Hinweis Manfred) — daher eigene,
+ * prominente Reihe auf /verkaufen ÜBER den Spezialisierungen.
+ */
+const KERN_SLUGS = ["einfamilienhaus", "reihenhaus", "doppelhaushaelfte", "eigentumswohnung"] as const;
+export const expertenKernobjekte: ExpertenSeite[] = KERN_SLUGS.map(
+  (slug) => expertenSeiten.find((s) => s.slug === slug)!,
+).filter(Boolean);
+
 /** Cluster-Label für die Hub-Gruppierung. */
 export const EXPERTEN_CLUSTER_LABEL: Record<string, string> = {
   wohnen: "Wohnen & Bestand",
