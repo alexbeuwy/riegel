@@ -13,6 +13,75 @@
  * bewertet — Ergebnis 1,67 Mio. € statt realistischer ~650 Tsd. €.
  */
 export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
+
+/** Bauform eines Wohnhauses. Nur relevant für objektart === "haus". */
+export type Haustyp =
+  | "freistehend"
+  | "doppelhaushaelfte"
+  | "reihenendhaus"
+  | "reihenmittelhaus"
+  | "bungalow";
+
+/**
+ * Faktor auf den GEBÄUDE-Quadratmeterpreis je Bauform (Frage Manfred: macht es
+ * einen Unterschied, ob Einfamilienhaus, Doppelhaushälfte, Reihenhaus oder
+ * Bungalow?). Ja, und zwar messbar.
+ *
+ * QUELLE: Normalherstellungskosten 2010, Anlage 4 der ImmoWertV. Die amtliche
+ * Tabelle kennt für diesen Fall genau DREI Gebäudearten, nicht fünf:
+ *   freistehende Ein- und Zweifamilienhäuser   900 €/m² BGF   = 1,00
+ *   Doppel- UND Reihenendhäuser (eine Zeile!)  845 €/m² BGF   = 0,94
+ *   Reihenmittelhäuser                         795 €/m² BGF   = 0,88
+ * (Beispiel Keller + Erdgeschoss, Flachdach, Standardstufe 3; nachgerechnet
+ * über mehrere Geschoss- und Kellervarianten sowie alle fünf Standardstufen,
+ * das Verhältnis bleibt konstant bei rund minus 6 und minus 12 Prozent.)
+ *
+ * Dass Doppelhaushälfte und Reihenendhaus denselben Wert haben, ist kein
+ * Versehen, sondern bautechnisch folgerichtig: beide haben genau eine
+ * gemeinsame Trennwand und drei freie Außenwände. Das Reihenmittelhaus mit
+ * zwei Trennwänden ist die einzige echte dritte Stufe.
+ *
+ * WARUM GENAU DIESE ZAHLEN UND KEINE GRÖSSEREN:
+ * Im Markt werden oft deutlich größere Abschläge genannt, von minus 20 bis
+ * minus 50 Prozent. Diese Zahlen enthalten aber den GRUNDSTÜCKSANTEIL, denn
+ * Reihenhausgrundstücke werden von vornherein kleiner zugeschnitten. Unsere
+ * Rechnung bewertet das Grundstück bereits getrennt und mit der tatsächlich
+ * eingegebenen Fläche (s. grundstuecksStaffel weiter unten). Wer hier einen
+ * marktbasierten Abschlag ansetzt, zieht denselben Effekt ein zweites Mal ab
+ * und rechnet Reihenhäuser systematisch zu billig. Die NHK-Werte sind reine
+ * Baukostenverhältnisse und damit genau das, was auf den Gebäudeanteil gehört.
+ *
+ * BUNGALOW bewusst neutral bei 1,00: Die NHK kennen dafür keine eigene
+ * Gebäudeart, die Bauform wird dort über Geschossigkeit und Dachform
+ * abgebildet. Zwei Effekte wirken gegeneinander und heben sich der
+ * Größenordnung nach auf: Ein eingeschossiges Haus ohne Keller kostet je
+ * Quadratmeter rund 18 Prozent mehr (mehr Dach und mehr Bodenplatte je
+ * Quadratmeter Wohnfläche, mit Keller schrumpft der Aufschlag auf etwa 6
+ * Prozent), gleichzeitig steigt die Nachfrage nach ebenerdigem Wohnen. Einen
+ * Auf- oder Abschlag zu erfinden, wäre hier unseriös; der höhere
+ * Grundstücksbedarf schlägt ohnehin über die eingegebene Grundstücksfläche
+ * durch.
+ *
+ * NICHT ABGEBILDET, bewusst: Der zusätzliche Markt- und Lageeffekt über die
+ * Baukosten hinaus. Dafür bräuchte es die Vergleichsfaktortabellen der
+ * zuständigen Gutachterausschüsse, die kostenpflichtig sind. Sobald die
+ * vorliegen, gehören diese Faktoren regional nachkalibriert.
+ */
+export const HAUSTYP_FAKTOR: Record<Haustyp, number> = {
+  freistehend: 1.0,
+  doppelhaushaelfte: 0.94,
+  reihenendhaus: 0.94,
+  reihenmittelhaus: 0.88,
+  bungalow: 1.0,
+};
+
+export const HAUSTYPEN: { key: Haustyp; label: string; kurz: string }[] = [
+  { key: "freistehend", label: "Freistehendes Haus", kurz: "Freistehend" },
+  { key: "doppelhaushaelfte", label: "Doppelhaushälfte", kurz: "Doppelhaus" },
+  { key: "reihenendhaus", label: "Reihenendhaus", kurz: "Reihenende" },
+  { key: "reihenmittelhaus", label: "Reihenmittelhaus", kurz: "Reihenmitte" },
+  { key: "bungalow", label: "Bungalow", kurz: "Bungalow" },
+];
 export type Zustand = "neuwertig" | "gepflegt" | "renovierungsbeduerftig";
 export type Qualitaet = "einfach" | "normal" | "gehoben" | "luxus";
 /**
@@ -41,6 +110,8 @@ export interface ValuationInput {
   qualitaet: Qualitaet;
   energieklasse?: string;
   ausstattung: string[];
+  /** Bauform, nur für objektart === "haus" (s. HAUSTYP_FAKTOR). */
+  haustyp?: Haustyp;
   /**
    * Nur für objektart === "mehrfamilienhaus" (Zinshaus/Mehrparteienhaus):
    * Ertragswert-Eingaben statt reiner Flächen-Rechnung — s. estimateValue.
@@ -393,7 +464,15 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // gewerbliche BRW-Zonen). Ohne amtlichen Wert ist boden === r.boden und
     // der Faktor exakt 1 — Verhalten dann unverändert.
     const lageFaktor = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
-    pricePerSqm = Math.round(base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor);
+    // Bauform wirkt NUR auf den Gebäudeanteil, nie auf den Boden — der wird
+    // unten aus der tatsächlich eingegebenen Grundstücksfläche gerechnet.
+    // Genau deshalb stehen in HAUSTYP_FAKTOR die reinen Baukostenverhältnisse
+    // der NHK 2010 und keine (größeren) marktbasierten Abschläge.
+    const htFaktor =
+      input.objektart === "haus" && input.haustyp ? HAUSTYP_FAKTOR[input.haustyp] : 1;
+    pricePerSqm = Math.round(
+      base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor * htFaktor,
+    );
     const flaeche = input.wohnflaeche ?? 0;
     if (input.objektart === "gewerbe" && input.hallenflaeche && input.hallenflaeche > 0) {
       // Gewerbe mit Hallenanteil: Halle/Lager wird mit HALLEN_FAKTOR des
@@ -432,6 +511,16 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
           { label: "Ausstattungsqualität", effectPct: pct(qf) },
           { label: "Baujahr", effectPct: pct(bf) },
           { label: "Energieeffizienz", effectPct: pct(ef) },
+          // Nur beim Haus und nur, wenn eine Bauform gewählt wurde. Der Wert
+          // bezieht sich auf den Gebäudeanteil, nicht auf den Gesamtwert.
+          {
+            label: "Bauform (Gebäudeanteil)",
+            effectPct: pct(
+              input.objektart === "haus" && input.haustyp
+                ? HAUSTYP_FAKTOR[input.haustyp]
+                : 1,
+            ),
+          },
           { label: "Ausstattung", effectPct: Math.round(ausstBonus * 100) },
           { label: "Marktoptimismus", effectPct: pct(OPTIMISM) },
         ].filter((x) => x.effectPct !== 0);

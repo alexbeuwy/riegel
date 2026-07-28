@@ -12,6 +12,8 @@ import {
   AUSSTATTUNG_HAUS,
   AUSSTATTUNG_WOHNUNG,
   AUSSTATTUNG_GEWERBE,
+  HAUSTYPEN,
+  type Haustyp,
   QUALITAETEN,
   type Objektart,
   type Qualitaet,
@@ -72,6 +74,8 @@ interface FormState {
   qualitaet: Qualitaet;
   energieklasse: string;
   ausstattung: string[];
+  /** Nur Haus: Bauform (freistehend, Doppelhaushälfte, Reihenhaus, Bungalow). */
+  haustyp: Haustyp;
   /** Nur für objektart === "mehrfamilienhaus" — Ertragswert-Eingaben. */
   jahresnettokaltmiete: string;
   wohneinheiten: string;
@@ -97,6 +101,7 @@ const EMPTY: FormState = {
   qualitaet: "normal",
   energieklasse: "",
   ausstattung: [],
+  haustyp: "freistehend",
   jahresnettokaltmiete: "",
   wohneinheiten: "",
   gewerbeeinheiten: "",
@@ -142,6 +147,45 @@ interface SourceCtx {
  * bei Wohnung/Mehrfamilienhaus (Ertragswert-Ansatz, mietbasiert) ist
  * er rein informativ, der "amtlich"-Badge muss das kennzeichnen statt
  * fälschlich einen Preiseinfluss zu suggerieren. */
+/**
+ * Bauform-Icons. Gleiche Bildsprache wie die Objektart-Kacheln (24er-Raster,
+ * runde Enden, currentColor). Der ausgefuellte Punkt markiert, welches der
+ * gezeigten Haeuser das eigene ist — bei Reihenend- und Reihenmittelhaus ist
+ * das der einzige Unterschied und deshalb der ganze Witz des Icons.
+ */
+const HAUSTYP_ICONS: Record<Haustyp, React.ReactNode> = {
+  freistehend: (
+    <>
+      <path d="M7.5 11.5 12 7.5l4.5 4M9 11v8h6v-8M3 19h18" />
+      <circle cx="12" cy="16" r="1.15" fill="currentColor" stroke="none" />
+    </>
+  ),
+  doppelhaushaelfte: (
+    <>
+      <path d="M4 11.5 8 8l4 3.5 4-3.5 4 3.5M5.5 11v8h13v-8M12 11v8M3 19h18" />
+      <circle cx="8.75" cy="16" r="1.15" fill="currentColor" stroke="none" />
+    </>
+  ),
+  reihenendhaus: (
+    <>
+      <path d="M2.5 12 5 9.5 7.5 12 10 9.5 12.5 12 15 9.5 17.5 12M4 11.5V19h13v-7.5M8.5 11.5V19M13 11.5V19M2 19h18" />
+      <circle cx="6.25" cy="16" r="1.15" fill="currentColor" stroke="none" />
+    </>
+  ),
+  reihenmittelhaus: (
+    <>
+      <path d="M2.5 12 5 9.5 7.5 12 10 9.5 12.5 12 15 9.5 17.5 12M4 11.5V19h13v-7.5M8.5 11.5V19M13 11.5V19M2 19h18" />
+      <circle cx="10.75" cy="16" r="1.15" fill="currentColor" stroke="none" />
+    </>
+  ),
+  bungalow: (
+    <>
+      <path d="M3.5 13.5 12 9.5l8.5 4M5.5 13V19h13v-6M3 19h18" />
+      <circle cx="12" cy="16.5" r="1.15" fill="currentColor" stroke="none" />
+    </>
+  ),
+};
+
 /**
  * Ausstattungsliste je Objektart. Haus und Wohnung haben eigene Listen, weil
  * sich die wertrelevanten Merkmale unterscheiden: „Aufzug" ist bei einem
@@ -495,6 +539,7 @@ export function Calculator() {
       zustand: f.zustand,
       qualitaet: f.qualitaet,
       energieklasse: f.objektart === "gewerbe" ? undefined : f.energieklasse || undefined,
+      haustyp: f.objektart === "haus" ? f.haustyp : undefined,
       ausstattung: f.ausstattung,
       // Bei Vollleerstand eine evtl. vorher eingetippte Miete NICHT mitsenden
       // (sonst zählt sie trotz "leer stehend" weiter mit).
@@ -794,6 +839,69 @@ export function Calculator() {
         {step === 2 && (
           <div className="space-y-6">
             <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Eckdaten der Immobilie</h2>
+
+            {/* Bauform: nur beim Haus. Frage Manfred, ob das den Wert
+                beeinflusst — ja, und zwar ueber die Baukosten (s.
+                HAUSTYP_FAKTOR in lib/valuation.ts). Bewusst als sichtbare
+                Kachelreihe und nicht als Dropdown: fuenf Bauformen sind mit
+                einem Bild sofort zu unterscheiden, als Textliste dagegen
+                nicht ("Reihenendhaus" vs. "Reihenmittelhaus"). Der Punkt in
+                jedem Icon markiert, welches Haus das eigene ist. */}
+            {f.objektart === "haus" && (
+              <div className="space-y-3">
+                <span className="text-sm text-muted">Bauform</span>
+                <div
+                  role="radiogroup"
+                  aria-label="Bauform des Hauses"
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-5"
+                >
+                  {HAUSTYPEN.map((h) => {
+                    const gewaehlt = f.haustyp === h.key;
+                    return (
+                      <button
+                        key={h.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={gewaehlt}
+                        onClick={() => set("haustyp", h.key)}
+                        title={h.label}
+                        className={`press group relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border p-3 text-center transition-[border-color,background-color,transform] duration-300 ${
+                          gewaehlt
+                            ? "glow-select-on border-accent bg-surface-2"
+                            : "border-border hover:-translate-y-0.5 hover:border-accent/50 hover:bg-surface-2/60"
+                        }`}
+                      >
+                        <span aria-hidden="true" className="glow-select-ring" />
+                        <svg
+                          viewBox="0 0 24 24"
+                          width={34}
+                          height={34}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.3}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          className={`relative transition-colors duration-300 ${
+                            gewaehlt ? "text-accent" : "text-muted group-hover:text-accent"
+                          }`}
+                        >
+                          {HAUSTYP_ICONS[h.key]}
+                        </svg>
+                        <span
+                          className={`relative text-[0.72rem] font-medium leading-tight tracking-tight ${
+                            gewaehlt ? "text-fg" : "text-muted group-hover:text-fg"
+                          }`}
+                        >
+                          {h.kurz}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               {f.objektart !== "grundstueck" && (
                 // Bei Gewerbe heißt die Fläche Nutzfläche, nicht Wohnfläche.
