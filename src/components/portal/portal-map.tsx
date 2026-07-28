@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Estate } from "@/lib/mock-estates";
-import { formatPriceShort } from "@/lib/format";
+import { formatPinLabel, formatPrice, pinIconSvg } from "@/lib/format";
 
 // Freier dunkler Vektor-Style (CARTO dark-matter, kein API-Key).
 // DSGVO: externer Tile-Call → vor Go-Live hinter Consent-Tool.
@@ -134,13 +134,30 @@ export function PortalMap({
       boundsCbRef.current?.({ n: b.getNorth(), s: b.getSouth(), e: b.getEast(), w: b.getWest() });
     };
 
-    /** Erzeugt den HTML-Marker (Preis-Pill) für ein Objekt, falls noch nicht vorhanden. */
+    /** Erzeugt den HTML-Marker (Kurzbeschreibungs-Pill) für ein Objekt, falls noch nicht vorhanden. */
     const ensureMarker = (estate: Estate) => {
       if (!estate.geo || markersRef.current[estate.id]) return;
       const el = document.createElement("button");
       el.type = "button";
       el.className = "riegel-pin";
-      el.textContent = formatPriceShort(estate);
+      // Zweizeilig: Objektart mit Icon und Fläche oben, Preis klein darunter.
+      // Bewusst als DOM-Knoten zusammengesetzt statt per innerHTML, damit
+      // Objektdaten nie als Markup interpretiert werden können; innerHTML gibt
+      // es nur für das fest verdrahtete Icon-SVG.
+      const kopf = document.createElement("span");
+      kopf.className = "riegel-pin-kopf";
+      const ikon = document.createElement("span");
+      ikon.className = "riegel-pin-ikon";
+      ikon.innerHTML = pinIconSvg(estate.category);
+      const bezeichnung = document.createElement("span");
+      bezeichnung.textContent = formatPinLabel(estate);
+      kopf.append(ikon, bezeichnung);
+
+      const preis = document.createElement("span");
+      preis.className = "riegel-pin-preis";
+      preis.textContent = formatPrice(estate);
+
+      el.append(kopf, preis);
       // Für Tests/Debugging: Objekt-Id direkt am Element ablesbar.
       el.dataset.estateId = estate.id;
       // Karte ist visuelle Repräsentation der Liste → Pins aus Tab-/SR-Reihenfolge nehmen.

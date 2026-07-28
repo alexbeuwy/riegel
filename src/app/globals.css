@@ -729,46 +729,90 @@
 }
 
 /* ── Portal-Karten-Pins (MapLibre HTML-Marker) ── */
+/* Zweizeilige Karte statt Preis-Pille: oben Objektart mit Icon und Fläche,
+   darunter klein der ausgeschriebene Preis. Die runde Pillenform trug nur eine
+   Zeile, für zwei Zeilen ist ein abgerundetes Rechteck die ruhigere Form. */
 .riegel-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--color-accent-strong);
+  line-height: 1.15;
   background: rgba(11, 11, 13, 0.92);
   border: 1px solid var(--color-accent);
-  border-radius: 9999px;
-  padding: 5px 9px;
+  border-radius: 10px;
+  padding: 5px 8px;
   cursor: pointer;
   white-space: nowrap;
   transition:
     transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
     background-color 200ms,
-    color 200ms;
+    border-color 200ms;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  /* Bewusst OHNE fill-mode: nach dem Lauf greift wieder die normale
+     transform-Regel, sonst würde der Endwert der Animation den Hover-Zoom
+     überschreiben. Pins entstehen auch beim Auseinanderfallen eines Clusters
+     neu, das Einblenden macht diesen Moment lesbar. */
+  animation: riegel-pin-auf 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes riegel-pin-auf {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.94);
+  }
+}
+.riegel-pin-kopf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  transition: color 200ms;
+}
+.riegel-pin-ikon {
+  display: inline-flex;
+  opacity: 0.85;
+}
+.riegel-pin-preis {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  transition: color 200ms;
 }
 .riegel-pin:hover {
-  transform: scale(1.06);
+  transform: scale(1.05);
+  border-color: var(--color-accent-strong);
 }
 .riegel-pin.is-active {
   background: var(--color-accent);
-  color: var(--color-on-accent);
-  transform: scale(1.12);
+  transform: scale(1.1);
   z-index: 5;
+}
+.riegel-pin.is-active .riegel-pin-kopf,
+.riegel-pin.is-active .riegel-pin-preis {
+  color: var(--color-on-accent);
 }
 /* Außerhalb des Kartenausschnitts (Search-this-area) zurückgenommen. */
 .riegel-pin.is-dimmed {
   opacity: 0.35;
   filter: grayscale(0.6);
-  color: var(--color-muted);
   border-color: var(--color-border);
+}
+.riegel-pin.is-dimmed .riegel-pin-kopf {
+  color: var(--color-muted);
 }
 .riegel-pin:focus-visible {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .riegel-pin { transition: none !important; }
+  .riegel-pin {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* ── Standort-Karten-Pins (GEO-Explorer, MapLibre HTML-Marker) ── */

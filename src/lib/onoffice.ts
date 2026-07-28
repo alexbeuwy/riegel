@@ -601,26 +601,51 @@ function mapEstateRecord(record: OnOfficeEstateRecord, statusOverride?: EstateSt
   const district = (/^[\["']*ind[A-Z0-9]/i.test(rawDistrict) ? "" : rawDistrict) || districtFromOrt || undefined;
 
   // DATENSCHUTZ (Vorgabe Sissy RIEGEL): Die genaue Anschrift eines Objekts darf
-  // NIRGENDS im Portal auftauchen — auch nicht als exakte Karten-Koordinate im
-  // Seiten-Quelltext. Deshalb werden die OnOffice-Koordinaten hier serverseitig
-  // (a) auf 2 Nachkommastellen (~1 km) gerundet — verlustbehaftet, also NICHT
-  // auf die Hausnummer rückrechenbar — und (b) mit einem kleinen, aus der Id
-  // abgeleiteten Versatz (~200–320 m) versehen, damit Objekte derselben
-  // Rasterzelle sich auf der Karte nicht exakt überlagern (der Versatz sitzt auf
-  // dem bereits gerundeten Wert und verrät daher die echte Lage nicht). Die
-  // Karte deckelt zusätzlich den Zoom (portal-map.tsx). Ergebnis: nur die
-  // Gegend/der Ort ist sichtbar, nie das einzelne Gebäude.
+  // NIRGENDS im Portal auftauchen, auch nicht als exakte Karten-Koordinate im
+  // Seiten-Quelltext.
+  //
+  // Verfahren: Die echte Koordinate wird in eine Rasterzelle von rund 1,5 km
+  // Kantenlänge einsortiert, und der angezeigte Punkt liegt dann an einer aus
+  // der Objekt-Id abgeleiteten Stelle IRGENDWO in dieser Zelle. Zwei
+  // Eigenschaften sind dabei wichtig:
+  //
+  //  - Die Einsortierung ist verlustbehaftet. Aus dem angezeigten Punkt lässt
+  //    sich die echte Lage nicht zurückrechnen, sie ist nur noch als "eine
+  //    Stelle innerhalb dieser Zelle" bekannt.
+  //  - Die Stelle innerhalb der Zelle ist NICHT die Zellmitte, sondern
+  //    gleichverteilt gestreut. Vorher saß der Punkt dicht an der Zellmitte
+  //    (Versatz nur 200 bis 320 Meter), womit das Raster und damit die Zelle
+  //    für jeden ablesbar war, der zwei Objekte verglichen hat. Genau das war
+  //    Sissys Beobachtung, dass man die Lage noch ziemlich genau sieht.
+  //
+  // Der Versatz hängt allein an der Objekt-Id, ist also über Neuladen hinweg
+  // stabil. Das ist Absicht: ein bei jedem Aufruf neu gewürfelter Punkt ließe
+  // sich über mehrere Aufrufe hinweg mitteln und würde die echte Lage gerade
+  // wieder preisgeben.
+  //
+  // Die Karte deckelt zusätzlich den Zoom (portal-map.tsx). Ergebnis: sichtbar
+  // ist die Gegend, nie das einzelne Gebäude.
   const rawLat = num(el.breitengrad);
   const rawLng = num(el.laengengrad);
   let geo: GeoPoint | null = null;
   if (rawLat !== null && rawLng !== null && rawLat !== 0 && rawLng !== 0) {
+    const ZELLE_M = 1500;
+    // Längengrade rücken zu den Polen hin zusammen, deshalb die Umrechnung
+    // breitenabhängig — sonst wäre die Zelle in Nord-Süd-Richtung deutlich
+    // größer als in Ost-West-Richtung.
+    const gradLat = ZELLE_M / 111_320;
+    const gradLng = ZELLE_M / (111_320 * Math.cos((rawLat * Math.PI) / 180));
+
     let h = 0;
     for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0;
-    const ang = ((((h % 360) + 360) % 360) * Math.PI) / 180;
-    const dist = 0.0018 + ((Math.abs(h >> 8) % 120) / 120) * 0.0012; // ~200–320 m
+    // Zwei voneinander unabhängige Werte in [0,1) aus demselben Hash: ohne die
+    // zweite Streuung lägen alle Punkte auf der Diagonalen ihrer Zelle.
+    const u = ((h >>> 0) % 9973) / 9973;
+    const v = ((Math.imul(h ^ 0x5f356495, 2246822519) >>> 0) % 9973) / 9973;
+
     geo = {
-      lat: Math.round(rawLat * 100) / 100 + Math.sin(ang) * dist,
-      lng: Math.round(rawLng * 100) / 100 + Math.cos(ang) * dist,
+      lat: Math.floor(rawLat / gradLat) * gradLat + u * gradLat,
+      lng: Math.floor(rawLng / gradLng) * gradLng + v * gradLng,
     };
   }
   // Bewusst IMMER false: das Portal zeigt nie die exakte Lage (nur den Ort).

@@ -16,7 +16,43 @@ export function formatPrice(estate: Estate): string {
   return estate.marketingType === "miete" ? `${base} / Monat` : base;
 }
 
-/** Kompaktes Preis-Label für Karten-Pins, z. B. „845 T€“. */
+/**
+ * Kurzbeschreibung für die Karten-Pins, z. B. „Wohnung · 70 m²“.
+ *
+ * Bewusst KEIN Preis mehr (Vorgabe Sissy RIEGEL). Ein Preisschild an einem
+ * Punkt auf der Karte lädt dazu ein, Objekt und Adresse zusammenzubringen, und
+ * verrät zusammen mit der Gegend mehr über ein einzelnes Haus, als es soll.
+ * Die Objektart mit Fläche sagt dem Suchenden beim Überfliegen ohnehin mehr,
+ * der Preis steht in der Karte daneben und auf der Objektseite.
+ */
+export function formatPinLabel(estate: Estate): string {
+  const art = categoryLabel(estate.category);
+  // Bei Grundstücken gibt es keine Wohnfläche, dort zählt die Grundstücksgröße.
+  const flaeche = formatArea(estate.livingArea ?? estate.plotArea ?? null);
+  return flaeche ? `${art} · ${flaeche}` : art;
+}
+
+/**
+ * Rohes SVG-Markup je Objektkategorie für die Karten-Pins.
+ *
+ * Die Pins werden direkt im DOM erzeugt (MapLibre-HTML-Marker), dort steht die
+ * Icon-Komponente aus components/icon.tsx nicht zur Verfügung. Die Pfade sind
+ * daher von dort kopiert und müssen bei einer Änderung dort mitgezogen werden.
+ * Der Inhalt ist fest verdrahtet, es fließt nichts aus Objektdaten ein.
+ */
+const PIN_ICON_PFADE: Record<ObjectCategory, string> = {
+  haus: '<path d="M3 10.5 12 4l9 6.5M5 9.5V20h14V9.5M9.5 20v-5h5v5"/>',
+  wohnung:
+    '<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 21V9h4a1 1 0 0 1 1 1v11M3 21h18"/><path d="M7.5 8h3M7.5 12h3M7.5 16h3"/>',
+  grundstueck: '<path d="M12 3 6 11h3l-3 5h12l-3-5h3L12 3ZM12 16v5"/>',
+  gewerbe: '<path d="m12 3 9 5-9 5-9-5 9-5ZM3 13l9 5 9-5M3 18l9 5 9-5"/>',
+};
+
+export function pinIconSvg(c: ObjectCategory): string {
+  return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PIN_ICON_PFADE[c]}</svg>`;
+}
+
+/** Kompaktes Preis-Label, z. B. „845 T€“. */
 export function formatPriceShort(estate: Estate): string {
   if (estate.price == null) return "k. A.";
   if (estate.marketingType === "miete") return `${Math.round(estate.price)} €`;
