@@ -283,7 +283,12 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
           addressLocality: l.city,
           addressCountry: "DE",
         })),
-        sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube].filter(Boolean),
+        sameAs: [
+          site.socials.instagram,
+          site.socials.facebook,
+          site.socials.youtube,
+          site.socials.linkedin,
+        ].filter(Boolean),
       },
       {
         "@type": "FAQPage",

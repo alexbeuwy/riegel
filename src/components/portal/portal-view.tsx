@@ -228,12 +228,13 @@ export function PortalView({ estates }: { estates: Estate[] }) {
                   onClick={() => setVisibleCount((v) => v + CARD_CHUNK)}
                   className="press rounded-full border border-border px-5 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
                 >
-                  {/* Vorher stand hier nur die Größe der NÄCHSTEN Ladung in
-                      Klammern, was sich las, als wären insgesamt nur so viele
-                      Objekte übrig (Hinweis Manfred). Jetzt beide Zahlen. */}
-                  {remaining > CARD_CHUNK
-                    ? `Weitere ${CARD_CHUNK} von ${remaining} anzeigen`
-                    : `Weitere ${remaining} ${remaining === 1 ? "Objekt" : "Objekte"} anzeigen`}
+                  {/* Bewusst ohne Zahlen (Hinweis Manfred): "Weitere 24 von 65"
+                      las sich missverständlich und stand zudem scheinbar im
+                      Widerspruch zur Zahl auf der Karte — die Karte zählt nur
+                      Objekte MIT Koordinaten, die Liste alle. Beide Zahlen sind
+                      je für sich richtig, nebeneinander stiften sie aber nur
+                      Verwirrung. Der Button sagt jetzt schlicht, was er tut. */}
+                  Weitere Objekte laden
                 </button>
               </div>
             )}

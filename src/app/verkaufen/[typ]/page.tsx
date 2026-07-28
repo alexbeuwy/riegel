@@ -86,7 +86,12 @@ function jsonLd(seite: ExpertenSeite, url: string) {
           addressLocality: l.city,
           addressCountry: "DE",
         })),
-        sameAs: [site.socials.instagram, site.socials.facebook, site.socials.youtube].filter(Boolean),
+        sameAs: [
+          site.socials.instagram,
+          site.socials.facebook,
+          site.socials.youtube,
+          site.socials.linkedin,
+        ].filter(Boolean),
       },
       {
         "@type": "FAQPage",

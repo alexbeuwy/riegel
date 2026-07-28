@@ -587,6 +587,55 @@
   .t-tabs-pill, .t-tab { transition: none !important; }
 }
 
+/* ── 16 Tabs sliding, vertikale Variante (Bereichs-Auswahl im Team) ──
+   Gleiches Prinzip wie oben, nur laufen Pille und Auswahl senkrecht: JS
+   schreibt offsetTop/offsetHeight des aktiven Eintrags auf die Pille, das
+   CSS tweent Y-Versatz UND Höhe. Die Höhe muss mitanimieren, weil die
+   Einträge unterschiedlich hoch sind (ein Bereich mit vier Namen ist höher
+   als einer mit zweien). */
+.t-vtabs {
+  position: relative;
+}
+.t-vtabs-pill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  border-radius: 1rem;
+  background: var(--color-surface-2);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  transform: translateY(0);
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    height var(--tabs-dur) var(--tabs-ease);
+  will-change: transform, height;
+  z-index: 0;
+  pointer-events: none;
+}
+.t-vtab {
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-vtabs-pill { transition: none !important; }
+}
+
+/* Porträts, die nicht zum gewählten Bereich gehören, treten zurück statt zu
+   verschwinden — die Reihenfolge bleibt dadurch stabil, es springt nichts. */
+.t-team-figure {
+  transition:
+    opacity 420ms var(--ease-smooth-out),
+    filter 420ms var(--ease-smooth-out);
+}
+.t-team-figure[data-dim="true"] {
+  opacity: 0.26;
+  filter: grayscale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-team-figure { transition: none !important; }
+}
+
 /* ── Taktiles Klick-Feedback (überall auf Auswahl-Buttons/Kacheln) ──
    Deckt Transform UND Farben ab, damit es eine vorhandene
    `transition-colors` nicht überschreibt. */

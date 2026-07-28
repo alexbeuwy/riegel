@@ -417,6 +417,35 @@ export default function DatenschutzPage() {
               Marketingzwecken findet nicht statt.
             </p>
 
+            <h3>Reichweitenmessung (Vercel Web Analytics)</h3>
+            <p>
+              Zur Ermittlung der Reichweite unserer Seiten nutzen wir{" "}
+              <strong>Vercel Web Analytics</strong>, einen Dienst unseres Hosters Vercel Inc. Der
+              Dienst erfasst ausschließlich aggregierte Angaben darüber, welche Seiten wie oft
+              aufgerufen werden, aus welchem Land der Aufruf erfolgt sowie die grobe Geräteklasse
+              und den Browsertyp.
+            </p>
+            <p>
+              <strong>
+                Es werden dabei keine Cookies gesetzt und es wird nicht auf im Endgerät
+                gespeicherte Informationen zugegriffen.
+              </strong>{" "}
+              Eine Einwilligung nach § 25 Abs. 1 TDDDG ist deshalb nicht erforderlich. Zur
+              Unterscheidung wiederkehrender Aufrufe bildet Vercel serverseitig einen Kennwert aus
+              IP-Adresse und Browserkennung, der arbeitstäglich wechselt und nicht zurückgerechnet
+              werden kann. Die IP-Adresse selbst wird nicht gespeichert. Es entstehen weder
+              geräteübergreifende Profile noch eine Wiedererkennung über mehrere Tage hinweg, und
+              es findet keine Weitergabe an Werbenetzwerke statt.
+            </p>
+            <p>
+              Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse liegt
+              darin, zu erkennen, welche Inhalte nachgefragt werden, und unser Angebot darauf
+              auszurichten. Sie können der Verarbeitung nach Art. 21 DSGVO widersprechen; nutzen
+              Sie dafür die in Abschnitt 5 genannten Kontaktwege. Auftragsverarbeitung und
+              Drittlandübermittlung richten sich nach denselben Vereinbarungen wie das Hosting
+              (Abschnitte 30 und 31).
+            </p>
+
             {/* 10 */}
             <h2 id="cookies">10. Lokale Speicherung &amp; Einwilligungsverwaltung</h2>
             <p>
@@ -906,7 +935,7 @@ export default function DatenschutzPage() {
             <Tabelle
               kopf={["Dienstleister", "Funktion", "Ort der Verarbeitung"]}
               zeilen={[
-                ["Vercel Inc.", "Hosting und Auslieferung der Website", "EU (Frankfurt), Unternehmen mit Sitz in den USA"],
+                ["Vercel Inc.", "Hosting, Auslieferung der Website und cookiefreie Reichweitenmessung", "EU (Frankfurt), Unternehmen mit Sitz in den USA"],
                 ["Supabase Inc.", "Datenbank, Benutzerkonten, Authentifizierung", "Unternehmen mit Sitz in den USA, siehe Abschnitt 31"],
                 ["onOffice GmbH", "Maklersoftware, Objekt- und Kundenverwaltung", "Deutschland"],
                 ["Resend, Inc.", "technischer E-Mail-Versand", "Unternehmen mit Sitz in den USA, siehe Abschnitt 31"],
@@ -954,8 +983,8 @@ export default function DatenschutzPage() {
             {/* 33 */}
             <h2 id="social">33. Social Media, Reels &amp; Bewertungsportale</h2>
             <p>
-              Die Verweise auf unsere Profile bei Instagram, Facebook und YouTube sowie auf
-              Bewertungsportale sind <strong>einfache Links</strong>. Es werden keine Inhalte
+              Die Verweise auf unsere Profile bei Instagram, Facebook, YouTube und LinkedIn sowie
+              auf Bewertungsportale sind <strong>einfache Links</strong>. Es werden keine Inhalte
               dieser Anbieter in unsere Seite eingebettet und keine Skripte geladen. Eine
               Datenübermittlung findet erst statt, wenn Sie den Link aktiv anklicken; anschließend
               gelten die Bestimmungen des jeweiligen Anbieters.

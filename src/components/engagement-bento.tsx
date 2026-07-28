@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, type CSSProperties } from "react";
-import { engagement } from "@/lib/photos";
+import { engagement, photos } from "@/lib/photos";
 
 /**
  * „Engagement & Sponsoring"-Bento für die Über-uns-Seite. Ersetzt fehlende
@@ -13,14 +13,40 @@ import { engagement } from "@/lib/photos";
  * sofort sichtbar, keine Bewegung.
  */
 
-type Tile =
-  | { kind: "img"; src: string; alt: string; label: string; sub?: string; span: string; from: string }
-  | { kind: "fact"; big: string; label: string; span: string; from: string };
+type Tile = {
+  src: string;
+  alt: string;
+  label: string;
+  sub?: string;
+  span: string;
+  from: string;
+  /** Abschluss-Kachel: größere weiße Headline auf kräftigerem Verlauf. */
+  gross?: boolean;
+};
 
-// `from` = Start-Offset-Klasse (Richtung, aus der die Kachel einfliegt).
+/**
+ * Reihenfolge und Spaltenbreiten sind so gewählt, dass das Raster auf ALLEN
+ * drei Breakpoints ohne Lücke aufgeht (2 Spalten mobil, 3 ab sm, 4 ab lg):
+ *
+ *   4 Spalten          3 Spalten           2 Spalten
+ *   auto  auto  hoff banden    auto auto hoff     auto  auto
+ *   auto  auto  hoff plakat    auto auto hoff     auto  auto
+ *   büro  büro  wein vw        band plak plak     hoff  band
+ *   event event enga enga      büro büro wein     hoff  plak
+ *                              vw   even enga     büro  büro
+ *                                                 wein  vw
+ *                                                 event event
+ *                                                 enga  enga
+ *
+ * Beim Verschieben oder Ergänzen von Kacheln bitte nachrechnen: Die Fläche
+ * muss durch die jeweilige Spaltenzahl teilbar sein UND die Reihenfolge darf
+ * keine zu breite Kachel in eine angebrochene Zeile schicken — CSS Grid füllt
+ * ohne `dense` nicht rückwärts auf, es bleibt sonst ein Loch stehen.
+ *
+ * `from` = Start-Offset-Klasse (Richtung, aus der die Kachel einfliegt).
+ */
 const TILES: Tile[] = [
   {
-    kind: "img",
     src: engagement.autoGewonnen,
     alt: "Fahrzeugübergabe eines gebrandeten VW up! mit RIEGEL-Immobilien-Beschriftung",
     label: "VW up! verlost",
@@ -29,7 +55,6 @@ const TILES: Tile[] = [
     from: "asm-l",
   },
   {
-    kind: "img",
     src: engagement.hoffenheim,
     alt: "RIEGEL-Immobilien-Trikot der TSG 1899 Hoffenheim",
     label: "TSG 1899 Hoffenheim",
@@ -37,15 +62,11 @@ const TILES: Tile[] = [
     span: "col-span-1 row-span-2",
     from: "asm-r",
   },
+  // Die Kachel „Fußball / Hauptsponsor · Verein Speyer" ist entfallen (Hinweis
+  // Manfred): eine reine Text-Kachel passte nicht zu den übrigen, die konkrete
+  // Engagements zeigen. Ebenso zuvor schon „20+ Jahre" — die Aussage steht im
+  // Fließtext darüber, dort als „seit Jahrzehnten".
   {
-    kind: "fact",
-    big: "Fußball",
-    label: "Hauptsponsor · Verein Speyer",
-    span: "col-span-2 sm:col-span-1 row-span-1",
-    from: "asm-u",
-  },
-  {
-    kind: "img",
     src: engagement.bandenwerbung,
     alt: "RIEGEL-Bandenwerbung im Bundesliga-Stadion",
     label: "Bandenwerbung",
@@ -54,7 +75,14 @@ const TILES: Tile[] = [
     from: "asm-d",
   },
   {
-    kind: "img",
+    src: engagement.plakat,
+    alt: "RIEGEL-Großflächenplakat im öffentlichen Raum",
+    label: "Out-of-Home",
+    sub: "Großflächen in der Region",
+    span: "col-span-1 sm:col-span-2 lg:col-span-1 row-span-1",
+    from: "asm-r",
+  },
+  {
     src: engagement.officeWide1,
     alt: "Modernes RIEGEL-Büro mit blauer Lichtführung",
     label: "Unser Büro",
@@ -63,20 +91,6 @@ const TILES: Tile[] = [
     from: "asm-d",
   },
   {
-    kind: "img",
-    src: engagement.plakat,
-    alt: "RIEGEL-Großflächenplakat im öffentlichen Raum",
-    label: "Out-of-Home",
-    sub: "Großflächen in der Region",
-    span: "col-span-1 row-span-1",
-    from: "asm-r",
-  },
-  // Die Kachel „20+ Jahre / regionales Engagement" ist entfallen (Hinweis
-  // Manfred): eine Jahreszahl passte nicht zu den übrigen Kacheln, die
-  // konkrete Engagements zeigen. Die Aussage steht weiterhin im Fließtext
-  // darüber, dort jetzt als „seit Jahrzehnten".
-  {
-    kind: "img",
     src: engagement.wein,
     alt: "RIEGEL-Wein aus der Pfalz",
     label: "RIEGEL Wein",
@@ -85,21 +99,28 @@ const TILES: Tile[] = [
     from: "asm-l",
   },
   {
-    kind: "img",
-    src: engagement.event,
-    alt: "RIEGEL bei einem regionalen Event",
-    label: "Kundenevents",
-    sub: "Präsenz in der Region",
-    span: "col-span-2 row-span-1",
-    from: "asm-l",
-  },
-  {
-    kind: "img",
     src: engagement.vwGewinnspiel,
     alt: "Kampagnenmotiv des RIEGEL-VW-up!-Gewinnspiels",
     label: "Gewinnspiel-Kampagne",
     span: "col-span-1 row-span-1",
     from: "asm-d",
+  },
+  {
+    src: engagement.event,
+    alt: "RIEGEL bei einem regionalen Event",
+    label: "Kundenevents",
+    sub: "Präsenz in der Region",
+    span: "col-span-2 sm:col-span-1 lg:col-span-2 row-span-1",
+    from: "asm-l",
+  },
+  {
+    src: photos.hausLightrays,
+    alt: "Modernes Haus mit RIEGEL-Pylon und blauen Lichtspuren",
+    label: "Wir sind engagiert",
+    sub: "Sport · Region · Nachwuchs",
+    span: "col-span-2 sm:col-span-1 lg:col-span-2 row-span-1",
+    from: "asm-u",
+    gross: true,
   },
 ];
 
@@ -151,30 +172,45 @@ export function EngagementBento() {
           className={`asm-tile ${t.from} ${t.span} group relative overflow-hidden rounded-2xl border border-border`}
           style={{ ["--start"]: (i * 0.055).toFixed(3) } as CSSProperties}
         >
-          {t.kind === "img" ? (
-            <>
-              <Image
-                src={t.src}
-                alt={t.alt}
-                fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-              />
-              {/* Akzent-Hairline oben (Website-Sprache) + Text-Overlay unten. */}
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/85 via-bg/10 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-3.5">
-                <div className="text-sm font-semibold leading-tight text-fg">{t.label}</div>
-                {t.sub && <div className="text-[0.7rem] uppercase tracking-wide text-muted">{t.sub}</div>}
-              </div>
-            </>
-          ) : (
-            <div className="flex h-full flex-col justify-center gap-1 bg-accent/[0.08] p-4">
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent" />
-              <div className="akira text-2xl leading-none text-accent [overflow-wrap:anywhere] sm:text-[1.7rem]">{t.big}</div>
-              <div className="text-xs leading-tight text-muted">{t.label}</div>
+          <Image
+            src={t.src}
+            alt={t.alt}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+          />
+          {/* Akzent-Hairline oben (Website-Sprache) + Text-Overlay unten. */}
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          {/* Die Abschluss-Kachel trägt eine Aussage statt einer Bildunterschrift
+              und braucht dafür einen kräftigeren Verlauf, damit die weiße
+              Schrift auf jedem Bildausschnitt sicher lesbar bleibt. */}
+          <div
+            className={`pointer-events-none absolute inset-0 ${
+              t.gross
+                ? "bg-gradient-to-t from-bg/90 via-bg/55 to-bg/30"
+                : "bg-gradient-to-t from-bg/85 via-bg/10 to-transparent"
+            }`}
+          />
+          <div className={`absolute inset-x-0 bottom-0 p-3.5 ${t.gross ? "sm:p-5" : ""}`}>
+            <div
+              className={
+                t.gross
+                  ? "text-lg font-semibold leading-tight text-white sm:text-2xl"
+                  : "text-sm font-semibold leading-tight text-fg"
+              }
+            >
+              {t.label}
             </div>
-          )}
+            {t.sub && (
+              <div
+                className={`uppercase tracking-wide ${
+                  t.gross ? "mt-1 text-[0.7rem] text-white/70" : "text-[0.7rem] text-muted"
+                }`}
+              >
+                {t.sub}
+              </div>
+            )}
+          </div>
         </div>
       ))}
     </div>

@@ -6,6 +6,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { site } from "@/lib/site";
 import { photos, portraits } from "@/lib/photos";
 import { EngagementBento } from "@/components/engagement-bento";
+import { PersonGrid, TeamBereiche, type Mitarbeitend } from "@/components/team-bereiche";
 
 export const metadata = {
   title: "Über uns",
@@ -26,10 +27,12 @@ const familie = [
 
 // Das Team — echte Besetzung + Porträts. Gliederung nach Vorgabe: NUR zwei
 // Trennungen, nämlich Familie darüber und Nachwuchs darunter. Das Team selbst
-// bleibt ein Block.
+// bleibt ein Block; die Bereiche stehen als Auswahl daneben, nicht als
+// Zwischenüberschriften dazwischen.
+// `bereich` ist nur nötig, wo die angezeigte Rolle davon abweicht (Helena
+// steht als „Marketing (extern)" in der Bildunterschrift, zählt aber zum
+// Bereich Marketing).
 // Loana Sabielny: Porträt folgt (img null → Platzhalter-Kachel).
-type Mitarbeitend = { name: string; rolle: string; img: string | null };
-
 const team: Mitarbeitend[] = [
   { name: "Lorenz Höll", rolle: "Sales", img: portraits.lorenz },
   { name: "Carina Büßecker", rolle: "Sales", img: portraits.carina },
@@ -39,7 +42,7 @@ const team: Mitarbeitend[] = [
   { name: "Tanja Knab", rolle: "Backoffice", img: "/images/team/tanja-knab.jpg" },
   { name: "Vaida Laschke", rolle: "Backoffice", img: "/images/team/vaida-laschke.jpg" },
   { name: "Vanessa Drewnowska", rolle: "Marketing", img: portraits.vanessa },
-  { name: "Helena Sator", rolle: "Marketing (extern)", img: portraits.helena },
+  { name: "Helena Sator", rolle: "Marketing (extern)", bereich: "Marketing", img: portraits.helena },
 ];
 
 const nachwuchs: Mitarbeitend[] = [
@@ -47,74 +50,6 @@ const nachwuchs: Mitarbeitend[] = [
   { name: "Melanie Oblonk", rolle: "Auszubildende", img: portraits.melanie },
   { name: "Loana Sabielny", rolle: "Auszubildende", img: null },
 ];
-
-/** Porträt-Kachel für Team und Nachwuchs. Ohne Foto: Initialen im Marken-Look. */
-function PersonKachel({ m, delay }: { m: Mitarbeitend; delay: number }) {
-  const initialen = m.name
-    .split(/\s+/)
-    .map((t) => t[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  return (
-    // Die Breite sitzt auf dem Reveal-Wrapper, weil er das direkte Kind des
-    // Flex-Containers ist: zwei pro Reihe, ab lg vier — inklusive Abzug der
-    // Lücke (gap-5 = 1,25rem → 0,625rem je Kachel; lg:gap-8 = 2rem → 1,5rem).
-    <Reveal
-      delay={delay}
-      className="basis-[calc(50%-0.625rem)] lg:basis-[calc(25%-1.5rem)]"
-    >
-      <figure className="group">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-2">
-          {m.img ? (
-            <Image
-              src={m.img}
-              alt={m.name}
-              fill
-              sizes="(max-width: 1023px) 50vw, 25vw"
-              className="object-cover object-top transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-            />
-          ) : (
-            // Platzhalter, solange kein Porträt vorliegt — Initialen statt
-            // eines leeren Rahmens (früher fest „LS", jetzt aus dem Namen).
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-muted">
-              <span className="akira text-3xl text-accent/70">{initialen}</span>
-              <span className="text-[0.65rem] uppercase tracking-widest text-faint">Foto folgt</span>
-            </div>
-          )}
-        </div>
-        <figcaption className="mt-3">
-          <div className="text-base font-semibold leading-tight text-fg">{m.name}</div>
-          <div className="text-sm text-accent">{m.rolle}</div>
-        </figcaption>
-      </figure>
-    </Reveal>
-  );
-}
-
-/**
- * Raster für Team und Nachwuchs.
- *
- * Vorgabe Sissy: auf großen Schirmen sollen die Porträts groß sein und zu
- * viert nebeneinander stehen, angebrochene Reihen mittig. Vorgabe Manfred:
- * auf schmalen Schirmen Zweier-Reihen untereinander.
- *
- * Flex mit Umbruch statt Grid, weil damit eine nicht volle letzte Reihe
- * automatisch zentriert wird (bei drei Auszubildenden ab lg genau eine
- * mittige Dreierreihe, auf dem Handy zwei plus eine mittige Kachel). Bei
- * Zu- oder Abgängen im Team passt sich das ohne weitere Anpassung an.
- */
-function PersonRaster({ leute }: { leute: Mitarbeitend[] }) {
-  return (
-    <div className="flex flex-wrap justify-center gap-5 lg:gap-8">
-      {leute.map((m, i) => (
-        // Versatz reihenweise, damit die Kacheln einer Zeile nacheinander
-        // einblenden und nicht die ganze Wand auf einmal.
-        <PersonKachel key={m.name} m={m} delay={(i % 4) * 70} />
-      ))}
-    </div>
-  );
-}
 
 const werte: { icon: IconName; title: string; text: string }[] = [
   {
@@ -195,9 +130,10 @@ export default function UeberUnsPage() {
             </p>
           </Reveal>
 
-          {/* Ein Block ohne weitere Zwischenüberschriften: zwei pro Reihe,
-              ab lg vier nebeneinander über die volle Breite. */}
-          <PersonRaster leute={team} />
+          {/* Zwei Porträts pro Zeile, bewusst klein gehalten; die Bereiche
+              stehen als Auswahl rechts daneben statt als Zwischenüberschriften
+              im Raster. */}
+          <TeamBereiche leute={team} />
 
           {/* Nachwuchs als eigener Block (Vorgabe Manfred) */}
           <Reveal className="mb-6 mt-14 max-w-xl space-y-3">
@@ -214,7 +150,9 @@ export default function UeberUnsPage() {
             </p>
           </Reveal>
 
-          <PersonRaster leute={nachwuchs} />
+          {/* Bewusst dasselbe linksbündige Zweier-Raster wie beim Team, nicht
+              zentriert — sonst springt der Block optisch aus der Seite. */}
+          <PersonGrid leute={nachwuchs} />
         </Container>
       </section>
 

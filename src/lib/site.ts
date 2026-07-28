@@ -134,7 +134,7 @@ export const site = {
     instagram: "https://www.instagram.com/riegelimmobilien/",
     facebook: "https://www.facebook.com/RiegelImmobilien",
     youtube: "https://www.youtube.com/channel/UCwGhTOScKNDqdjFbhTsnf-A",
-    linkedin: "", // TODO: LinkedIn-URL von Sissy (Wunsch #7)
+    linkedin: "https://www.linkedin.com/company/riegel-immobilien/",
   },
 
   // Echte Daten von der Live-Seite übernommen:

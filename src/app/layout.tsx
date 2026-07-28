@@ -12,6 +12,7 @@ import { SavedSearchesProvider } from "@/components/saved-searches";
 import { AuthProvider } from "@/components/auth";
 import { ConsentProvider } from "@/components/consent";
 import { TRUST_PLATFORMS } from "@/lib/trust-data";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Money-Keyword in den Default-Title (Startseite); Unterseiten via Template.
@@ -155,6 +156,12 @@ export default function RootLayout({
                     markiert sie rot und bietet den Claude-Code-Prompt an. Ohne
                     Parameter rendert die Komponente `null`. */}
                 <FeedbackHighlight />
+                {/* Vercel Web Analytics: cookiefrei, kein Zugriff auf das
+                    Endgerät (kein Cookie, kein localStorage) — daher keine
+                    Einwilligung nach § 25 TDDDG nötig, Rechtsgrundlage ist
+                    Art. 6 Abs. 1 lit. f DSGVO. Ist in der
+                    Datenschutzerklärung eigens ausgewiesen. */}
+                <Analytics />
               </SavedSearchesProvider>
             </FavoritesProvider>
           </AuthProvider>
