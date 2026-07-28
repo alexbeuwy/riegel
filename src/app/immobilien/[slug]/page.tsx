@@ -25,14 +25,15 @@ import { site } from "@/lib/site";
  * Das try/catch fängt einen fehlschlagenden Dekodier-Versuch ab und liefert
  * dann 404 statt eines Serverfehlers.
  *
- * ACHTUNG, bekannte Grenze: Adressen mit ungültiger Prozent-Kodierung
- * ("/immobilien/%E4") erreichen diese Funktion gar nicht erst. Next.js wirft
- * beim Auflösen des dynamischen Segments und antwortet mit HTTP 500. Das ist
- * nachgemessen und besteht unabhängig von dieser Datei, die Live-Seite
- * verhielt sich vorher genauso; andere Routen liefern im selben Fall sauber
- * 404. Zu beheben wäre das nur vor dem Router, also in einer middleware.ts,
- * die den Pfad prüft und früh 404 liefert. Das ist bewusst nicht hier
- * entschieden worden, weil Middleware bei jedem einzelnen Aufruf mitläuft.
+ * Adressen mit ungültiger Prozent-Kodierung ("/immobilien/%E4") erreichen
+ * diese Funktion inzwischen gar nicht mehr: src/proxy.ts prüft denselben
+ * decodeURIComponent-Aufruf bereits VOR dem Router und schreibt im Fehlerfall
+ * auf einen garantiert unbekannten Objektpfad um, der hier regulär auf
+ * notFound() läuft. Ohne den Proxy würde Next.js selbst beim Auflösen des
+ * dynamischen Segments werfen und mit HTTP 500 statt 404 antworten
+ * (nachgemessen, bestand unabhängig von dieser Datei). Der Proxy läuft dank
+ * seines matcher ("/immobilien/:path*") ausschließlich auf dieser Route,
+ * die übrigen Seiten sind davon nicht betroffen.
  */
 async function slugAusParams(params: Promise<{ slug: string }>): Promise<string> {
   try {
