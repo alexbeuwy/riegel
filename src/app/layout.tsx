@@ -70,13 +70,19 @@ const orgJsonLd = {
     "Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar", "Rhein-Neckar", "Schifferstadt",
     "Frankenthal", "Neustadt an der Weinstraße", "Germersheim", "Haßloch", "Mutterstadt",
   ],
-  address: site.locations.map((l) => ({
+  // Nur der Hauptsitz Speyer als address (NICHT beide Standorte als Array):
+  // schema.org erwartet für eine einzelne Entität eine eindeutige NAP-Angabe
+  // (Name/Address/Phone), zwei PostalAddress-Objekte im selben Feld sind
+  // widersprüchlich. Beide Standorte bleiben vollständig über location (s.
+  // unten) als eigene Place-Knoten mit Adresse, Telefon und Geo-Koordinaten
+  // erhalten.
+  address: {
     "@type": "PostalAddress",
-    streetAddress: l.street,
-    postalCode: l.zip,
-    addressLocality: l.city,
+    streetAddress: site.locations[0].street,
+    postalCode: site.locations[0].zip,
+    addressLocality: site.locations[0].city,
     addressCountry: "DE",
-  })),
+  },
   image: `${site.url}/images/standorte/buero-1.jpg`,
   logo: `${site.url}/icon.png`,
   // Büro-Koordinaten (straßengenau) für Local-SEO; Öffnungszeiten folgen,

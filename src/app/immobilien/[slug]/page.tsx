@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Container } from "@/components/container";
 import { RequestViewingButton } from "@/components/request-viewing-button";
 import { AnsprechpartnerCard } from "@/components/ansprechpartner-card";
@@ -19,8 +19,32 @@ import { site } from "@/lib/site";
 // Live-Objekte aus OnOffice zur Build-Zeit nicht bekannt sind. getEstateData
 // ist über unstable_cache gecacht, daher bleibt der Request-Aufwand gering.
 
+/**
+ * Slug aus den Route-Parametern holen, an einer Stelle für Metadaten und Seite.
+ *
+ * Das try/catch fängt einen fehlschlagenden Dekodier-Versuch ab und liefert
+ * dann 404 statt eines Serverfehlers.
+ *
+ * ACHTUNG, bekannte Grenze: Adressen mit ungültiger Prozent-Kodierung
+ * ("/immobilien/%E4") erreichen diese Funktion gar nicht erst. Next.js wirft
+ * beim Auflösen des dynamischen Segments und antwortet mit HTTP 500. Das ist
+ * nachgemessen und besteht unabhängig von dieser Datei, die Live-Seite
+ * verhielt sich vorher genauso; andere Routen liefern im selben Fall sauber
+ * 404. Zu beheben wäre das nur vor dem Router, also in einer middleware.ts,
+ * die den Pfad prüft und früh 404 liefert. Das ist bewusst nicht hier
+ * entschieden worden, weil Middleware bei jedem einzelnen Aufruf mitläuft.
+ */
+async function slugAusParams(params: Promise<{ slug: string }>): Promise<string> {
+  try {
+    const { slug } = await params;
+    return decodeURIComponent(slug);
+  } catch {
+    notFound();
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  const slug = await slugAusParams(params);
   const found = await getEstateBySlug(slug);
   if (!found) return { title: "Immobilie" };
   const { estate, source } = found;
@@ -50,30 +74,67 @@ function energyLine(energy: EnergyCertificate): string {
 }
 
 function jsonLd(estate: Estate) {
+  const url = `${site.url}/immobilien/${estate.slug}`;
+
+  // Objektbeschreibung fürs Markup großzügiger kürzen als die 160-Zeichen-
+  // Meta-Description (kein SERP-Snippet-Limit), an der letzten Wortgrenze
+  // abschneiden, damit kein Wort mitten im Satz abreißt.
+  const description =
+    estate.description && estate.description.length > 300
+      ? `${estate.description.slice(0, 300).replace(/\s+\S*$/, "")} …`
+      : estate.description;
+
   return {
     "@context": "https://schema.org",
-    "@type": "RealEstateListing",
-    name: estate.title,
-    url: `${site.url}/immobilien/${estate.slug}`,
-    datePosted: estate.updatedAt,
-    ...(estate.price != null && {
-      offers: {
-        "@type": "Offer",
-        price: estate.price,
-        priceCurrency: "EUR",
-        availability: estate.status === "aktiv" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+    "@graph": [
+      {
+        "@type": "RealEstateListing",
+        // Eigene @id (statt nur url) macht den Knoten für andere Markup-
+        // Fragmente (z. B. den Organisation-Knoten unten) referenzierbar.
+        "@id": url,
+        name: estate.title,
+        url,
+        ...(description && { description }),
+        datePosted: estate.updatedAt,
+        // OnOffice liefert bereits absolute onoffice.de-Bild-URLs, die
+        // Mock-Fixtures dagegen relative Pfade unter /public (hier daher auf
+        // jeden Fall absolut, wie es Schema.org für image verlangt).
+        ...(estate.images.length > 0 && {
+          image: estate.images.map((img) => (img.startsWith("http") ? img : `${site.url}${img}`)),
+        }),
+        ...(estate.price != null && {
+          offers: {
+            "@type": "Offer",
+            price: estate.price,
+            priceCurrency: "EUR",
+            availability: estate.status === "aktiv" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+          },
+        }),
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: estate.city,
+          postalCode: estate.postcode,
+          addressCountry: "DE",
+        },
+        ...(estate.livingArea != null && {
+          floorSize: { "@type": "QuantitativeValue", value: estate.livingArea, unitCode: "MTK" },
+        }),
+        ...(estate.rooms != null && { numberOfRooms: estate.rooms }),
+        // Verknüpfung zum Organisation-Knoten aus dem Root-Layout (dort unter
+        // derselben @id definiert), damit Google beide Entitäten zusammenführt
+        // statt das Objekt als anbieterlosen Datensatz zu sehen.
+        provider: { "@id": `${site.url}/#organization` },
       },
-    }),
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: estate.city,
-      postalCode: estate.postcode,
-      addressCountry: "DE",
-    },
-    ...(estate.livingArea != null && {
-      floorSize: { "@type": "QuantitativeValue", value: estate.livingArea, unitCode: "MTK" },
-    }),
-    ...(estate.rooms != null && { numberOfRooms: estate.rooms }),
+      {
+        // Passend zur sichtbaren Breadcrumb-Navigation weiter unten.
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Start", item: site.url },
+          { "@type": "ListItem", position: 2, name: "Immobilien", item: `${site.url}/immobilien` },
+          { "@type": "ListItem", position: 3, name: estate.title, item: url },
+        ],
+      },
+    ],
   };
 }
 
@@ -82,10 +143,23 @@ export default async function EstateDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const slug = await slugAusParams(params);
   const found = await getEstateBySlug(slug);
   if (!found) notFound();
   const { estate, source } = found;
+
+  // Der Slug wird bei jedem Abruf neu aus dem aktuellen OnOffice-Titel gebaut.
+  // Ändert sich der Titel, matcht getEstateBySlug oben weiterhin über die Id
+  // (s. Kommentar dort), der aufgerufene Slug weicht dann aber vom aktuellen
+  // estate.slug ab. Ohne diesen Redirect bliebe die alte URL mit HTTP 200
+  // stehen, während <link rel="canonical"> schon auf die neue URL zeigt (genau
+  // das Muster hinter Search Console "Alternative Seite mit richtigem
+  // kanonischen Tag"). Kein try/catch: Next.js meldet Redirects über einen
+  // internen Throw, der hier durchschlagen muss. Nur bei tatsächlicher
+  // Abweichung leiten, sonst Endlosschleife.
+  if (slug !== estate.slug) {
+    permanentRedirect(`/immobilien/${estate.slug}`);
+  }
 
   const facts = [
     roomsLabel(estate.rooms) && { label: "Zimmer", value: roomsLabel(estate.rooms), icon: "bed" as IconName },
@@ -97,9 +171,21 @@ export default async function EstateDetailPage({
   const { estates: allEstates } = await getEstateData();
   // Nur aktive Objekte empfehlen — PropertyCard trägt kein Status-Badge,
   // Reserviertes/Verkauftes würde hier wie ein verfügbares Angebot aussehen.
-  const similar = allEstates
-    .filter((e) => e.id !== estate.id && e.status === "aktiv" && (e.category === estate.category || e.city === estate.city))
-    .slice(0, 3);
+  const similarCandidates = allEstates.filter(
+    (e) => e.id !== estate.id && e.status === "aktiv" && (e.category === estate.category || e.city === estate.city),
+  );
+  // Ungeshuffelt zeigten alle Detailseiten dieselben ersten drei Treffer der
+  // gefilterten Liste (bei 111 Objektseiten blieb der Großteil komplett
+  // unverlinkt). Ein stabiler Hash aus estate.id verschiebt den Startpunkt
+  // deterministisch pro Objekt (Math.random/Date wären bei jedem Request und
+  // Cache-Refresh unterschiedlich und würden Server/Client-Hydration-
+  // Mismatches erzeugen).
+  const idHash = [...estate.id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0);
+  const offset = similarCandidates.length > 0 ? idHash % similarCandidates.length : 0;
+  const similar = Array.from(
+    { length: Math.min(3, similarCandidates.length) },
+    (_, i) => similarCandidates[(offset + i) % similarCandidates.length],
+  );
 
   const contact = contactForCity(estate.city);
   const objektId = estate.externalId ?? `RI-${estate.id.toUpperCase().slice(0, 6)}`;

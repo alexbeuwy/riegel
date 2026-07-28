@@ -3,8 +3,10 @@ import { FilterBar } from "@/components/portal/filter-bar";
 import { ActiveChips } from "@/components/portal/active-chips";
 import { PortalView } from "@/components/portal/portal-view";
 import { SaveSearchButton } from "@/components/saved-searches";
+import type { Estate } from "@/lib/mock-estates";
 import { getEstateData, getEstateOrte } from "@/lib/estates";
 import { filterEstates, parseFilters, type SearchParamsObj } from "@/lib/portal-filter";
+import { site } from "@/lib/site";
 
 export const metadata = {
   title: "Immobilien",
@@ -12,6 +14,45 @@ export const metadata = {
     "Alle Immobilienangebote von RIEGEL Immobilien — filtern nach Typ, Preis, Ort, Zimmern und Fläche, mit interaktiver Karte. Keine Weiterleitung.",
   alternates: { canonical: "/immobilien" },
 };
+
+/**
+ * Strukturierte Daten für die Trefferliste (CollectionPage + ItemList) und die
+ * Breadcrumb, analog zu src/app/ratgeber/page.tsx. Bislang lieferte /immobilien
+ * live nur das globale RealEstateAgent-Snippet aus dem Layout aus, kein eigenes
+ * Markup für den Seitentyp.
+ */
+function jsonLd(results: Estate[]) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        name: "Immobilien",
+        description: metadata.description,
+        url: `${site.url}/immobilien`,
+        mainEntity: {
+          "@type": "ItemList",
+          // Auf 100 Einträge begrenzt: strukturierte Daten sollen die Kern-
+          // Trefferliste abbilden, nicht jeden Filterzustand bis zum letzten
+          // Objekt auflisten.
+          itemListElement: results.slice(0, 100).map((e, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            name: e.title,
+            url: `${site.url}/immobilien/${e.slug}`,
+          })),
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Start", item: site.url },
+          { "@type": "ListItem", position: 2, name: "Immobilien", item: `${site.url}/immobilien` },
+        ],
+      },
+    ],
+  };
+}
 
 export default async function ImmobilienPage({
   searchParams,
@@ -25,6 +66,13 @@ export default async function ImmobilienPage({
 
   return (
     <div>
+      {/* "<" escapen wie in src/app/immobilien/[slug]/page.tsx: Objekttitel
+          stammen aus dem CRM (OnOffice), JSON.stringify lässt "</script>" sonst
+          unverändert durch. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(results)).replace(/</g, "\\u003c") }}
+      />
       <h1 className="sr-only">Immobilienangebote in Speyer, Ludwigshafen &amp; der Metropolregion Rhein-Neckar</h1>
       <div className="border-b border-border bg-bg pt-6">
         <Container className="pb-5">

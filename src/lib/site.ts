@@ -35,7 +35,10 @@ export const site = {
   tagline: "Immobilien mit regionaler Expertise",
   description:
     "RIEGEL Immobilien — Ihr Immobilienmakler in Speyer und Ludwigshafen. Verkauf, Bewertung und Beratung mit regionaler Expertise.",
-  // TODO: finale Produktions-Domain bestätigen
+  // Kanonische Domain: daraus werden alle canonical-Tags, og:url, die
+  // komplette sitemap.xml und die robots.txt gebaut. Die Apex-Domain muss
+  // deshalb bei Vercel als Primary Domain gesetzt sein, sonst zeigen alle
+  // diese Angaben auf eine Adresse, die selbst nur weiterleitet.
   url: "https://riegel-immobilien.de",
   locales: "de-DE",
   regions: ["Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar"],

@@ -59,10 +59,10 @@ export async function POST(req: Request) {
   }
 
   const path = pageUrl || "/";
-  // ASSET_BASE (riegel.vercel.app) statt SITE_URL (riegel-immobilien.de) —
-  // SITE_URL liefert laut email.ts aktuell 404, der Link in der Mail muss
-  // aber tatsächlich anklickbar sein.
-  const base = emailTargets.ASSET_BASE.replace(/\/$/, "");
+  // SITE_URL (aus site.url, riegel-immobilien.de) statt ASSET_BASE: die
+  // kanonische Domain ist erreichbar, der "Seite öffnen"-Link soll auf die
+  // echte Produktionsseite zeigen und nicht auf die Vorschau-Domain.
+  const base = emailTargets.SITE_URL.replace(/\/$/, "");
   let ctaHref = `${base}${path}`;
   if (loc) {
     const fb = encodeFeedbackLocator({ y: loc.y, x: loc.x, text: loc.text, path: loc.path, comment });

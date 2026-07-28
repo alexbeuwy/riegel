@@ -17,15 +17,15 @@ const TO = process.env.EMAIL_TO || "info@riegel-immobilien.de";
 // bereits die kanonische Produktions-Domain (site.url) — die nutzen wir als
 // Fallback, bevor wir "irgendeine" Vercel-URL erfinden.
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
-// E-Mail-Assets (Logo etc.) bewusst NICHT von site.url ableiten: site.url ist
-// die kanonische SEO-/Marketing-Domain (riegel-immobilien.de) — die ist noch
-// NICHT live und liefert aktuell 404 (siehe TODO in site.ts). Ein Mail-Client
-// könnte das Logo von dort also nie laden, unabhängig davon, ob Bilder generell
-// erlaubt sind. riegel.vercel.app ist die tatsächlich erreichbare Deployment-
-// URL (verifiziert: liefert email-logo-riegel-dark.png mit 200/image-png) und
-// dient hier als verlässlicher Default — per Env überschreibbar, sobald die
-// echte Domain live ist (dann z. B. EMAIL_ASSET_BASE=https://riegel-immobilien.de).
-const EMAIL_ASSET_BASE = process.env.EMAIL_ASSET_BASE || "https://riegel.vercel.app";
+// E-Mail-Assets (Logo etc.) leiten sich jetzt von site.url ab: die kanonische
+// Domain ist erreichbar und liefert email-logo-riegel-dark.png verifiziert mit
+// 200/image-png aus (per curl geprüft). Eine absolute URL ist hier zwingend,
+// ein Mail-Client hat beim Rendern keinen Origin-Kontext und könnte einen
+// relativen Bildpfad nicht auflösen (PNG statt SVG, weil SVG in Gmail/Outlook
+// unzuverlässig rendert, s. Kommentarblock unten). EMAIL_ASSET_BASE bleibt als
+// Notausstieg per Env erhalten, falls Mail-Assets künftig doch von einer
+// anderen Domain als die Website selbst ausgeliefert werden sollen.
+const EMAIL_ASSET_BASE = process.env.EMAIL_ASSET_BASE || site.url;
 // PNG statt SVG: SVG rendert in Gmail/Outlook unzuverlässig. Seit dem Redesign
 // (helle Karte, weißer Hintergrund) brauchen wir die DUNKLE Logo-Variante —
 // das alte weiße "email-logo-riegel.png" wäre auf Weiß unsichtbar. Absolute
@@ -179,8 +179,9 @@ export async function sendMail(opts: {
   }
 }
 
-// ASSET_BASE zusätzlich exportiert fürs Feedback-Widget (/api/feedback): der
-// "Seite öffnen"-Link in der Mail soll auf eine tatsächlich erreichbare
-// Domain zeigen — SITE_URL (riegel-immobilien.de) liefert laut obigem Kommentar
-// aktuell 404, ASSET_BASE (riegel.vercel.app) ist die verifiziert live Domain.
+// ASSET_BASE bleibt als eigener Export bestehen (u. a. für matching.ts und
+// api/expose/confirm): SITE_URL und ASSET_BASE zeigen per Default beide auf
+// site.url, sind aber über getrennte Env-Variablen unabhängig voneinander
+// überschreibbar, falls Seiten-Links und Mail-Assets doch einmal
+// unterschiedliche Domains brauchen.
 export const emailTargets = { FROM, TO, SITE_URL, ASSET_BASE: EMAIL_ASSET_BASE };

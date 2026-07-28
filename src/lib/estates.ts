@@ -92,22 +92,26 @@ export const getVerkaufteReferenzen = cache(async (): Promise<Estate[]> => {
 
 export async function getEstateBySlug(
   slug: string,
-): Promise<{ estate: Estate; source: EstateSource } | null> {
+): Promise<{ estate: Estate; source: EstateSource; matchedBy: "id" | "slug" } | null> {
   const { estates, source } = await getEstateData();
 
   // Primär: numerische Id am Slug-Ende — übersteht Titeländerungen in OnOffice,
   // die sonst zu 404 bei bestehenden Links führen würden. Bewusst NUR gegen e.id
   // (der Slug wird ausschließlich daraus gebaut) — externalId/objektnr_extern ist
   // eine unabhängige Nummerierung und könnte auf ein falsches Objekt matchen.
+  // matchedBy meldet der aufrufenden Seite, ob nur die Id gepasst hat: dann
+  // kann der mitgegebene Slug vom aktuellen estate.slug abweichen (alter
+  // Titel), und die Detailseite muss per 308 auf den aktuellen Slug leiten,
+  // statt als Duplikat mit fremdem canonical stehen zu bleiben.
   const idMatch = slug.match(/-([0-9]+)$/);
   if (idMatch) {
     const byId = estates.find((e) => e.id === idMatch[1]);
-    if (byId) return { estate: byId, source };
+    if (byId) return { estate: byId, source, matchedBy: "id" };
   }
 
   // Sekundär: exakter Slug-Vergleich (deckt Mock-Slugs wie "e1-penthouse-…" ab).
   const bySlug = estates.find((e) => e.slug === slug);
-  return bySlug ? { estate: bySlug, source } : null;
+  return bySlug ? { estate: bySlug, source, matchedBy: "slug" } : null;
 }
 
 export async function getFeaturedEstates(n: number): Promise<Estate[]> {

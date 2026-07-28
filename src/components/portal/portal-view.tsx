@@ -28,8 +28,14 @@ function inBounds(e: Estate, b: MapBounds): boolean {
   return e.geo.lat <= b.n && e.geo.lat >= b.s && e.geo.lng <= b.e && e.geo.lng >= b.w;
 }
 
-// Clientseitiges Chunking der Karten-Liste: ~92 Objekte sofort zu rendern ist
-// unnötig teuer — die Karte bekommt trotzdem immer den vollen Bestand (Pins/Cluster).
+// CARD_CHUNK steuert nur noch, wie viele Karten dem Besucher sofort sichtbar
+// sind (progressives Aufklappen über "Weitere Objekte laden"). Gerendert
+// werden inzwischen IMMER alle Treffer als PortalCard, überzählige Karten
+// werden weiter unten nur per CSS (hidden-Klasse) ausgeblendet: vorher stand
+// im ausgelieferten HTML nur ein Bruchteil der Objekt-Links auf
+// /immobilien/... (per curl belegt, teils >100 Treffer, nur 24 Links),
+// Suchmaschinen bekamen den Großteil der aktiven Objekte nie im Link-Graph zu
+// sehen. Die Karte bekommt ohnehin immer den vollen Bestand (Pins/Cluster).
 const CARD_CHUNK = 24;
 
 export function PortalView({ estates }: { estates: Estate[] }) {
@@ -121,8 +127,14 @@ export function PortalView({ estates }: { estates: Estate[] }) {
     return new Set(listEstates.map((e) => e.id));
   }, [searchInArea, bounds, listEstates]);
 
-  // Nur die Karten-Liste wird gechunkt — die Karte bekommt weiterhin listEstates
-  // vollständig (s.u.), Pins/Cluster zeigen also immer den ganzen Kartenausschnitt.
+  // visibleEstates zählt weiterhin, wie viele Karten dem Nutzer aktuell
+  // sichtbar sind (progressives Aufklappen per Button). Gerendert werden im
+  // Karten-Grid unten dagegen ALLE Treffer aus listEstates als echtes DOM-
+  // Element, überzählige Karten werden dort nur per CSS ausgeblendet statt
+  // aus dem DOM entfernt (Grund siehe CARD_CHUNK oben). visibleEstates dient
+  // also nur noch der remaining-Zahl und dem Scroll-Timing unten, nicht mehr
+  // direkt dem Rendering. Die Karte (Pins/Cluster) bekommt ohnehin immer den
+  // ganzen Kartenausschnitt über listEstates.
   const visibleEstates = useMemo(
     () => listEstates.slice(0, visibleCount),
     [listEstates, visibleCount],
@@ -138,6 +150,13 @@ export function PortalView({ estates }: { estates: Estate[] }) {
     // asynchron zum State-Update) — dann keine Ref vorhanden, nicht crashen.
     const card = cardRefs.current[activeId];
     if (!card) return;
+    // Seit dem SEO-Fix (alle Karten stehen immer im DOM) existiert die Ref
+    // schon VOR dem Aufklappen, die Karte kann also noch mit der hidden-Klasse
+    // (CSS display: none) ausgeblendet sein. offsetParent ist dann null (kein
+    // Layout), ohne diese Prüfung würde lastScrolledIdRef fälschlich auf
+    // "schon gescrollt" gesetzt, obwohl real nichts passiert ist, und der
+    // nächste Render (Karte jetzt sichtbar) würde nicht mehr nachscrollen.
+    if (card.offsetParent === null) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     card.scrollIntoView({
       block: "center",
@@ -208,17 +227,25 @@ export function PortalView({ estates }: { estates: Estate[] }) {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 xl:grid-cols-2">
-              {visibleEstates.map((e) => (
-                <PortalCard
-                  key={e.id}
-                  estate={e}
-                  hovered={e.id === hoveredId}
-                  active={e.id === activeId}
-                  onHover={onHover}
-                  registerRef={(el) => {
-                    cardRefs.current[e.id] = el;
-                  }}
-                />
+              {/* listEstates (nicht visibleEstates!) wird komplett gerendert,
+                  damit jede Objekt-URL als echtes <a href="/immobilien/..."> im
+                  ausgelieferten HTML steht, auch für Crawler ohne JavaScript.
+                  Karten jenseits von visibleCount bekommen nur die hidden-
+                  Klasse (display: none) statt gar nicht zu existieren, die
+                  sichtbare Bedienung (Chunk-Button, Scroll-zu-Karte, Refs)
+                  bleibt dadurch unverändert. */}
+              {listEstates.map((e, i) => (
+                <div key={e.id} className={i < visibleCount ? undefined : "hidden"}>
+                  <PortalCard
+                    estate={e}
+                    hovered={e.id === hoveredId}
+                    active={e.id === activeId}
+                    onHover={onHover}
+                    registerRef={(el) => {
+                      cardRefs.current[e.id] = el;
+                    }}
+                  />
+                </div>
               ))}
             </div>
             {remaining > 0 && (

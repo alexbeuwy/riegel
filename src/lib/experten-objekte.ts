@@ -30,6 +30,21 @@ import { getEstateData } from "@/lib/estates";
 /** Maximal so viele realisierte Objekte vorn einsortieren (Rest bleibt aktiv). */
 const MAX_REALISIERT = 2;
 
+/**
+ * Einfache deterministische Hashfunktion (djb2-Variante) für den Rotations-
+ * Versatz in selectExpertenObjekte. Bewusst kein Math.random und kein Date:
+ * dieselbe typ-Seite muss bei jedem Request (Server-Cache/ISR) exakt dieselbe
+ * Auswahl liefern, nur der Slug selbst darf sie beeinflussen.
+ */
+function hashOffset(key: string, mod: number): number {
+  if (mod <= 0) return 0;
+  let hash = 5381;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 33 + key.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % mod;
+}
+
 /** Titel+objectType als gemeinsamer Such-Heuhaufen. */
 function hay(e: Estate): string {
   return `${e.title} ${e.objectType ?? ""}`;
@@ -172,7 +187,20 @@ export function selectExpertenObjekte(estates: Estate[], typ: string, limit = 3)
     .slice(0, MAX_REALISIERT);
   const aktiv = ranked.filter((x) => x.e.status === "aktiv");
 
-  return [...realisiert, ...aktiv].slice(0, limit).map((x) => x.e);
+  // Rotation über den aktiven Pool: mehrere typ-Slugs teilen sich denselben
+  // Cluster-Scorer (SLUG_CLUSTER) und würden ohne Versatz exakt dieselben
+  // Top-Treffer verlinken. Der Startversatz hängt am typ-Slug, verteilt die
+  // über die 40 Verkaufen-Seiten verlinkten Objekte also stärker über den
+  // Bestand, bleibt pro Seite aber stabil. Realisiert-vor-aktiv bleibt
+  // unangetastet, die Rotation betrifft nur die restlichen aktiven Plätze.
+  const restPlaetze = Math.max(limit - realisiert.length, 0);
+  const offset = hashOffset(typ, aktiv.length);
+  const aktivRotiert = Array.from(
+    { length: Math.min(restPlaetze, aktiv.length) },
+    (_, i) => aktiv[(offset + i) % aktiv.length],
+  );
+
+  return [...realisiert, ...aktivRotiert].map((x) => x.e);
 }
 
 /**

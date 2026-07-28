@@ -62,36 +62,17 @@ function jsonLd(seite: ExpertenSeite, url: string) {
         headline: seite.h1,
         description: seite.metaDescription,
         about: seite.keywords,
-        author: { "@type": "Organization", name: site.legalName },
-        publisher: { "@type": "Organization", name: site.legalName, url: site.url },
+        // author/publisher verweisen als reine Referenz auf den Org-Knoten im
+        // Layout (@id) statt ein eigenes, anonymes Organization-Objekt zu
+        // erzeugen (sonst entsteht pro Seite ein unverknüpftes Duplikat der
+        // Entität, obwohl im Layout schon derselbe RealEstateAgent-Knoten
+        // vollständig beschrieben ist: Name, Adresse, sameAs, Award etc.).
+        author: { "@id": `${site.url}/#organization` },
+        publisher: { "@id": `${site.url}/#organization` },
         mainEntityOfPage: url,
         inLanguage: "de-DE",
         datePublished: EXPERTEN_PUBLISHED,
         dateModified: EXPERTEN_UPDATED,
-      },
-      {
-        // Entity-Signal analog geo-article-view: @id verweist auf den
-        // Org-Knoten im Layout → Google führt die Entitäten zusammen.
-        "@type": "RealEstateAgent",
-        "@id": `${site.url}/#organization`,
-        name: site.legalName,
-        url: site.url,
-        telephone: site.phone,
-        email: site.email,
-        areaServed: ["Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar"],
-        address: site.locations.map((l) => ({
-          "@type": "PostalAddress",
-          streetAddress: l.street,
-          postalCode: l.zip,
-          addressLocality: l.city,
-          addressCountry: "DE",
-        })),
-        sameAs: [
-          site.socials.instagram,
-          site.socials.facebook,
-          site.socials.youtube,
-          site.socials.linkedin,
-        ].filter(Boolean),
       },
       {
         "@type": "FAQPage",

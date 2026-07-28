@@ -4,6 +4,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyInternAccess, internFixedEmails, internInvitedEmails } from "@/lib/intern-access";
 import { INTERN_INVITED_KEY } from "@/lib/site-settings-keys";
 import { sendMail, emailLayout } from "@/lib/email";
+import { site } from "@/lib/site";
 
 /**
  * Nutzerverwaltung fürs /intern-Portal:
@@ -67,12 +68,17 @@ function inviteMailHtml(email: string): string {
       ${html}
     </div>`;
 
+  // Linktext ohne Protokoll (nur die Domain), analog zur vorherigen Vorschau-
+  // Domain: alle drei Links unten kommen jetzt aus site.url statt hartkodiert
+  // von riegel.vercel.app, damit die Mail auf die echte Produktionsseite zeigt.
+  const domain = site.url.replace(/^https?:\/\//, "");
+
   const bodyHtml =
     section(
       "So kommen Sie rein",
       `<ol style="margin:6px 0 0;padding-left:20px;color:#5a6072;font-size:14px;line-height:1.7;">
-        <li>Unter <a href="https://riegel.vercel.app/konto" style="color:#015cff;text-decoration:none;">riegel.vercel.app/konto</a> ein Konto mit genau dieser E-Mail-Adresse anlegen (oder anmelden, falls dort schon eines besteht).</li>
-        <li>Danach <a href="https://riegel.vercel.app/intern" style="color:#015cff;text-decoration:none;">riegel.vercel.app/intern</a> öffnen. Ein zusätzliches Passwort ist nicht nötig, die Freischaltung hängt an der E-Mail-Adresse.</li>
+        <li>Unter <a href="${site.url}/konto" style="color:#015cff;text-decoration:none;">${domain}/konto</a> ein Konto mit genau dieser E-Mail-Adresse anlegen (oder anmelden, falls dort schon eines besteht).</li>
+        <li>Danach <a href="${site.url}/intern" style="color:#015cff;text-decoration:none;">${domain}/intern</a> öffnen. Ein zusätzliches Passwort ist nicht nötig, die Freischaltung hängt an der E-Mail-Adresse.</li>
       </ol>`,
     ) +
     section(
@@ -99,7 +105,7 @@ function inviteMailHtml(email: string): string {
     intro: `Der Zugang wurde für genau diese E-Mail-Adresse freigeschaltet: <strong style="color:#141724;">${esc(email)}</strong>.`,
     bodyHtml,
     ctaLabel: "Intern-Portal öffnen",
-    ctaHref: "https://riegel.vercel.app/intern",
+    ctaHref: `${site.url}/intern`,
   });
 }
 

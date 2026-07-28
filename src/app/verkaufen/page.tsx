@@ -7,6 +7,7 @@ import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
 import { photos, engagement } from "@/lib/photos";
+import { site } from "@/lib/site";
 import {
   expertenSeiten,
   expertenFlaggschiffe,
@@ -63,9 +64,37 @@ const steps: { n: string; icon: IconName; title: string; text: string; image: st
   },
 ];
 
+// Hub-Seite für alle 40 Kindseiten unter /verkaufen/[typ]: deren BreadcrumbList
+// verweist an Position 2 bereits auf diese URL, bislang ohne dass hier selbst
+// Markup dafür existierte (nur das globale Organisation-Snippet aus dem
+// Layout). ItemList macht die komplette Seitenmenge für Suchmaschinen/KI
+// direkt aus dem Hub heraus auflistbar (analog /ratgeber).
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ItemList",
+      itemListElement: expertenSeiten.map((s, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: s.label,
+        url: `${site.url}/verkaufen/${s.slug}`,
+      })),
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Start", item: site.url },
+        { "@type": "ListItem", position: 2, name: "Verkaufen", item: `${site.url}/verkaufen` },
+      ],
+    },
+  ],
+};
+
 export default function VerkaufenPage() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero — Foto-Hintergrund (Model in Wohnung, blaues Licht) */}
       <section className="relative overflow-hidden border-b border-border pb-16 pt-36">
         <div className="absolute inset-0 -z-10">

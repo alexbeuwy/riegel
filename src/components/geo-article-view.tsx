@@ -12,7 +12,7 @@ import {
   ratgeberCategory,
   ratgeberCategoryLabel,
 } from "@/lib/geo-taxonomy";
-import { marktort } from "@/lib/marktdaten";
+import { marktort, marktortByOrt, PREIS_DISCLAIMER } from "@/lib/marktdaten";
 
 const nf = new Intl.NumberFormat("de-DE");
 const fmtPct = (n: number) => n.toFixed(1).replace(".", ",");
@@ -247,7 +247,16 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
   // erlaubte Trennstelle) — steuert die Schriftgröße, s. <h1> unten.
   const langesWortH1 = Math.max(...article.h1.split(/[\s­/-]+/).map((w) => w.length));
   const related = relatedArticles(article);
-  const markt = article.kind === "standort" ? marktort(article.slug) : undefined;
+  // Auch stadtbezogene Ratgeber (article.ort gesetzt, z. B. Speyer/Ludwigshafen)
+  // bekommen die Marktdaten-Karte, sofern der Ort einen Treffer in den
+  // Preisatlas-Daten hat. Ohne Treffer bleibt die Karte weg (kein Fallback,
+  // kein Rateversuch über Koordinaten).
+  const markt =
+    article.kind === "standort"
+      ? marktort(article.slug)
+      : article.ort
+        ? marktortByOrt(article.ort)
+        : undefined;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -257,38 +266,17 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
         headline: article.h1,
         description: article.metaDescription,
         about: article.keywords,
-        author: { "@type": "Organization", name: site.legalName },
-        publisher: { "@type": "Organization", name: site.legalName, url: site.url },
+        // author/publisher verweisen als reine Referenz auf den Org-Knoten im
+        // Layout (@id) statt ein eigenes, anonymes Organization-Objekt zu
+        // erzeugen (sonst entsteht pro Seite ein unverknüpftes Duplikat der
+        // Entität, obwohl im Layout schon derselbe RealEstateAgent-Knoten
+        // vollständig beschrieben ist: Name, Adresse, sameAs, Award etc.).
+        author: { "@id": `${site.url}/#organization` },
+        publisher: { "@id": `${site.url}/#organization` },
         mainEntityOfPage: url,
         inLanguage: "de-DE",
         datePublished: GEO_CONTENT_PUBLISHED,
         dateModified: GEO_CONTENT_UPDATED,
-      },
-      {
-        // Starker Entity-/Local-Signal für KI-Antworten (wer ist der Makler?)
-        // @id verweist auf den Org-Knoten im Layout → Google führt die
-        // Entitäten zusammen (geo/Standorte/Award kommen von dort).
-        "@type": "RealEstateAgent",
-        "@id": `${site.url}/#organization`,
-        name: site.legalName,
-        url: site.url,
-        telephone: site.phone,
-        email: site.email,
-        award: "ImmoScout24 ImmoAward 2025 — Top 21 Makler des Jahres in Deutschland",
-        areaServed: ["Speyer", "Ludwigshafen", "Metropolregion Rhein-Neckar", "Rhein-Neckar", article.ort].filter(Boolean),
-        address: site.locations.map((l) => ({
-          "@type": "PostalAddress",
-          streetAddress: l.street,
-          postalCode: l.zip,
-          addressLocality: l.city,
-          addressCountry: "DE",
-        })),
-        sameAs: [
-          site.socials.instagram,
-          site.socials.facebook,
-          site.socials.youtube,
-          site.socials.linkedin,
-        ].filter(Boolean),
       },
       {
         "@type": "FAQPage",
@@ -489,6 +477,41 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
                     </div>
                   </div>
                 </div>
+                {/* Vier weitere, ortsindividuelle Kennzahlen unter den Preisspannen,
+                    mit denselben Bezeichnungen und Formaten wie im Preisatlas
+                    (markt-panel.tsx), damit beide Ansichten widerspruchsfrei dieselben
+                    Zahlen zeigen. */}
+                <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                  <div>
+                    <div className="text-xs text-muted">Bodenwert, kein Objektpreis</div>
+                    <div className="mt-0.5 text-base font-semibold text-fg tabular-nums">
+                      {nf.format(markt.bodenrichtwert)} €/m²
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted">Rendite</div>
+                    <div className="mt-0.5 text-base font-semibold text-fg tabular-nums">
+                      {fmtPct(markt.yieldPct)} %
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted">Ø Vermarktungszeit</div>
+                    <div className="mt-0.5 text-base font-semibold text-fg tabular-nums">
+                      {markt.vermarktungszeitTage} Tage
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted">Nachfrage</div>
+                    <div className="mt-0.5 text-base font-semibold text-fg tabular-nums">
+                      {markt.nachfrage}/10
+                    </div>
+                  </div>
+                </div>
+                {/* Derselbe rechtliche Hinweis wie im Preisatlas (wortgleicher
+                    PREIS_DISCLAIMER aus lib/marktdaten): der Bodenrichtwert ist ein
+                    Bodenwert, kein Objektpreis, sonst widerspräche sich die Aussage
+                    zwischen dieser Karte und dem Preisatlas. */}
+                <p className="mt-3 text-[0.65rem] leading-relaxed text-faint">{PREIS_DISCLAIMER}</p>
                 <Link
                   href={`/preisatlas?ort=${markt.slug}`}
                   className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"

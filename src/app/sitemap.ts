@@ -6,28 +6,42 @@ import { getEstateData } from "@/lib/estates";
 
 // Stabiles Datum statt `new Date()` — sonst meldet jede Sitemap-Auslieferung
 // alle URLs als „gerade geändert" (wertloses Freshness-Signal).
-const SITE_UPDATED = new Date("2026-07-01");
-const GEO_UPDATED = new Date(GEO_CONTENT_UPDATED);
-const EXPERTEN_DATE = new Date(EXPERTEN_UPDATED);
+// Exportiert, damit sitemap-inhalte.xml exakt dieselben Werte verwendet statt
+// eigener, potenziell abweichender Konstanten.
+export const SITE_UPDATED = new Date("2026-07-01");
+export const GEO_UPDATED = new Date(GEO_CONTENT_UPDATED);
+export const EXPERTEN_DATE = new Date(EXPERTEN_UPDATED);
+
+// Ohne dieses Feld cached Vercel die Route mit ihrer Default-Dauer, die
+// deutlich länger lief als die 300s des Objekt-Caches (gemessen: zwei Abrufe
+// im Abstand von zwei Sekunden lieferten je "HIT" mit age 753 bzw. 755). Ein
+// in OnOffice bereits entferntes Objekt blieb dadurch länger in der Sitemap
+// stehen, als der Objekt-Cache es hergibt, Googlebot fand die URL noch und
+// bekam kurz darauf 404. 300s hält die Sitemap so frisch wie die Objektdaten.
+export const revalidate = 300;
+
+// /merkliste + /konto sind nutzerspezifisch (robots-Disallow) → nicht listen.
+// Exportiert, damit sitemap-inhalte.xml dieselbe Liste verwendet statt einer
+// zweiten, potenziell abweichenden Kopie.
+export const STATISCHE_ROUTEN = [
+  "",
+  "/immobilien",
+  "/rechner",
+  "/preisatlas",
+  "/verkaufen",
+  "/standorte",
+  "/ratgeber",
+  "/ueber-uns",
+  "/kontakt",
+  "/termin",
+  "/impressum",
+  "/datenschutz",
+  "/widerruf",
+];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = site.url;
-  // /merkliste + /konto sind nutzerspezifisch (robots-Disallow) → nicht listen.
-  const routes = [
-    "",
-    "/immobilien",
-    "/rechner",
-    "/preisatlas",
-    "/verkaufen",
-    "/standorte",
-    "/ratgeber",
-    "/ueber-uns",
-    "/kontakt",
-    "/termin",
-    "/impressum",
-    "/datenschutz",
-    "/widerruf",
-  ];
+  const routes = STATISCHE_ROUTEN;
 
   const { estates, source } = await getEstateData();
   // Mock-Objekte (/immobilien/[slug]) bleiben draußen — sonst indexiert Google

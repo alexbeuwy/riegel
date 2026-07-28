@@ -47,7 +47,22 @@ function ortMatchesCity(ort: string, city: string): boolean {
   return false;
 }
 
-export async function EstatesTeaser({ ort, heading, limit = 3 }: EstatesTeaserProps) {
+/**
+ * Einfache deterministische Hashfunktion (djb2-Variante) für den Rotations-
+ * Versatz unten. Bewusst kein Math.random und kein Date: die Auswahl muss bei
+ * jedem Request (Server-Cache, Hydration) exakt gleich ausfallen, darf sich
+ * aber je Seiten-Kontext unterscheiden.
+ */
+function hashOffset(key: string, mod: number): number {
+  if (mod <= 0) return 0;
+  let hash = 5381;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 33 + key.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % mod;
+}
+
+export async function EstatesTeaser({ ort, heading, limit = 6 }: EstatesTeaserProps) {
   const { estates } = await getEstateData();
 
   let matches = estates.filter((e) => e.status === "aktiv");
@@ -58,7 +73,18 @@ export async function EstatesTeaser({ ort, heading, limit = 3 }: EstatesTeaserPr
     if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1;
     return b.updatedAt.localeCompare(a.updatedAt);
   });
-  const shown = sorted.slice(0, limit);
+
+  // Rotation statt starrem slice(0, limit): sonst zeigen alle Standortseiten
+  // (bzw. mehrere Seiten mit demselben Ort) immer dieselben ersten (featured/
+  // neuesten) Objekte, länger gelistete Objekte kommen nie an die Reihe und
+  // bleiben ohne internen Link. Der Startversatz hängt am Seiten-Kontext
+  // (ort, ersatzweise heading) und ist damit pro Seite stabil, isFeatured
+  // bleibt durch die Sortierung weiterhin bevorzugt vorn einsortiert.
+  const offset = hashOffset(ort ?? heading ?? "", sorted.length);
+  const shown = Array.from(
+    { length: Math.min(limit, sorted.length) },
+    (_, i) => sorted[(offset + i) % sorted.length],
+  );
 
   // Portal-Filter (/immobilien?ort=) vergleicht exakt (case-insensitive) gegen
   // e.city — der rohe article.ort-String ("Ludwigshafen am Rhein") würde dort

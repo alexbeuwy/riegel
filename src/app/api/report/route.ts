@@ -15,6 +15,7 @@ import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
 import { parseDeZahl } from "@/lib/parse-de-zahl";
+import { site } from "@/lib/site";
 
 // pdf-lib/fontkit brauchen echte Node.js-Buffer/Crypto-APIs (kein Edge) UND
 // diese Route macht mehrere sequenzielle externe Aufrufe (Bodenrichtwert bis
@@ -250,8 +251,10 @@ export async function POST(req: Request) {
 Unverbindliche, datenbasierte Sofort-Einschätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
 Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
 
+  // Aus site.url zusammengesetzt statt hartkodiert, damit ein künftiger
+  // Domain- oder Schemawechsel automatisch mitzieht (Ziel bleibt unverändert).
   const ctaBtn = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 4px;"><tr>
-<td style="border-radius:999px;background:#015cff;"><a href="https://riegel-immobilien.de/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
+<td style="border-radius:999px;background:#015cff;"><a href="${site.url}/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
 </tr></table>`;
 
   // Luftbild (Esri, wie im Rechner) + echte OnOffice-Vergleichsobjekte parallel
