@@ -323,7 +323,11 @@ export function Calculator() {
       };
       // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliger URL-Prefill beim Mount
       setF((s) => ({ ...s, address: geo, addressQuery: label }));
-      setStep(1);
+      // Bewusst KEIN Sprung auf den Standort-Schritt: die Objektart ist mit
+      // "wohnung" vorbelegt, ein Überspringen würde ein über den Hero
+      // eingegebenes Haus stillschweigend als Wohnung bewerten. Der Nutzer
+      // startet also weiter bei der Objektart, die Adresse ist bereits
+      // hinterlegt und wird auf diesem Schritt sichtbar bestätigt.
     } else {
       // Hero-Fallback (Enter vor geladenen Vorschlägen): Query übernehmen,
       // die Autocomplete-Suche läuft hier direkt weiter.
@@ -613,6 +617,18 @@ export function Calculator() {
         {step === 0 && (
           <div className="space-y-6">
             <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">Was möchten Sie bewerten?</h2>
+            {/* Adresse aus dem Hero (oder aus einem Rückschritt) sichtbar
+                bestätigen: sonst wirkt es, als sei die Eingabe verloren
+                gegangen, weil dieser Schritt gar nicht nach ihr fragt. */}
+            {f.address && (
+              <div className="flex items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/5 px-3.5 py-2.5">
+                <Icon name="pin" size={15} className="shrink-0 text-accent" />
+                <span className="min-w-0 flex-1 truncate text-sm text-muted">{f.address.label}</span>
+                <span className="shrink-0 text-xs uppercase tracking-widest text-faint">
+                  übernommen
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {OBJEKTARTEN.map((o) => {
                 const selected = f.objektart === o.key;

@@ -39,7 +39,7 @@ const team: Mitarbeitend[] = [
   { name: "Tanja Knab", rolle: "Backoffice", img: "/images/team/tanja-knab.jpg" },
   { name: "Vaida Laschke", rolle: "Backoffice", img: "/images/team/vaida-laschke.jpg" },
   { name: "Vanessa Drewnowska", rolle: "Marketing", img: portraits.vanessa },
-  { name: "Helena Sator", rolle: "Marketing", img: portraits.helena },
+  { name: "Helena Sator", rolle: "Marketing (extern)", img: portraits.helena },
 ];
 
 const nachwuchs: Mitarbeitend[] = [
