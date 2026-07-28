@@ -26,9 +26,7 @@ const familie = [
 
 // Das Team — echte Besetzung + Porträts. Gliederung nach Vorgabe: NUR zwei
 // Trennungen, nämlich Familie darüber und Nachwuchs darunter. Das Team selbst
-// bleibt ein Block und läuft in Zweier-Reihen untereinander (grid-cols-2, auch
-// auf großen Schirmen) — die Paare aus Sissys Liste stehen dadurch jeweils
-// nebeneinander in einer Zeile.
+// bleibt ein Block.
 // Loana Sabielny: Porträt folgt (img null → Platzhalter-Kachel).
 type Mitarbeitend = { name: string; rolle: string; img: string | null };
 
@@ -59,7 +57,13 @@ function PersonKachel({ m, delay }: { m: Mitarbeitend; delay: number }) {
     .slice(0, 2)
     .toUpperCase();
   return (
-    <Reveal delay={delay}>
+    // Die Breite sitzt auf dem Reveal-Wrapper, weil er das direkte Kind des
+    // Flex-Containers ist: zwei pro Reihe, ab lg vier — inklusive Abzug der
+    // Lücke (gap-5 = 1,25rem → 0,625rem je Kachel; lg:gap-8 = 2rem → 1,5rem).
+    <Reveal
+      delay={delay}
+      className="basis-[calc(50%-0.625rem)] lg:basis-[calc(25%-1.5rem)]"
+    >
       <figure className="group">
         <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-2">
           {m.img ? (
@@ -67,7 +71,7 @@ function PersonKachel({ m, delay }: { m: Mitarbeitend; delay: number }) {
               src={m.img}
               alt={m.name}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              sizes="(max-width: 1023px) 50vw, 25vw"
               className="object-cover object-top transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
             />
           ) : (
@@ -80,11 +84,35 @@ function PersonKachel({ m, delay }: { m: Mitarbeitend; delay: number }) {
           )}
         </div>
         <figcaption className="mt-3">
-          <div className="text-sm font-semibold leading-tight text-fg">{m.name}</div>
-          <div className="text-xs text-accent">{m.rolle}</div>
+          <div className="text-base font-semibold leading-tight text-fg">{m.name}</div>
+          <div className="text-sm text-accent">{m.rolle}</div>
         </figcaption>
       </figure>
     </Reveal>
+  );
+}
+
+/**
+ * Raster für Team und Nachwuchs.
+ *
+ * Vorgabe Sissy: auf großen Schirmen sollen die Porträts groß sein und zu
+ * viert nebeneinander stehen, angebrochene Reihen mittig. Vorgabe Manfred:
+ * auf schmalen Schirmen Zweier-Reihen untereinander.
+ *
+ * Flex mit Umbruch statt Grid, weil damit eine nicht volle letzte Reihe
+ * automatisch zentriert wird (bei drei Auszubildenden ab lg genau eine
+ * mittige Dreierreihe, auf dem Handy zwei plus eine mittige Kachel). Bei
+ * Zu- oder Abgängen im Team passt sich das ohne weitere Anpassung an.
+ */
+function PersonRaster({ leute }: { leute: Mitarbeitend[] }) {
+  return (
+    <div className="flex flex-wrap justify-center gap-5 lg:gap-8">
+      {leute.map((m, i) => (
+        // Versatz reihenweise, damit die Kacheln einer Zeile nacheinander
+        // einblenden und nicht die ganze Wand auf einmal.
+        <PersonKachel key={m.name} m={m} delay={(i % 4) * 70} />
+      ))}
+    </div>
   );
 }
 
@@ -167,14 +195,9 @@ export default function UeberUnsPage() {
             </p>
           </Reveal>
 
-          {/* Ein Block, Zweier-Reihen untereinander (Vorgabe): grid-cols-2 gilt
-              auf allen Breiten, die Breite ist begrenzt, damit die Porträts auf
-              großen Schirmen nicht überdimensioniert werden. */}
-          <div className="grid max-w-2xl grid-cols-2 gap-5">
-            {team.map((m, i) => (
-              <PersonKachel key={m.name} m={m} delay={(i % 2) * 70} />
-            ))}
-          </div>
+          {/* Ein Block ohne weitere Zwischenüberschriften: zwei pro Reihe,
+              ab lg vier nebeneinander über die volle Breite. */}
+          <PersonRaster leute={team} />
 
           {/* Nachwuchs als eigener Block (Vorgabe Manfred) */}
           <Reveal className="mb-6 mt-14 max-w-xl space-y-3">
@@ -191,11 +214,7 @@ export default function UeberUnsPage() {
             </p>
           </Reveal>
 
-          <div className="grid max-w-2xl grid-cols-2 gap-5">
-            {nachwuchs.map((m, i) => (
-              <PersonKachel key={m.name} m={m} delay={(i % 2) * 70} />
-            ))}
-          </div>
+          <PersonRaster leute={nachwuchs} />
         </Container>
       </section>
 
