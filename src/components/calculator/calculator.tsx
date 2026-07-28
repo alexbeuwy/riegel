@@ -9,7 +9,8 @@ import { formatEUR } from "@/lib/format";
 import { searchAddress, type GeoResult } from "@/lib/geocode";
 import {
   estimateValue,
-  AUSSTATTUNG_OPTIONEN,
+  AUSSTATTUNG_HAUS,
+  AUSSTATTUNG_WOHNUNG,
   AUSSTATTUNG_GEWERBE,
   QUALITAETEN,
   type Objektart,
@@ -141,6 +142,19 @@ interface SourceCtx {
  * bei Wohnung/Mehrfamilienhaus (Ertragswert-Ansatz, mietbasiert) ist
  * er rein informativ, der "amtlich"-Badge muss das kennzeichnen statt
  * fälschlich einen Preiseinfluss zu suggerieren. */
+/**
+ * Ausstattungsliste je Objektart. Haus und Wohnung haben eigene Listen, weil
+ * sich die wertrelevanten Merkmale unterscheiden: „Aufzug" ist bei einem
+ * freistehenden Einfamilienhaus sinnlos, „Einliegerwohnung" bei einer
+ * Eigentumswohnung baulich nicht vorgesehen. Das Mehrfamilienhaus bekommt die
+ * Wohnungsliste, weil sie inhaltlich am nächsten liegt.
+ */
+function ausstattungListe(objektart: Objektart): string[] {
+  if (objektart === "gewerbe") return AUSSTATTUNG_GEWERBE;
+  if (objektart === "haus") return AUSSTATTUNG_HAUS;
+  return AUSSTATTUNG_WOHNUNG;
+}
+
 function borisPriceRelevant(objektart: Objektart): boolean {
   return objektart === "grundstueck" || objektart === "haus" || objektart === "gewerbe";
 }
@@ -927,7 +941,7 @@ export function Calculator() {
               <div className="space-y-3">
                 <span className="text-sm text-muted">Ausstattung</span>
                 <div className="flex flex-wrap gap-2">
-                  {(f.objektart === "gewerbe" ? AUSSTATTUNG_GEWERBE : AUSSTATTUNG_OPTIONEN).map((a) => (
+                  {ausstattungListe(f.objektart).map((a) => (
                     <button
                       key={a}
                       type="button"

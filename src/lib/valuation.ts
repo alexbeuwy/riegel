@@ -461,22 +461,85 @@ export const QUALITAETEN: { key: Qualitaet; label: string }[] = [
   { key: "luxus", label: "Luxuriös" },
 ];
 
-export const AUSSTATTUNG_OPTIONEN = [
-  "Balkon / Terrasse",
-  "Garten",
-  "Einbauküche",
-  "Fußbodenheizung",
-  "Aufzug",
+/**
+ * Ausstattung für HÄUSER.
+ *
+ * Bis dahin gab es eine gemeinsame Liste für Wohnung und Haus. Das führte zu
+ * Unsinn in beide Richtungen: „Aufzug" stand bei einem freistehenden
+ * Einfamilienhaus zur Auswahl, während „Einliegerwohnung" und „Gäste-WC"
+ * fehlten, obwohl beides bei Häusern echte Werttreiber sind. Getrennte Listen
+ * gab es für Gewerbe bereits (s. AUSSTATTUNG_GEWERBE), das ist hier nur
+ * konsequent weitergeführt.
+ *
+ * Reihenfolge nach Wertrelevanz, nicht alphabetisch: was oben steht, wird beim
+ * Überfliegen zuerst gesehen.
+ *
+ * Belegt über die Ausstattungsfelder und Suchkategorien von ImmobilienScout24
+ * (öffentliche Import-/Export-API-Dokumentation), die Marktbegriffe von
+ * Immowelt sowie die getrennten Erfassungsprotokolle von Sprengnetter für
+ * Eigentumswohnung und Ein-/Mehrfamilienhaus.
+ *
+ * Zur Einordnung, weil es leicht verwechselt wird: „wird abgefragt" und „ist
+ * mit Zahlen belegt" sind zwei verschiedene Dinge. Belastbar belegt ist die
+ * Wirkung nur bei Photovoltaik und der Heizungsart. Klimaanlage etwa ist bei
+ * ImmobilienScout24 eine eigene, bundesweit genutzte Suchkategorie, also
+ * nachweislich nachgefragt, eine unabhängige Studie zur Wertwirkung gibt es
+ * aber nicht. Das ist unkritisch, weil Ausstattung hier ohnehin nur als
+ * gedeckelter Sammelbonus wirkt (s. ausstBonus in estimateValue) und kein
+ * Einzelmerkmal einen eigenen Faktor bekommt.
+ */
+export const AUSSTATTUNG_HAUS = [
   "Garage / Stellplatz",
+  "Einliegerwohnung",
   "Keller",
+  "Gäste-WC",
+  "Garten",
+  "Balkon / Terrasse",
+  "Photovoltaik",
+  // Heizungsart ist neben der Energieklasse das am besten belegte
+  // Energiemerkmal (Marktauswertungen zeigen deutliche Aufschläge gegenüber
+  // Gasheizung). Die Energieklasse steht im Rechner als eigenes Feld und
+  // deckt den Effekt teilweise schon ab, deshalb bewusst nur als eines von
+  // vielen Merkmalen im Sammelbonus und nicht als eigener Faktor.
+  "Wärmepumpe / moderne Heizung",
+  "Fußbodenheizung",
+  "Einbauküche",
+  "Barrierefrei",
+  "Klimaanlage",
   "Kamin",
   "Smart Home",
-  "Photovoltaik",
   // Solarthermie = Warmwasser/Heizung über Sonnenkollektoren, bewusst getrennt
   // von Photovoltaik (Strom) — beides kann parallel vorhanden sein.
   "Solarthermie (Warmwasser)",
   "Pool",
+  "Sauna / Wellness",
+];
+
+/**
+ * Ausstattung für WOHNUNGEN.
+ *
+ * Umgekehrt zum Haus: Aufzug steht hier weit oben, Einliegerwohnung gibt es
+ * nicht. Drei Bezeichnungen sind bewusst anders formuliert als beim Haus, weil
+ * die Sache bei einer Eigentumswohnung rechtlich anders liegt: Photovoltaik,
+ * Garten und Pool gehören dort fast immer der Eigentümergemeinschaft und nicht
+ * der einzelnen Wohnung. Stünde dort schlicht „Photovoltaik", würden Verkäufer
+ * reihenweise etwas ankreuzen, das ihnen gar nicht allein gehört. Pool und
+ * Solarthermie sind bei der Einzelwohnung deshalb ganz entfallen.
+ */
+export const AUSSTATTUNG_WOHNUNG = [
+  "Balkon / Terrasse",
+  "Aufzug",
+  "Garage / Stellplatz",
+  "Keller",
+  "Einbauküche",
   "Barrierefrei",
+  "Gäste-WC",
+  "Fußbodenheizung",
+  "Klimaanlage",
+  "Smart Home",
+  "Photovoltaik am Gebäude",
+  "Kamin",
+  "Gartenanteil (Sondernutzung)",
   "Sauna / Wellness",
 ];
 
