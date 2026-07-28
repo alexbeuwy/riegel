@@ -12,6 +12,7 @@ import { SavedSearchesProvider } from "@/components/saved-searches";
 import { AuthProvider } from "@/components/auth";
 import { ConsentProvider } from "@/components/consent";
 import { TRUST_PLATFORMS } from "@/lib/trust-data";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Money-Keyword in den Default-Title (Startseite); Unterseiten via Template.
@@ -159,6 +160,7 @@ export default function RootLayout({
             </FavoritesProvider>
           </AuthProvider>
         </ConsentProvider>
+        <Analytics />
       </body>
     </html>
   );
