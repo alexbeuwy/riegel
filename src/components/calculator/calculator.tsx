@@ -12,6 +12,7 @@ import {
   AUSSTATTUNG_HAUS,
   AUSSTATTUNG_WOHNUNG,
   AUSSTATTUNG_GEWERBE,
+  AUSSTATTUNG_MFH,
   HAUSTYPEN,
   type Haustyp,
   QUALITAETEN,
@@ -76,6 +77,8 @@ interface FormState {
   ausstattung: string[];
   /** Nur Haus: Bauform (freistehend, Doppelhaushälfte, Reihenhaus, Bungalow). */
   haustyp: Haustyp;
+  /** Nur Haus: zweite abgeschlossene Wohneinheit. */
+  zweifamilienhaus: boolean;
   /** Nur für objektart === "mehrfamilienhaus" — Ertragswert-Eingaben. */
   jahresnettokaltmiete: string;
   wohneinheiten: string;
@@ -102,6 +105,7 @@ const EMPTY: FormState = {
   energieklasse: "",
   ausstattung: [],
   haustyp: "freistehend",
+  zweifamilienhaus: false,
   jahresnettokaltmiete: "",
   wohneinheiten: "",
   gewerbeeinheiten: "",
@@ -190,12 +194,14 @@ const HAUSTYP_ICONS: Record<Haustyp, React.ReactNode> = {
  * Ausstattungsliste je Objektart. Haus und Wohnung haben eigene Listen, weil
  * sich die wertrelevanten Merkmale unterscheiden: „Aufzug" ist bei einem
  * freistehenden Einfamilienhaus sinnlos, „Einliegerwohnung" bei einer
- * Eigentumswohnung baulich nicht vorgesehen. Das Mehrfamilienhaus bekommt die
- * Wohnungsliste, weil sie inhaltlich am nächsten liegt.
+ * Eigentumswohnung baulich nicht vorgesehen. Das Mehrfamilienhaus hat eine
+ * eigene Liste, weil dort der Zustand von Dach, Technik und Fenstern zählt
+ * und nicht die Einbauküche.
  */
 function ausstattungListe(objektart: Objektart): string[] {
   if (objektart === "gewerbe") return AUSSTATTUNG_GEWERBE;
   if (objektart === "haus") return AUSSTATTUNG_HAUS;
+  if (objektart === "mehrfamilienhaus") return AUSSTATTUNG_MFH;
   return AUSSTATTUNG_WOHNUNG;
 }
 
@@ -540,6 +546,7 @@ export function Calculator() {
       qualitaet: f.qualitaet,
       energieklasse: f.objektart === "gewerbe" ? undefined : f.energieklasse || undefined,
       haustyp: f.objektart === "haus" ? f.haustyp : undefined,
+      zweifamilienhaus: f.objektart === "haus" ? f.zweifamilienhaus : undefined,
       ausstattung: f.ausstattung,
       // Bei Vollleerstand eine evtl. vorher eingetippte Miete NICHT mitsenden
       // (sonst zählt sie trotz "leer stehend" weiter mit).
@@ -899,6 +906,26 @@ export function Calculator() {
                     );
                   })}
                 </div>
+
+                {/* Amtlicher Korrekturfaktor 1,05 aus Fussnote 2 der Anlage 4
+                    ImmoWertV. Bewusst ein eigener Schalter und keine sechste
+                    Kachel: "Zweifamilienhaus" ist keine Bauform, sondern eine
+                    Eigenschaft, die zu JEDER Bauform dazukommen kann. */}
+                <label className="press flex w-full cursor-pointer items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-accent/50 hover:bg-surface-2/60">
+                  <input
+                    type="checkbox"
+                    checked={f.zweifamilienhaus}
+                    onChange={(e) => set("zweifamilienhaus", e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-fg">Zweifamilienhaus</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-muted">
+                      Zwei abgeschlossene Wohneinheiten, etwa mit Einliegerwohnung oder
+                      getrennter Obergeschosswohnung.
+                    </span>
+                  </span>
+                </label>
               </div>
             )}
 

@@ -75,6 +75,23 @@ export const HAUSTYP_FAKTOR: Record<Haustyp, number> = {
   bungalow: 1.0,
 };
 
+/**
+ * Zuschlag für ein Zweifamilienhaus, also ein Haus mit zwei abgeschlossenen
+ * Wohneinheiten.
+ *
+ * QUELLE: dieselbe amtliche Tabelle wie HAUSTYP_FAKTOR. Fußnote 2 der Anlage 4
+ * ImmoWertV nennt für freistehende Zweifamilienhäuser einen Korrekturfaktor
+ * von 1,05 auf den Kostenkennwert des Einfamilienhauses. Ein zweites Bad, eine
+ * zweite Küche und getrennte Hausanschlüsse kosten Geld, die zweite Einheit
+ * verdoppelt die Baukosten aber bei Weitem nicht.
+ *
+ * Wie beim Haustyp wirkt der Faktor NUR auf den Gebäudeanteil. Der Wertvorteil
+ * aus der zusätzlich vermietbaren Einheit steckt hier bewusst nicht drin: Wer
+ * ein Zweifamilienhaus als Kapitalanlage rechnet, ist im Rechner mit der
+ * Objektart Mehrfamilienhaus richtig, die über den Ertragswert geht.
+ */
+export const ZWEIFAMILIEN_FAKTOR = 1.05;
+
 export const HAUSTYPEN: { key: Haustyp; label: string; kurz: string }[] = [
   { key: "freistehend", label: "Freistehendes Haus", kurz: "Freistehend" },
   { key: "doppelhaushaelfte", label: "Doppelhaushälfte", kurz: "Doppelhaus" },
@@ -112,6 +129,8 @@ export interface ValuationInput {
   ausstattung: string[];
   /** Bauform, nur für objektart === "haus" (s. HAUSTYP_FAKTOR). */
   haustyp?: Haustyp;
+  /** Zweite abgeschlossene Wohneinheit im Haus (s. ZWEIFAMILIEN_FAKTOR). */
+  zweifamilienhaus?: boolean;
   /**
    * Nur für objektart === "mehrfamilienhaus" (Zinshaus/Mehrparteienhaus):
    * Ertragswert-Eingaben statt reiner Flächen-Rechnung — s. estimateValue.
@@ -441,6 +460,28 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     const abschlagPct = Math.round(leerstandAnteil * LEERSTAND_ABSCHLAG_MAX_PCT * 10) / 10;
     const ansatzMiete = istMiete + marktmieteGeschaetzt;
     vervielfaeltiger = mfhVervielfaeltiger(r.wohnung, input.zustand, input.qualitaet);
+    // Ausstattung wirkte beim Mehrfamilienhaus bisher GAR NICHT: Die Merkmale
+    // wurden abgefragt, der Wert blieb identisch. Das war ein Feld ohne Folgen
+    // (Hinweis Alex). Jetzt ein bewusst stark gedämpfter Zuschlag auf den
+    // Vervielfältiger, nicht auf den Wert.
+    //
+    // Warum so klein und warum überhaupt gedämpft: Beim Zinshaus steckt der
+    // Nutzen einer besseren Ausstattung bereits in der erzielten Miete, und
+    // die ist hier Eingabe. Ein voller Zuschlag würde denselben Effekt ein
+    // zweites Mal zählen. Übrig bleibt der Teil, der sich NICHT in der
+    // aktuellen Miete zeigt: geringerer Instandhaltungsstau und bessere
+    // Wiedervermietbarkeit, was Käufer über einen etwas höheren
+    // Vervielfältiger honorieren.
+    //
+    // 0,125 Prozent je Merkmal, gedeckelt bei 1,5 Prozent. Der Satz ist so
+    // gewählt, dass die zwölf Merkmale der MFH-Liste den Deckel GENAU
+    // ausschöpfen: Bei einem größeren Satz je Merkmal wäre der Deckel schon
+    // nach der Hälfte erreicht und die restlichen Häkchen blieben wirkungslos,
+    // was schlimmer ist als gar kein Effekt. Zum Vergleich: dieselben Merkmale
+    // bewirken bei einer Eigentumswohnung mit 1,2 Prozent je Merkmal fast das
+    // Zehnfache.
+    const ausstBonusMfh = Math.min(input.ausstattung.length * 0.00125, 0.015);
+    vervielfaeltiger = Math.round(vervielfaeltiger * (1 + ausstBonusMfh) * 100) / 100;
     mid = ansatzMiete * vervielfaeltiger * (1 - abschlagPct / 100);
     mietAnsatz = {
       istMiete,
@@ -470,8 +511,10 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // der NHK 2010 und keine (größeren) marktbasierten Abschläge.
     const htFaktor =
       input.objektart === "haus" && input.haustyp ? HAUSTYP_FAKTOR[input.haustyp] : 1;
+    const zfhFaktor =
+      input.objektart === "haus" && input.zweifamilienhaus ? ZWEIFAMILIEN_FAKTOR : 1;
     pricePerSqm = Math.round(
-      base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor * htFaktor,
+      base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor * htFaktor * zfhFaktor,
     );
     const flaeche = input.wohnflaeche ?? 0;
     if (input.objektart === "gewerbe" && input.hallenflaeche && input.hallenflaeche > 0) {
@@ -505,7 +548,16 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
 
   const factors: ValuationFactor[] =
     input.objektart === "mehrfamilienhaus"
-      ? []
+      ? // Zustand und Qualität stecken beim Zinshaus schon im Vervielfältiger
+        // und dürfen hier nicht doppelt erscheinen. Die Ausstattung bekommt
+        // eine eigene Zeile, damit sichtbar ist, dass sie wirkt — und wie
+        // wenig.
+        [
+          {
+            label: "Ausstattung (Vervielfältiger)",
+            effectPct: Math.round(Math.min(input.ausstattung.length * 0.125, 1.5) * 10) / 10,
+          },
+        ].filter((x) => x.effectPct !== 0)
       : [
           { label: "Zustand", effectPct: pct(zf) },
           { label: "Ausstattungsqualität", effectPct: pct(qf) },
@@ -513,6 +565,12 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
           { label: "Energieeffizienz", effectPct: pct(ef) },
           // Nur beim Haus und nur, wenn eine Bauform gewählt wurde. Der Wert
           // bezieht sich auf den Gebäudeanteil, nicht auf den Gesamtwert.
+          {
+            label: "Zweite Wohneinheit (Gebäudeanteil)",
+            effectPct: pct(
+              input.objektart === "haus" && input.zweifamilienhaus ? ZWEIFAMILIEN_FAKTOR : 1,
+            ),
+          },
           {
             label: "Bauform (Gebäudeanteil)",
             effectPct: pct(
@@ -630,6 +688,29 @@ export const AUSSTATTUNG_WOHNUNG = [
   "Kamin",
   "Gartenanteil (Sondernutzung)",
   "Sauna / Wellness",
+];
+
+/**
+ * Ausstattung für MEHRFAMILIENHÄUSER (Zinshäuser).
+ *
+ * Eine eigene Liste, weil bei einem ganzen Haus andere Dinge zählen als bei
+ * einer einzelnen Wohnung. „Einbauküche" oder „Sauna" sind für ein Zinshaus
+ * keine sinnvolle Frage, ein Aufzug, Stellplätze und der Zustand der Technik
+ * dagegen sehr wohl: Sie entscheiden über Vermietbarkeit und Instandhaltung.
+ */
+export const AUSSTATTUNG_MFH = [
+  "Aufzug",
+  "Balkone / Loggien",
+  "Stellplätze / Garagen",
+  "Zentralheizung erneuert",
+  "Dach saniert",
+  "Fenster erneuert",
+  "Fassade gedämmt",
+  "Elektrik erneuert",
+  "Photovoltaik",
+  "Glasfaseranschluss",
+  "Keller / Abstellräume",
+  "Barrierefreier Zugang",
 ];
 
 /**
