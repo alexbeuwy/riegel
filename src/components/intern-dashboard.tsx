@@ -1467,25 +1467,52 @@ export function InternDashboard() {
               )}
             </div>
 
+            {/* Einordnung in Worten, nicht nur als Badge. Ohne diesen Satz sah
+                eine unbekannte Adresse in dieser Tabelle kurzzeitig wie ein
+                fremder Admin-Zugang aus, obwohl es ein normales Kundenkonto war. */}
+            <p className="mt-8 text-sm text-muted">
+              Hier stehen <strong className="text-fg">alle registrierten Konten</strong>, ganz
+              überwiegend Kundschaft. Ein Konto allein gibt{" "}
+              <strong className="text-fg">keinen Zugang zum Intern-Portal</strong>: damit gehen
+              nur Merkliste, gespeicherte Suchen und Suchaufträge. Ins Intern-Portal kommt
+              ausschließlich, wer oben unter „Intern-Zugänge“ steht, erkennbar an der Rolle{" "}
+              <span className="whitespace-nowrap rounded-full border border-accent/50 bg-accent/10 px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-accent">
+                Intern
+              </span>
+              .
+            </p>
+
             <Toolbar query={aQuery} setQuery={setAQuery} placeholder="E-Mail …" />
 
             <div className="overflow-x-auto rounded-2xl border border-border">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
-                    {["E-Mail", "Registriert", "Letzter Login", "Bestätigt", ""].map((h) => (
+                    {["E-Mail", "Rolle", "Registriert", "Letzter Login", "Bestätigt", ""].map((h) => (
                       <th key={h} className="px-4 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAccounts.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Keine Konten.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">Keine Konten.</td></tr>
                   ) : (
                     filteredAccounts.map((a) => {
                       const confirmed = Boolean(a.email_confirmed_at);
                       const emailLower = a.email?.toLowerCase();
                       const isFixed = Boolean(emailLower && fixedEmails.includes(emailLower));
+                      // Rolle des Kontos. Anlass: In dieser Tabelle stehen ALLE
+                      // registrierten Konten, also ganz ueberwiegend Kundschaft
+                      // mit Merkliste und Suchauftraegen. Weil das nicht
+                      // erkennbar war, sah eine unbekannte Adresse hier kurz wie
+                      // ein fremder Admin-Zugang aus. Die Spalte macht auf einen
+                      // Blick klar, wer tatsaechlich ins Intern-Portal kommt.
+                      const isInvited = Boolean(emailLower && invitedEmails.includes(emailLower));
+                      const rolle = isFixed
+                        ? { text: "INTERN · FEST", stark: true }
+                        : isInvited
+                          ? { text: "INTERN", stark: true }
+                          : { text: "KUNDE", stark: false };
                       const armed = deleteArm === a.id;
                       const busy = deleteBusy.has(a.id);
                       return (
@@ -1496,6 +1523,22 @@ export function InternDashboard() {
                             ) : (
                               <span className="text-faint">ohne E-Mail</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${
+                                rolle.stark
+                                  ? "border-accent/50 bg-accent/10 text-accent"
+                                  : "border-border text-faint"
+                              }`}
+                              title={
+                                rolle.stark
+                                  ? "Kommt ins Intern-Portal."
+                                  : "Normales Kundenkonto: nur Merkliste, gespeicherte Suchen und Suchauftraege. Kein Zugang zum Intern-Portal."
+                              }
+                            >
+                              {rolle.text}
+                            </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-muted">
                             {a.created_at ? fmtDate(a.created_at) : "–"}
