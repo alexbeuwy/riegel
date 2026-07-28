@@ -29,7 +29,10 @@ import { ReachChart } from "@/components/reach-chart";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.65rem] uppercase tracking-[0.25em] text-muted">
+    // Auf dem Handy deutlich enger gesperrt: mit tracking-[0.25em] lief
+    // "Familienunternehmen · Speyer & Ludwigshafen" auf zwei Zeilen um und
+    // kostete im Hero rund 40 Pixel oberhalb der Falte.
+    <span className="inline-block rounded-full border border-border px-3 py-1 text-[0.6rem] uppercase tracking-[0.1em] text-muted sm:text-[0.65rem] sm:tracking-[0.25em]">
       {children}
     </span>
   );
@@ -117,12 +120,19 @@ export default async function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-bg/65 via-transparent to-bg/15" />
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent" />
         </div>
-        <Container className="relative z-10 py-24 sm:py-28">
-          <div className="max-w-3xl">
-            <div className="reveal-lcp" style={{ animationDelay: "0ms" }}>
+        {/* Oben knapp, unten etwas Luft: auf dem Handy (sichtbare Höhe im
+            In-App-Browser von LinkedIn oder Instagram nur rund 660 Pixel)
+            schob das frühere py-24 die Adresssuche unter die Falte. */}
+        <Container className="relative z-10 pb-14 pt-10 sm:py-28">
+          {/* Flex-Spalte mit expliziter Reihenfolge: auf dem Handy rutscht der
+              Kleingedruckte Absatz hinter die Aktionen, damit die Adresssuche
+              ohne Scrollen sichtbar ist. Ab sm steht wieder die ursprüngliche
+              Lesereihenfolge. */}
+          <div className="flex max-w-3xl flex-col">
+            <div className="reveal-lcp order-1" style={{ animationDelay: "0ms" }}>
               <Eyebrow>Familienunternehmen · Speyer &amp; Ludwigshafen</Eyebrow>
             </div>
-            <h1 className="mt-8 akira text-[2.25rem] leading-[1.04] sm:text-6xl lg:text-[4.5rem]">
+            <h1 className="order-2 mt-5 akira text-[2.25rem] leading-[1.04] sm:mt-8 sm:text-6xl lg:text-[4.5rem]">
               <span className="reveal-lcp block" style={{ animationDelay: "80ms" }}>
                 Regional zuhause.
               </span>
@@ -131,7 +141,7 @@ export default async function HomePage() {
               </span>
             </h1>
             <p
-              className="reveal-lcp mt-8 max-w-xl text-lg text-muted"
+              className="reveal-lcp order-3 mt-5 max-w-xl text-base text-muted sm:mt-8 sm:text-lg"
               style={{ animationDelay: "380ms" }}
             >
               Ihr <strong className="font-medium text-fg">Familienunternehmen</strong> für Immobilien:
@@ -141,7 +151,7 @@ export default async function HomePage() {
               <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
             </p>
             <p
-              className="reveal-lcp mt-3 max-w-xl text-xs text-faint"
+              className="reveal-lcp order-6 mt-8 max-w-xl text-xs text-faint sm:order-4 sm:mt-3"
               style={{ animationDelay: "430ms" }}
             >
               Ohne Zwang, ohne lästige Telefonate, ohne Registrierung: in 60 Sekunden zur
@@ -149,11 +159,14 @@ export default async function HomePage() {
               Er rechnet mit Daten aus dutzenden Quellen, von amtlichen BORIS-Bodenrichtwerten
               bis zu unserem eigenen Verkaufsbestand.
             </p>
-            <div className="reveal-lcp relative z-20 mt-6" style={{ animationDelay: "480ms" }}>
+            <div
+              className="reveal-lcp relative z-20 order-4 mt-6 sm:order-5"
+              style={{ animationDelay: "480ms" }}
+            >
               <HeroAddressSearch />
             </div>
             <div
-              className="reveal-lcp relative z-10 mt-6 flex flex-wrap items-center gap-4"
+              className="reveal-lcp relative z-10 order-5 mt-6 flex flex-wrap items-center gap-4 sm:order-6"
               style={{ animationDelay: "560ms" }}
             >
               {/* Nur EIN Primary im Hero (die Adresssuche) — beide CTAs sekundär. */}

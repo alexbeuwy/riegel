@@ -160,7 +160,12 @@ function ConsentBanner({
       role="dialog"
       aria-modal="false"
       aria-labelledby="consent-title"
-      className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-2xl rounded-2xl border border-border bg-surface/95 p-5 shadow-2xl backdrop-blur-md sm:inset-x-auto sm:bottom-4 sm:left-4 sm:right-auto sm:w-[26rem]"
+      // Ohne Weichzeichner: der Kasten liegt bei 95 Prozent Deckkraft, dahinter
+      // ist praktisch nichts mehr zu sehen, was sich weichzeichnen ließe. Als
+      // fest stehendes Element hätte er den Bereich dahinter aber bei JEDEM
+      // Scroll-Bild neu unscharf rechnen müssen, und er steht ausgerechnet beim
+      // ersten Besuch im Bild, also genau dann, wenn der erste Eindruck zählt.
+      className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-2xl rounded-2xl border border-border bg-surface/95 p-5 shadow-2xl sm:inset-x-auto sm:bottom-4 sm:left-4 sm:right-auto sm:w-[26rem]"
     >
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-2 text-accent">

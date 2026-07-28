@@ -221,7 +221,14 @@ function AccountLink({ className = "" }: { className?: string }) {
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur-md">
+    // Der Weichzeichner hinter der Kopfzeile läuft erst ab lg. Auf dem Handy
+    // war er der teuerste Posten beim Scrollen: die Leiste klebt oben fest,
+    // also muss der Browser für JEDES Bild den Bereich dahinter neu abtasten
+    // und weichzeichnen, auf einem 3x-Display rund 1170 mal 240 Pixel. In den
+    // In-App-Browsern von LinkedIn und Instagram (WKWebView) reicht das für
+    // sichtbares Ruckeln. Deckende Leiste stattdessen, was auf dem dunklen
+    // Theme optisch kaum auffällt.
+    <header className="sticky top-0 z-40 border-b border-border bg-bg lg:bg-bg/80 lg:backdrop-blur-md">
       <Container className="flex h-20 items-center justify-between gap-6">
         <Wordmark />
 

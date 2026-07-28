@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
+import { Marquee } from "@/components/marquee";
 import { geoArticles } from "@/lib/geo";
 
 /**
@@ -40,13 +41,13 @@ function Chip({ a }: { a: (typeof geoArticles)[number] }) {
 function Row({ items, rev }: { items: typeof geoArticles; rev?: boolean }) {
   const doubled = [...items, ...items];
   return (
-    <div className="reel-marquee py-1.5">
+    <Marquee className="py-1.5">
       <div className={`reel-track is-slow ${rev ? "is-rev" : ""}`}>
         {doubled.map((a, i) => (
           <Chip key={`${a.slug}-${i}`} a={a} />
         ))}
       </div>
-    </div>
+    </Marquee>
   );
 }
 

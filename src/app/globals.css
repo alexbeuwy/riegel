@@ -677,7 +677,11 @@
   width: max-content;
   animation: reel-scroll 60s linear infinite;
 }
-.reel-marquee:hover .reel-track {
+.reel-marquee:hover .reel-track,
+/* Außerhalb des Bildes angehalten (s. components/marquee.tsx): eine laufende
+   Animation auf einer mehrere tausend Pixel breiten, maskierten Spur kostet
+   sonst auch dann Bildrate, wenn vom Streifen nichts zu sehen ist. */
+.reel-marquee.is-idle .reel-track {
   animation-play-state: paused;
 }
 .reel-track.is-rev { animation-direction: reverse; }

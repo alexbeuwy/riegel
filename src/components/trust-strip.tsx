@@ -1,4 +1,5 @@
 import { Icon } from "@/components/icon";
+import { Marquee } from "@/components/marquee";
 import { TRUST_PLATFORMS, TRUST_BADGES } from "@/lib/trust-data";
 
 /**
@@ -80,13 +81,13 @@ function TrustItems() {
 export function TrustStrip() {
   return (
     <div className="border-y border-border bg-surface/60 py-3">
-      <div className="reel-marquee">
+      <Marquee>
         <div className="reel-track is-slow">
           <TrustItems />
           <Divider />
           <TrustItems />
         </div>
-      </div>
+      </Marquee>
     </div>
   );
 }
