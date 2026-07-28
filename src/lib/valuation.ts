@@ -479,3 +479,41 @@ export const AUSSTATTUNG_OPTIONEN = [
   "Barrierefrei",
   "Sauna / Wellness",
 ];
+
+/**
+ * Ausstattung für GEWERBE — die Wohn-Liste (Balkon, Einbauküche, Sauna …) ist
+ * bei einer Halle oder einem Autohaus sinnlos (Hinweis Manfred).
+ *
+ * Zusammengestellt entlang der Kriterien, die im gewerblichen Immobilienmarkt
+ * tatsächlich abgefragt werden — Hallen/Industrie: Rolltor, ausreichend
+ * Starkstromanschlüsse, hohe Decken, stützenfreie Flächen, Rampe, Kranbahn,
+ * Bodenbelastbarkeit, Sozial- und Sanitärräume, Lüftung, Parkplätze und
+ * Wendemöglichkeiten (vgl. ImmobilienScout24, Ratgeber Industriehalle);
+ * Büro: Klimatisierung, EDV-Verkabelung, Aufzug, Barrierefreiheit;
+ * Handel/Autohaus: Schaufenster, Ausstellungsfläche, Werkstatt mit Hebebühne.
+ * Deckt damit beide realen Fälle ab: Bürogebäude mit Halle (Bensheim) und
+ * ehemaliges Autohaus mit Büros (Edenkoben).
+ */
+export const AUSSTATTUNG_GEWERBE = [
+  "Laderampe",
+  "Sektional- / Rolltor",
+  "Ebenerdige Zufahrt",
+  "Stützenfreie Halle",
+  "Kranbahn",
+  "Hohe Bodenbelastbarkeit",
+  "Starkstrom (Drehstrom)",
+  "Hallenheizung",
+  "Klimatisierung",
+  "Sozial- & Sanitärräume",
+  "Personen- / Lastenaufzug",
+  "EDV-Verkabelung / Serverraum",
+  "Glasfaseranschluss",
+  "Alarm- / Videoüberwachung",
+  "Brandmelde- / Sprinkleranlage",
+  "Schaufenster / Ausstellungsfläche",
+  "Werkstatt / Hebebühne",
+  "Stellplätze / Hoffläche",
+  "Photovoltaikanlage",
+  "E-Ladepunkte",
+  "Barrierefrei",
+];

@@ -10,6 +10,7 @@ import { searchAddress, type GeoResult } from "@/lib/geocode";
 import {
   estimateValue,
   AUSSTATTUNG_OPTIONEN,
+  AUSSTATTUNG_GEWERBE,
   QUALITAETEN,
   type Objektart,
   type Qualitaet,
@@ -475,7 +476,7 @@ export function Calculator() {
       baujahr: parseDeZahl(f.baujahr),
       zustand: f.zustand,
       qualitaet: f.qualitaet,
-      energieklasse: f.energieklasse || undefined,
+      energieklasse: f.objektart === "gewerbe" ? undefined : f.energieklasse || undefined,
       ausstattung: f.ausstattung,
       // Bei Vollleerstand eine evtl. vorher eingetippte Miete NICHT mitsenden
       // (sonst zählt sie trotz "leer stehend" weiter mit).
@@ -620,7 +621,14 @@ export function Calculator() {
                     key={o.key}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => set("objektart", o.key)}
+                    // Objektart-Wechsel setzt die Ausstattung zurück: Wohn- und
+                    // Gewerbe-Merkmale sind zwei verschiedene Listen, sonst
+                    // bliebe „Balkon" an einer Halle ausgewählt.
+                    onClick={() =>
+                      setF((s) =>
+                        s.objektart === o.key ? s : { ...s, objektart: o.key, ausstattung: [] },
+                      )
+                    }
                     className={`group press relative flex flex-col items-center justify-center gap-2.5 overflow-hidden rounded-xl border p-4 text-center transition-[border-color,background-color,transform] duration-300 ${
                       selected
                         ? "glow-select-on border-accent bg-surface-2"
@@ -882,14 +890,20 @@ export function Calculator() {
                       ))}
                     </select>
                   </Field>
-                  <Field label="Energieeffizienzklasse">
-                    <select className={inputCls} value={f.energieklasse} onChange={(e) => set("energieklasse", e.target.value)}>
-                      <option value="">unbekannt</option>
-                      {ENERGIE.map((k) => (
-                        <option key={k} value={k}>{k}</option>
-                      ))}
-                    </select>
-                  </Field>
+                  {/* Energieeffizienzklassen A+ bis H gelten nach Anlage 10 GEG
+                      ausschließlich für WOHNgebäude. Nichtwohngebäude bekommen
+                      im Energieausweis keine Klasse, sondern Vergleichswerte —
+                      das Feld wird bei Gewerbe daher nicht angeboten. */}
+                  {f.objektart !== "gewerbe" && (
+                    <Field label="Energieeffizienzklasse">
+                      <select className={inputCls} value={f.energieklasse} onChange={(e) => set("energieklasse", e.target.value)}>
+                        <option value="">unbekannt</option>
+                        {ENERGIE.map((k) => (
+                          <option key={k} value={k}>{k}</option>
+                        ))}
+                      </select>
+                    </Field>
+                  )}
                 </>
               )}
             </div>
@@ -897,7 +911,7 @@ export function Calculator() {
               <div className="space-y-3">
                 <span className="text-sm text-muted">Ausstattung</span>
                 <div className="flex flex-wrap gap-2">
-                  {AUSSTATTUNG_OPTIONEN.map((a) => (
+                  {(f.objektart === "gewerbe" ? AUSSTATTUNG_GEWERBE : AUSSTATTUNG_OPTIONEN).map((a) => (
                     <button
                       key={a}
                       type="button"

@@ -24,48 +24,34 @@ const familie = [
   { name: "Christoph RIEGEL", role: "Verkauf", relation: "Sohn", img: "/images/team/christoph.jpg" },
 ];
 
-// Das Team — echte Besetzung + Porträts. Gliederung genau nach der Liste aus
-// dem Ticket („zweier aufteilung"): die Paare stehen jeweils unter ihrem
-// Bereich, Reihenfolge wie geschickt. Der Nachwuchs bildet einen eigenen Block.
+// Das Team — echte Besetzung + Porträts. Gliederung nach Vorgabe: NUR zwei
+// Trennungen, nämlich Familie darüber und Nachwuchs darunter. Das Team selbst
+// bleibt ein Block und läuft in Zweier-Reihen untereinander (grid-cols-2, auch
+// auf großen Schirmen) — die Paare aus Sissys Liste stehen dadurch jeweils
+// nebeneinander in einer Zeile.
 // Loana Sabielny: Porträt folgt (img null → Platzhalter-Kachel).
-type Mitarbeitend = { name: string; img: string | null };
-type Bereich = { titel: string; leute: Mitarbeitend[] };
+type Mitarbeitend = { name: string; rolle: string; img: string | null };
 
-const bereiche: Bereich[] = [
-  {
-    titel: "Sales",
-    leute: [
-      { name: "Lorenz Höll", img: portraits.lorenz },
-      { name: "Carina Büßecker", img: portraits.carina },
-      { name: "Magdalena Czerwinski", img: portraits.magdalena },
-      { name: "Annika Redmann", img: portraits.annika },
-    ],
-  },
-  {
-    titel: "Backoffice",
-    // Vaida & Tanja: bisherige Porträts (passen wie gehabt).
-    leute: [
-      { name: "Tanja Knab", img: "/images/team/tanja-knab.jpg" },
-      { name: "Vaida Laschke", img: "/images/team/vaida-laschke.jpg" },
-    ],
-  },
-  {
-    titel: "Marketing",
-    leute: [
-      { name: "Vanessa Drewnowska", img: portraits.vanessa },
-      { name: "Helena Sator", img: portraits.helena },
-    ],
-  },
+const team: Mitarbeitend[] = [
+  { name: "Lorenz Höll", rolle: "Sales", img: portraits.lorenz },
+  { name: "Carina Büßecker", rolle: "Sales", img: portraits.carina },
+  { name: "Magdalena Czerwinski", rolle: "Sales", img: portraits.magdalena },
+  { name: "Annika Redmann", rolle: "Sales", img: portraits.annika },
+  // Vaida & Tanja: bisherige Porträts (passen wie gehabt).
+  { name: "Tanja Knab", rolle: "Backoffice", img: "/images/team/tanja-knab.jpg" },
+  { name: "Vaida Laschke", rolle: "Backoffice", img: "/images/team/vaida-laschke.jpg" },
+  { name: "Vanessa Drewnowska", rolle: "Marketing", img: portraits.vanessa },
+  { name: "Helena Sator", rolle: "Marketing", img: portraits.helena },
 ];
 
 const nachwuchs: Mitarbeitend[] = [
-  { name: "Julien Brenner", img: portraits.julien },
-  { name: "Melanie Oblonk", img: portraits.melanie },
-  { name: "Loana Sabielny", img: null },
+  { name: "Julien Brenner", rolle: "Auszubildender", img: portraits.julien },
+  { name: "Melanie Oblonk", rolle: "Auszubildende", img: portraits.melanie },
+  { name: "Loana Sabielny", rolle: "Auszubildende", img: null },
 ];
 
 /** Porträt-Kachel für Team und Nachwuchs. Ohne Foto: Initialen im Marken-Look. */
-function PersonKachel({ m, delay, rolle }: { m: Mitarbeitend; delay: number; rolle: string }) {
+function PersonKachel({ m, delay }: { m: Mitarbeitend; delay: number }) {
   const initialen = m.name
     .split(/\s+/)
     .map((t) => t[0])
@@ -95,7 +81,7 @@ function PersonKachel({ m, delay, rolle }: { m: Mitarbeitend; delay: number; rol
         </div>
         <figcaption className="mt-3">
           <div className="text-sm font-semibold leading-tight text-fg">{m.name}</div>
-          <div className="text-xs text-accent">{rolle}</div>
+          <div className="text-xs text-accent">{m.rolle}</div>
         </figcaption>
       </figure>
     </Reveal>
@@ -181,23 +167,12 @@ export default function UeberUnsPage() {
             </p>
           </Reveal>
 
-          {/* Nach Bereichen gegliedert (Liste aus dem Ticket) — so ist auf einen
-              Blick klar, wer wofür zuständig ist, statt einer flachen Reihe. */}
-          <div className="space-y-10">
-            {bereiche.map((b) => (
-              <div key={b.titel}>
-                <Reveal className="mb-4 flex items-center gap-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-fg">
-                    {b.titel}
-                  </h3>
-                  <span className="h-px flex-1 bg-border" />
-                </Reveal>
-                <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-                  {b.leute.map((m, i) => (
-                    <PersonKachel key={m.name} m={m} delay={(i % 4) * 70} rolle={b.titel} />
-                  ))}
-                </div>
-              </div>
+          {/* Ein Block, Zweier-Reihen untereinander (Vorgabe): grid-cols-2 gilt
+              auf allen Breiten, die Breite ist begrenzt, damit die Porträts auf
+              großen Schirmen nicht überdimensioniert werden. */}
+          <div className="grid max-w-2xl grid-cols-2 gap-5">
+            {team.map((m, i) => (
+              <PersonKachel key={m.name} m={m} delay={(i % 2) * 70} />
             ))}
           </div>
 
@@ -216,9 +191,9 @@ export default function UeberUnsPage() {
             </p>
           </Reveal>
 
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid max-w-2xl grid-cols-2 gap-5">
             {nachwuchs.map((m, i) => (
-              <PersonKachel key={m.name} m={m} delay={(i % 4) * 70} rolle="Auszubildende" />
+              <PersonKachel key={m.name} m={m} delay={(i % 2) * 70} />
             ))}
           </div>
         </Container>
