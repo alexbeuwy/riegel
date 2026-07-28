@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { site, type NavItem } from "@/lib/site";
 import { Icon } from "@/components/icon";
 
@@ -17,21 +18,39 @@ function closeMs() {
 }
 
 /**
- * Ein Mobile-Nav-Eintrag. Ohne `children` ein einfacher Link. Mit `children`
- * ein Akkordeon (.t-collapse) mit den Mega-Menü-Einträgen darunter — mobiles
- * Pendant zum Desktop-Mega-Menü in site-header.tsx.
+ * Ein Mobile-Nav-Eintrag.
+ *
+ * Ohne `children` eine einzelne Zeile, mit `children` ein Akkordeon
+ * (.t-collapse), das dieselben Inhalte zeigt wie das Desktop-Mega-Menü:
+ * Icon-Kachel, Bezeichnung und Beschreibung, dazu die Bildkarte am Ende.
+ * Vorher standen hier nur nackte Textzeilen in derselben Größe und Farbe wie
+ * die Oberpunkte, wodurch keine Ebene erkennbar war.
+ *
+ * `offen`/`umschalten` kommen von außen, damit immer nur EINE Gruppe
+ * aufgeklappt ist. Waren zwei gleichzeitig offen, lief die Liste unten aus
+ * dem Bild.
  */
-function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
-  const [expanded, setExpanded] = useState(false);
+function MobileNavItem({
+  item,
+  offen,
+  umschalten,
+  onNavigate,
+}: {
+  item: NavItem;
+  offen: boolean;
+  umschalten: () => void;
+  onNavigate: () => void;
+}) {
+  // Oberpunkte tragen bewusst mehr Gewicht als ihre Unterpunkte, das ist die
+  // gesamte Hierarchie-Information auf so wenig Fläche.
+  const oberpunkt =
+    "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-[0.95rem] font-medium text-fg transition-colors hover:bg-surface-2";
 
   if (!item.children) {
     return (
-      <Link
-        href={item.href}
-        onClick={onNavigate}
-        className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-      >
+      <Link href={item.href} onClick={onNavigate} className={oberpunkt}>
         {item.label}
+        <Icon name="arrowRight" size={15} className="shrink-0 text-faint" />
       </Link>
     );
   }
@@ -42,40 +61,76 @@ function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => 
     <div>
       <button
         type="button"
-        aria-expanded={expanded}
+        aria-expanded={offen}
         aria-controls={panelId}
-        onClick={() => setExpanded((e) => !e)}
-        className="press flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+        onClick={umschalten}
+        className={`press ${oberpunkt}`}
       >
         {item.label}
         <Icon
           name="chevronDown"
-          size={14}
+          size={15}
           className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
-            expanded ? "rotate-180 text-fg" : ""
+            offen ? "rotate-180 text-accent" : "text-faint"
           }`}
         />
       </button>
-      <div id={panelId} className={`t-collapse ${expanded ? "is-open" : ""}`}>
-        <div className="t-collapse-inner pl-2">
+
+      <div id={panelId} className={`t-collapse ${offen ? "is-open" : ""}`}>
+        <div className="t-collapse-inner space-y-0.5 pb-2 pl-1 pr-1 pt-1">
           {item.children.map((child) => (
             <Link
               key={child.href}
               href={child.href}
               onClick={onNavigate}
-              className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+              tabIndex={offen ? undefined : -1}
+              className="group flex items-start gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2"
             >
-              {child.label}
+              {/* Dieselbe Icon-Kachel wie im Desktop-Menü, nur eine Nummer
+                  kleiner (36 statt 40 Pixel). */}
+              <span className="mt-px flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-accent transition-colors group-hover:bg-accent group-hover:text-on-accent">
+                <Icon name={child.icon} size={17} />
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium leading-tight text-fg">{child.label}</span>
+                <span className="mt-0.5 text-[0.7rem] leading-snug text-muted">{child.desc}</span>
+              </span>
             </Link>
           ))}
+
           {item.feature && (
+            // Querformat statt der hochkantigen Desktop-Karte: auf dem Handy
+            // ist Breite da und Höhe knapp.
             <Link
               href={item.feature.href}
               onClick={onNavigate}
-              className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-surface-2"
+              tabIndex={offen ? undefined : -1}
+              className="group relative mt-1.5 flex h-24 items-end overflow-hidden rounded-xl border border-border"
             >
-              {item.feature.label}
-              <Icon name="arrowRight" size={14} />
+              <Image
+                src={item.feature.image}
+                alt=""
+                aria-hidden="true"
+                fill
+                sizes="360px"
+                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+              />
+              <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
+              <span className="relative flex w-full items-center justify-between gap-3 p-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold leading-tight text-white">
+                    {item.feature.label}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[0.7rem] text-white/70">
+                    {item.feature.desc}
+                  </span>
+                </span>
+                <Icon
+                  name="arrowRight"
+                  size={15}
+                  className="shrink-0 text-white transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
             </Link>
           )}
         </div>
@@ -88,6 +143,8 @@ function MobileNavItem({ item, onNavigate }: { item: NavItem; onNavigate: () => 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
+  /** href der aufgeklappten Gruppe, null = alle zu. */
+  const [gruppe, setGruppe] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -99,17 +156,17 @@ export function MobileMenu() {
   }, []);
 
   const toggle = useCallback(() => {
-    setOpen((o) => {
-      if (o) {
-        setClosing(true);
-        if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => setClosing(false), closeMs());
-        return false;
-      }
-      setClosing(false);
-      return true;
-    });
-  }, []);
+    if (open) {
+      close();
+      return;
+    }
+    // Beim Öffnen immer an der Wurzel starten, sonst stünde das Menü noch mit
+    // der zuletzt aufgeklappten Gruppe da. Bewusst hier und nicht beim
+    // Schließen, sonst klappt die Gruppe während der Ausblendung sichtbar zu.
+    setGruppe(null);
+    setClosing(false);
+    setOpen(true);
+  }, [open, close]);
 
   useEffect(() => {
     if (!open) return;
@@ -149,22 +206,40 @@ export function MobileMenu() {
         </span>
       </button>
 
+      {/*
+        Breiter als zuvor (w-60 reichte nicht für Icon plus Beschreibung) und
+        mit Höhenbegrenzung samt eigenem Scrollbereich: vorher lief das Panel
+        bei aufgeklappten Gruppen unten aus dem Bild. overscroll-contain hält
+        den Schwung im Menü, statt die Seite dahinter weiterzuschieben.
+      */}
       <div
         data-origin="top-right"
-        className={`t-dropdown absolute right-0 z-50 mt-2 w-60 rounded-lg border border-border bg-surface p-2 shadow-2xl ${
+        className={`t-dropdown absolute right-0 z-50 mt-2 max-h-[calc(100svh-6.5rem)] w-[min(23rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-2 shadow-2xl ${
           open ? "is-open" : closing ? "is-closing" : ""
         }`}
       >
-        {site.nav.map((item) => (
-          <MobileNavItem key={item.href} item={item} onNavigate={close} />
-        ))}
-        <div className="mt-1 border-t border-border pt-1">
+        <div className="divide-y divide-border/50">
+          {site.nav.map((item) => (
+            <MobileNavItem
+              key={item.href}
+              item={item}
+              offen={gruppe === item.href}
+              umschalten={() => setGruppe((g) => (g === item.href ? null : item.href))}
+              onNavigate={close}
+            />
+          ))}
+        </div>
+
+        {/* Rechtliches als eine schmale Zeile statt drei voller Reihen: es
+            gehört sichtbar dazu, soll aber keine Ebene mit der Navigation
+            beanspruchen. */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-3 pb-1 pt-3">
           {site.legalNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={close}
-              className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+              className="text-xs text-faint transition-colors hover:text-muted"
             >
               {item.label}
             </Link>
