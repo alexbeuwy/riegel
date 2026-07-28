@@ -6,12 +6,8 @@
  * sogar ab, wenn beide Dateien gleichzeitig existieren.
  *
  * Zweck, in dieser Reihenfolge geprüft:
- *  a) Kaputte Prozent-Kodierung ("/immobilien/%E4" u. ä.) früh abfangen, BEVOR
- *     der App Router versucht, das dynamische [slug]-Segment zu dekodieren.
- *     Dort wirft Next selbst intern eine URIError, die nicht abgefangen wird
- *     und zu HTTP 500 führt (nachgemessen, auch unabhängig von dieser
- *     Codebasis reproduzierbar — s. Kommentar in [slug]/page.tsx). Der Proxy
- *     läuft davor und kann den Pfad vorher selbst dekodieren.
+ *  a) Kaputte Prozent-Kodierung ("/immobilien/%E4" u. ä.) abfangen und mit
+ *     echtem 404 statt 500 beantworten.
  *  b) Objekt-Slugs, die zu einer von RIEGEL verkauften und nicht mehr aktiven
  *     Immobilie gehören (s. src/lib/verkauft.ts), bekommen HTTP 410 statt der
  *     normalen Detailseite — ein klares Signal an Google, den Datensatz aus
@@ -27,9 +23,43 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Irgendein Slug mit einer Id, die garantiert nie vergeben wird: reale
 // OnOffice-Ids sind deutlich kürzer (Beispiele aus der Recherche: 419, 11205).
-// Der Pfad landet ganz normal auf der [slug]-Route, getEstateBySlug findet
-// nichts, notFound() liefert die gestylte 404-Seite mit echtem Status 404.
+// Dient hier als sauberer (dekodierbarer) Zielpfad, dessen echte 404-Antwort
+// wir unten für die kaputt kodierten Anfragen weiterreichen.
 const GARANTIERT_UNBEKANNTER_PFAD = "/immobilien/ungueltiger-pfad-999999999999";
+
+/**
+ * Liefert die echte, gestylte 404-Seite (Status + HTML) für einen garantiert
+ * unbekannten, aber sauber kodierten Objektpfad.
+ *
+ * NextResponse.rewrite() auf diesen Pfad reicht dafür NICHT: nachgemessen
+ * bleibt der App Router beim Rendern weiterhin am ROHEN, kaputt kodierten
+ * Original-Pfad hängen und wirft dieselbe undekodierbare "failed to decode
+ * param"-Ausnahme wie ohne Proxy — Ergebnis war weiterhin HTTP 500. Das ist
+ * kein Sonderfall dieser Route: /standorte/%E4, das gar keinen Bezug zu
+ * diesem Proxy hat, liefert exakt denselben 500er. Ursache ist die
+ * next-16.2.9-interne Segment-Auflösung für JEDE dynamische Route, nicht
+ * etwas, das ein Rewrite umgehen kann. Der in Punkt (c) unten ohnehin
+ * verwendete Kniff (Seite selbst per fetch holen, Status/Body direkt
+ * ausliefern) funktioniert hier genauso und wurde ebenfalls per curl -I
+ * nachgemessen (echtes 404 statt 500).
+ */
+async function liefere404(request: NextRequest): Promise<NextResponse> {
+  try {
+    const res = await fetch(new URL(GARANTIERT_UNBEKANNTER_PFAD, request.url));
+    const html = await res.text();
+    return new NextResponse(html, {
+      status: 404,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+  } catch {
+    // Auch der interne Fetch kann scheitern (z. B. Kaltstart) — dann wenigstens
+    // ein einfaches 404 statt eines 500ers.
+    return new NextResponse("Nicht gefunden.", {
+      status: 404,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+}
 
 /* ─────────────────────────  b) Verkauft-Ids, memoisiert  ───────────────────────── */
 
@@ -72,7 +102,7 @@ export async function proxy(request: NextRequest) {
   try {
     decodedPath = decodeURIComponent(pathname);
   } catch {
-    return NextResponse.rewrite(new URL(GARANTIERT_UNBEKANNTER_PFAD, request.url));
+    return liefere404(request);
   }
 
   // Die eigene Statusseite läuft normal durch, sie ist kein Objekt-Slug.

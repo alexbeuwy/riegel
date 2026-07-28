@@ -27,13 +27,17 @@ import { site } from "@/lib/site";
  *
  * Adressen mit ungültiger Prozent-Kodierung ("/immobilien/%E4") erreichen
  * diese Funktion inzwischen gar nicht mehr: src/proxy.ts prüft denselben
- * decodeURIComponent-Aufruf bereits VOR dem Router und schreibt im Fehlerfall
- * auf einen garantiert unbekannten Objektpfad um, der hier regulär auf
- * notFound() läuft. Ohne den Proxy würde Next.js selbst beim Auflösen des
- * dynamischen Segments werfen und mit HTTP 500 statt 404 antworten
- * (nachgemessen, bestand unabhängig von dieser Datei). Der Proxy läuft dank
- * seines matcher ("/immobilien/:path*") ausschließlich auf dieser Route,
- * die übrigen Seiten sind davon nicht betroffen.
+ * decodeURIComponent-Aufruf bereits VOR dem Router. Ein einfaches Umschreiben
+ * (NextResponse.rewrite) reicht dabei NICHT — nachgemessen bleibt Next beim
+ * Rendern trotzdem am rohen, kaputt kodierten Original-Pfad hängen und wirft
+ * dieselbe Ausnahme wie ohne Proxy (HTTP 500; auch /standorte/%E4, das gar
+ * keinen Bezug zu dieser Datei hat, zeigt denselben 500er — ein allgemeiner
+ * next-16.2.9-Fehler in der Segment-Auflösung für dynamische Routen). Der
+ * Proxy holt deshalb die echte 404-Seite serverseitig selbst per fetch (ein
+ * sauberer, garantiert unbekannter Pfad) und liefert deren Status/Body direkt
+ * aus, ohne den Router noch einmal mit dem kaputten Pfad zu befassen. Der
+ * Proxy läuft dank seines matcher ("/immobilien/:path*") ausschließlich auf
+ * dieser Route, die übrigen Seiten sind davon nicht betroffen.
  */
 async function slugAusParams(params: Promise<{ slug: string }>): Promise<string> {
   try {
