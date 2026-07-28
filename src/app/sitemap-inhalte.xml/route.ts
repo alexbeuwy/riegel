@@ -1,12 +1,14 @@
 import { site } from "@/lib/site";
 import { standorte, ratgeber } from "@/lib/geo";
 import { expertenSeiten } from "@/lib/experten";
-import { SITE_UPDATED, GEO_UPDATED, EXPERTEN_DATE, STATISCHE_ROUTEN } from "@/app/sitemap";
+import { kaufKombis } from "@/lib/kaufseiten";
+import { referenzOrte } from "@/lib/referenzen";
+import { SITE_UPDATED, GEO_UPDATED, EXPERTEN_DATE, KAUF_UPDATED, STATISCHE_ROUTEN } from "@/app/sitemap";
 
 /**
  * Diagnose-Sitemap: die stabilen Inhaltsseiten (statische Seiten,
- * /verkaufen/[typ], /standorte/[slug], /ratgeber/[slug]), ohne die volatilen
- * Objekt-URLs.
+ * /verkaufen/[typ], /standorte/[slug], /ratgeber/[slug], /kaufen/[slug],
+ * /referenzen, /referenzen/[ort]), ohne die volatilen Objekt-URLs.
  *
  * Grund: sitemap.xml ist bereits bei Google eingereicht und muss unverändert
  * bleiben, aber die Search Console schlüsselt den Indexierungsstatus nur pro
@@ -29,11 +31,23 @@ function escapeXml(value: string): string {
 export async function GET() {
   const base = site.url;
 
+  // Dieselbe Live-Abfrage und dasselbe fail-soft-Verhalten wie in sitemap.ts:
+  // liefert referenzOrte() nichts, entfällt der komplette Block inklusive der
+  // Hub-Seite /referenzen.
+  const referenzListe = await referenzOrte();
+
   const urls = [
     ...STATISCHE_ROUTEN.map((r) => ({ loc: `${base}${r}`, lastmod: SITE_UPDATED })),
     ...expertenSeiten.map((s) => ({ loc: `${base}/verkaufen/${s.slug}`, lastmod: EXPERTEN_DATE })),
     ...standorte().map((a) => ({ loc: `${base}/standorte/${a.slug}`, lastmod: GEO_UPDATED })),
     ...ratgeber().map((a) => ({ loc: `${base}/ratgeber/${a.slug}`, lastmod: GEO_UPDATED })),
+    ...kaufKombis().map((k) => ({ loc: `${base}/kaufen/${k.slug}`, lastmod: KAUF_UPDATED })),
+    ...(referenzListe.length > 0
+      ? [
+          { loc: `${base}/referenzen`, lastmod: SITE_UPDATED },
+          ...referenzListe.map((o) => ({ loc: `${base}/referenzen/${o.slug}`, lastmod: SITE_UPDATED })),
+        ]
+      : []),
   ];
 
   const body = [

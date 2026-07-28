@@ -7,7 +7,7 @@ import { site } from "@/lib/site";
 export const metadata = {
   title: "Referenzen",
   description:
-    "Verkaufte Referenzobjekte von RIEGEL Immobilien nach Ort — aus Datenschutzgründen ohne Adresse, Fotos oder Preis.",
+    "Verkaufte Referenzobjekte von RIEGEL Immobilien nach Ort, aus Datenschutzgründen ohne Adresse, Fotos oder Preis.",
   alternates: { canonical: "/referenzen" },
 };
 

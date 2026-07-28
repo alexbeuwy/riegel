@@ -72,15 +72,25 @@ function ortMatchesCity(ort: string, city: string): boolean {
 /**
  * Reduziert ein Estate auf { objektart, flaeche } oder verwirft es.
  *
- * objektart kommt aus dem gepflegten OnOffice-Objekttyp, ersatzweise aus
- * categoryLabel(category) (src/lib/format.ts:71). flaeche ist die Wohnfläche,
- * bei Grundstücken die Grundstücksfläche (dort gibt es keine Wohnfläche).
- * Fehlt eines von beidem, wird das Objekt ausgelassen: die Feldabdeckung des
- * Verkauft-Pools ist nicht geprüft, eine Lücke wird nicht plausibel aufgefüllt.
+ * objektart ist die Kategorie (categoryLabel, src/lib/format.ts:71), ergänzt um
+ * den OnOffice-Objekttyp, falls gepflegt. Der Objekttyp allein reicht dafür
+ * NICHT: er ist die rohe CRM-Kennung und liefert Werte wie „Etage",
+ * „Reihenmittel" oder „Hochparterre" (prettifyKey über objekttyp,
+ * src/lib/onoffice.ts:563). In einer Spalte „Objektart" gelesen ergibt das
+ * keine Objektart, sondern eine halbe Angabe. Deshalb dieselbe Darstellung
+ * wie auf der 410-Statusseite (src/app/immobilien/verkauft/page.tsx):
+ * „Wohnung · Etage". Beide Bestandteile kommen aus demselben Datensatz,
+ * nichts wird ergänzt oder umgedeutet.
+ *
+ * flaeche ist die Wohnfläche, bei Grundstücken die Grundstücksfläche (dort
+ * gibt es keine Wohnfläche). Fehlt sie, wird das Objekt ausgelassen: die
+ * Feldabdeckung des Verkauft-Pools ist nicht geprüft, eine Lücke wird nicht
+ * plausibel aufgefüllt.
  */
 function reduziere(e: Estate): ReferenzEintrag | null {
-  const objektart = e.objectType ?? categoryLabel(e.category);
-  if (!objektart) return null;
+  const kategorie = categoryLabel(e.category);
+  if (!kategorie) return null;
+  const objektart = e.objectType ? `${kategorie} · ${e.objectType}` : kategorie;
   const flaeche = e.category === "grundstueck" ? e.plotArea : e.livingArea;
   if (flaeche == null) return null;
   return { objektart, flaeche };

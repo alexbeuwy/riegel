@@ -28,20 +28,20 @@ const nf = new Intl.NumberFormat("de-DE");
  */
 const SPEYER_MEDIAN_EUR_QM = 3561;
 
-/** Nur diese Kategorie-Labels für die Spannen-Überschrift — Kaufkombis sind
- *  laut kaufseiten.ts strikt auf haus/wohnung begrenzt. */
-const KATEGORIE_LABEL: Record<KaufKombi["kategorie"], string> = {
-  haus: "Häuser",
-  wohnung: "Wohnungen",
-};
-
 export function KaufseiteMarkt({ kombi }: { kombi: KaufKombi }) {
   const markt = belegtMarkt(kombi.standortSlug);
   // Fail-soft: ohne belegte Spanne keine Sektion — betrifft in der Praxis
-  // keine der KAUF_KOMBIS-Zeilen (alle vier haben einen SPANNE_BELEGT-
+  // keine der fünf KAUF_KOMBIS-Zeilen (alle haben einen SPANNE_BELEGT-
   // Eintrag), bleibt aber als Sicherheitsnetz gegen künftige Erweiterungen.
   if (!markt) return null;
 
+  // Auswahl nach Kategorie ist derzeit rein strukturell: SPANNE_BELEGT führt
+  // für haus und wohnung dieselben Werte, weil die Auswertung
+  // (scripts/preisanalyse-onoffice.mts) je Ort über ALLE Objektarten rechnet
+  // und nur ortsweise Fallzahlen liefert. Deshalb darf hier weder die Spanne
+  // noch das n als objektartspezifisch dargestellt werden (siehe Fließtext
+  // unten). Wird die Quelle je getrennt ausgewertet, ist dieser Satz
+  // mitzuziehen.
   const spanne = markt[kombi.kategorie];
 
   return (
@@ -50,12 +50,12 @@ export function KaufseiteMarkt({ kombi }: { kombi: KaufKombi }) {
         <span className="text-accent">
           <Icon name="euro" size={20} />
         </span>
-        Marktpreise für {KATEGORIE_LABEL[kombi.kategorie]} in {kombi.ort}
+        Marktpreise in {kombi.ort}
       </h2>
 
       <div className="mt-6 rounded-2xl border border-border bg-surface p-6 sm:p-8">
         <div className="flex items-center justify-between gap-2 text-[0.65rem] uppercase tracking-[0.25em] text-faint">
-          <span>Abschluss-Spanne, €/m²</span>
+          <span>Abschluss-Spanne, €/m² Wohnfläche</span>
           <span>Stand {markt.stand}</span>
         </div>
 
@@ -64,8 +64,14 @@ export function KaufseiteMarkt({ kombi }: { kombi: KaufKombi }) {
           <span className="text-base font-normal text-faint">–</span>
           <span>{nf.format(spanne.max)} €/m²</span>
         </div>
+        {/* Wichtig: n und Spanne gelten für den ORT über alle Objektarten
+            hinweg, nicht für die Objektart dieser Seite. Die Auswertung
+            gruppiert ausschließlich nach Ort (scripts/preisanalyse-onoffice.mts),
+            eine getrennte Fallzahl für Häuser oder Wohnungen liegt nicht vor. */}
         <p className="mt-1.5 text-sm text-muted">
-          Auf Basis von {markt.n} ausgewerteten Abschlüssen aus dem eigenen Bestand.
+          Auf Basis von {markt.n} ausgewerteten Abschlüssen aus dem eigenen Bestand in{" "}
+          {kombi.ort}, über alle Objektarten hinweg. Eine getrennte Auswertung für Häuser
+          und Wohnungen liegt nicht vor.
         </p>
 
         {/* Nur für Speyer belegt (s. Kommentar oben) — für alle anderen
@@ -73,7 +79,7 @@ export function KaufseiteMarkt({ kombi }: { kombi: KaufKombi }) {
             KEIN Analogiewert für Ludwigshafen/Römerberg/Schifferstadt. */}
         {kombi.standortSlug === "speyer" && (
           <p className="mt-3 text-sm text-fg/90">
-            Median der {markt.n} ausgewerteten Speyerer Abschlüsse:{" "}
+            Median dieser {markt.n} Abschlüsse:{" "}
             <strong className="font-semibold text-fg">
               {nf.format(SPEYER_MEDIAN_EUR_QM)} €/m²
             </strong>

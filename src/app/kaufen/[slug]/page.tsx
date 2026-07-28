@@ -99,7 +99,7 @@ export default async function KaufSeite({ params }: { params: Promise<{ slug: st
           <>
             RIEGEL Immobilien ist Makler für {kategoriePlural} in der Metropolregion Rhein-Neckar,
             mit Standorten in Speyer und Ludwigshafen. Aktuell liegt für {kombi.ort} kein aktives
-            Angebot dieser Art vor — sprechen Sie uns gern zu Ihrem Kaufwunsch an.
+            Angebot dieser Art vor. Sprechen Sie uns gern zu Ihrem Kaufwunsch an.
           </>
         )}
       </PageIntro>

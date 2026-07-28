@@ -13,6 +13,9 @@ import {
   ratgeberCategoryLabel,
 } from "@/lib/geo-taxonomy";
 import { marktort, marktortByOrt, PREIS_DISCLAIMER } from "@/lib/marktdaten";
+import { kaufKombis, type KaufKombi } from "@/lib/kaufseiten";
+import { referenzOrte } from "@/lib/referenzen";
+import { categoryLabel } from "@/lib/format";
 
 const nf = new Intl.NumberFormat("de-DE");
 const fmtPct = (n: number) => n.toFixed(1).replace(".", ",");
@@ -237,7 +240,7 @@ function keyFacts(article: GeoArticle): { text: string; icon: IconName }[] {
   return found;
 }
 
-export function GeoArticleView({ article }: { article: GeoArticle }) {
+export async function GeoArticleView({ article }: { article: GeoArticle }) {
   const basePath = article.kind === "standort" ? "/standorte" : "/ratgeber";
   const baseLabel = article.kind === "standort" ? "Standorte" : "Ratgeber";
   const url = `${site.url}${basePath}/${article.slug}`;
@@ -257,6 +260,19 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
       : article.ort
         ? marktortByOrt(article.ort)
         : undefined;
+
+  // Verlinkung zu /kaufen/<slug> und /referenzen/<ort> (Schritt 5): ohne diesen
+  // Block verweist keine Stelle im Code automatisch von einer Standortseite
+  // auf diese neuen Seitentypen, sie wären auf Nutzerebene verwaist. Nur für
+  // tatsächlich vorhandene Ziele — kaufKombis() ist eine feste, geprüfte
+  // Liste (kaufseiten.ts), referenzOrte() eine Live-Abfrage mit Schwelle
+  // (referenzen.ts); ohne Treffer bleibt der jeweilige Link schlicht weg.
+  const kaufLinks: KaufKombi[] =
+    article.kind === "standort" ? kaufKombis().filter((k) => k.standortSlug === article.slug) : [];
+  const referenzOrtName =
+    article.kind === "standort"
+      ? ((await referenzOrte()).find((o) => o.slug === article.slug)?.ort ?? null)
+      : null;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -366,6 +382,36 @@ export function GeoArticleView({ article }: { article: GeoArticle }) {
                 Rendert serverseitig nichts, falls der Ort keine aktiven
                 Objekte hat (EstatesTeaser gibt dann null zurück). */}
             {article.kind === "standort" && <EstatesTeaser ort={article.ort} />}
+
+            {/* Weiterführende Links zu /kaufen/<slug> und /referenzen/<ort>:
+                neue Seitentypen sollen nicht verwaist bleiben, deshalb hier
+                direkt neben dem Bestands-Teaser verlinkt. Kein leerer Kasten
+                ohne Ziel — der Block entfällt komplett ohne Treffer. */}
+            {(kaufLinks.length > 0 || referenzOrtName) && (
+              <section className="mt-10 flex flex-wrap gap-3">
+                {kaufLinks.map((k) => (
+                  <Link
+                    key={k.slug}
+                    href={`/kaufen/${k.slug}`}
+                    className="group inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium text-fg transition-colors hover:border-accent/50"
+                  >
+                    <Icon name={k.kategorie === "haus" ? "home" : "building"} size={16} className="text-accent" />
+                    {categoryLabel(k.kategorie)} kaufen in {k.ort}
+                    <Icon name="arrowRight" size={14} className="text-faint transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                ))}
+                {referenzOrtName && (
+                  <Link
+                    href={`/referenzen/${article.slug}`}
+                    className="group inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium text-fg transition-colors hover:border-accent/50"
+                  >
+                    <Icon name="handshake" size={16} className="text-accent" />
+                    Verkaufte Objekte in {referenzOrtName}
+                    <Icon name="arrowRight" size={14} className="text-faint transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                )}
+              </section>
+            )}
 
             {/* FAQ — Akkordeon (nativ, ohne JS) */}
             {article.faq.length > 0 && (

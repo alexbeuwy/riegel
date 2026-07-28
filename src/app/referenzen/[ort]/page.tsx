@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ ort: stri
   if (!daten) return { title: "Referenzen" };
   const url = `/referenzen/${daten.slug}`;
   const title = `Verkaufte Referenzobjekte in ${daten.ort}`;
-  const description = `${daten.eintraege.length} von RIEGEL Immobilien vermittelte Objekte in ${daten.ort} — Objektart und Fläche, aus Datenschutzgründen ohne Adresse, Fotos oder Preis.`;
+  const description = `${daten.eintraege.length} von RIEGEL Immobilien vermittelte Objekte in ${daten.ort} (Objektart und Fläche), aus Datenschutzgründen ohne Adresse, Fotos oder Preis.`;
   return {
     title,
     description,
