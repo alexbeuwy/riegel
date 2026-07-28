@@ -31,7 +31,12 @@ export interface NavItem {
  */
 export const site = {
   name: "RIEGEL Immobilien",
-  legalName: "RIEGEL Immobilien",
+  // Firmierung wie im Handelsregister (HRA 51804 Sp, Amtsgericht Ludwigshafen),
+  // NICHT die Marken-Schreibweise: legalName geht in die strukturierten Daten
+  // und ist dort ein Identitätsmerkmal, das sich mit Registerauszügen und
+  // Branchenverzeichnissen abgleichen lässt. "RIEGEL Immobilien" bleibt der
+  // Name, unter dem wir auftreten (site.name).
+  legalName: "Riegel Immobilien e.K.",
   tagline: "Immobilien mit regionaler Expertise",
   description:
     "RIEGEL Immobilien — Ihr Immobilienmakler in Speyer und Ludwigshafen. Verkauf, Bewertung und Beratung mit regionaler Expertise.",
