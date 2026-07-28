@@ -94,7 +94,10 @@ function ReelLoop({ src, caption, tag }: { src: string; caption: string; tag: st
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-border bg-surface">
-      <div className="relative aspect-[9/16]">
+      {/* 4:5 statt des originalen 9:16 und damit im selben Format wie die
+          Porträtkacheln. Das hält den mitwandernden Block niedrig genug, dass
+          er auf üblichen Laptop-Höhen vollständig ins Bild passt. */}
+      <div className="relative aspect-[4/5]">
         <video
           ref={ref}
           src={src}
@@ -128,22 +131,26 @@ export function PersonGrid({ leute }: { leute: Mitarbeitend[] }) {
 
 /**
  * Team-Block: links die Porträts in Zweier-Zeilen, rechts die Bereiche als
- * senkrechte Auswahl. Ein Klick auf einen Bereich hebt die zugehörigen
- * Personen hervor und lässt die übrigen zurücktreten; „Alle" setzt zurück.
+ * senkrechte Liste, die ab lg beim Scrollen mitwandert.
  *
- * Die Auswahl-Pille wandert dabei animiert an die neue Position und passt
- * ihre Höhe an (transitions.dev „Tabs sliding", senkrechte Variante): JS
- * misst offsetTop/offsetHeight des aktiven Eintrags und schreibt beides auf
- * die Pille, das Tweening macht CSS. Beim ersten Rendern und bei
- * Größenänderungen wird ohne Transition gesetzt, damit die Pille nicht aus
- * der Ecke heranfliegt.
+ * Zwei Betriebsarten, bewusst getrennt:
+ *
+ *  - OHNE Auswahl folgt die Liste dem Scrollen: markiert ist der Bereich,
+ *    dessen Porträts gerade auf Höhe der Lesekante stehen. Es wird dabei
+ *    NICHTS abgedunkelt, sonst würde beim Scrollen dauernd das halbe Raster
+ *    aus- und wieder eingegraut.
+ *  - MIT Auswahl (Klick) hält die Markierung, die passenden Gesichter bleiben
+ *    farbig und die übrigen treten zurück. Ein zweiter Klick oder die
+ *    Schaltfläche darunter gibt die Liste wieder ans Scrollen zurück.
+ *
+ * Die Markierungs-Pille wandert in beiden Fällen animiert an die neue Position
+ * und passt ihre Höhe an (transitions.dev „Tabs sliding", senkrechte
+ * Variante): JS misst offsetTop/offsetHeight des aktiven Eintrags und schreibt
+ * beides auf die Pille, das Tweening macht CSS. Beim ersten Rendern und bei
+ * Größenänderungen wird ohne Transition gesetzt, damit die Pille nicht aus der
+ * Ecke heranfliegt.
  */
 export function TeamBereiche({ leute }: { leute: Mitarbeitend[] }) {
-  const [aktiv, setAktiv] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const pillRef = useRef<HTMLSpanElement>(null);
-  const ersterLauf = useRef(true);
-
   const bereiche = useMemo(() => {
     const map = new Map<string, Mitarbeitend[]>();
     for (const m of leute) {
@@ -155,10 +162,71 @@ export function TeamBereiche({ leute }: { leute: Mitarbeitend[] }) {
     return [...map.entries()].map(([name, mitglieder]) => ({ name, mitglieder }));
   }, [leute]);
 
-  const eintraege = useMemo(
-    () => [{ key: null as string | null, name: "Alle", mitglieder: leute }, ...bereiche.map((b) => ({ key: b.name, ...b }))],
-    [bereiche, leute],
-  );
+  /** Vom Nutzer festgehaltener Bereich. null = die Liste folgt dem Scrollen. */
+  const [gesperrt, setGesperrt] = useState<string | null>(null);
+  /** Bereich, dessen Porträts gerade auf Lesehöhe stehen. */
+  const [sichtbar, setSichtbar] = useState<string>(() => bereiche[0]?.name ?? "");
+  const aktiv = gesperrt ?? sichtbar;
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const ersterLauf = useRef(true);
+
+  // Scroll-Kopplung. Kein IntersectionObserver, weil hier nicht „drin oder
+  // draußen" zählt, sondern welche Zeile einer bestimmten Bildschirmhöhe am
+  // nächsten ist. Der rAF-Riegel hält es bei einem Lauf pro Frame.
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const grosserSchirm = window.matchMedia("(min-width: 1024px)");
+    let raf = 0;
+    const messen = () => {
+      raf = 0;
+      // Unterhalb von lg steht die Liste unter den Porträts und nicht daneben;
+      // eine mitlaufende Markierung wäre dort nicht zu sehen.
+      if (!grosserSchirm.matches) return;
+      const linie = window.innerHeight * 0.42;
+      const kacheln = Array.from(grid.children) as HTMLElement[];
+      for (let i = 0; i < kacheln.length; i++) {
+        const r = kacheln[i].getBoundingClientRect();
+        if (r.top <= linie && r.bottom >= linie) {
+          const b = leute[i]?.bereich ?? leute[i]?.rolle;
+          if (b) setSichtbar((v) => (v === b ? v : b));
+          return;
+        }
+      }
+    };
+    const beiScroll = () => {
+      if (!raf) raf = requestAnimationFrame(messen);
+    };
+    raf = requestAnimationFrame(messen);
+    window.addEventListener("scroll", beiScroll, { passive: true });
+    window.addEventListener("resize", beiScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", beiScroll);
+      window.removeEventListener("resize", beiScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [leute]);
+
+  /** Klick auf einen Bereich: festhalten und die erste Kachel in den Blick holen. */
+  const waehle = (name: string) => {
+    if (gesperrt === name) {
+      setGesperrt(null);
+      return;
+    }
+    setGesperrt(name);
+    const idx = leute.findIndex((m) => (m.bereich ?? m.rolle) === name);
+    const ziel = gridRef.current?.children[idx] as HTMLElement | undefined;
+    if (!ziel) return;
+    ziel.scrollIntoView({
+      block: "center",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  };
 
   const setzePille = useCallback((animiert: boolean) => {
     const pill = pillRef.current;
@@ -197,80 +265,101 @@ export function TeamBereiche({ leute }: { leute: Mitarbeitend[] }) {
   }, [setzePille]);
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:items-start lg:gap-14">
-      <div className="grid grid-cols-2 gap-5">
+    // Bewusst OHNE items-start: die Rasterkinder müssen auf volle Zeilenhöhe
+    // gestreckt bleiben, sonst hat das sticky-Element im rechten Kind keinen
+    // Weg zum Wandern und klebt sofort wieder los.
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:gap-14">
+      <div ref={gridRef} className="grid grid-cols-2 gap-5">
         {leute.map((m, i) => (
           <PersonKachel
             key={m.name}
             m={m}
             delay={(i % 2) * 70}
-            dim={aktiv !== null && (m.bereich ?? m.rolle) !== aktiv}
+            dim={gesperrt !== null && (m.bereich ?? m.rolle) !== gesperrt}
           />
         ))}
       </div>
 
-      <Reveal delay={140}>
-        <div className="w-full lg:max-w-[20rem]">
-          <div className="mb-4 text-[0.65rem] uppercase tracking-[0.25em] text-faint">
-            Bereiche
-          </div>
-          <div
-            ref={listRef}
-            className="t-vtabs space-y-1"
-            role="radiogroup"
-            aria-label="Team nach Bereich hervorheben"
-          >
-            <span ref={pillRef} className="t-vtabs-pill" aria-hidden="true" />
-            {eintraege.map((e) => {
-              const gewaehlt = aktiv === e.key;
-              return (
-                <button
-                  key={e.name}
-                  type="button"
-                  role="radio"
-                  aria-checked={gewaehlt}
-                  data-aktiv={gewaehlt ? "true" : "false"}
-                  onClick={() => setAktiv(e.key)}
-                  className="t-vtab press block w-full rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-surface-2/60"
-                >
-                  <span className="flex items-baseline gap-3">
-                    <span
-                      className={`text-base font-semibold transition-colors ${
-                        gewaehlt ? "text-accent" : "text-fg"
-                      }`}
-                    >
-                      {e.name}
+      {/* Das Rasterkind selbst wird über die volle Zeilenhöhe gestreckt, das
+          sticky-Element ist sein Kind. Nur so entsteht überhaupt eine Strecke,
+          entlang derer die Liste mitwandern kann. */}
+      <div>
+        <div className="lg:sticky lg:top-24">
+          <Reveal delay={140}>
+            <div className="w-full lg:max-w-[20rem]">
+            <div className="mb-4 text-[0.65rem] uppercase tracking-[0.25em] text-faint">
+              Bereiche
+            </div>
+            <div
+              ref={listRef}
+              className="t-vtabs space-y-1"
+              role="radiogroup"
+              aria-label="Team nach Bereich hervorheben"
+            >
+              <span ref={pillRef} className="t-vtabs-pill" aria-hidden="true" />
+              {bereiche.map((b) => {
+                const markiert = aktiv === b.name;
+                return (
+                  <button
+                    key={b.name}
+                    type="button"
+                    role="radio"
+                    aria-checked={gesperrt === b.name}
+                    data-aktiv={markiert ? "true" : "false"}
+                    onClick={() => waehle(b.name)}
+                    className="t-vtab press block w-full rounded-2xl px-4 py-3.5 text-left transition-colors hover:bg-surface-2/60"
+                  >
+                    <span className="flex items-baseline gap-3">
+                      <span
+                        className={`text-base font-semibold transition-colors ${
+                          markiert ? "text-accent" : "text-fg"
+                        }`}
+                      >
+                        {b.name}
+                      </span>
+                      <span className="text-xs tabular-nums text-faint">
+                        {b.mitglieder.length}
+                      </span>
                     </span>
-                    <span className="text-xs tabular-nums text-faint">
-                      {e.mitglieder.length}
-                    </span>
-                  </span>
-                  {e.key && (
                     <span className="mt-1 block text-xs leading-relaxed text-muted">
-                      {e.mitglieder.map((m) => m.name).join(" · ")}
+                      {b.mitglieder.map((m) => m.name).join(" · ")}
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-4 px-4 text-xs text-faint">
-            Bereich wählen, um die passenden Gesichter hervorzuheben.
-          </p>
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Reel mit Carina — ein Gesicht aus genau diesem Team, deshalb steht
-              es hier und nicht irgendein beliebiges Objektvideo. */}
-          {/* Auf schmalen Schirmen genau eine Kachelbreite, sonst würde das
-              9:16-Format über die halbe Bildschirmhöhe einnehmen. */}
-          <div className="mt-8 max-w-[calc(50%-0.625rem)] lg:max-w-none">
-            <ReelLoop
-              src="https://riegel.b-cdn.net/Carina-Einfamilienhaus.mp4"
-              caption="Einfamilienhaus"
-              tag="mit Carina aus dem Team"
-            />
-          </div>
+            {/* Der Hinweistext wechselt mit der Betriebsart, damit erkennbar
+                bleibt, warum die Liste gerade mitläuft oder eben nicht. */}
+            {gesperrt ? (
+              <button
+                type="button"
+                onClick={() => setGesperrt(null)}
+                className="press mt-4 px-4 text-xs text-accent underline-offset-4 hover:underline"
+              >
+                Hervorhebung aufheben
+              </button>
+            ) : (
+              <p className="mt-4 px-4 text-xs text-faint">
+                Läuft beim Scrollen mit. Bereich anklicken, um die passenden
+                Gesichter hervorzuheben.
+              </p>
+            )}
+
+            {/* Reel mit Carina, ein Gesicht aus genau diesem Team, deshalb
+                steht es hier und nicht irgendein beliebiges Objektvideo.
+                Auf schmalen Schirmen genau eine Kachelbreite. */}
+            <div className="mt-8 max-w-[calc(50%-0.625rem)] lg:max-w-none">
+              <ReelLoop
+                src="https://riegel.b-cdn.net/Carina-Einfamilienhaus.mp4"
+                caption="Einfamilienhaus"
+                tag="mit Carina aus dem Team"
+              />
+              </div>
+            </div>
+          </Reveal>
         </div>
-      </Reveal>
+      </div>
     </div>
   );
 }
