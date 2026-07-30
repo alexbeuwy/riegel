@@ -128,6 +128,26 @@ export async function buildReportObjekte(
 }
 
 /**
+ * Wie viele Objekte RIEGEL insgesamt vermittelt hat — als Beleg über den
+ * Referenzobjekten im PDF („über 700 vermittelte Objekte").
+ *
+ * Quelle ist derselbe Verkauft-Pool, aus dem auch die Referenzen kommen, also
+ * dasselbe persistente OnOffice-Feld wie im Live-Ticker der Website. Der Aufruf
+ * ist gratis: getVerkaufteReferenzen ist per React-cache() pro Request
+ * memoisiert, buildReportObjekte hat ihn im selben Request ohnehin schon geholt.
+ *
+ * 0 bei Fehler/Mock-Betrieb — der Report lässt die Zeile dann weg, statt eine
+ * Zahl zu behaupten (gleiche Ehrlichkeitspflicht wie bei den Referenzen selbst).
+ */
+export async function vermitteltGesamt(): Promise<number> {
+  try {
+    return (await getVerkaufteReferenzen()).length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Pure Auswahl + Foto-Einbettung, separat exportiert: Scripts außerhalb der
  * Next-Runtime (z. B. scripts/preview-report-mail.mts) können damit direkt
  * gegen fetchOnOfficeEstates arbeiten — getEstateData fällt unter tsx auf den

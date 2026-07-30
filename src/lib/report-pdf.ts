@@ -46,9 +46,12 @@ export interface ReportData {
   /** Website-Wissen (Preisatlas-Marktdaten, GEO-Standorttext, RIEGEL-Stats)
    * aus buildReportContext() — s. lib/report-context.ts. */
   context?: ReportContext;
-  /** Echte OnOffice-Vergleichsobjekte (max. 3, s. lib/report-objekte.ts) —
-   * ohne Treffer/Mock-Bestand leer, dann entfällt die Referenzobjekte-Seite. */
+  /** Echte OnOffice-Vergleichsobjekte (max. REFERENZ_MAX, s. lib/report-objekte.ts)
+   * — ohne Treffer/Mock-Bestand leer, dann entfällt die Referenzobjekte-Seite. */
   vergleichsobjekte?: ReportVergleichsObjekt[];
+  /** Gesamtzahl der von RIEGEL vermittelten Objekte (vermitteltGesamt(), s.
+   * lib/report-objekte.ts). Fehlt oder 0 → die Belegzeile entfällt lautlos. */
+  vermitteltGesamt?: number;
   /** Nur bei objektartLabel === "Mehrfamilienhaus" (Ertragswert-Ansatz). */
   jahresnettokaltmiete?: string | number;
   wohneinheiten?: string | number;
@@ -112,6 +115,17 @@ const BORDER_GLOW = rgb(0.13, 0.22, 0.45);
 
 const A4: [number, number] = [595.28, 841.89];
 const M = 48;
+/**
+ * Wie viele Referenzobjekte auf die Referenzseite passen.
+ *
+ * Von 3 auf 5 erhöht, seit der Verkauft-Pool paginiert wird und statt 196
+ * Objekten 744 zur Auswahl stehen (s. fetchVerkaufteReferenzen). Mehr echte
+ * Abschlüsse in derselben Straße sind der stärkste Vertrauensbeleg im Report.
+ * 5 ist die Obergrenze für EINE A4-Seite: bei 100 pt Kartenhöhe plus 12 pt
+ * Abstand endet die letzte Karte rund 110 pt über dem Footer. Wer hier erhöht,
+ * muss drawReferenzobjekte neu vermessen — eine zweite Seite ist es nicht wert.
+ */
+export const REFERENZ_MAX = 5;
 // Oberkante des Footer-Bereichs (Trennlinie bei y≈54) — Deko-Bänder müssen
 // darüber enden, damit sie den Footer nicht überzeichnen.
 const bandFloor = 74;
@@ -253,7 +267,7 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
   // synchron gebraucht, embedJpg/embedPng sind aber async — daher hier, VOR
   // den draw*()-Aufrufen. Fail-soft wie jedes andere Bild-Embed: ein
   // einzelnes kaputtes Foto kostet nur das Foto, nie die Seite/den Report.
-  const vergleichsobjekte = (d.vergleichsobjekte ?? []).slice(0, 3);
+  const vergleichsobjekte = (d.vergleichsobjekte ?? []).slice(0, REFERENZ_MAX);
   const vergleichsFotos: (PDFImage | null)[] = [];
   for (const obj of vergleichsobjekte) {
     if (obj.fotoB64 && obj.fotoKind === "jpg") vergleichsFotos.push(await tryEmbedJpg(obj.fotoB64, "Referenzobjekt-Foto"));
@@ -1409,29 +1423,60 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
   const t = mkText(page);
   let y = header(ctx, page, w, h, "REFERENZOBJEKTE");
 
-  heading(ctx, page, "Aus unserer Vermarktung", M, y, 17);
+  const items = (d.vergleichsobjekte ?? []).slice(0, REFERENZ_MAX);
+  const contentW = w - 2 * M;
+
+  // Die Überschrift trägt die Aussage, nicht der Fließtext darunter — diese
+  // Seite ist der stärkste Vertrauenshebel im Report (Wunsch Inhaberseite).
+  // Sie darf aber nie mehr behaupten als die Karten darunter belegen, deshalb
+  // hängt sie an zwei Signalen, die ohnehin je Objekt geprüft sind:
+  //   verkauft? → "haben wir verkauft" statt "verkaufen wir" (über einem
+  //               aktuell inserierten Objekt wäre die Vergangenheit falsch)
+  //   nah?      → "Genau hier" statt "in Ihrer Region" (mindestens ein Objekt
+  //               muss als "vergleich" eingestuft sein, also Ortstreffer oder
+  //               ≤20 km — sonst verspricht die Zeile eine Nähe, die die Karte
+  //               selbst verneint)
+  // fitFontSize hält auch die längste Variante einzeilig.
+  const alleVermittelt = items.length > 0 && items.every((o) => o.vermittelt);
+  const nah = items.some((o) => o.einordnung === "vergleich");
+  const titel = alleVermittelt
+    ? nah
+      ? "Genau hier haben wir schon verkauft"
+      : "Das haben wir in Ihrer Region verkauft"
+    : nah
+      ? "Genau hier verkaufen wir"
+      : "Das vermarkten wir in Ihrer Region";
+  heading(ctx, page, titel, M, y, fitFontSize(ctx.akira, titel.toUpperCase(), contentW, 19, 12));
   y -= 20;
+
+  // Belegzeile: die Gesamtzahl der Abschlüsse ist die konkreteste Zahl, die wir
+  // haben, und stammt aus derselben Quelle wie der Live-Ticker der Website.
+  // Bewusst auf 50 ABGERUNDET und erst ab 100 gezeigt — lieber untertreiben als
+  // eine Zahl behaupten, die morgen anders aussieht.
+  const gesamt = d.vermitteltGesamt ?? 0;
+  const beleg = gesamt >= 100 ? `Über ${Math.floor(gesamt / 50) * 50} vermittelte Objekte in der Metropolregion Rhein-Neckar. ` : "";
+
   // Entschärfte Copy (Feedback Manfred): NICHT mehr „derselben Objektklasse"
   // versprechen — die Karten tragen stattdessen eine ehrliche Einordnung je
   // Objekt („Vergleichbares Objekt" vs. „Referenz aus der Region") plus die
   // echte Distanz. Referenzen belegen Vermarktungserfolg, keine Gleichwertigkeit.
   for (const line of wrap(
-    "Ausgewählte Objekte aus unserer Vermarktung in Ihrer Region: direkt Vergleichbares ist entsprechend gekennzeichnet, alle übrigen sind Referenzen unserer Verkaufsarbeit. Keines davon ist ein Wertermittlungs-Vergleich.",
+    `${beleg}Diese hier kommen Ihrem Objekt am nächsten. Direkt Vergleichbares ist entsprechend gekennzeichnet, alles Übrige belegt unsere Arbeit vor Ort und ist kein Wertermittlungs-Vergleich.`,
     ctx.reg,
     9.5,
-    w - 2 * M,
+    contentW,
   )) {
     t(line, M, y, 9.5, ctx.reg, MUTED);
     y -= 13;
   }
   y -= 14;
 
-  const items = (d.vergleichsobjekte ?? []).slice(0, 3);
-  const contentW = w - 2 * M;
-  const cardH = 118;
-  const cardGap = 16;
-  const photoW = 150;
-  const photoH = 100;
+  // Kartenmaße auf REFERENZ_MAX=5 vermessen (vorher 3 Karten à 118 pt).
+  // Foto bleibt im 3:2-Format, damit die OnOffice-Bilder nicht verzerren.
+  const cardH = 100;
+  const cardGap = 12;
+  const photoW = 126;
+  const photoH = 84;
 
   items.forEach((obj, idx) => {
     const cardY = y - cardH;
@@ -1453,14 +1498,14 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
     const badgeLbl = obj.vermittelt ? "Erfolgreich vermittelt" : "Aktuell im Angebot";
     const badgeColor = obj.vermittelt ? POS : ACCENT_SOFT;
     const { w: bw, h: bh } = pillMeasure(ctx.bold, badgeLbl, 8);
-    pill(page, ctx.bold, badgeLbl, M + contentW - 14 - bw, cardY + cardH - 14 - bh, 8, { fg: badgeColor, border: badgeColor });
+    pill(page, ctx.bold, badgeLbl, M + contentW - 14 - bw, cardY + cardH - 12 - bh, 8, { fg: badgeColor, border: badgeColor });
 
-    const titel = ellipsize(toWinAnsi(obj.titel), ctx.bold, 12, textW - bw - 16);
-    t(titel, textX, cardY + cardH - 26, 12, ctx.bold, FG);
-    t(ellipsize(toWinAnsi(obj.ort), ctx.reg, 9.5, textW), textX, cardY + cardH - 42, 9.5, ctx.reg, MUTED);
+    const objTitel = ellipsize(toWinAnsi(obj.titel), ctx.bold, 11.5, textW - bw - 16);
+    t(objTitel, textX, cardY + cardH - 24, 11.5, ctx.bold, FG);
+    t(ellipsize(toWinAnsi(obj.ort), ctx.reg, 9, textW), textX, cardY + cardH - 40, 9, ctx.reg, MUTED);
 
     const chips = [obj.preis, obj.flaeche, obj.zimmer].filter((v): v is string => !!v).map((v) => toWinAnsi(v));
-    if (chips.length > 0) chipRow(ctx, page, chips, textX, cardY + cardH - 58, textW, 8);
+    if (chips.length > 0) chipRow(ctx, page, chips, textX, cardY + cardH - 52, textW, 8);
 
     // Ehrliche Einordnung unten links (s. ReportVergleichsObjekt.einordnung):
     // „Vergleichbares Objekt" akzentuiert, „Referenz aus der Region" neutral —
@@ -1469,10 +1514,10 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
     const einLbl = obj.einordnung === "vergleich" ? "Vergleichbares Objekt" : "Referenz aus der Region";
     const einColor = obj.einordnung === "vergleich" ? ACCENT_SOFT : MUTED;
     const { w: ew, h: eh } = pillMeasure(ctx.bold, einLbl, 8);
-    pill(page, ctx.bold, einLbl, textX, cardY + 12, 8, { fg: einColor, border: einColor });
+    pill(page, ctx.bold, einLbl, textX, cardY + 9, 8, { fg: einColor, border: einColor });
     if (obj.distanzKm != null) {
       const distLbl = obj.distanzKm <= 1 ? "direkt vor Ort" : `ca. ${obj.distanzKm} km von Ihrem Objekt`;
-      t(distLbl, textX + ew + 10, cardY + 12 + (eh - 8) / 2 + 1, 8, ctx.reg, FAINT);
+      t(distLbl, textX + ew + 10, cardY + 9 + (eh - 8) / 2 + 1, 8, ctx.reg, FAINT);
     }
 
     y = cardY - cardGap;

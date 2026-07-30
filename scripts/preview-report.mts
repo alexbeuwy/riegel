@@ -21,12 +21,15 @@ const OUT_DIR = "/tmp/claude-0/-home-user-riegel/93995920-053c-5324-b000-7153d2f
 const dateLabel = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
 
 // ── Fixture 1: Haus in Speyer, alle Felder gefüllt (Faktoren-Wasserfall,
-//    amtlicher Bodenrichtwert, Ausstattungs-Chips, drei Referenzobjekte OHNE
-//    Foto — testet den SURFACE-Fallback statt eines eingebetteten Bilds). ──
+//    amtlicher Bodenrichtwert, Ausstattungs-Chips, fünf Referenzobjekte OHNE
+//    Foto — testet den SURFACE-Fallback statt eines eingebetteten Bilds sowie
+//    die volle Belegung der Referenzseite, REFERENZ_MAX in lib/report-pdf.ts). ──
 const vergleichsobjekteHaus: ReportVergleichsObjekt[] = [
-  { titel: "Gepflegtes Einfamilienhaus mit Garten", ort: "67346 Speyer", preis: "745.000 € · Kaufpreis", flaeche: "155 m²", zimmer: "5 Zimmer", vermittelt: true },
-  { titel: "Freistehendes Haus in ruhiger Wohnlage", ort: "67346 Speyer", preis: "812.000 € · Kaufpreis", flaeche: "172 m²", zimmer: "6 Zimmer", vermittelt: false },
-  { titel: "Saniertes Haus nahe Dom", ort: "67346 Speyer", flaeche: "148 m²", zimmer: "5 Zimmer", vermittelt: false },
+  { titel: "Gepflegtes Einfamilienhaus mit Garten", ort: "67346 Speyer", preis: "745.000 € · Kaufpreis", flaeche: "155 m²", zimmer: "5 Zimmer", vermittelt: true, einordnung: "vergleich", distanzKm: 1 },
+  { titel: "Freistehendes Haus in ruhiger Wohnlage", ort: "67346 Speyer", preis: "812.000 € · Kaufpreis", flaeche: "172 m²", zimmer: "6 Zimmer", vermittelt: false, einordnung: "vergleich", distanzKm: 3 },
+  { titel: "Saniertes Haus nahe Dom", ort: "67346 Speyer", flaeche: "148 m²", zimmer: "5 Zimmer", vermittelt: false, einordnung: "vergleich", distanzKm: 2 },
+  { titel: "Doppelhaushälfte mit Garage und Südterrasse in gewachsener Wohnlage", ort: "67354 Römerberg", preis: "589.000 € · Kaufpreis", flaeche: "141 m²", zimmer: "5 Zimmer", vermittelt: true, einordnung: "vergleich", distanzKm: 7 },
+  { titel: "Reihenmittelhaus", ort: "67373 Dudenhofen", preis: "425.000 € · Kaufpreis", flaeche: "119 m²", zimmer: "4 Zimmer", vermittelt: true, einordnung: "referenz", distanzKm: 9 },
 ];
 
 const hausFixture: ReportData = {
@@ -52,6 +55,7 @@ const hausFixture: ReportData = {
   ],
   context: buildReportContext({ city: "Speyer" }),
   vergleichsobjekte: vergleichsobjekteHaus,
+  vermitteltGesamt: 744,
   value: {
     low: 725_000,
     mid: 780_000,
