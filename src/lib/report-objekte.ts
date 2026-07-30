@@ -133,6 +133,42 @@ export async function buildReportObjekte(
  * gegen fetchOnOfficeEstates arbeiten — getEstateData fällt unter tsx auf den
  * Mock zurück und der Ehrlichkeits-Guard oben liefert dann bewusst [].
  */
+/**
+ * Ortsvergleich für die Referenzauswahl.
+ *
+ * Vorher wurde auf exakte Zeichenkettengleichheit verglichen. Das ging für
+ * Speyer gut und fiel bei LUDWIGSHAFEN systematisch durch: Die Adresssuche
+ * liefert "Ludwigshafen am Rhein", OnOffice pflegt "Ludwigshafen". Damit war
+ * `"ludwigshafen am rhein" === "ludwigshafen"` immer falsch, und KEIN einziges
+ * Ludwigshafener Objekt bekam je den Orts-Bonus. Aufgefallen an einer Bewertung
+ * in Edigheim, wo verkaufte Nachbarobjekte nicht als Referenz erschienen
+ * (Hinweis Manfred).
+ *
+ * Zusätzlich zählt jetzt der Stadtteil: In Ludwigshafen pflegt OnOffice
+ * Stadtteile wie Oppau, Oggersheim oder Edigheim, und wer eine Adresse in
+ * einem Stadtteil eingibt, bekommt von der Adresssuche teils den Stadtteil und
+ * teils die Stadt zurück. Beide Richtungen müssen greifen.
+ */
+function ortKern(s: string | undefined): string {
+  if (!s) return "";
+  return s
+    .toLowerCase()
+    .replace(/\(.*?\)/g, " ")
+    // Namenszusätze wie "am Rhein", "an der Weinstraße", "a. d. Weinstr."
+    // abschneiden. Sie unterscheiden keine Orte im RIEGEL-Gebiet, kommen aber
+    // je Datenquelle mal mit und mal ohne.
+    .replace(/\s+(am|an\s+der|a\.?\s*d\.?|a\.?)\s+.*$/u, "")
+    .replace(/[^\p{L}\d]+/gu, "")
+    .trim();
+}
+
+/** true, wenn Zielort und Objekt denselben Ort ODER Stadtteil bezeichnen. */
+function ortPasst(ziel: string, estateCity: string, estateDistrict?: string): boolean {
+  const z = ortKern(ziel);
+  if (!z) return false;
+  return z === ortKern(estateCity) || z === ortKern(estateDistrict);
+}
+
 export async function selectReportObjekte(
   estates: Estate[],
   objektart: string,
@@ -151,7 +187,7 @@ export async function selectReportObjekte(
       .map((e) => {
         let score = 0;
         if (e.marketingType === "kauf") score += 2; // der Report richtet sich an Verkaufsinteressierte
-        const cityMatch = !!cityNorm && e.city.trim().toLowerCase() === cityNorm;
+        const cityMatch = !!cityNorm && ortPasst(cityNorm, e.city, e.district);
         if (cityMatch) score += 3;
         if (e.images.length > 0) score += 1;
         // Abgeschlossene Verkäufe sind die stärkste Referenz („erfolgreich
