@@ -23,6 +23,20 @@ const API_URL = process.env.ONOFFICE_API_URL || "https://api.onoffice.de/api/sta
 const TIMEOUT_MS = 15000;
 const LIST_LIMIT = 200;
 const MAX_PAGES = 5; // Sicherheitsdeckel gegen Endlos-Pagination bei kaputter cntabsolute-Angabe
+/**
+ * Wie viele verkaufte Objekte maximal geholt werden (s. fetchVerkaufteReferenzen).
+ * Deutlich höher als LIST_LIMIT, damit der Referenz-Pool nicht nach 200
+ * Objekten und rund 14 Monaten endet. Der Aufrufer cached das Ergebnis, die
+ * zusätzlichen Seiten kosten also nur beim Cache-Miss (gemessen: ~6 s statt
+ * ~1,5 s für eine Seite).
+ *
+ * Bewusst gleich MAX_PAGES × LIST_LIMIT: ein kleinerer Wert würde den Pool
+ * abschneiden, ein größerer wäre wirkungslos, weil MAX_PAGES vorher greift.
+ * Stand 30.07.2026 nennt OnOffice 770 verkaufte Datensätze — sollte der
+ * Bestand über 1000 wachsen, macht die "X von Y Records"-Zeile im Log das
+ * sichtbar, und dann muss MAX_PAGES mitwachsen.
+ */
+const VERKAUFT_LIMIT = 1000;
 const NEW_THRESHOLD_MS = 21 * 24 * 60 * 60 * 1000;
 const FEATURED_COUNT = 3;
 
@@ -1008,27 +1022,53 @@ export async function fetchOnOfficeEstates(): Promise<Estate[] | null> {
  * auftrag_entzogen) werden ausgeschlossen — das sind keine RIEGEL-Erfolge.
  * `null` = nicht konfiguriert oder API-Fehler (Aufrufer cached nur Erfolge).
  *
- * BEWUSST OHNE Bilder: bei bis zu 200 Alt-Verkäufen wäre der
+ * BEWUSST OHNE Bilder: bei mehreren hundert Alt-Verkäufen wäre der
  * estatepictures-Batch unverhältnismäßig teuer (~0,17 s/Objekt serverseitig).
  * Der Report braucht Fotos nur für die ≤3 AUSGEWÄHLTEN Referenzen —
  * dafür gibt es fetchEstateImageUrls() (lazy, s. report-objekte.ts).
  */
-export async function fetchVerkaufteReferenzen(limit = LIST_LIMIT): Promise<Estate[] | null> {
+export async function fetchVerkaufteReferenzen(limit = VERKAUFT_LIMIT): Promise<Estate[] | null> {
   if (!isOnOfficeEnabled) return null;
 
   const t0 = Date.now();
-  const data = await callOnOffice<OnOfficeEstateData>("estate", "read", {
-    data: ESTATE_FIELDS,
-    filter: { verkauft: [{ op: "=", val: 1 }] },
-    listlimit: Math.min(limit, LIST_LIMIT),
-    listoffset: 0,
-    sortby: "geaendert_am",
-    sortorder: "DESC",
-    estatelanguage: "DEU",
-  });
-  if (!data) return null;
-  const records = data.records ?? [];
-  console.info(`[onoffice] verkauft read: ${records.length} Records in ${Date.now() - t0}ms`);
+  // Blättert wie fetchOnOfficeEstates über listoffset. Vorher wurde nur EINE
+  // Seite geholt, der Pool endete damit hart bei 200 Objekten und reichte nur
+  // bis 06/2025 zurück (Hinweis Manfred: die verkauften Edigheimer Objekte
+  // Giselherstraße und Anglerstraße fehlten als Report-Referenz — beide sind in
+  // OnOffice sauber gepflegt, lagen aber hinter der 200er-Grenze). Gemessen:
+  // 196 → 744 Objekte, Reichweite bis 10/2020, 410-Archiv 195 → 743 Ids,
+  // /referenzen-Ortsseiten 7 → 17. meta.cntabsolute nennt die Gesamtzahl,
+  // danach richtet sich das Abbruchkriterium.
+  //
+  // Bewusst KEIN Zeitfenster: geaendert_am ist die letzte CRM-Änderung, nicht
+  // das Verkaufsdatum (über 400 Datensätze tragen den 30./31.01.2025 aus einer
+  // Sammeländerung). Ein Filter darauf würde also nicht alte Verkäufe aussieben,
+  // sondern willkürlich lange gepflegte.
+  const records: OnOfficeEstateRecord[] = [];
+  let listoffset = 0;
+  let gesamt = 0;
+  const ziel = Math.max(1, limit);
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await callOnOffice<OnOfficeEstateData>("estate", "read", {
+      data: ESTATE_FIELDS,
+      filter: { verkauft: [{ op: "=", val: 1 }] },
+      listlimit: Math.min(LIST_LIMIT, ziel - records.length),
+      listoffset,
+      sortby: "geaendert_am",
+      sortorder: "DESC",
+      estatelanguage: "DEU",
+    });
+    // Fehler auf einer Folgeseite darf das bereits Gelesene nicht verwerfen.
+    if (!data) break;
+    const seite = data.records ?? [];
+    records.push(...seite);
+    gesamt = num(data.meta?.cntabsolute) ?? records.length;
+    listoffset += LIST_LIMIT;
+    if (seite.length === 0 || records.length >= ziel || listoffset >= gesamt) break;
+  }
+  console.info(
+    `[onoffice] verkauft read: ${records.length} von ${gesamt} Records in ${Date.now() - t0}ms`,
+  );
   if (records.length === 0) return null;
 
   const NICHT_RIEGEL = new Set(["fremd_verkauft_vermietet", "auftrag_entzogen"]);
@@ -1037,7 +1077,22 @@ export async function fetchVerkaufteReferenzen(limit = LIST_LIMIT): Promise<Esta
     const status2 = str(record.elements?.status2);
     if (NICHT_RIEGEL.has(status2)) continue;
     const estate = mapEstateRecord(record, "verkauft");
-    if (estate) mapped.push(estate);
+    // Exposé-Freitexte fliegen raus. Zwei Gründe, beide gemessen:
+    // 1) Größe. description + locationDescription sind 78 % der Nutzlast
+    //    (2,8 von 3,6 MB bei 744 Objekten). Der Aufrufer legt das Ergebnis in
+    //    unstable_cache, und dessen Eintrag darf 2 MB nicht überschreiten —
+    //    darüber cacht Next gar nicht mehr und JEDER Request würde einen
+    //    frischen Fünf-Sekunden-Pull auslösen. Ohne die Texte: 0,4 MB.
+    // 2) Datenschutz. Kein Konsument des Verkauft-Pools liest diese Felder
+    //    (report-objekte.ts nutzt Lage/Fläche/Preis, verkauft.ts und
+    //    referenzen.ts bewusst nur Objektart + Fläche). Freitexte alter
+    //    Verkäufe können Straße und Hausnummer enthalten — was nicht gebraucht
+    //    wird, wird auch nicht geholt und nicht vorgehalten.
+    if (estate) {
+      delete estate.description;
+      delete estate.locationDescription;
+      mapped.push(estate);
+    }
   }
   if (mapped.length === 0) return null;
 

@@ -8,11 +8,16 @@
  * Statusseite unter /immobilien/verkauft eine stark reduzierte Objektsicht
  * (getVerkauftesObjektById).
  *
- * Gemessen am 28.07.2026 (Diagnoselauf gegen fetchVerkaufteReferenzen/
- * fetchOnOfficeEstates): 196 Objekte im Verkauft-Pool, davon 195 NICHT mehr im
+ * Gemessen am 30.07.2026 (Diagnoselauf gegen fetchVerkaufteReferenzen/
+ * fetchOnOfficeEstates): 744 Objekte im Verkauft-Pool, davon 743 NICHT mehr im
  * aktiven Pool und genau 1 Id in beiden. Das eine doppelt geführte Objekt wird
  * hier herausgefiltert — das aktive Objekt gewinnt immer, sonst würde eine
  * laufende Vermarktung fälschlich mit 410 abgeschaltet.
+ *
+ * Die 195 aus der ersten Messung waren nur die Objekte, die in EINE
+ * OnOffice-Listenseite passten; seit fetchVerkaufteReferenzen paginiert, deckt
+ * das Archiv auch die Alt-Verkäufe bis 2020 ab. Für den Proxy heißt das: alte
+ * Objekt-Slugs, die vorher 404 lieferten, antworten jetzt korrekt mit 410.
  */
 import { cache } from "react";
 import { getEstateData, getVerkaufteReferenzen } from "@/lib/estates";
