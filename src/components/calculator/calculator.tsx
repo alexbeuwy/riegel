@@ -318,6 +318,68 @@ function useCountUp(target: number, run: boolean, dur = 1900) {
   return val;
 }
 
+/**
+ * Setzt die Schriftgröße eines Betrags so, dass er die Zeile exakt füllt.
+ *
+ * Warum gemessen statt geschätzt: Der Wert ist die einzige Zahl, wegen der
+ * jemand den Rechner überhaupt bedient — sie soll so groß wie möglich stehen,
+ * darf aber nie überlaufen. „89.000 €" und „12.750.000 €" unterscheiden sich in
+ * der Breite um mehr als das Doppelte, und AKIRA Expanded macht das schlimmer.
+ * Eine CSS-Formel über die Zeichenzahl muss auf den breitesten Fall auslegen
+ * und verschenkt dadurch bei kurzen Beträgen ein Drittel der Fläche.
+ *
+ * Gemessen wird gegen den ENDWERT, nicht gegen den hochzählenden Zwischenwert:
+ * Sonst wüchse die Schrift während der Animation mit jeder neuen Ziffer mit und
+ * zappelte. Ein Durchgang genügt, weil die Textbreite linear an der Schriftgröße
+ * hängt — der zweite Durchgang korrigiert nur Rundung und Kerning.
+ *
+ * Die CSS-Regel .wert-zahl bleibt als Vorschuss für SSR/ohne JS bestehen.
+ */
+function useFitText(text: string, minPx: number, maxPx: number) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const messen = () => {
+      const platz = el.clientWidth;
+      if (!platz) return;
+      // Probe im Element selbst: erbt Schriftfamilie, -schnitt und Laufweite,
+      // ohne dass die hier dupliziert werden müssten.
+      const probe = document.createElement("span");
+      probe.textContent = text;
+      probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;font-size:100px";
+      el.appendChild(probe);
+      // 0,5 % Sicherheitsabzug: offsetWidth ist auf ganze Pixel gerundet, ohne
+      // Puffer landete der breiteste Fall gemessen 1 px über der Kante — und bei
+      // white-space: nowrap wird daraus ein abgeschnittenes €-Zeichen.
+      const ziel = platz * 0.995;
+      let groesse = 0;
+      for (let i = 0; i < 2 && probe.offsetWidth > 0; i++) {
+        groesse = Math.min(maxPx, Math.max(minPx, (100 * ziel) / probe.offsetWidth));
+        probe.style.fontSize = `${groesse}px`;
+        // Nach der ersten Runde misst die Probe bei der Zielgröße; das Verhältnis
+        // korrigiert dann noch Hinting-/Kerning-Rundungen.
+        if (i === 0) continue;
+        groesse = Math.min(maxPx, Math.max(minPx, (groesse * ziel) / probe.offsetWidth));
+      }
+      probe.remove();
+      if (groesse > 0) el.style.fontSize = `${groesse}px`;
+    };
+
+    messen();
+    // Webfont kommt asynchron: vor dem AKIRA-Swap misst der Fallback-Font eine
+    // andere Breite, danach stimmt sie erst.
+    document.fonts?.ready.then(messen).catch(() => {});
+    const ro = new ResizeObserver(messen);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text, minPx, maxPx]);
+
+  return ref;
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-2">
@@ -1227,6 +1289,14 @@ function Result({
   sectionRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const mid = useCountUp(result.mid, true);
+  // Endbetrag (nicht der hochzählende Zwischenwert) ist die Referenz für die
+  // Schriftgröße und für die Screenreader-Ausgabe — s. useFitText.
+  const endBetrag = formatEUR(result.mid);
+  // Untergrenze 22 px: „14.040.000 €" (Mehrfamilienhaus mit hoher Jahresmiete)
+  // braucht auf 375 px 28 px, um in eine Zeile zu passen — gemessen. Mit einer
+  // höheren Grenze liefe der Betrag über und das €-Zeichen würde abgeschnitten.
+  // Eine etwas kleinere Zahl ist allemal besser als eine beschnittene.
+  const fitRef = useFitText(endBetrag, 22, 132);
   const rangePos = result.high > result.low ? ((result.mid - result.low) / (result.high - result.low)) * 100 : 50;
   const b = boris.data;
   const tiles = statTiles(result);
@@ -1251,9 +1321,46 @@ function Result({
             Variante ohne Spin, s. .glow-panel in globals.css) — Innenaufbau unangetastet. */}
         <div className="glow-panel overflow-hidden rounded-2xl border border-border bg-surface/60 px-6 py-10">
           <div className="text-center">
-            <div className="text-sm uppercase tracking-[0.25em] text-muted">Geschätzter Marktwert</div>
-            <div className="akira mt-3 text-5xl leading-none text-fg sm:text-7xl lg:text-8xl">{formatEUR(mid)}</div>
-            <div className="mt-4 text-muted">
+            {/* Label als Badge mit Icon statt als bloße Kleinschrift: Der Wert
+                ist das, wofür der Rechner bedient wird — die Zeile darüber darf
+                das ankündigen, statt nur danebenzustehen. */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/[0.08] py-1.5 pl-1.5 pr-3.5">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-accent/15 text-accent-strong">
+                <Icon name="euro" size={14} />
+              </span>
+              {/* Engere Laufweite auf Mobil: mit 0,2em bricht „Geschätzter
+                  Marktwert" auf 375 px in zwei Zeilen und das Badge wird zum
+                  Kasten. Ab sm ist Platz für die weite Sperrung. */}
+              <span className="whitespace-nowrap text-[0.6rem] font-medium uppercase tracking-[0.1em] text-accent-strong sm:text-[0.7rem] sm:tracking-[0.2em]">
+                Geschätzter Marktwert
+              </span>
+            </div>
+
+            {/* Wert-Plakette (s. .wert-plakette in globals.css). --wert-len ist
+                die Zeichenzahl des formatierten Betrags und steuert dort die
+                Schriftgröße, damit auch siebenstellige Werte auf 320 px passen. */}
+            {/* -mx-3 px-3 auf Mobil: Die Plakette holt sich einen Teil der
+                Panel-Polsterung zurück. Auf 375 px stecken sonst 87 px je Seite
+                in Container + Sektion + Panel + Plakette, und der Betrag müsste
+                auf ~31 px schrumpfen, um in einer Zeile zu bleiben. */}
+            <div className="wert-plakette -mx-3 mt-5 max-w-3xl rounded-2xl border border-accent/25 bg-accent/[0.05] px-3 py-6 sm:mx-auto sm:px-8 sm:py-9">
+              {/* Die hochzählende Zahl ist für Screenreader ausgeblendet: Sie
+                  würde sonst während der Animation dutzendfach vorgelesen. Der
+                  Endwert steht direkt darunter, einmal und vollständig. */}
+              <div
+                ref={fitRef}
+                aria-hidden
+                className="wert-zahl akira leading-none"
+                style={{ "--wert-len": endBetrag.length } as React.CSSProperties}
+              >
+                {formatEUR(mid)}
+              </div>
+              <span className="sr-only">Geschätzter Marktwert: {endBetrag}</span>
+            </div>
+
+            {/* text-sm auf Mobil: in Standardgröße bricht die Spanne direkt
+                unter der Plakette in zwei Zeilen um. */}
+            <div className="mt-4 text-sm text-muted sm:text-base">
               Spanne {formatEUR(result.low)} – {formatEUR(result.high)}
             </div>
             <div className="relative mx-auto mt-6 h-2 max-w-md rounded-full bg-surface-2">

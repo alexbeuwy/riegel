@@ -1169,6 +1169,75 @@
    Ruhige Schwester des Auswahl-Glows: Akzent-Hairline oben, die zu den
    Ecken ausläuft, plus dezenter radialer Schein hinter der Oberkante.
    Statisch (kein Spin) — Ergebnisflächen sollen edel wirken, nicht blinken. */
+/* ── Rechner-Ergebnis: Wert-Plakette ──────────────────────────────────────
+   Der Schätzwert ist der Grund, warum jemand den Rechner überhaupt bedient.
+   Er bekommt deshalb eine eigene Bühne statt nur eine große Zahl: gerahmtes
+   Feld, Verlauf in der Ziffer, langsam pulsierender Ring.
+
+   FARBE: RIEGEL-Blau, nicht Grün. Die Palette hat genau EINEN Akzent
+   (docs/design-system.md §2, „max. ein Akzent" als Premium-Signal) — ein
+   zweiter Farbkanal nur für diese eine Zahl würde die Seite billiger machen,
+   nicht wertvoller.
+
+   PERFORMANCE: der Ring animiert ausschließlich opacity und transform, läuft
+   also auf dem Compositor. Kein Layout, kein Paint je Frame.
+
+   REDUCED MOTION: der globale Guard (ganz oben) stoppt jede Animation. Die
+   Ruhewerte stehen deshalb direkt in der Regel, nicht nur im Keyframe — sonst
+   bliebe der Ring bei abgeschalteter Bewegung auf einem Zwischenwert stehen. */
+.wert-plakette {
+  position: relative;
+  /* Basis für die längenabhängige Schriftgröße unten (cqi = 1 % der
+     Container-Breite). Ohne container-type gäbe es keine cqi-Einheit. */
+  container-type: inline-size;
+}
+.wert-plakette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 60%, transparent);
+  opacity: 0.4;
+  pointer-events: none;
+  animation: wert-puls 3.4s var(--ease-in-out, ease-in-out) infinite;
+}
+@keyframes wert-puls {
+  0%, 100% { opacity: 0.32; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.012); }
+}
+
+/* Die Zahl selbst: Verlauf von warmem Off-White in die hellere Akzent-Tönung.
+   Beide Enden sind auf --color-bg AA-konform (accent-strong ist genau dafür
+   da, s. Token-Kommentar), und bei dieser Schriftgröße gilt ohnehin die
+   3:1-Schwelle für großen Text.
+
+   GRÖSSE: AKIRA Expanded ist sehr breit, und der Betrag enthält ein GESCHÜTZTES
+   Leerzeichen vor dem € (Intl, de-DE) — er kann also nicht umbrechen, sondern
+   würde bei zu großer Schrift schlicht überlaufen. Ein fester Breakpoint-
+   Stufenplan schiebt deshalb entweder siebenstellige Werte über den Rand oder
+   lässt fünfstellige zu klein wirken.
+
+   Der Wert hier ist nur der VORSCHUSS für SSR und den Fall ohne JS: 105/Zeichen
+   ist so kalibriert, dass selbst der breiteste gemessene Fall („12.750.000 €",
+   0,87 em je Zeichen) nicht anstößt. Sobald JS läuft, misst useFitText die
+   echte Textbreite und setzt die Größe exakt — s. calculator.tsx. */
+.wert-zahl {
+  font-size: clamp(1.4rem, calc(105cqi / var(--wert-len, 10)), 8rem);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background-image: linear-gradient(180deg, var(--color-fg) 18%, var(--color-accent-strong) 118%);
+}
+/* color: transparent nur setzen, wenn der Browser den Text-Clip auch kann —
+   sonst wäre die wichtigste Zahl der Seite unsichtbar. */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .wert-zahl {
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
 .glow-panel {
   position: relative;
   overflow: hidden;
