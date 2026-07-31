@@ -1504,8 +1504,39 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
     t(objTitel, textX, cardY + cardH - 24, 11.5, ctx.bold, FG);
     t(ellipsize(toWinAnsi(obj.ort), ctx.reg, 9, textW), textX, cardY + cardH - 40, 9, ctx.reg, MUTED);
 
-    const chips = [obj.preis, obj.flaeche, obj.zimmer].filter((v): v is string => !!v).map((v) => toWinAnsi(v));
-    if (chips.length > 0) chipRow(ctx, page, chips, textX, cardY + cardH - 52, textW, 8);
+    // Der Preis ist die Zahl, wegen der diese Seite überzeugt — er steht
+    // deshalb fett und in Vollkontrast da, nicht als einer von drei
+    // gleichrangigen grauen Chips (Wunsch Inhaberseite). Fläche und Zimmer
+    // bleiben Chips und ordnen sich damit sichtbar unter.
+    //
+    // obj.preis kommt als „435.000 € · Kaufpreis" — die Zahl wird groß gesetzt,
+    // die Preisart klein daneben. Bei Mietobjekten steht dort „Kaltmiete", die
+    // Unterscheidung darf also nicht verloren gehen.
+    let cx = textX;
+    if (obj.preis) {
+      const [betrag, art] = toWinAnsi(obj.preis).split(" · ");
+      t(betrag, cx, cardY + cardH - 55, 14, ctx.bold, FG);
+      cx += ctx.bold.widthOfTextAtSize(betrag, 14) + 6;
+      if (art) {
+        t(art, cx, cardY + cardH - 55, 8.5, ctx.reg, FAINT);
+        cx += ctx.reg.widthOfTextAtSize(art, 8.5) + 10;
+      }
+    }
+    const chips = [obj.flaeche, obj.zimmer].filter((v): v is string => !!v).map((v) => toWinAnsi(v));
+    // Passen die Chips nicht mehr neben den Preis, rutschen sie unter ihn.
+    const chipsBreite = chips.reduce((s, c) => s + pillMeasure(ctx.reg, c, 8).w + 6, 0);
+    if (chips.length > 0) {
+      const passtDaneben = cx + chipsBreite <= textX + textW;
+      chipRow(
+        ctx,
+        page,
+        chips,
+        passtDaneben ? cx : textX,
+        cardY + cardH - (passtDaneben ? 49 : 36),
+        textX + textW - (passtDaneben ? cx : textX),
+        8,
+      );
+    }
 
     // Ehrliche Einordnung unten links (s. ReportVergleichsObjekt.einordnung):
     // „Vergleichbares Objekt" akzentuiert, „Referenz aus der Region" neutral —

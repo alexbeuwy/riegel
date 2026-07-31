@@ -335,7 +335,7 @@ function useCountUp(target: number, run: boolean, dur = 1900) {
  *
  * Die CSS-Regel .wert-zahl bleibt als Vorschuss für SSR/ohne JS bestehen.
  */
-function useFitText(text: string, minPx: number, maxPx: number) {
+function useFitText(ziffern: string, einheit: string, minPx: number, maxPx: number) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -345,16 +345,24 @@ function useFitText(text: string, minPx: number, maxPx: number) {
     const messen = () => {
       const platz = el.clientWidth;
       if (!platz) return;
-      // Probe im Element selbst: erbt Schriftfamilie, -schnitt und Laufweite,
-      // ohne dass die hier dupliziert werden müssten.
-      const probe = document.createElement("span");
-      probe.textContent = text;
-      probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;font-size:100px";
-      el.appendChild(probe);
-      // 0,5 % Sicherheitsabzug: offsetWidth ist auf ganze Pixel gerundet, ohne
-      // Puffer landete der breiteste Fall gemessen 1 px über der Kante — und bei
-      // white-space: nowrap wird daraus ein abgeschnittenes €-Zeichen.
-      const ziel = platz * 0.995;
+      // Die Probe bildet denselben Aufbau nach wie das echte Element, inklusive
+      // des kleineren €-Spans — sonst würde sie zu breit messen und die Zahl
+      // fiele unnötig klein aus. Sie hängt neben dem Element im selben Eltern-
+      // knoten, erbt also Schrift, Schnitt und Laufweite.
+      const probe = document.createElement("div");
+      probe.className = el.className;
+      probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap;font-size:100px;left:0;top:0";
+      probe.append(document.createTextNode(ziffern));
+      const eu = document.createElement("span");
+      eu.className = "wert-euro";
+      eu.textContent = einheit;
+      probe.append(eu);
+      (el.parentElement ?? el).appendChild(probe);
+      // 3 % Sicherheitsabzug. 0,5 % waren zu knapp: offsetWidth misst die
+      // VORSCHUB-Breite, die Tinte eines Zeichens kann darüber hinausstehen
+      // (AKIRAs € tut das). Zusammen mit background-clip: text, das am
+      // Element-Rand abschneidet, sah das € dadurch angeschnitten aus.
+      const ziel = platz * 0.97;
       let groesse = 0;
       for (let i = 0; i < 2 && probe.offsetWidth > 0; i++) {
         groesse = Math.min(maxPx, Math.max(minPx, (100 * ziel) / probe.offsetWidth));
@@ -375,9 +383,22 @@ function useFitText(text: string, minPx: number, maxPx: number) {
     const ro = new ResizeObserver(messen);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [text, minPx, maxPx]);
+  }, [ziffern, einheit, minPx, maxPx]);
 
   return ref;
+}
+
+/**
+ * „487.000 €" in Ziffern und Währung trennen.
+ *
+ * Intl setzt ein GESCHÜTZTES Leerzeichen (U+00A0) davor, danach wird gesucht.
+ * Getrennt, weil das € kleiner gesetzt wird als die Zahl: Es ist die Einheit,
+ * nicht die Aussage, und in AKIRA Expanded frisst es auf gleicher Höhe fast so
+ * viel Breite wie zwei Ziffern.
+ */
+function betragTeile(s: string): [string, string] {
+  const i = s.lastIndexOf(" ");
+  return i === -1 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)];
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -1292,11 +1313,13 @@ function Result({
   // Endbetrag (nicht der hochzählende Zwischenwert) ist die Referenz für die
   // Schriftgröße und für die Screenreader-Ausgabe — s. useFitText.
   const endBetrag = formatEUR(result.mid);
+  const [endZiffern, endEinheit] = betragTeile(endBetrag);
+  const [zifferm, einheitm] = betragTeile(formatEUR(mid));
   // Untergrenze 22 px: „14.040.000 €" (Mehrfamilienhaus mit hoher Jahresmiete)
   // braucht auf 375 px 28 px, um in eine Zeile zu passen — gemessen. Mit einer
   // höheren Grenze liefe der Betrag über und das €-Zeichen würde abgeschnitten.
   // Eine etwas kleinere Zahl ist allemal besser als eine beschnittene.
-  const fitRef = useFitText(endBetrag, 22, 132);
+  const fitRef = useFitText(endZiffern, endEinheit, 22, 132);
   const rangePos = result.high > result.low ? ((result.mid - result.low) / (result.high - result.low)) * 100 : 50;
   const b = boris.data;
   const tiles = statTiles(result);
@@ -1353,7 +1376,8 @@ function Result({
                 className="wert-zahl akira leading-none"
                 style={{ "--wert-len": endBetrag.length } as React.CSSProperties}
               >
-                {formatEUR(mid)}
+                {zifferm}
+                <span className="wert-euro">{einheitm}</span>
               </div>
               <span className="sr-only">Geschätzter Marktwert: {endBetrag}</span>
             </div>

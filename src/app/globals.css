@@ -1228,6 +1228,18 @@
   white-space: nowrap;
   background-image: linear-gradient(180deg, var(--color-fg) 18%, var(--color-accent-strong) 118%);
 }
+/* Das €-Zeichen kleiner als die Ziffern: Es ist die Einheit, nicht die Aussage.
+   In AKIRA Expanded ist es auf voller Höhe fast so breit wie zwei Ziffern und
+   drückt damit die Zahl unnötig klein. Das kleine em-Vorspiel ersetzt das
+   geschützte Leerzeichen, das beim Trennen wegfällt. */
+.wert-euro {
+  font-size: 0.62em;
+  margin-left: 0.14em;
+  /* Optischer Ausgleich: kleiner gesetzt sitzt das € sonst zu tief an der
+     Grundlinie der großen Ziffern. */
+  vertical-align: 0.06em;
+}
+
 /* color: transparent nur setzen, wenn der Browser den Text-Clip auch kann —
    sonst wäre die wichtigste Zahl der Seite unsichtbar. */
 @supports (background-clip: text) or (-webkit-background-clip: text) {
