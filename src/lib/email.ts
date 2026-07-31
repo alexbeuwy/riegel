@@ -9,7 +9,37 @@ import { site } from "./site";
 const apiKey = process.env.RESEND_API_KEY;
 const resend = apiKey ? new Resend(apiKey) : null;
 
-const FROM = process.env.EMAIL_FROM || "RIEGEL Immobilien <onboarding@resend.dev>";
+/**
+ * Absender. Der Fallback ist Resends Sandbox-Domain und damit eine STILLE
+ * FALLE: Von `onboarding@resend.dev` stellt Resend ausschließlich an die
+ * Adresse des Kontoinhabers zu. Fehlt EMAIL_FROM in der Produktion, verschickt
+ * die Seite also weiter fehlerfrei aussehende Mails, die bei keinem einzigen
+ * Kunden ankommen — kein Fehlercode, kein Bounce, nichts.
+ *
+ * Der Fallback bleibt trotzdem stehen, weil lokale Entwicklung sonst gar nicht
+ * mehr senden könnte. Aber in der Produktion wird er einmal beim Laden des
+ * Moduls laut protokolliert, statt lautlos zu greifen.
+ *
+ * Produktiv gehört hier eine Adresse auf der bei Resend VERIFIZIERTEN Domain
+ * hinein: `m.riegel-immobilien.de` (nicht die Hauptdomain, die weist Resend ab
+ * — nachgemessen). Die Antworten der Kunden landen unabhängig davon richtig,
+ * dafür sorgt das Reply-To auf TO weiter unten.
+ */
+const FROM_FALLBACK = "RIEGEL Immobilien <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM || FROM_FALLBACK;
+if (!process.env.EMAIL_FROM && process.env.NODE_ENV === "production") {
+  console.error(
+    "[email] EMAIL_FROM ist nicht gesetzt. Es wird die Resend-Sandbox-Adresse verwendet, " +
+      "die NUR an den Kontoinhaber zustellt — Kundenmails kommen damit nicht an.",
+  );
+}
+/**
+ * Empfänger der internen Benachrichtigungen und zugleich Reply-To der
+ * Kundenmails. Bewusst die HAUPTdomain: dort liegen die echten Postfächer
+ * (MX auf Microsoft 365). Die Versand-Subdomain m.riegel-immobilien.de nimmt
+ * zwar Mail an, ihr MX zeigt aber auf Resends Eingang, nicht auf ein Postfach
+ * bei RIEGEL — eine Antwort dorthin liefe ins Leere.
+ */
 const TO = process.env.EMAIL_TO || "info@riegel-immobilien.de";
 
 // Absolute Basis-URL für Assets in Mails — E-Mail-Clients laden nie relative
