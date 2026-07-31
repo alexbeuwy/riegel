@@ -22,10 +22,45 @@ war also nicht die Ursache. Der Deckel kommt von Supabase selbst.
 
 In der Datenbank steht **kein einziges unbestätigtes Konto**. Die Registrierung
 wurde also abgelehnt, bevor überhaupt ein Nutzer angelegt wurde. Zwei Mails
-raus, die dritte blockiert: Das ist der eingebaute Mailversand von Supabase, der
-bei zwei Mails pro Stunde deckelt und laut Supabase ausdrücklich nicht für den
-Produktivbetrieb gedacht ist. `mailer_autoconfirm` steht auf `false`, jede
-Registrierung löst also eine Mail aus.
+raus, die dritte blockiert.
+
+Die Auth-Konfiguration bestätigt das Wort für Wort:
+
+| Einstellung | Wert am 31.07. | Bedeutung |
+| --- | --- | --- |
+| `smtp_host` | `null` | kein eigener Versand, Supabase-Bordmittel |
+| `rate_limit_email_sent` | `2` | zwei Mails pro Stunde |
+| `mailer_autoconfirm` | `false` | jede Registrierung löst eine Mail aus |
+
+## Zwei weitere Fehler, dabei gefunden
+
+Beide betreffen den Live-Betrieb und sind unabhängig vom Mailversand.
+
+**`site_url` zeigt auf die Vercel-Vorschaudomain**
+(`https://riegel-alexbeuwys-projects.vercel.app/`), nicht auf
+`riegel-immobilien.de`.
+
+**Die echte Domain fehlt in `uri_allow_list` vollständig.** Dort stehen nur
+Vercel-Adressen. Der Rechner übergibt beim Registrieren aber
+`emailRedirectTo = <origin>/konto` (s. `src/app/konto/page.tsx`), und auf der
+Live-Seite ist das `https://riegel-immobilien.de/konto`. Steht ein Ziel nicht
+auf der Liste, verwirft Supabase es und fällt auf `site_url` zurück — jeder
+Bestätigungslink führt Kundinnen und Kunden derzeit also auf die
+Vercel-Vorschaudomain statt auf die Website. Der `?next=`-Parameter aus dem
+Exposé-Flow geht dabei ebenfalls verloren.
+
+Zu setzen sind:
+
+```
+site_url        https://riegel-immobilien.de
+uri_allow_list  https://riegel-immobilien.de,https://riegel-immobilien.de/**,
+                https://www.riegel-immobilien.de,https://www.riegel-immobilien.de/**,
+                + die bestehenden Vercel-Einträge (sonst brechen Preview-Deployments)
+```
+
+Kanonisch ist die **Apex-Domain ohne `www`**: `www.riegel-immobilien.de`
+antwortet mit 308 und leitet auf `riegel-immobilien.de` weiter (nachgemessen).
+`site.url` im Code führt dieselbe Adresse.
 
 ## 1. Eigenen SMTP-Versand einschalten
 
@@ -42,6 +77,20 @@ Registrierung löst also eine Mail aus.
 
 Die Absenderadresse MUSS auf der bei Resend verifizierten Domain liegen, sonst
 weist Resend die Mail ab. Resend zeigt unter Settings → Usage „Domains 1 / 1“.
+
+**Welche Domain das ist, war von hier aus nicht feststellbar.** Der
+Resend-Schlüssel, der in dieser Sitzung vorlag, ist versandbeschränkt (kann
+senden, aber keine Domains auflisten), und er akzeptiert als Absender
+ausschließlich Resends Sandbox-Domain `resend.dev` — `riegel-immobilien.de`,
+`beuwy.com` und die geprüften Subdomains weist er mit „domain is not verified“
+ab. Er gehört also zu einem anderen Resend-Konto als das aus dem Dashboard.
+Der produktive Schlüssel liegt in Vercel, ist dort aber (wie `EMAIL_FROM`) als
+sensitiv markiert und lässt sich über die API nicht zurücklesen.
+
+Beim Eintragen deshalb den Wert aus dem Resend-Dashboard nehmen und die
+Absenderadresse gegen die dort verifizierte Domain prüfen. `EMAIL_FROM` in
+Vercel führt bereits die richtige Adresse — beide müssen übereinstimmen, sonst
+kommen die Auth-Mails von einer anderen Adresse als die übrigen Mails der Seite.
 
 ## 2. Das Stundenlimit anheben
 
@@ -106,6 +155,6 @@ Eine Testregistrierung mit einer frischen Adresse durchführen und kontrollieren
 - Die Mail kommt an, auf Deutsch, mit Logo.
 - In Resend erscheint der Versand unter Emails (bei Supabase-Bordmitteln stünde
   dort nichts).
-- Der Bestätigungslink führt zurück auf `/konto` und nicht auf `localhost`.
-  Falls doch: **Authentication → URL Configuration → Site URL** auf
-  `https://www.riegel-immobilien.de` setzen.
+- Der Bestätigungslink führt auf `https://riegel-immobilien.de/konto` — nicht
+  auf die Vercel-Vorschaudomain. Tut er das noch, ist Schritt „site_url und
+  uri_allow_list“ oben nicht vollständig angekommen.
