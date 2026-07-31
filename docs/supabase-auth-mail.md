@@ -1,10 +1,30 @@
-# Supabase-Auth: Mailversand auf Resend umstellen
+# Supabase-Auth: Mailversand über Resend
 
-Stand 31.07.2026. Zu erledigen im Supabase-Dashboard, Projekt `xbtpadxnesqrzhnhfcyx`.
-Aus dem Code heraus nicht machbar: Projekteinstellungen laufen über die
-Management-API, und die verlangt einen persönlichen Zugriffstoken (`sbp_…`).
-Weder der Publishable Key noch der Secret Key noch der Service-Role-Key reichen
-dafür — alle drei nachgemessen, alle drei HTTP 401.
+**Erledigt am 31.07.2026.** Projekt `xbtpadxnesqrzhnhfcyx`. Dieses Dokument hält
+fest, was eingestellt ist und warum — nicht mehr, was noch zu tun wäre.
+
+Gesetzt wurde über die Management-API, die einen persönlichen Zugriffstoken
+(`sbp_…`) verlangt. Publishable Key, Secret Key und Service-Role-Key reichen
+dafür NICHT — alle drei nachgemessen, alle drei HTTP 401. Der Token gehört
+nicht ins Repository und nicht nach Vercel; er wird nur bei Konfigurations-
+änderungen gebraucht und kann danach im Supabase-Konto widerrufen werden.
+
+## Aktueller Stand
+
+| Einstellung | Wert |
+| --- | --- |
+| `smtp_host` / `smtp_port` | `smtp.resend.com` / `587` |
+| `smtp_user` | `resend` |
+| `smtp_admin_email` | `noreply@m.riegel-immobilien.de` |
+| `smtp_sender_name` | `RIEGEL Immobilien` |
+| `rate_limit_email_sent` | `100` pro Stunde (vorher 2) |
+| `site_url` | `https://riegel-immobilien.de` |
+| Vorlagen | deutsch, s. `docs/supabase-mails/` |
+
+Nachgewiesen: drei Registrierungen unmittelbar hintereinander liefen durch
+(vorher wäre die dritte am Deckel gescheitert), und der erzeugte
+Bestätigungslink trägt `redirect_to=https://riegel-immobilien.de/konto?next=…`
+— richtige Domain, `next`-Parameter erhalten. Die Testkonten wurden gelöscht.
 
 ## Was passiert ist
 
@@ -49,22 +69,17 @@ Bestätigungslink führt Kundinnen und Kunden derzeit also auf die
 Vercel-Vorschaudomain statt auf die Website. Der `?next=`-Parameter aus dem
 Exposé-Flow geht dabei ebenfalls verloren.
 
-Zu setzen sind:
-
-```
-site_url        https://riegel-immobilien.de
-uri_allow_list  https://riegel-immobilien.de,https://riegel-immobilien.de/**,
-                https://www.riegel-immobilien.de,https://www.riegel-immobilien.de/**,
-                + die bestehenden Vercel-Einträge (sonst brechen Preview-Deployments)
-```
+Beides ist gesetzt. Die Allow-List führt jetzt Apex und `www` jeweils mit und
+ohne `/**`, dazu unverändert die Vercel-Einträge — sonst brächen die
+Preview-Deployments.
 
 Kanonisch ist die **Apex-Domain ohne `www`**: `www.riegel-immobilien.de`
 antwortet mit 308 und leitet auf `riegel-immobilien.de` weiter (nachgemessen).
 `site.url` im Code führt dieselbe Adresse.
 
-## 1. Eigenen SMTP-Versand einschalten
+## 1. Eigener SMTP-Versand (gesetzt)
 
-**Authentication → Emails → SMTP Settings → Enable Custom SMTP**
+**Authentication → Emails → SMTP Settings**
 
 | Feld | Wert |
 | --- | --- |
@@ -72,32 +87,30 @@ antwortet mit 308 und leitet auf `riegel-immobilien.de` weiter (nachgemessen).
 | Port | `587` |
 | Username | `resend` |
 | Password | der Resend-API-Key (derselbe wie `RESEND_API_KEY` in Vercel) |
-| Sender email | dieselbe Adresse wie `EMAIL_FROM` in Vercel |
+| Sender email | `noreply@m.riegel-immobilien.de` |
 | Sender name | `RIEGEL Immobilien` |
 
 Die Absenderadresse MUSS auf der bei Resend verifizierten Domain liegen, sonst
 weist Resend die Mail ab. Resend zeigt unter Settings → Usage „Domains 1 / 1“.
 
-**Welche Domain das ist, war von hier aus nicht feststellbar.** Der
-Resend-Schlüssel, der in dieser Sitzung vorlag, ist versandbeschränkt (kann
-senden, aber keine Domains auflisten), und er akzeptiert als Absender
-ausschließlich Resends Sandbox-Domain `resend.dev` — `riegel-immobilien.de`,
-`beuwy.com` und die geprüften Subdomains weist er mit „domain is not verified“
-ab. Er gehört also zu einem anderen Resend-Konto als das aus dem Dashboard.
-Der produktive Schlüssel liegt in Vercel, ist dort aber (wie `EMAIL_FROM`) als
-sensitiv markiert und lässt sich über die API nicht zurücklesen.
+Verifiziert ist bei Resend die Subdomain **`m.riegel-immobilien.de`**, nicht die
+Hauptdomain. `riegel-immobilien.de` selbst weist Resend mit „domain is not
+verified“ ab — beim Ändern der Absenderadresse also unbedingt das `m.`
+mitnehmen. Der Resend-Schlüssel ist versandbeschränkt: Er darf senden, aber
+keine Domains auflisten, weshalb sich die verifizierte Domain nicht über die API
+ermitteln lässt.
 
-Beim Eintragen deshalb den Wert aus dem Resend-Dashboard nehmen und die
-Absenderadresse gegen die dort verifizierte Domain prüfen. `EMAIL_FROM` in
-Vercel führt bereits die richtige Adresse — beide müssen übereinstimmen, sonst
-kommen die Auth-Mails von einer anderen Adresse als die übrigen Mails der Seite.
+`EMAIL_FROM` in Vercel ist als sensitiv markiert und nicht rücklesbar. Falls
+dort eine andere Adresse steht als `noreply@m.riegel-immobilien.de`, sollten
+beide angeglichen werden — sonst kommen die Auth-Mails von einer anderen Adresse
+als die übrigen Mails der Seite.
 
-## 2. Das Stundenlimit anheben
+## 2. Das Stundenlimit (gesetzt)
 
 **Authentication → Rate Limits → „Rate limit for sending emails“**
 
 Der Wert bleibt auch nach dem Umstellen auf eigenen SMTP niedrig (Standard 30
-pro Stunde). Auf **100 pro Stunde** setzen. Nicht höher: Das Limit ist auch ein
+pro Stunde). Steht auf **100 pro Stunde**. Bewusst nicht höher: Das Limit ist auch ein
 Schutz davor, dass jemand über ein Formular massenhaft Mails auslöst.
 
 ## 3. Reicht das für hunderte Registrierungen im Monat?
@@ -109,7 +122,7 @@ Ja, mit einer Einschränkung, die man im Auge behalten muss.
 | Supabase eingebaut | 2 / Stunde | unbrauchbar, heute bewiesen |
 | Resend Free, Monat | 3.000 | reichlich Luft |
 | Resend Free, **Tag** | **100** | der eigentliche Engpass |
-| Supabase nach Umstellung | frei wählbar | auf 100 / Stunde setzen |
+| Supabase jetzt | 100 / Stunde | gesetzt |
 
 Die Website verschickt aktuell rund 170 Mails im Monat (Wertreports,
 Kontaktformulare, Matching). 300 Registrierungen im Monat kämen auf etwa 500
@@ -121,7 +134,7 @@ Newsletter, der an einem Tag mehr als 100 Mails auslöst, legt ab dann auch die
 Registrierungen still. Sobald ein Tag über 60 Mails geht, ist der Wechsel auf
 Resend Pro fällig (20 $/Monat, 50.000 Mails, kein Tageslimit).
 
-## 4. Mailvorlagen auf Deutsch umstellen
+## 4. Mailvorlagen auf Deutsch (gesetzt)
 
 Supabase verschickt sonst seine englischen Standardvorlagen („Confirm your
 signup“). Bei hunderten Nutzern ist das die erste Mail, die jemand von RIEGEL
@@ -133,7 +146,7 @@ demselben Layout erzeugt** wie alle übrigen RIEGEL-Mails (`emailLayout` in
 verändern sich mit, wenn das Layout je angepasst wird (Generator:
 `scripts/gen-supabase-mails.mts`).
 
-**Authentication → Emails → Templates**, je Vorlage Betreff und HTML eintragen:
+Eingetragen unter **Authentication → Emails → Templates**:
 
 | Supabase-Vorlage | Datei | Betreff |
 | --- | --- | --- |
