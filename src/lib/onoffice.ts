@@ -899,6 +899,63 @@ export async function createLeadAddress(input: {
   return { ok: true, addressId: addressId || undefined };
 }
 
+/**
+ * Legt einen Lead aus dem /intern-Cockpit (Button "An OnOffice übergeben" im
+ * Lead-Bearbeitungsstand) als vollständigen Adressdatensatz im RIEGEL-CRM an,
+ * inklusive Anschrift, damit der Datensatz in OnOffice sofort ohne Nacharbeit
+ * nutzbar ist. Ergänzt createLeadAddress oben (die schlanke Variante für die
+ * automatische Übergabe der Website-Objektanfrage) um Straße/PLZ/Ort.
+ *
+ * Feldnamen "Vorname"/"Name"/"Email"/"Telefon1"/"Bemerkung"/"HerkunftKontakt"
+ * wie bei createLeadAddress (live gegen diesen Account verifiziert).
+ * "Strasse"/"Plz"/"Ort" zusätzlich gemäß offizieller API-Dokumentation, deren
+ * Beispiel-Payload für address:create bzw. address:read exakt diese
+ * Schreibweise verwendet:
+ * https://apidoc.onoffice.de/actions/datensatz-anlegen/adressen/
+ * https://apidoc.onoffice.de/actions/datensatz-lesen/adressen/
+ *
+ * Fail-soft wie callOnOffice/createLeadAddress: wirft NIE, liefert bei
+ * jeglichem Fehler oder fehlender Konfiguration `null` (kein Secret/HMAC-
+ * Logging, siehe Dateikopf).
+ *
+ * ACHTUNG: bewusst NICHT eigenständig aufrufen/live testen, jeder Aufruf
+ * schreibt einen ECHTEN Datensatz in RIEGELs Live-CRM (wie createLeadAddress).
+ */
+export async function createOnOfficeAddress(input: {
+  vorname?: string;
+  name: string;
+  email?: string;
+  telefon?: string;
+  strasse?: string;
+  plz?: string;
+  ort?: string;
+  bemerkung?: string;
+}): Promise<string | null> {
+  if (!isOnOfficeEnabled) return null;
+
+  const data = await callOnOffice<OnOfficeAddressCreateData>("address", "create", {
+    Vorname: input.vorname,
+    Name: input.name,
+    Email: input.email,
+    Telefon1: input.telefon,
+    Strasse: input.strasse,
+    Plz: input.plz,
+    Ort: input.ort,
+    Bemerkung: input.bemerkung,
+    // HerkunftKontakt ist ein Multiselect mit festen Schlüsseln, "Website"
+    // wirft Fehler 76. Der gültige Schlüssel dieses Accounts ist
+    // "webseite_system" (live verifiziert 09.07.2026 via address:create-Test,
+    // s. createLeadAddress oben).
+    HerkunftKontakt: "webseite_system",
+    checkDuplicate: true,
+  });
+  if (!data) return null;
+
+  const record = data.records?.[0];
+  const addressId = record ? str(record.id ?? record.elements?.id) : "";
+  return addressId || null;
+}
+
 /* ─────────────────────────  Live-Ticker: aggregierte Counts  ───────────────────────── */
 
 interface OnOfficeCountData {

@@ -6,6 +6,14 @@ import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
 import type { FeedbackStatusMap, FeedbackState } from "@/lib/intern-feedback";
 import { buildFeedbackPrompt, buildFeedbackBatchPrompt, encodeFeedbackLocator, parseFeedbackArea, FEEDBACK_PARAM } from "@/lib/feedback-locator";
+import {
+  LEAD_STATUS_VALUES,
+  STATUS_LABELS,
+  bearbeitungKey,
+  type LeadBearbeitungMap,
+  type LeadQuelle,
+  type LeadStatus,
+} from "@/lib/lead-bearbeitung";
 
 interface ReportRow {
   id: string;
@@ -77,6 +85,32 @@ type ObjSortKey = "title" | "city" | "priceValue" | "status";
 
 type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback" | "konten";
 
+/** Ein Ereignis aus der Kontakt-Akte (/api/intern/akte): Bewertung, Anfrage,
+ *  Merklisten-Eintrag oder Suchauftrag einer E-Mail-Adresse, chronologisch. */
+type AkteEreignisTyp = "bewertung" | "anfrage" | "favorit" | "suchauftrag";
+
+interface AkteEreignis {
+  typ: AkteEreignisTyp;
+  datum: string;
+  titel: string;
+  details: string;
+}
+
+interface AkteKonto {
+  existiert: boolean;
+  bestaetigt: boolean;
+  letzterLogin: string | null;
+}
+
+interface AkteState {
+  email: string;
+  busy: boolean;
+  error: string | null;
+  ereignisse: AkteEreignis[];
+  konto: AkteKonto | null;
+  dublette: boolean;
+}
+
 interface BunnyImage {
   name: string;
   url: string;
@@ -123,6 +157,29 @@ const OBJ_STATUS: Record<string, { label: string; cls: string }> = {
   vermietet: { label: "Vermietet", cls: "border-border text-faint" },
 };
 
+/** Dezente Badge-Farben je Bearbeitungsstatus, im Stil von OBJ_STATUS/Feedback. */
+const STATUS_BADGE_CLS: Record<LeadStatus, string> = {
+  neu: "border-border text-faint",
+  kontaktiert: "border-accent/40 text-accent",
+  termin: "border-[#fbbf24]/40 text-[#fbbf24]",
+  gewonnen: "border-[#34d399]/40 text-[#34d399]",
+  verloren: "border-[#f87171]/40 text-[#f87171]",
+};
+
+/** Icon/Label je Ereignistyp in der Kontakt-Akte. */
+const AKTE_TYP_ICON: Record<AkteEreignisTyp, IconName> = {
+  bewertung: "calculator",
+  anfrage: "mail",
+  favorit: "heart",
+  suchauftrag: "search",
+};
+const AKTE_TYP_LABEL: Record<AkteEreignisTyp, string> = {
+  bewertung: "Bewertung",
+  anfrage: "Anfrage",
+  favorit: "Merkliste",
+  suchauftrag: "Suchauftrag",
+};
+
 function ObjDetail({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -141,21 +198,36 @@ function daysAgo(iso: string): number {
   return (Date.now() - t) / 86_400_000;
 }
 
-function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
-  if (!rows.length) return;
-  const cols = Object.keys(rows[0]);
-  const esc = (v: unknown) => {
-    const s = v == null ? "" : String(v);
-    return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const csv = [cols.join(";"), ...rows.map((r) => cols.map((c) => esc(r[c])).join(";"))].join("\n");
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+/** Heutiges Datum als YYYY-MM-DD, in der lokalen Zeitzone (nicht UTC, damit
+ *  Wiedervorlagen kurz vor/nach Mitternacht korrekt als heute fällig gelten). */
+function todayLocalStr(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** YYYY-MM-DD -> deutsches Datumsformat (dd.mm.yyyy). */
+function fmtWvDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}.${m}.${y}` : iso;
+}
+
+/** Prüft, ob ein ISO-Zeitstempel in einem optionalen Datumsbereich liegt:
+ *  rein clientseitiger Filter auf den bereits geladenen Reports/Anfragen.
+ *  "bis" schließt den ganzen Tag ein, analog zu /api/intern/export. */
+function inDateRange(iso: string, von: string, bis: string): boolean {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return true;
+  if (von) {
+    const vt = new Date(von).getTime();
+    if (Number.isFinite(vt) && t < vt) return false;
+  }
+  if (bis) {
+    const bt = new Date(bis).getTime() + 86_400_000;
+    if (Number.isFinite(bt) && t >= bt) return false;
+  }
+  return true;
 }
 
 /* ───────────────────────── kleine UI-Bausteine ───────────────────────── */
@@ -191,12 +263,14 @@ function Toolbar({
   placeholder,
   children,
   onExport,
+  exportBusy,
 }: {
   query: string;
   setQuery: (v: string) => void;
   placeholder: string;
   children?: React.ReactNode;
   onExport?: () => void;
+  exportBusy?: boolean;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -217,9 +291,10 @@ function Toolbar({
         <button
           type="button"
           onClick={onExport}
-          className="press inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+          disabled={exportBusy}
+          className="press inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
         >
-          <Icon name="doc" size={15} /> CSV
+          <Icon name="doc" size={15} /> {exportBusy ? "Exportiere …" : "CSV"}
         </button>
       )}
     </div>
@@ -258,6 +333,100 @@ function FilterSelect({
   );
 }
 
+/** Zeitraum-Filter (von/bis) für Reports/Anfragen, rein clientseitig auf den
+ *  bereits geladenen Daten (s. inDateRange). */
+function DateRangeFilter({
+  von,
+  bis,
+  onVon,
+  onBis,
+}: {
+  von: string;
+  bis: string;
+  onVon: (v: string) => void;
+  onBis: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm">
+      <span className="text-xs text-faint">Zeitraum</span>
+      <label className="flex items-center gap-1.5 text-xs text-faint">
+        von
+        <input
+          type="date"
+          value={von}
+          onChange={(e) => onVon(e.target.value)}
+          aria-label="Zeitraum von"
+          className="rounded-md border-none bg-transparent text-sm text-fg outline-none"
+        />
+      </label>
+      <label className="flex items-center gap-1.5 text-xs text-faint">
+        bis
+        <input
+          type="date"
+          value={bis}
+          onChange={(e) => onBis(e.target.value)}
+          aria-label="Zeitraum bis"
+          className="rounded-md border-none bg-transparent text-sm text-fg outline-none"
+        />
+      </label>
+      {(von || bis) && (
+        <button
+          type="button"
+          onClick={() => {
+            onVon("");
+            onBis("");
+          }}
+          aria-label="Zeitraum zurücksetzen"
+          className="press text-faint transition-colors hover:text-accent"
+        >
+          <Icon name="close" size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** OnOffice-Übergabe-Knopf je Report-/Anfragen-Zeile: solange kein
+ *  onoffice_adresse_id vorliegt, ein Aktionsknopf; danach dauerhaft ein
+ *  Erfolgs-Badge mit der Datensatz-Id (kein Zurück, kein Zweitversuch nötig). */
+function OnOfficeButton({
+  entry,
+  busy,
+  error,
+  onSubmit,
+}: {
+  entry?: LeadBearbeitungMap[string];
+  busy: boolean;
+  error?: string;
+  onSubmit: () => void;
+}) {
+  const id = entry?.onoffice_adresse_id;
+  if (id) {
+    return (
+      <span
+        title={`OnOffice-Datensatz ${id}`}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[#34d399]/40 px-3 py-1.5 text-xs text-[#34d399]"
+      >
+        <Icon name="check" size={13} /> In onOffice · {id}
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={busy}
+        className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+      >
+        <Icon name="building" size={13} />
+        {busy ? "Übergebe …" : "An onOffice übergeben"}
+      </button>
+      {error && <span className="text-[0.65rem] text-accent">{error}</span>}
+    </div>
+  );
+}
+
 /* ───────────────────────── Dashboard ───────────────────────── */
 
 export function InternDashboard() {
@@ -274,6 +443,14 @@ export function InternDashboard() {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusMap>({});
   const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
   const [fbBusyId, setFbBusyId] = useState<string | null>(null);
+  // Bearbeitungsstand (Status/Notiz/Wiedervorlage) je Report/Anfrage, Schlüssel
+  // per bearbeitungKey("report"|"lead", id). bearbOpen ist die (höchstens) eine
+  // aufgeklappte Detailzeile in Reports/Anfragen-Tab, geteilt über beide Tabs,
+  // da die Schlüssel je Quelle eindeutig sind.
+  const [bearbeitung, setBearbeitung] = useState<LeadBearbeitungMap>({});
+  const [bearbOpen, setBearbOpen] = useState<string | null>(null);
+  const [bearbBusy, setBearbBusy] = useState<Set<string>>(new Set());
+  const [bearbError, setBearbError] = useState<Record<string, string>>({});
   // PDF-Regeneration je Report-Zeile: Busy- und Fehlerzustand pro id (Set),
   // damit mehrere Zeilen unabhängig voneinander einen Ladezustand zeigen können.
   const [reportBusy, setReportBusy] = useState<Set<string>>(new Set());
@@ -312,6 +489,18 @@ export function InternDashboard() {
   const [lQuery, setLQuery] = useState("");
   const [lKind, setLKind] = useState("all");
   const [aQuery, setAQuery] = useState("");
+  // Zeitraum-Filter (von/bis) je Tab, rein clientseitig auf den geladenen Daten.
+  const [rVon, setRVon] = useState("");
+  const [rBis, setRBis] = useState("");
+  const [lVon, setLVon] = useState("");
+  const [lBis, setLBis] = useState("");
+  // CSV-Export je Tab: welcher Export gerade läuft (für den Button-Text), s. exportCsv().
+  const [csvBusy, setCsvBusy] = useState<"reports" | "leads" | null>(null);
+  // OnOffice-Übergabe je Report/Anfrage (Schlüssel: bearbeitungKey(...)).
+  const [onofficeBusy, setOnofficeBusy] = useState<Set<string>>(new Set());
+  const [onofficeError, setOnofficeError] = useState<Record<string, string>>({});
+  // Kontakt-Akte: Seitenpanel bei Klick auf eine E-Mail-Adresse in Reports/Anfragen.
+  const [akte, setAkte] = useState<AkteState | null>(null);
 
   const [heroImages, setHeroImages] = useState<BunnyImage[] | null>(null);
   const [heroCurrent, setHeroCurrent] = useState<string>("");
@@ -403,6 +592,7 @@ export function InternDashboard() {
       setFeedbackStatus(json.feedbackStatus ?? {});
       setObjekte(json.objekte ?? []);
       setAccounts(json.accounts ?? []);
+      setBearbeitung(json.bearbeitung ?? {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
@@ -422,6 +612,67 @@ export function InternDashboard() {
       if (res.ok && json.ok) setFeedbackStatus(json.feedbackStatus ?? {});
     } finally {
       setFbBusyId(null);
+    }
+  }
+
+  /** Speichert Status/Notiz/Wiedervorlage eines Reports oder einer Anfrage.
+   *  Aktualisiert den lokalen State optimistisch, bevor die Antwort da ist,
+   *  und macht die Änderung bei Fehler wieder rückgängig (Muster: toggleFeedback,
+   *  nur mit Optimistic-Update, da der Nutzer sofort weiterarbeiten soll). */
+  async function saveBearbeitung(
+    quelle: LeadQuelle,
+    quelleId: string,
+    patch: { status: LeadStatus; notiz: string | null; wiedervorlage: string | null },
+  ) {
+    const key = bearbeitungKey(quelle, quelleId);
+    const prevEntry = bearbeitung[key];
+    setBearbeitung((prev) => ({
+      ...prev,
+      [key]: {
+        status: patch.status,
+        notiz: patch.notiz,
+        wiedervorlage: patch.wiedervorlage,
+        onoffice_adresse_id: prev[key]?.onoffice_adresse_id ?? null,
+      },
+    }));
+    setBearbBusy((prev) => new Set(prev).add(key));
+    setBearbError((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    try {
+      const res = await fetch("/api/intern/bearbeitung", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password,
+          accessToken,
+          quelle,
+          quelle_id: quelleId,
+          status: patch.status,
+          notiz: patch.notiz,
+          wiedervorlage: patch.wiedervorlage,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      if (json.bearbeitung) setBearbeitung((prev) => ({ ...prev, [key]: json.bearbeitung }));
+    } catch (e) {
+      // Fehlschlag: optimistische Änderung rückgängig machen.
+      setBearbeitung((prev) => {
+        const next = { ...prev };
+        if (prevEntry) next[key] = prevEntry;
+        else delete next[key];
+        return next;
+      });
+      setBearbError((prev) => ({ ...prev, [key]: e instanceof Error ? e.message : "Fehler" }));
+    } finally {
+      setBearbBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
@@ -465,6 +716,110 @@ export function InternDashboard() {
         return next;
       });
     }
+  }
+
+  /** CSV-Export je Tab (Reports/Anfragen) über /api/intern/export. Antwort
+   *  kommt als Blob (nicht JSON), Download-Auslösung wie bei downloadReport(). */
+  async function exportCsv(was: "reports" | "leads", vonDatum: string, bisDatum: string) {
+    setCsvBusy(was);
+    try {
+      const res = await fetch("/api/intern/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password,
+          accessToken,
+          was,
+          vonDatum: vonDatum || undefined,
+          bisDatum: bisDatum || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Fehler");
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] || `RIEGEL-${was === "reports" ? "Reports" : "Anfragen"}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      // fail-soft: kein Blockierzustand, ein erneuter Klick genügt.
+    } finally {
+      setCsvBusy(null);
+    }
+  }
+
+  /** Übergibt einen Report/eine Anfrage an OnOffice (Knopf je Zeile in
+   *  Reports/Anfragen). Die zurückgegebene onoffice_adresse_id landet dauerhaft
+   *  in bearbeitung, wie bei saveBearbeitung. Bei Fehler bleibt der Knopf
+   *  aktiv, die Fehlermeldung erscheint darunter. */
+  async function uebergebeOnOffice(quelle: LeadQuelle, quelleId: string) {
+    const key = bearbeitungKey(quelle, quelleId);
+    setOnofficeBusy((prev) => new Set(prev).add(key));
+    setOnofficeError((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    try {
+      const res = await fetch("/api/intern/onoffice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, quelle, quelleId }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setBearbeitung((prev) => ({
+        ...prev,
+        [key]: {
+          status: prev[key]?.status ?? "neu",
+          notiz: prev[key]?.notiz ?? null,
+          wiedervorlage: prev[key]?.wiedervorlage ?? null,
+          onoffice_adresse_id: json.onoffice_adresse_id ?? null,
+        },
+      }));
+    } catch (e) {
+      setOnofficeError((prev) => ({ ...prev, [key]: e instanceof Error ? e.message : "Fehler" }));
+    } finally {
+      setOnofficeBusy((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  /** Kontakt-Akte laden (Seitenpanel bei Klick auf eine E-Mail-Adresse in
+   *  Reports/Anfragen): chronologische Ereignisliste, Konto-Status und
+   *  Dubletten-Hinweis, alles aus /api/intern/akte. */
+  async function openAkte(email: string) {
+    setAkte({ email, busy: true, error: null, ereignisse: [], konto: null, dublette: false });
+    try {
+      const res = await fetch("/api/intern/akte", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, email }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setAkte({
+        email,
+        busy: false,
+        error: null,
+        ereignisse: json.ereignisse ?? [],
+        konto: json.konto ?? null,
+        dublette: Boolean(json.dublette),
+      });
+    } catch (e) {
+      setAkte((prev) => (prev ? { ...prev, busy: false, error: e instanceof Error ? e.message : "Fehler" } : null));
+    }
+  }
+
+  function closeAkte() {
+    setAkte(null);
   }
 
   /** Feste + eingeladene Intern-Zugänge laden, einmalig bei Öffnen des
@@ -602,20 +957,53 @@ export function InternDashboard() {
     return data.reports.filter((r) => {
       if (rArt !== "all" && r.objektart !== rArt) return false;
       if (rHot && !r.report_requested) return false;
+      if (!inDateRange(r.created_at, rVon, rBis)) return false;
       if (!q) return true;
       return norm(`${r.name ?? ""} ${r.email ?? ""} ${r.address ?? ""} ${r.city ?? ""} ${r.postcode ?? ""}`).includes(q);
     });
-  }, [data, rQuery, rArt, rHot]);
+  }, [data, rQuery, rArt, rHot, rVon, rBis]);
 
   const filteredLeads = useMemo(() => {
     if (!data) return [];
     const q = norm(lQuery.trim());
     return data.leads.filter((l) => {
       if (lKind !== "all" && l.kind !== lKind) return false;
+      if (!inDateRange(l.created_at, lVon, lBis)) return false;
       if (!q) return true;
       return norm(`${l.name ?? ""} ${l.email ?? ""} ${l.subject ?? ""} ${l.message ?? ""}`).includes(q);
     });
-  }, [data, lQuery, lKind]);
+  }, [data, lQuery, lKind, lVon, lBis]);
+
+  // Überfällige + heute fällige Wiedervorlagen für den Übersicht-Tab (nur
+  // diese beiden Fälle, künftige Termine erscheinen erst am jeweiligen Tag).
+  const wiedervorlagen = useMemo(() => {
+    if (!data) return [];
+    const todayStr = todayLocalStr();
+    const list: { key: string; tab: Tab; name: string; datum: string; overdue: boolean }[] = [];
+    for (const r of data.reports) {
+      const wv = bearbeitung[bearbeitungKey("report", r.id)]?.wiedervorlage;
+      if (!wv || wv > todayStr) continue;
+      list.push({
+        key: bearbeitungKey("report", r.id),
+        tab: "reports",
+        name: r.name || r.email || "Ohne Namen",
+        datum: wv,
+        overdue: wv < todayStr,
+      });
+    }
+    for (const l of data.leads) {
+      const wv = bearbeitung[bearbeitungKey("lead", l.id)]?.wiedervorlage;
+      if (!wv || wv > todayStr) continue;
+      list.push({
+        key: bearbeitungKey("lead", l.id),
+        tab: "leads",
+        name: l.name || l.email || "Ohne Namen",
+        datum: wv,
+        overdue: wv < todayStr,
+      });
+    }
+    return list.sort((a, b) => a.datum.localeCompare(b.datum));
+  }, [data, bearbeitung]);
 
   // Objekte sortiert (Hook VOR dem Login-Gate, damit die Hook-Reihenfolge stabil ist).
   const sortedObjekte = useMemo(() => {
@@ -780,6 +1168,45 @@ export function InternDashboard() {
         {/* ── Übersicht ── */}
         {tab === "overview" && stats && (
           <div className="space-y-10">
+            <div>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
+                <Icon name="calendar" size={16} className="text-accent" /> Wiedervorlagen
+              </h2>
+              {wiedervorlagen.length === 0 ? (
+                <p className="rounded-2xl border border-border bg-surface px-4 py-6 text-center text-sm text-muted">
+                  Keine fälligen Wiedervorlagen.
+                </p>
+              ) : (
+                <div className="divide-y divide-border rounded-2xl border border-border">
+                  {wiedervorlagen.map((w) => (
+                    <div key={w.key} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm text-fg">{w.name}</div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTab(w.tab);
+                            setBearbOpen(w.key);
+                          }}
+                          className="text-xs text-accent hover:underline"
+                        >
+                          {w.tab === "reports" ? "Zum Report" : "Zur Anfrage"}
+                        </button>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${
+                          w.overdue ? "border-[#f87171]/40 text-[#f87171]" : "border-[#fbbf24]/40 text-[#fbbf24]"
+                        }`}
+                      >
+                        {w.overdue ? "Überfällig · " : "Heute · "}
+                        {fmtWvDate(w.datum)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard icon="doc" label="Reports gesamt" value={String(stats.reports)} sub={`+${stats.newReports} in 7 Tagen`} />
               <StatCard icon="calendar" label="Anfragen gesamt" value={String(stats.leads)} sub={`+${stats.newLeads} in 7 Tagen`} />
@@ -841,23 +1268,8 @@ export function InternDashboard() {
               query={rQuery}
               setQuery={setRQuery}
               placeholder="Name, E-Mail, Adresse, Ort …"
-              onExport={() =>
-                downloadCsv(
-                  "riegel-reports.csv",
-                  filteredReports.map((r) => ({
-                    Datum: fmtDate(r.created_at),
-                    Name: r.name ?? "",
-                    EMail: r.email ?? "",
-                    Telefon: r.phone ?? "",
-                    Adresse: r.address ?? "",
-                    Ort: r.city ?? "",
-                    Objektart: OBJEKTART_LABEL[r.objektart ?? ""] ?? r.objektart ?? "",
-                    Wert: r.value_mid ?? "",
-                    EuroProQm: r.price_per_sqm ?? "",
-                    Report: r.report_requested ? "ja" : "nein",
-                  })),
-                )
-              }
+              onExport={() => exportCsv("reports", rVon, rBis)}
+              exportBusy={csvBusy === "reports"}
             >
               <FilterSelect
                 value={rArt}
@@ -868,6 +1280,7 @@ export function InternDashboard() {
                   ...reportArten.map((a) => ({ value: a, label: OBJEKTART_LABEL[a] ?? a })),
                 ]}
               />
+              <DateRangeFilter von={rVon} bis={rBis} onVon={setRVon} onBis={setRBis} />
               <button
                 type="button"
                 onClick={() => setRHot((v) => !v)}
@@ -884,54 +1297,90 @@ export function InternDashboard() {
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
-                    {["Datum", "Name", "Kontakt", "Objekt", "Eckdaten", "Wert", ""].map((h) => (
+                    {["Datum", "Name", "Kontakt", "Objekt", "Eckdaten", "Wert", "Status", ""].map((h) => (
                       <th key={h} className="px-4 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredReports.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">Keine Treffer.</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-10 text-center text-muted">Keine Treffer.</td></tr>
                   ) : (
-                    filteredReports.map((r) => (
-                      <tr key={r.id} className="border-t border-border align-top hover:bg-surface/60">
-                        <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(r.created_at)}</td>
-                        <td className="px-4 py-3 text-fg">{r.name || "–"}</td>
-                        <td className="px-4 py-3">
-                          {r.email && <a href={`mailto:${r.email}`} className="text-accent hover:underline">{r.email}</a>}
-                          {r.phone ? <div className="text-faint">{r.phone}</div> : null}
-                        </td>
-                        <td className="px-4 py-3 text-muted">
-                          <div className="text-fg">{OBJEKTART_LABEL[r.objektart ?? ""] ?? r.objektart ?? "–"}</div>
-                          <div className="text-xs">{[r.address, r.postcode && r.city ? `${r.postcode} ${r.city}` : r.city].filter(Boolean).join(", ") || "ohne Adresse"}</div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-faint">
-                          {[r.wohnflaeche ? `${r.wohnflaeche} m²` : null, r.zimmer ? `${r.zimmer} Zi.` : null, r.baujahr ? `Bj. ${r.baujahr}` : null].filter(Boolean).join(" · ") || "–"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <div className="font-medium text-fg">{fmtEur(r.value_mid)}</div>
-                          {r.price_per_sqm ? <div className="text-xs text-faint">{fmtEur(r.price_per_sqm)}/m²</div> : null}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col items-start gap-1.5">
-                            {r.report_requested && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 px-2 py-0.5 text-xs text-accent">
-                                <Icon name="sparkle" size={12} /> Report
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => downloadReport(r.id)}
-                              disabled={reportBusy.has(r.id)}
-                              className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
-                            >
-                              <Icon name="doc" size={13} />
-                              {reportFailed.has(r.id) ? "Fehler" : reportBusy.has(r.id) ? "…" : "PDF"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    filteredReports.map((r) => {
+                      const key = bearbeitungKey("report", r.id);
+                      const open = bearbOpen === key;
+                      const email = r.email;
+                      return (
+                        <Fragment key={r.id}>
+                          <tr className="border-t border-border align-top hover:bg-surface/60">
+                            <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(r.created_at)}</td>
+                            <td className="px-4 py-3 text-fg">{r.name || "–"}</td>
+                            <td className="px-4 py-3">
+                              {email && (
+                                <button
+                                  type="button"
+                                  onClick={() => openAkte(email)}
+                                  className="press text-accent hover:underline"
+                                >
+                                  {email}
+                                </button>
+                              )}
+                              {r.phone ? <div className="text-faint">{r.phone}</div> : null}
+                            </td>
+                            <td className="px-4 py-3 text-muted">
+                              <div className="text-fg">{OBJEKTART_LABEL[r.objektart ?? ""] ?? r.objektart ?? "–"}</div>
+                              <div className="text-xs">{[r.address, r.postcode && r.city ? `${r.postcode} ${r.city}` : r.city].filter(Boolean).join(", ") || "ohne Adresse"}</div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-faint">
+                              {[r.wohnflaeche ? `${r.wohnflaeche} m²` : null, r.zimmer ? `${r.zimmer} Zi.` : null, r.baujahr ? `Bj. ${r.baujahr}` : null].filter(Boolean).join(" · ") || "–"}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3">
+                              <div className="font-medium text-fg">{fmtEur(r.value_mid)}</div>
+                              {r.price_per_sqm ? <div className="text-xs text-faint">{fmtEur(r.price_per_sqm)}/m²</div> : null}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusCell entry={bearbeitung[key]} open={open} onToggle={() => setBearbOpen(open ? null : key)} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col items-start gap-1.5">
+                                {r.report_requested && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 px-2 py-0.5 text-xs text-accent">
+                                    <Icon name="sparkle" size={12} /> Report
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => downloadReport(r.id)}
+                                  disabled={reportBusy.has(r.id)}
+                                  className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                                >
+                                  <Icon name="doc" size={13} />
+                                  {reportFailed.has(r.id) ? "Fehler" : reportBusy.has(r.id) ? "…" : "PDF"}
+                                </button>
+                                <OnOfficeButton
+                                  entry={bearbeitung[key]}
+                                  busy={onofficeBusy.has(key)}
+                                  error={onofficeError[key]}
+                                  onSubmit={() => uebergebeOnOffice("report", r.id)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                          {open && (
+                            <tr className="border-t border-border bg-surface/40">
+                              <td colSpan={8} className="px-4 py-4">
+                                <BearbeitungPanel
+                                  entry={bearbeitung[key]}
+                                  saving={bearbBusy.has(key)}
+                                  error={bearbError[key]}
+                                  onSave={(patch) => saveBearbeitung("report", r.id, patch)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -947,20 +1396,8 @@ export function InternDashboard() {
               query={lQuery}
               setQuery={setLQuery}
               placeholder="Name, E-Mail, Betreff …"
-              onExport={() =>
-                downloadCsv(
-                  "riegel-anfragen.csv",
-                  filteredLeads.map((l) => ({
-                    Datum: fmtDate(l.created_at),
-                    Art: l.kind,
-                    Name: l.name ?? "",
-                    EMail: l.email ?? "",
-                    Telefon: l.phone ?? "",
-                    Betreff: l.subject ?? "",
-                    Nachricht: l.message ?? "",
-                  })),
-                )
-              }
+              onExport={() => exportCsv("leads", lVon, lBis)}
+              exportBusy={csvBusy === "leads"}
             >
               <FilterSelect
                 value={lKind}
@@ -973,40 +1410,79 @@ export function InternDashboard() {
                   { value: "archiv", label: "Alt-Kontakte" },
                 ]}
               />
+              <DateRangeFilter von={lVon} bis={lBis} onVon={setLVon} onBis={setLBis} />
             </Toolbar>
 
             <div className="overflow-x-auto rounded-2xl border border-border">
               <table className="w-full min-w-[800px] text-left text-sm">
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
-                    {["Datum", "Art", "Name", "Kontakt", "Betreff / Nachricht"].map((h) => (
+                    {["Datum", "Art", "Name", "Kontakt", "Betreff / Nachricht", "Status", ""].map((h) => (
                       <th key={h} className="px-4 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLeads.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Keine Treffer.</td></tr>
+                    <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">Keine Treffer.</td></tr>
                   ) : (
-                    filteredLeads.map((l) => (
-                      <tr key={l.id} className="border-t border-border align-top hover:bg-surface/60">
-                        <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(l.created_at)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full border px-2 py-0.5 text-xs ${l.kind === "archiv" ? "border-border text-faint" : "border-accent/40 text-accent"}`}>
-                            {l.kind === "booking" ? "Termin" : l.kind === "archiv" ? "Alt-Kontakt" : "Kontakt"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-fg">{l.name || "–"}</td>
-                        <td className="px-4 py-3">
-                          {l.email && <a href={`mailto:${l.email}`} className="text-accent hover:underline">{l.email}</a>}
-                          {l.phone ? <div className="text-faint">{l.phone}</div> : null}
-                        </td>
-                        <td className="px-4 py-3 text-muted">
-                          <div className="text-fg">{l.subject || "–"}</div>
-                          {l.message ? <div className="mt-0.5 max-w-md text-faint">{l.message}</div> : null}
-                        </td>
-                      </tr>
-                    ))
+                    filteredLeads.map((l) => {
+                      const key = bearbeitungKey("lead", l.id);
+                      const open = bearbOpen === key;
+                      const email = l.email;
+                      return (
+                        <Fragment key={l.id}>
+                          <tr className="border-t border-border align-top hover:bg-surface/60">
+                            <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(l.created_at)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`rounded-full border px-2 py-0.5 text-xs ${l.kind === "archiv" ? "border-border text-faint" : "border-accent/40 text-accent"}`}>
+                                {l.kind === "booking" ? "Termin" : l.kind === "archiv" ? "Alt-Kontakt" : "Kontakt"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-fg">{l.name || "–"}</td>
+                            <td className="px-4 py-3">
+                              {email && (
+                                <button
+                                  type="button"
+                                  onClick={() => openAkte(email)}
+                                  className="press text-accent hover:underline"
+                                >
+                                  {email}
+                                </button>
+                              )}
+                              {l.phone ? <div className="text-faint">{l.phone}</div> : null}
+                            </td>
+                            <td className="px-4 py-3 text-muted">
+                              <div className="text-fg">{l.subject || "–"}</div>
+                              {l.message ? <div className="mt-0.5 max-w-md text-faint">{l.message}</div> : null}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusCell entry={bearbeitung[key]} open={open} onToggle={() => setBearbOpen(open ? null : key)} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <OnOfficeButton
+                                entry={bearbeitung[key]}
+                                busy={onofficeBusy.has(key)}
+                                error={onofficeError[key]}
+                                onSubmit={() => uebergebeOnOffice("lead", l.id)}
+                              />
+                            </td>
+                          </tr>
+                          {open && (
+                            <tr className="border-t border-border bg-surface/40">
+                              <td colSpan={7} className="px-4 py-4">
+                                <BearbeitungPanel
+                                  entry={bearbeitung[key]}
+                                  saving={bearbBusy.has(key)}
+                                  error={bearbError[key]}
+                                  onSave={(patch) => saveBearbeitung("lead", l.id, patch)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1582,6 +2058,7 @@ export function InternDashboard() {
           </div>
         )}
       </Container>
+      {akte && <AktePanel akte={akte} onClose={closeAkte} />}
     </section>
   );
 }
@@ -1712,5 +2189,212 @@ function FeedbackBatchCopy({
       <Icon name={copied ? "check" : "doc"} size={13} />
       {copied ? "Sammel-Prompt kopiert" : `Alle offenen als Prompt kopieren (${tickets.length})`}
     </button>
+  );
+}
+
+/**
+ * Status-Badge je Report-/Anfragen-Zeile (Reports- und Anfragen-Tab), zugleich
+ * der Aufklapp-Auslöser für die BearbeitungPanel-Detailzeile. Zeigt zusätzlich
+ * das Wiedervorlage-Datum, falls gesetzt, damit man es nicht extra aufklappen muss.
+ */
+function StatusCell({
+  entry,
+  open,
+  onToggle,
+}: {
+  entry?: LeadBearbeitungMap[string];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const status = entry?.status ?? "neu";
+  return (
+    <button type="button" onClick={onToggle} className="press flex flex-col items-start gap-1">
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_BADGE_CLS[status]}`}
+      >
+        {STATUS_LABELS[status]}
+        <Icon name="chevronDown" size={11} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </span>
+      {entry?.wiedervorlage && (
+        <span className="text-[0.65rem] text-faint">WV: {fmtWvDate(entry.wiedervorlage)}</span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Aufklappbare Detailzeile für Reports/Anfragen: Status-Auswahl, Notizfeld,
+ * Wiedervorlage-Datum, Speichern. Eigener Entwurfs-State (nur beim erneuten
+ * Öffnen aus `entry` neu befüllt, s. bedingtes Rendern in den Tabellen oben),
+ * damit Tippen im Notizfeld nicht bei jedem Tastendruck speichert.
+ */
+function BearbeitungPanel({
+  entry,
+  saving,
+  error,
+  onSave,
+}: {
+  entry?: LeadBearbeitungMap[string];
+  saving: boolean;
+  error?: string;
+  onSave: (patch: { status: LeadStatus; notiz: string | null; wiedervorlage: string | null }) => void;
+}) {
+  const [status, setStatus] = useState<LeadStatus>(entry?.status ?? "neu");
+  const [notiz, setNotiz] = useState(entry?.notiz ?? "");
+  const [wiedervorlage, setWiedervorlage] = useState(entry?.wiedervorlage ?? "");
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-[minmax(140px,1fr)_minmax(0,2fr)_minmax(140px,1fr)_auto]">
+      <div>
+        <label className="mb-1 block text-xs text-faint">Status</label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as LeadStatus)}
+          aria-label="Status"
+          className="w-full appearance-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-colors focus:border-accent"
+        >
+          {LEAD_STATUS_VALUES.map((s) => (
+            <option key={s} value={s} className="bg-surface text-fg">
+              {STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-faint">Notiz</label>
+        <textarea
+          value={notiz}
+          onChange={(e) => setNotiz(e.target.value)}
+          rows={2}
+          placeholder="Interne Notiz …"
+          className="w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-faint">Wiedervorlage</label>
+        <input
+          type="date"
+          value={wiedervorlage ?? ""}
+          onChange={(e) => setWiedervorlage(e.target.value)}
+          aria-label="Wiedervorlage-Datum"
+          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-fg outline-none transition-colors focus:border-accent"
+        />
+      </div>
+      <div className="flex items-end">
+        <button
+          type="button"
+          onClick={() =>
+            onSave({
+              status,
+              notiz: notiz.trim() ? notiz.trim() : null,
+              wiedervorlage: wiedervorlage || null,
+            })
+          }
+          disabled={saving}
+          className="press inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
+        >
+          <Icon name="check" size={14} />
+          {saving ? "Speichert …" : "Speichern"}
+        </button>
+      </div>
+      {error && <p className="text-xs text-accent sm:col-span-4" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * Kontakt-Akte als Seitenpanel: öffnet bei Klick auf eine E-Mail-Adresse in
+ * Reports/Anfragen (s. openAkte). Zeigt Konto-Status, einen Dubletten-Hinweis
+ * bei mehreren Bewertungen derselben Adresse sowie die chronologische
+ * Ereignisliste aus /api/intern/akte (Bewertungen, Anfragen, Merkliste,
+ * Suchaufträge).
+ */
+function AktePanel({ akte, onClose }: { akte: AkteState; onClose: () => void }) {
+  const bewertungenCount = akte.ereignisse.filter((e) => e.typ === "bewertung").length;
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border bg-bg p-6 shadow-2xl sm:max-w-lg">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-faint">
+              <Icon name="users" size={14} className="text-accent" /> Kontakt-Akte
+            </div>
+            <h2 className="mt-1 truncate text-lg font-semibold text-fg">{akte.email}</h2>
+            <a
+              href={`mailto:${akte.email}`}
+              className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+            >
+              <Icon name="mail" size={13} /> Mail schreiben
+            </a>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Akte schließen"
+            className="press shrink-0 rounded-full border border-border p-2 text-faint transition-colors hover:border-accent hover:text-accent"
+          >
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+
+        {akte.busy ? (
+          <p className="mt-8 text-center text-sm text-muted">Lädt …</p>
+        ) : akte.error ? (
+          <p className="mt-8 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
+            {akte.error}
+          </p>
+        ) : (
+          <>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <div className="text-xs uppercase tracking-wide text-faint">Konto-Status</div>
+                <div className="mt-1.5 text-sm text-fg">
+                  {akte.konto?.existiert
+                    ? akte.konto.bestaetigt
+                      ? "Registriert, bestätigt"
+                      : "Registriert, unbestätigt"
+                    : "Kein RIEGEL-Konto"}
+                </div>
+                {akte.konto?.letzterLogin && (
+                  <div className="mt-1 text-xs text-faint">Letzter Login {fmtDate(akte.konto.letzterLogin)}</div>
+                )}
+              </div>
+              {bewertungenCount > 1 && (
+                <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
+                  <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-accent">
+                    <Icon name="sparkle" size={13} /> Dubletten-Hinweis
+                  </div>
+                  <div className="mt-1.5 text-sm text-fg">{bewertungenCount} Bewertungen dieser Adresse</div>
+                </div>
+              )}
+            </div>
+
+            <h3 className="mt-7 text-sm font-semibold text-muted">Ereignisse</h3>
+            {akte.ereignisse.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-border bg-surface px-4 py-6 text-center text-sm text-muted">
+                Keine Ereignisse gefunden.
+              </p>
+            ) : (
+              <ol className="mt-3 space-y-3 border-l border-border pl-4">
+                {akte.ereignisse.map((e, i) => (
+                  <li key={i} className="relative">
+                    <span className="absolute -left-[1.4rem] top-1 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-faint">
+                      <Icon name={AKTE_TYP_ICON[e.typ]} size={11} />
+                    </span>
+                    <div className="flex items-center gap-2 text-xs text-faint">
+                      <span>{fmtDate(e.datum)}</span>
+                      <span className="rounded-full border border-border px-1.5 py-0.5">{AKTE_TYP_LABEL[e.typ]}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-fg">{e.titel}</div>
+                    <div className="mt-0.5 text-xs text-muted">{e.details}</div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

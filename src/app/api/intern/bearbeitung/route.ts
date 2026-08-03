@@ -33,6 +33,9 @@ export async function POST(req: Request) {
     accessToken?: string;
     quelle?: string;
     quelle_id?: string;
+    /** Alias: die Schwester-Route /api/intern/onoffice nutzt camelCase. Beide
+     *  Routen akzeptieren beide Schreibweisen, damit kein Aufrufer raten muss. */
+    quelleId?: string;
     status?: string;
     notiz?: string | null;
     wiedervorlage?: string | null;
@@ -51,7 +54,7 @@ export async function POST(req: Request) {
   }
   const quelle: LeadQuelle = b.quelle;
 
-  const quelleId = String(b.quelle_id ?? "").trim();
+  const quelleId = String(b.quelle_id ?? b.quelleId ?? "").trim();
   if (!quelleId) {
     return NextResponse.json({ ok: false, error: "quelle_id fehlt" }, { status: 400 });
   }
