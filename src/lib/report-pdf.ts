@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFIm
 import fontkit from "@pdf-lib/fontkit";
 import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
-import { HERO_RAYS_B64, GAUGE_B64, ICONS } from "@/lib/report-assets/visuals";
+import { HERO_RAYS_B64 } from "@/lib/report-assets/visuals";
 import { KITCHEN_JPG_B64, DOCS_JPG_B64 } from "@/lib/report-assets/gallery";
 import { BORIS_ATTRIBUTION } from "@/lib/boris";
 import type { ReportContext } from "@/lib/report-context";
@@ -10,11 +10,18 @@ import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
 
 /**
  * Mehrseitiger RIEGEL-Marktwert-Report als PDF — als echtes Dokument aufgebaut,
- * im Stil der Website (dunkler Grund, ein Akzentblau, "Gradient-glow"-Boxen,
- * "gradient to nothing"-Flächen, AKIRA-Headlines). Seitenzahl ist DYNAMISCH
+ * als DRUCKFÄHIGE helle Print-Übersetzung des dunklen Website-Designs
+ * (Wunsch Manfred: tonerfreundlich; Maßstab Alex: die Dramatik des dunklen
+ * Designs behalten). Papierweißer Grund, Tinte in Fast-Schwarz, und das
+ * RIEGEL-Blau trägt jetzt die Rolle, die vorher das Schwarz hatte: satte
+ * vollblaue Bänder mit weißer Schrift (Wertband, CTA, Stat-Kacheln), ein
+ * fast-schwarzes Auszeichnungs-Band, riesige AKIRA-Werte als Held jeder
+ * Seite. Die dunklen Markenfotos bleiben als Vollbreite-Bänder — dunkle
+ * Fotoflächen auf hellen Seiten drucken gut und wirken editorial.
+ * Seitenzahl ist DYNAMISCH
  * (5–9 Seiten, s. `total` in buildReportPdf) — optionale Kapitel fallen bei
  * fehlenden Daten fail-soft weg statt eine leere/kaputte Seite zu zeigen:
- *   1 Deckblatt          — dunkle Visual-Seite, zentriertes RIEGEL-Logo + Name
+ *   1 Deckblatt          — helle Editorial-Seite, zentriertes RIEGEL-Logo + Name
  *   2 Bewertung          — Wert-Hero, Objekt-/Kennzahlen + Objekt-Luftbild (Esri/Maxar)
  *   3 Preis-Zusammensetzung — Wasserfall/Formel-Grafik (immer, best-effort)
  *   4 Ihr Markt           — NUR wenn context.markt vorhanden (Preisatlas-Stadt)
@@ -97,21 +104,30 @@ export interface ReportData {
   bodenrichtwert?: { brw: number; stichtag: string; zone: string };
 }
 
-const BG = rgb(0.043, 0.043, 0.051);
-const SURFACE = rgb(0.078, 0.082, 0.094);
-const BORDER = rgb(0.165, 0.165, 0.188);
-const FG = rgb(0.957, 0.953, 0.941);
-const MUTED = rgb(0.659, 0.651, 0.627);
-const FAINT = rgb(0.486, 0.478, 0.459);
+// Helle Print-Palette: Papierweiß als Grund, warme Fast-Schwarz-Tinte,
+// RIEGEL-Blau als einziger Akzent. POS/NEG bewusst dunkler abgetönt als im
+// Web-Design, damit sie auf Weiß tragen statt auszubleichen.
+const BG = rgb(1, 1, 1);
+const SURFACE = rgb(0.957, 0.965, 0.984);
+const BORDER = rgb(0.902, 0.91, 0.937);
+const FG = rgb(0.063, 0.075, 0.125);
+const MUTED = rgb(0.337, 0.357, 0.431);
+const FAINT = rgb(0.573, 0.588, 0.651);
 const ACCENT = rgb(0.004, 0.361, 1);
-const ACCENT_SOFT = rgb(0.416, 0.631, 1);
-const POS = rgb(0.31, 0.78, 0.47);
-const NEG = rgb(0.85, 0.42, 0.4);
+/** Für kleinen Text/feine Akzente auf Weiß: etwas tieferes Blau als ACCENT —
+ * das helle Web-Blau (0.416, 0.631, 1) wäre auf Papier zu blass. */
+const ACCENT_SOFT = rgb(0.008, 0.302, 0.82);
+/** Schrift AUF vollblauen Flächen: reines Weiß und ein helles Eisblau für
+ * Zweitzeilen/Labels — die Umkehrung von FG/MUTED für die blauen Bänder. */
+const ON_ACCENT = rgb(1, 1, 1);
+const ON_ACCENT_MUTED = rgb(0.792, 0.871, 1);
+const POS = rgb(0.055, 0.624, 0.431);
+const NEG = rgb(0.851, 0.275, 0.243);
 /** Vorberechneter Zwischenton BORDER↔ACCENT — pdf-lib kennt kein CSS
  * color-mix(), also ein fest ausgerechnetes rgb() statt des reinen Grau-Rands.
- * Tönt alle glowPanel-Kacheln (Formel-Boxen, Referenzobjekte, Stat-Tiles …)
- * dezent Richtung Akzentblau statt neutral grau. */
-const BORDER_GLOW = rgb(0.13, 0.22, 0.45);
+ * Tönt alle glowPanel-Kacheln (Formel-Boxen, Referenzobjekte …) dezent
+ * Richtung Akzentblau statt neutral grau. */
+const BORDER_GLOW = rgb(0.78, 0.843, 0.973);
 
 const A4: [number, number] = [595.28, 841.89];
 const M = 48;
@@ -179,8 +195,6 @@ interface Ctx {
   mark: PDFImage | null;
   satellite: PDFImage | null;
   heroRays: PDFImage | null;
-  gauge: PDFImage | null;
-  icons: Record<string, PDFImage>;
   /** Dekorative, dunkle Marken-Bänder für Seiten mit viel Weißraum (gallery.ts). */
   kitchen: PDFImage | null;
   docs: PDFImage | null;
@@ -251,16 +265,10 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
   }
 
   const heroRays = await tryEmbedJpg(HERO_RAYS_B64, "Hero-Rays");
-  const gauge = await tryEmbedPng(GAUGE_B64, "Gauge");
   const kitchen = await tryEmbedJpg(KITCHEN_JPG_B64, "Band:Kitchen");
   const docs = await tryEmbedJpg(DOCS_JPG_B64, "Band:Docs");
-  const icons: Record<string, PDFImage> = {};
-  for (const [k, v] of Object.entries(ICONS)) {
-    const img = await tryEmbedPng(v, `Icon:${k}`);
-    if (img) icons[k] = img;
-  }
 
-  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, heroRays, gauge, icons, kitchen, docs };
+  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, heroRays, kitchen, docs };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
 
   // Vergleichsobjekt-Fotos vorab einbetten: Ctx-Bilder werden beim Zeichnen
@@ -391,8 +399,9 @@ function heading(ctx: Ctx, page: PDFPage, s: string, x: number, y: number, size 
 /**
  * "Gradient to nothing"-Fläche der Website-Infografiken: pdf-lib kennt keine
  * echten Farbverläufe, deshalb wird in `steps` schmalen Streifen linear
- * interpolierter Opacity "getreppt" (32 Schritte sind auf dunklem Grund
- * bandingfrei). `dir` beschreibt, an welcher Kante `oFrom` sitzt: "down"/"up"
+ * interpolierter Opacity "getreppt" (auf hellem Grund fällt Banding schneller
+ * auf als auf dunklem — im Zweifel `steps` erhöhen statt senken). `dir`
+ * beschreibt, an welcher Kante `oFrom` sitzt: "down"/"up"
  * beziehen sich auf die Ober-/Unterkante, "right"/"left" auf die Kanten.
  */
 function fadeRect(
@@ -437,13 +446,16 @@ function glow(page: PDFPage, cx: number, cy: number, rMax: number, color: Color 
 }
 
 /**
- * Dekoratives, dunkles Marken-Bild-Band für Seiten mit Weißraum unten.
- * Das Bild wird auf die Zielhöhe zugeschnitten wirkend eingebettet (pdf-lib
- * kann nicht clippen, daher zeichnen wir das Bild in voller, seiten-korrekter
- * Breite und legen oben/unten kräftige fadeRect-Flächen in BG-Farbe darüber,
- * sodass es „ins Dunkel ausläuft" statt hart abzuschneiden — die Website-Optik).
- * Zeichnet vom oberen Rand `yTop` nach unten und gibt die Unterkante zurück.
- * Fail-soft: ohne Bild passiert nichts (Rückgabe = yTop).
+ * Dekoratives, dunkles Marken-Bild-Band für Seiten mit Weißraum unten —
+ * auf den hellen Seiten wirkt die satte dunkle Fotofläche wie ein
+ * Editorial-Bildstreifen aus einem Architektur-Magazin. Das Bild wird auf
+ * die Zielhöhe zugeschnitten wirkend eingebettet (pdf-lib kann nicht
+ * clippen, daher zeichnen wir das Bild cover-skaliert und maskieren den
+ * Überstand mit papierweißen Flächen — ein harter, sauberer Print-Beschnitt
+ * statt des früheren Ins-Dunkel-Auslaufens). Eine Akzent-Hairline sitzt als
+ * blaue Kante auf der Oberkante. Zeichnet vom oberen Rand `yTop` nach unten
+ * und gibt die Unterkante zurück. Fail-soft: ohne Bild passiert nichts
+ * (Rückgabe = yTop).
  */
 function visualBand(
   ctx: Ctx,
@@ -471,39 +483,39 @@ function visualBand(
   // Clip-Ersatz: erst Rahmen-Rechteck als Maske drumherum wäre teuer — wir
   // zeichnen das Bild und maskieren den Überstand oben/unten mit BG-Flächen.
   page.drawImage(img, { x: dx, y: dy, width: dw, height: dh });
-  if (dy + dh > yTop) page.drawRectangle({ x, y: yTop, width: w, height: dy + dh - yTop + 1, color: BG });
-  if (dy < yBottom) page.drawRectangle({ x, y: dy - 1, width: w, height: yBottom - dy + 1, color: BG });
-  // Ausläufer ins Dunkel: nur die Ränder in die BG-Farbe verlaufen, damit die
-  // Bildmitte sichtbar bleibt. Oben blendet BG von yTop (opak) nach unten aus
-  // ("down": oFrom liegt oben), unten von yBottom (opak) nach oben ("up").
-  fadeRect(page, x, yTop - bandH * 0.3, w, bandH * 0.3, BG, 1, 0, 28, "down");
-  fadeRect(page, x, yBottom, w, bandH * 0.34, BG, 1, 0, 28, "up");
-  // Dezente Akzent-Hairline oben wie bei glowPanel.
-  fadeRect(page, x, yTop - 1, w / 2, 1, ACCENT, 0, 0.5, 20, "right");
-  fadeRect(page, x + w / 2, yTop - 1, w / 2, 1, ACCENT, 0.5, 0, 20, "right");
+  // Überstand auf ALLEN vier Seiten maskieren, in voller Spill-Ausdehnung:
+  // auf dunklem Grund fiel seitlicher Überstand nie auf, auf Papierweiß
+  // blutet das Bild sonst sichtbar über Satzspiegel und Footer hinaus.
+  if (dy + dh > yTop) page.drawRectangle({ x: dx - 1, y: yTop, width: dw + 2, height: dy + dh - yTop + 2, color: BG });
+  if (dy < yBottom) page.drawRectangle({ x: dx - 1, y: dy - 1, width: dw + 2, height: yBottom - dy + 1, color: BG });
+  if (dx < x) page.drawRectangle({ x: dx - 1, y: yBottom - 1, width: x - dx + 1, height: bandH + 2, color: BG });
+  if (dx + dw > x + w) page.drawRectangle({ x: x + w, y: yBottom - 1, width: dx + dw - (x + w) + 1, height: bandH + 2, color: BG });
+  // Blaue Akzent-Kante auf der Oberkante des Bandes.
+  page.drawRectangle({ x, y: yTop - 2, width: w, height: 2, color: ACCENT });
   if (caption) {
     const cs = 8.5;
-    // Caption sitzt in der unteren, dunkel überblendeten Zone — hell (fast
-    // Weiß) statt MUTED, damit sie auf jedem Bildausschnitt lesbar bleibt.
-    mkText(page)(caption, x + (w - ctx.reg.widthOfTextAtSize(caption, cs)) / 2, yBottom + 12, cs, ctx.reg, rgb(0.85, 0.85, 0.88), 0.5);
+    // Sanfter dunkler Scrim hinter der Caption: die Markenfotos sind zwar
+    // dunkel, haben aber helle Zonen (Papier, Bildschirme) — die fast-weiße
+    // Schrift muss auf JEDEM Ausschnitt lesbar bleiben.
+    fadeRect(page, x, yBottom, w, 36, rgb(0, 0, 0), 0.55, 0, 18, "up");
+    mkText(page)(caption, x + (w - ctx.reg.widthOfTextAtSize(caption, cs)) / 2, yBottom + 12, cs, ctx.reg, rgb(0.92, 0.93, 0.95), 0.5);
   }
   return yBottom;
 }
 
-/** "Gradient-glow-Box" der Website: SURFACE-Grundfläche, 1px BORDER-Rand,
- * eine 1px Akzent-Hairline oben (Opacity steigt von den Ecken zur Mitte,
- * gespiegelte fadeRect-Hälften), ein dezenter glow() oben mittig und eine
- * fadeRect-Fläche, die von oben ins Nichts ausläuft. Ruhig statt neonhaft. */
+/** Helle Print-Übersetzung der "Gradient-glow-Box" der Website: sehr helle
+ * SURFACE-Grundfläche, blau getönter 1px-Rand, eine Akzent-Hairline oben
+ * (Opacity steigt von den Ecken zur Mitte, gespiegelte fadeRect-Hälften) und
+ * ein hauchzarter blauer Schein, der von oben ins Papierweiß ausläuft. */
 function glowPanel(page: PDFPage, x: number, y: number, w: number, h: number, opts: { peak?: number } = {}) {
-  const peak = opts.peak ?? 0.05;
+  const peak = opts.peak ?? 0.04;
   page.drawRectangle({ x, y, width: w, height: h, color: SURFACE });
   const hairH = 1.4;
   const hy = y + h - hairH;
   const halfW = w / 2;
-  fadeRect(page, x, hy, halfW, hairH, ACCENT, 0.04, 0.5, 14, "right");
-  fadeRect(page, x + halfW, hy, halfW, hairH, ACCENT, 0.5, 0.04, 14, "right");
-  glow(page, x + w / 2, y + h - 4, Math.min(w, h) * 0.85, ACCENT, Math.min(peak, 0.05), 10);
-  fadeRect(page, x, y + h * 0.6, w, h * 0.4, ACCENT, peak, 0, 18, "down");
+  fadeRect(page, x, hy, halfW, hairH, ACCENT, 0.08, 0.85, 26, "right");
+  fadeRect(page, x + halfW, hy, halfW, hairH, ACCENT, 0.85, 0.08, 26, "right");
+  fadeRect(page, x, y + h * 0.6, w, h * 0.4, ACCENT, Math.min(peak, 0.05), 0, 26, "down");
   page.drawRectangle({ x, y, width: w, height: h, borderColor: BORDER_GLOW, borderWidth: 1 });
 }
 
@@ -520,27 +532,27 @@ function roundBarH(page: PDFPage, x: number, y: number, w: number, h: number, co
   page.drawCircle({ x: x + w - r, y: y + r, size: r, color, opacity });
 }
 
-/** glowPanel-Kachel für eine einzelne Kennzahl: großer AKIRA-Wert, kleines
- * Uppercase-Label mit Letter-Spacing, optionale Sub-Zeile darunter. */
+/** Vollblaue Kennzahlen-Kachel: satte ACCENT-Fläche, großer weißer Wert,
+ * kleines eisblaues Uppercase-Label mit Letter-Spacing, optionale Sub-Zeile.
+ * Auf Weiß tragen diese Kacheln die Dramatik, die im dunklen Design die
+ * Glow-Panels hatten — mutige blaue Flächen statt leuchtender Ränder. */
 function statTile(ctx: Ctx, page: PDFPage, x: number, y: number, w: number, h: number, value: string, label: string, sub?: string) {
-  // peak leicht über dem glowPanel()-Standard (0.05 → 0.06): die Kacheln
-  // sollen sichtbarer "gradient-glowen" als die übrigen glowPanel-Flächen.
-  glowPanel(page, x, y, w, h, { peak: 0.06 });
+  page.drawRectangle({ x, y, width: w, height: h, color: ACCENT });
   const t = mkText(page);
   const cx = x + w / 2;
   // Wert bewusst NICHT in AKIRA: die Display-Schrift ist bei Ziffern schlecht
   // lesbar (schmale, stilisierte Formen) — ctx.bold (Helvetica Bold, der
-  // Inter-Extrabold-Ersatz des PDFs) in ACCENT_SOFT setzt den Wert stattdessen
-  // farblich ab, bei gleicher Größe. AKIRA bleibt Headlines vorbehalten.
+  // Inter-Extrabold-Ersatz des PDFs) in Weiß auf Vollblau. AKIRA bleibt
+  // Headlines vorbehalten.
   const valSize = fitFontSize(ctx.bold, value, w - 18, Math.min(21, h * 0.32), 11);
   const valY = sub ? y + h - 22 - valSize : y + h / 2 - valSize * 0.32;
-  t(value, cx - ctx.bold.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.bold, ACCENT_SOFT);
+  t(value, cx - ctx.bold.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.bold, ON_ACCENT);
   if (sub) {
     const s = ellipsize(sub, ctx.reg, 8, w - 18);
-    t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 14, 8, ctx.reg, MUTED);
+    t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 14, 8, ctx.reg, ON_ACCENT_MUTED);
   }
   const lbl = ellipsize(label.toUpperCase(), ctx.reg, 7.5, w - 16);
-  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 7.5) / 2, y + 12, 7.5, ctx.reg, FAINT, 0.6);
+  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 7.5) / 2, y + 12, 7.5, ctx.reg, ON_ACCENT_MUTED, 0.6);
 }
 
 /** Sparkline über drawLine-Segmente (Website-MarktPanel-Optik): Fläche
@@ -654,12 +666,13 @@ function chipRow(ctx: Ctx, page: PDFPage, items: string[], x: number, yTop: numb
   return cy - rowH - 6;
 }
 
-/* ── Seite 1: DECKBLATT — dunkle Visual-Seite, zentriertes Logo ────────── */
+/* ── Seite 1: DECKBLATT — helle Editorial-Seite, zentriertes Logo ──────── */
 /**
- * Neues Deckblatt (Kunden-Feedback): eine einfache, cleane dunkle Seite mit
- * einem abgedunkelten Visual statt des Objekt-Luftbilds (das jetzt auf Seite 2
- * steht, s. drawValuation) und einer Kapitel-Übersicht. Kein header() hier —
- * das Logo ist stattdessen selbst das zentrale, große Element der Seite.
+ * Helles Deckblatt im Stil eines teuren Geschäftsberichts: viel Papierweiß,
+ * das Logo-Ensemble in Fast-Schwarz mit einem vollblauen Kicker-Band als
+ * Farbmoment, darunter das dunkle Marken-Foto (Küche) als vollbreites
+ * Editorial-Band über dem Footer. Kein header() hier — das Logo ist
+ * stattdessen selbst das zentrale, große Element der Seite.
  */
 function drawCover(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number, total: number) {
   const page = ctx.doc.addPage(A4);
@@ -668,64 +681,53 @@ function drawCover(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   const t = mkText(page);
   const cx = w / 2;
 
-  // Ganzseitiges Hintergrund-Visual (HERO_RAYS): BG-Overlay bei ~55 % Deckkraft
-  // dunkelt es satt ab, zwei fadeRect-Vignetten (oben/unten, BG 0.9 → 0 in die
-  // Mitte) sorgen zusätzlich dafür, dass die Ränder immer dunkel genug für
-  // weiße Schrift bleiben. Ohne Embed (Fail-soft, s. Ctx-Kommentar): reine
-  // BG-Fläche — auf einer ohnehin dunklen, cleanen Seite kein Beinbruch.
-  if (ctx.heroRays) {
-    page.drawImage(ctx.heroRays, { x: 0, y: 0, width: w, height: h });
-    page.drawRectangle({ x: 0, y: 0, width: w, height: h, color: BG, opacity: 0.55 });
-    const vignetteH = h * 0.34;
-    fadeRect(page, 0, h - vignetteH, w, vignetteH, BG, 0.9, 0, 28, "down");
-    fadeRect(page, 0, 0, w, vignetteH, BG, 0.9, 0, 28, "up");
-  }
-
-  // Logo-Ensemble, zentriert, Schwerpunkt leicht ÜBER der Seitenmitte: Mark
-  // oben (klein, s. report-assets/mark.ts — ohne Hinweis auf eine reinweiße
-  // Variante gehen wir von einem farbigen Mark aus, das deshalb zurückhaltend
-  // bleibt), darunter groß die weiße AKIRA-Wortmarke als dominantes Element.
-  // Reines Weiß (1,1,1) statt FG: FG ist ein warmes Off-White, auf dem
-  // abgedunkelten Foto-Hintergrund soll "RIEGEL" aber strahlend hell stehen.
-  let y = h / 2 + 110;
+  // Logo-Ensemble, zentriert, Schwerpunkt deutlich ÜBER der Seitenmitte
+  // (darunter braucht das Foto-Band Raum): Mark oben, darunter groß die
+  // AKIRA-Wortmarke in Tinten-Schwarz als dominantes Element.
+  let y = h - 176;
   if (ctx.mark) {
     const mh = 44;
     const mw = (ctx.mark.width / ctx.mark.height) * mh;
     page.drawImage(ctx.mark, { x: cx - mw / 2, y: y - mh, width: mw, height: mh });
-    y -= mh + 16;
+    y -= mh + 18;
   }
   const word = "RIEGEL";
-  const wordSize = 40;
+  const wordSize = 44;
   const wordSpacing = 4; // Zeichenabstand-Verhältnis wie im header() (dort 1.5 bei 15pt)
   const wordW = textWidthSpaced(ctx.akira, word, wordSize, wordSpacing);
-  t(word, cx - wordW / 2, y - wordSize, wordSize, ctx.akira, rgb(1, 1, 1), wordSpacing);
-  y -= wordSize + 30;
+  t(word, cx - wordW / 2, y - wordSize, wordSize, ctx.akira, FG, wordSpacing);
+  y -= wordSize + 26;
 
-  // Akzent-Hairline unter dem Logo, zu beiden Seiten auslaufend — dasselbe
-  // Zwei-Hälften-fadeRect-Muster wie glowPanels obere Hairline, hier nur
-  // freistehend statt an eine Box gebunden.
-  const hairW = 140;
-  const hairH = 1.4;
-  fadeRect(page, cx - hairW / 2, y, hairW / 2, hairH, ACCENT, 0.08, 0.85, 16, "right");
-  fadeRect(page, cx, y, hairW / 2, hairH, ACCENT, 0.85, 0.08, 16, "right");
-  y -= 22;
-
+  // Vollblaues Kicker-Band statt der früheren grauen Zeile: das eine satte
+  // Farbmoment der ansonsten weißen Seite (weiße Letterspacing-Schrift auf
+  // ACCENT, wie die on-accent-Buttons der Website).
   const kicker = "MARKTWERT-REPORT";
-  const kickerSpacing = 2;
-  const kickerW = textWidthSpaced(ctx.reg, kicker, 10, kickerSpacing);
-  t(kicker, cx - kickerW / 2, y, 10, ctx.reg, rgb(0.8, 0.8, 0.82), kickerSpacing);
-  y -= 46;
+  const kickerSpacing = 2.4;
+  const kickerSize = 10.5;
+  const kickerW = textWidthSpaced(ctx.reg, kicker, kickerSize, kickerSpacing);
+  const bandW = kickerW + 56;
+  const bandH = 30;
+  page.drawRectangle({ x: cx - bandW / 2, y: y - bandH, width: bandW, height: bandH, color: ACCENT });
+  t(kicker, cx - kickerW / 2, y - bandH / 2 - kickerSize * 0.36, kickerSize, ctx.reg, ON_ACCENT, kickerSpacing);
+  y -= bandH + 40;
 
   const praefix = "Erstellt für";
-  t(praefix, cx - ctx.reg.widthOfTextAtSize(praefix, 9) / 2, y, 9, ctx.reg, MUTED);
-  y -= 20;
+  t(praefix, cx - ctx.reg.widthOfTextAtSize(praefix, 9) / 2, y, 9, ctx.reg, FAINT);
+  y -= 22;
   const name = d.name || "Sie";
-  t(name, cx - ctx.bold.widthOfTextAtSize(name, 15) / 2, y, 15, ctx.bold, rgb(1, 1, 1));
-
-  // Objekt-/Stand-Zeile mittig über dem footer() — ersetzt die frühere
-  // Kapitel-Übersichtszeile (reine Deckblatt-Deko, keine Nutzerinfo).
+  t(name, cx - ctx.bold.widthOfTextAtSize(name, 17) / 2, y, 17, ctx.bold, FG);
+  y -= 24;
   const infoLine = `Objekt: ${objektTitle} · Stand ${d.dateLabel} · Vertraulich`;
-  t(infoLine, cx - ctx.reg.widthOfTextAtSize(infoLine, 9) / 2, 90, 9, ctx.reg, FAINT);
+  t(infoLine, cx - ctx.reg.widthOfTextAtSize(infoLine, 9) / 2, y, 9, ctx.reg, MUTED);
+  y -= 34;
+
+  // Dunkles Marken-Foto (Premium-Küche) als vollbreites Editorial-Band bis
+  // kurz über den Footer — der dramatische Gegenpol zum Papierweiß darüber.
+  // Vollbreite (x = 0) statt Satzspiegel: das Band darf als einziges Element
+  // der Seite randlos wirken. Fail-soft: ohne Bild bleibt die Seite weiß.
+  if (y - 60 > bandFloor) {
+    visualBand(ctx, page, ctx.kitchen, 0, y, w, y - bandFloor);
+  }
 
   footer(ctx, page, w, pageNo, total);
 }
@@ -738,79 +740,72 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   const t = mkText(page);
   let y = header(ctx, page, w, h, "BEWERTUNG");
 
-  // Wert-Hero mit Light-Rays + Gradient-Gauge (Rechner-Optik)
-  const heroH = 168;
+  // Wert-Hero als VOLLBLAUES Band über die ganze Seitenbreite (randlos):
+  // auf Weiß trägt die satte ACCENT-Fläche die Dramatik, die im dunklen
+  // Design Light-Rays und Glow hatten. Der Marktwert steht riesig in
+  // weißem AKIRA darauf — der unbestrittene Held der Seite.
+  const heroH = 176;
   const heroTop = y;
   const heroBottom = y - heroH;
-  const heroW = w - 2 * M;
-  // Light-Ray-Panel (JPEG mit dunklem Grund) + dezenter Bild-Outline + Akzentkante
-  // — ohne Bild (Embed fehlgeschlagen) einfacher dunkler Panel-Hintergrund.
-  if (ctx.heroRays) {
-    page.drawImage(ctx.heroRays, { x: M, y: heroBottom, width: heroW, height: heroH });
-  } else {
-    page.drawRectangle({ x: M, y: heroBottom, width: heroW, height: heroH, color: SURFACE });
-  }
-  page.drawRectangle({ x: M, y: heroBottom, width: heroW, height: heroH, borderColor: rgb(1, 1, 1), borderWidth: 1, borderOpacity: 0.1 });
-  page.drawRectangle({ x: M, y: heroBottom, width: 4, height: heroH, color: ACCENT });
+  page.drawRectangle({ x: 0, y: heroBottom, width: w, height: heroH, color: ACCENT });
 
   const cx = w / 2;
-  // Radialer Schein hinter der großen Wert-Zahl — der fokale Punkt der Seite.
-  glow(page, cx, heroTop - 62, 150, ACCENT, 0.1, 16);
+  // Weicher weißer Schein hinter der großen Wert-Zahl — der fokale Punkt.
+  glow(page, cx, heroTop - 66, 150, ON_ACCENT, 0.05, 12);
   const lbl = "GESCHÄTZTER MARKTWERT";
-  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 9) / 2, heroTop - 26, 9, ctx.reg, FAINT, 1.5);
+  t(lbl, cx - textWidthSpaced(ctx.reg, lbl, 9, 1.5) / 2, heroTop - 28, 9, ctx.reg, ON_ACCENT_MUTED, 1.5);
   const mid = eur(d.value.mid);
-  t(mid, cx - ctx.akira.widthOfTextAtSize(mid, 32) / 2, heroTop - 72, 32, ctx.akira, FG);
+  const midSize = fitFontSize(ctx.akira, mid, w - 2 * M - 60, 42, 24);
+  t(mid, cx - ctx.akira.widthOfTextAtSize(mid, midSize) / 2, heroTop - 46 - midSize, midSize, ctx.akira, ON_ACCENT);
   if (d.value.pricePerSqm) {
     const ps = `${eur(d.value.pricePerSqm)} / m²`;
-    t(ps, cx - ctx.reg.widthOfTextAtSize(ps, 10) / 2, heroTop - 90, 10, ctx.reg, ACCENT_SOFT);
+    t(ps, cx - ctx.reg.widthOfTextAtSize(ps, 10) / 2, heroTop - 100, 10, ctx.reg, ON_ACCENT_MUTED);
   }
 
-  // Spanne-Gauge: Gradient-Track + glühender Marker an der Wert-Position
+  // Spannen-Track im Band: weiße Transparenz-Spur mit weißem Marker an der
+  // Wert-Position (ersetzt das Gradient-Gauge-Bild des dunklen Designs).
   const trackL = M + 40;
   const trackR = w - M - 40;
   const trackW = trackR - trackL;
-  const gaugeY = heroBottom + 46;
-  if (ctx.gauge) {
-    const gh = (ctx.gauge.height / ctx.gauge.width) * trackW;
-    page.drawImage(ctx.gauge, { x: trackL, y: gaugeY - gh / 2, width: trackW, height: gh });
-  } else {
-    // Fallback: einfacher Track-Balken ohne Gradient-Bild.
-    page.drawRectangle({ x: trackL, y: gaugeY - 3, width: trackW, height: 6, color: BORDER });
-  }
+  const gaugeY = heroBottom + 48;
+  roundBarH(page, trackL, gaugeY - 3, trackW, 6, ON_ACCENT, 0.28);
   const range = Math.max(1, d.value.high - d.value.low);
   let f = (d.value.mid - d.value.low) / range;
   f = Math.min(0.94, Math.max(0.06, Number.isFinite(f) ? f : 0.5));
   const mx = trackL + f * trackW;
-  // Marker (glow → ring → dot) + dünne Führungslinie
-  page.drawLine({ start: { x: mx, y: gaugeY + 12 }, end: { x: mx, y: gaugeY - 12 }, thickness: 1, color: ACCENT_SOFT, opacity: 0.5 });
-  page.drawCircle({ x: mx, y: gaugeY, size: 11, color: ACCENT, opacity: 0.25 });
-  page.drawCircle({ x: mx, y: gaugeY, size: 6, color: BG });
-  page.drawCircle({ x: mx, y: gaugeY, size: 6, borderColor: rgb(1, 1, 1), borderWidth: 2 });
-  page.drawCircle({ x: mx, y: gaugeY, size: 2.5, color: ACCENT_SOFT });
+  // Marker (Schein → Ring → Punkt) + dünne Führungslinie
+  page.drawLine({ start: { x: mx, y: gaugeY + 12 }, end: { x: mx, y: gaugeY - 12 }, thickness: 1, color: ON_ACCENT, opacity: 0.55 });
+  page.drawCircle({ x: mx, y: gaugeY, size: 11, color: ON_ACCENT, opacity: 0.25 });
+  page.drawCircle({ x: mx, y: gaugeY, size: 6, color: ACCENT });
+  page.drawCircle({ x: mx, y: gaugeY, size: 6, borderColor: ON_ACCENT, borderWidth: 2 });
+  page.drawCircle({ x: mx, y: gaugeY, size: 2.5, color: ON_ACCENT });
   // Spannen-Beschriftung (von / bis), tabellarisch ausgerichtet
-  t("von", trackL, gaugeY - 30, 7.5, ctx.reg, FAINT, 1);
-  t(eur(d.value.low), trackL, gaugeY - 22, 10, ctx.bold, FG);
-  textRight(page, "bis", trackR, gaugeY - 30, 7.5, ctx.reg, FAINT);
-  textRight(page, eur(d.value.high), trackR, gaugeY - 22, 10, ctx.bold, FG);
+  t("von", trackL, gaugeY - 30, 7.5, ctx.reg, ON_ACCENT_MUTED, 1);
+  t(eur(d.value.low), trackL, gaugeY - 22, 10, ctx.bold, ON_ACCENT);
+  textRight(page, "bis", trackR, gaugeY - 30, 7.5, ctx.reg, ON_ACCENT_MUTED);
+  textRight(page, eur(d.value.high), trackR, gaugeY - 22, 10, ctx.bold, ON_ACCENT);
 
   y = heroBottom - 26;
 
   const colW = (w - 2 * M - 24) / 2;
   const start = y;
+  // Zeilen-Tupel: erstes Feld war der Icon-Name des dunklen Designs — die
+  // hellen Icon-Assets tragen auf Weiß nicht (zu blass) und sind durch einen
+  // kleinen blauen Punktmarker ersetzt; das Feld bleibt für die Zeilendaten
+  // erhalten, wird aber nicht mehr gezeichnet.
   const section = (title: string, rows: [string, string, string][], x: number) => {
     let yy = start;
     heading(ctx, page, title, x, yy, 11);
     yy -= 18;
-    for (const [icon, label, value] of rows) {
+    for (const [, label, value] of rows) {
       if (!value) continue;
-      const ic = ctx.icons[icon];
-      if (ic) page.drawImage(ic, { x, y: yy - 1.5, width: 11, height: 11 });
+      page.drawCircle({ x: x + 3, y: yy + 3.2, size: 1.7, color: ACCENT });
       // Label darf nie in den rechtsbündigen Wert laufen (langes Label +
       // langer Wert kollidierten sonst, z. B. „Bodenrichtwert (amtl.,
       // informativ)" gegen „895 €/m²") — auf die Restbreite kürzen.
-      const valW = ctx.reg.widthOfTextAtSize(value, 10);
-      t(ellipsize(label, ctx.reg, 10, colW - 17 - valW - 10), x + 17, yy, 10, ctx.reg, MUTED);
-      textRight(page, value, x + colW, yy, 10, ctx.reg, FG);
+      const valW = ctx.bold.widthOfTextAtSize(value, 10);
+      t(ellipsize(label, ctx.reg, 10, colW - 13 - valW - 10), x + 13, yy, 10, ctx.reg, MUTED);
+      textRight(page, value, x + colW, yy, 10, ctx.bold, FG);
       yy -= 7;
       page.drawLine({ start: { x, y: yy }, end: { x: x + colW, y: yy }, thickness: 0.5, color: BORDER });
       yy -= 14;
@@ -920,7 +915,7 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
     // Adress-Chip unten links
     const chip = ellipsize(objektTitle, ctx.bold, 9.5, satW - 120);
     const cw = ctx.bold.widthOfTextAtSize(chip, 9.5) + 26;
-    page.drawRectangle({ x: satX + 12, y: satY + 12, width: cw, height: 24, color: BG, opacity: 0.82 });
+    page.drawRectangle({ x: satX + 12, y: satY + 12, width: cw, height: 24, color: BG, opacity: 0.92 });
     page.drawRectangle({ x: satX + 12, y: satY + 12, width: 3, height: 24, color: ACCENT });
     t(chip, satX + 24, satY + 20, 9.5, ctx.bold, FG);
     // Quelle
@@ -1041,7 +1036,7 @@ function drawWaterfall(
 
   let cx = x;
   const basisY = yOf(basis);
-  page.drawRectangle({ x: cx, y: baseY, width: barW, height: Math.max(1, basisY - baseY), color: ACCENT, opacity: 0.55 });
+  page.drawRectangle({ x: cx, y: baseY, width: barW, height: Math.max(1, basisY - baseY), color: ACCENT, opacity: 0.65 });
   barLabel("Basis", eur(basis), cx, barW, FG);
   let prevTopX = cx + barW;
   let prevTopY = basisY;
@@ -1344,8 +1339,8 @@ function drawMarketLocal(ctx: Ctx, d: ReportData, pageNo: number, total: number)
       const my = trackY + 5;
       glow(page, mx, my, 16, ACCENT, 0.09, 10);
       page.drawCircle({ x: mx, y: my, size: 6, color: BG });
-      page.drawCircle({ x: mx, y: my, size: 6, borderColor: rgb(1, 1, 1), borderWidth: 2 });
-      page.drawCircle({ x: mx, y: my, size: 2.5, color: ACCENT_SOFT });
+      page.drawCircle({ x: mx, y: my, size: 6, borderColor: ACCENT, borderWidth: 2 });
+      page.drawCircle({ x: mx, y: my, size: 2.5, color: ACCENT });
       const ml = "Ihr Objekt";
       t(ml, mx - ctx.bold.widthOfTextAtSize(ml, 7.5) / 2, my + 14, 7.5, ctx.bold, ACCENT_SOFT);
     }
@@ -1372,14 +1367,14 @@ function drawMarketLocal(ctx: Ctx, d: ReportData, pageNo: number, total: number)
   statTile(ctx, page, M + tileW + tileGap, y - tileH, tileW, tileH, `${fmtDe(markt.yieldPct)} %`, "Mietrendite (Modell)");
   const tile3X = M + 2 * (tileW + tileGap);
   statTile(ctx, page, tile3X, y - tileH, tileW, tileH, `${markt.nachfrage}/10`, "Nachfrage-Score");
-  // 10 kleine Punkte, davon `nachfrage` in ACCENT.
+  // 10 kleine Punkte auf der Vollblau-Kachel, davon `nachfrage` in Weiß.
   const dotR = 2.1;
   const dotsW = 10 * (dotR * 2) + 9 * 3;
   let dx = tile3X + tileW / 2 - dotsW / 2 + dotR;
   const dotsY = y - tileH + 22;
   for (let i = 0; i < 10; i++) {
     const active = i < markt.nachfrage;
-    page.drawCircle({ x: dx, y: dotsY, size: dotR, color: active ? ACCENT : BORDER });
+    page.drawCircle({ x: dx, y: dotsY, size: dotR, color: ON_ACCENT, opacity: active ? 1 : 0.3 });
     dx += dotR * 2 + 3;
   }
   y -= tileH + 26;
@@ -1719,17 +1714,18 @@ function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   // kollidiert ein zweizeiliger Subtext (z. B. Schritt 3) mit der CTA-Box.
   y = timelineBottom - 18;
 
-  // CTA-Box
+  // CTA-Box: vollblaues Band mit weißer Schrift — der eine satte
+  // Farbmoment dieser Seite (das dunkle Design nutzte hier ein
+  // SURFACE-Panel mit Akzentkante).
   const ctaH = 76;
-  page.drawRectangle({ x: M, y: y - ctaH, width: w - 2 * M, height: ctaH, color: SURFACE, borderColor: ACCENT, borderWidth: 1 });
-  page.drawRectangle({ x: M, y: y - ctaH, width: 4, height: ctaH, color: ACCENT });
-  t("IHR NÄCHSTER SCHRITT", M + 18, y - 24, 9, ctx.bold, ACCENT_SOFT, 1.2);
+  page.drawRectangle({ x: M, y: y - ctaH, width: w - 2 * M, height: ctaH, color: ACCENT });
+  t("IHR NÄCHSTER SCHRITT", M + 18, y - 24, 9, ctx.bold, ON_ACCENT_MUTED, 1.2);
   // Adresse kann lang sein (z. B. „Max-Bill-Straße 3, 67061 Ludwigshafen") —
   // die ganze CTA-Zeile auf die Box-Innenbreite kürzen, damit sie nie rechts
   // aus dem Rahmen läuft.
   const ctaLine = `${d.name?.split(" ")[0] || "Wir"}, sichern wir gemeinsam den Bestpreis für ${objektTitle}.`;
-  t(ellipsize(ctaLine, ctx.bold, 12, w - 2 * M - 36), M + 18, y - 43, 12, ctx.bold, FG);
-  t("Kostenlose Vor-Ort-Bewertung: riegel-immobilien.de/termin   ·   06232 100 10 10", M + 18, y - 59, 9.5, ctx.reg, MUTED);
+  t(ellipsize(ctaLine, ctx.bold, 12, w - 2 * M - 36), M + 18, y - 43, 12, ctx.bold, ON_ACCENT);
+  t("Kostenlose Vor-Ort-Bewertung: riegel-immobilien.de/termin   ·   06232 100 10 10", M + 18, y - 59, 9.5, ctx.reg, ON_ACCENT_MUTED);
   y -= ctaH + 26;
 
   // Diese Seite hat unter der CTA reichlich Weißraum — mit einem dunklen
@@ -1777,10 +1773,13 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   });
   y -= tileH * 2 + gap + 28;
 
-  // Auszeichnung-Banner
+  // Auszeichnung-Banner: das eine fast-schwarze Band der Seite — Tinte
+  // satt mit weißer Schrift und blauer Akzentkante links, damit die
+  // Auszeichnung zwischen den blauen Kacheln ihr eigenes Gewicht hat.
   const bannerH = 52;
-  glowPanel(page, M, y - bannerH, contentW, bannerH);
-  t("ImmoScout24 ImmoAward 2025 · Top 21 Makler des Jahres in Deutschland (von über 25.000)", M + 20, y - bannerH / 2 - 4, 10.5, ctx.bold, FG);
+  page.drawRectangle({ x: M, y: y - bannerH, width: contentW, height: bannerH, color: FG });
+  page.drawRectangle({ x: M, y: y - bannerH, width: 4, height: bannerH, color: ACCENT });
+  t("ImmoScout24 ImmoAward 2025 · Top 21 Makler des Jahres in Deutschland (von über 25.000)", M + 20, y - bannerH / 2 - 4, 10.5, ctx.bold, ON_ACCENT);
   y -= bannerH + 26;
 
   // USP-Häkchen-Liste
@@ -1812,9 +1811,11 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   y -= calloutH + 22;
 
   // Restlichen Weißraum bis zum Footer mit einem dunklen Marken-Band füllen
-  // (nur, wenn noch spürbar Platz ist — sonst bleibt es leer).
+  // (nur, wenn noch spürbar Platz ist — sonst bleibt es leer). Das abstrakte
+  // Rays-Visual statt der Küche: die liegt seit dem Hell-Umbau auf dem
+  // Deckblatt, eine Wiederholung hier würde auffallen.
   if (y - 78 > bandFloor) {
-    visualBand(ctx, page, ctx.kitchen, M, y, contentW, Math.min(230, y - bandFloor), "Regionale Expertise. Alles andere ist Fast Food.");
+    visualBand(ctx, page, ctx.heroRays, M, y, contentW, Math.min(230, y - bandFloor), "Regionale Expertise. Alles andere ist Fast Food.");
   }
 
   footer(ctx, page, w, pageNo, total);
