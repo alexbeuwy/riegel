@@ -246,13 +246,43 @@ const ENERGIE_FACTOR: Record<string, number> = {
   "A+": 1.06, A: 1.05, B: 1.03, C: 1.0, D: 0.98, E: 0.96, F: 0.93, G: 0.9, H: 0.88,
 };
 
+// Nach unten nachgeschärft (02.08.2026, Fall Eberle): Bj. 1960 lag mit −8 %
+// zu nah am Neubauniveau. Homeday nennt für dieselbe Adresse 3.000 €/m² im
+// Schnitt über ALLE Baujahre; ein unsanierter 60er-Bau liegt darunter, nicht
+// darüber. Die Stufen bleiben bewusst grob — das Formular fragt keine
+// Modernisierungshistorie ab, mehr Präzision wäre vorgetäuscht.
 function baujahrFactor(y?: number): number {
   if (!y) return 1.0;
   if (y >= 2015) return 1.1;
-  if (y >= 2000) return 1.04;
-  if (y >= 1980) return 0.98;
-  if (y >= 1960) return 0.92;
-  return 0.88;
+  if (y >= 2000) return 1.03;
+  if (y >= 1980) return 0.97;
+  if (y >= 1960) return 0.9;
+  if (y >= 1945) return 0.86;
+  return 0.84;
+}
+
+/**
+ * Flächendämpfung: €/m² sinkt mit der Objektgröße — der Käuferkreis für
+ * 240 m² ist klein, der Gesamtpreis deckelt den Quadratmeterpreis.
+ *
+ * Am eigenen Verkauft-Pool gemessen (Böhl-Iggelheim/Schifferstadt): Objekte
+ * mit 235–304 m² erzielten 1.613–2.354 €/m², normale Größen um 2.900–3.000.
+ * Der Rechner kannte diesen Effekt überhaupt nicht und bewertete 240 m² zum
+ * vollen Satz — Hauptursache (neben dem Faktor-Stapel) der 1.086.000-€-
+ * Schätzung im Fall Eberle.
+ *
+ * Referenzgrößen so gewählt, dass NORMALE Objekte unberührt bleiben: die
+ * 106-m²-Wohnungen im Pool verkauften sich am OBEREN Rand der Spanne, erst
+ * darüber beginnt die Dämpfung. Exponent 0,45 aus dem gemessenen Verhältnis,
+ * Boden bei 0,75 (mehr als −25 % gibt die Datenlage nicht her). Unterhalb der
+ * Referenz gibt es bewusst KEINEN Zuschlag (kleine Objekte erzielen zwar oft
+ * mehr je m², aber "lieber kleiner nennen" gilt auch hier).
+ */
+const FLAECHEN_REF_M2: Partial<Record<Objektart, number>> = { wohnung: 110, haus: 160 };
+function flaechenFaktor(objektart: Objektart, wohnflaeche?: number): number {
+  const ref = FLAECHEN_REF_M2[objektart];
+  if (!ref || !wohnflaeche || wohnflaeche <= ref) return 1;
+  return Math.max(0.75, Math.pow(ref / wohnflaeche, 0.45));
 }
 
 // Deal-orientiert bewusst OHNE pauschalen Markt-Aufschlag (früher 1,06):
@@ -414,9 +444,26 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   const boden = opts?.bodenrichtwert ?? r.boden;
   const ausstBonus = Math.min(input.ausstattung.length * 0.012, 0.08);
   const bf = baujahrFactor(input.baujahr);
-  const zf = ZUSTAND_FACTOR[input.zustand];
-  const qf = QUALITAET_FACTOR[input.qualitaet];
-  const ef = input.energieklasse ? ENERGIE_FACTOR[input.energieklasse] ?? 1.0 : 1.0;
+  // AUFWERTUNGS-KOMPRESSION (Fall Eberle, 02.08.2026): Zustand, Qualität,
+  // Energieklasse und Ausstattung stapelten sich multiplikativ ungebremst —
+  // neuwertig × gehoben × Ausstattung × BRW-Lage ergab +47 % und damit
+  // 4.526 €/m² für eine 1960er-Wohnung in Böhl-Iggelheim, über dem lokalen
+  // Preisatlas-MAXIMUM (4.325) und weit über jedem echten Abschluss dort
+  // (Wohnungs-Median 2.920, gemessen am Verkauft-Pool).
+  //
+  // Jede Aufwertung über 1 wird deshalb mit Exponent 0,6 gestaucht
+  // ((a·b·c)^0,6 = a^0,6·b^0,6·c^0,6 — die Stauchung je Faktor entspricht
+  // exakt der Stauchung des Produkts, die angezeigten Prozente bleiben also
+  // ehrlich). ABWERTUNGEN bleiben ungestaucht: lieber einen kleineren Preis
+  // nennen, der zum Abschluss führt, als einen Wunschwert (Vorgabe Alex,
+  // "tendenziell lieber kleineren Preis"). Der BRW-Lagefaktor bleibt voll —
+  // er ist amtlich gemessen, keine Selbstauskunft.
+  const stauche = (f: number) => (f > 1 ? Math.pow(f, 0.6) : f);
+  const zf = stauche(ZUSTAND_FACTOR[input.zustand]);
+  const qf = stauche(QUALITAET_FACTOR[input.qualitaet]);
+  const efRoh = input.energieklasse ? ENERGIE_FACTOR[input.energieklasse] ?? 1.0 : 1.0;
+  const ef = stauche(efRoh);
+  const ausstFaktor = stauche(1 + ausstBonus);
 
   let pricePerSqm: number | undefined;
   let mid: number;
@@ -513,8 +560,9 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       input.objektart === "haus" && input.haustyp ? HAUSTYP_FAKTOR[input.haustyp] : 1;
     const zfhFaktor =
       input.objektart === "haus" && input.zweifamilienhaus ? ZWEIFAMILIEN_FAKTOR : 1;
+    const flFaktor = flaechenFaktor(input.objektart, input.wohnflaeche);
     pricePerSqm = Math.round(
-      base * zf * bf * qf * ef * (1 + ausstBonus) * OPTIMISM * lageFaktor * htFaktor * zfhFaktor,
+      base * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * htFaktor * zfhFaktor * flFaktor,
     );
     const flaeche = input.wohnflaeche ?? 0;
     if (input.objektart === "gewerbe" && input.hallenflaeche && input.hallenflaeche > 0) {
@@ -579,7 +627,13 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
                 : 1,
             ),
           },
-          { label: "Ausstattung", effectPct: Math.round(ausstBonus * 100) },
+          // Angezeigt wird der GESTAUCHTE Bonus (ausstFaktor), nicht der rohe —
+          // sonst summierten sich die Zeilen nicht zum gerechneten Wert.
+          { label: "Ausstattung", effectPct: pct(ausstFaktor) },
+          {
+            label: "Objektgröße (€/m² sinkt mit Fläche)",
+            effectPct: pct(flaechenFaktor(input.objektart, input.wohnflaeche)),
+          },
           { label: "Marktoptimismus", effectPct: pct(OPTIMISM) },
         ].filter((x) => x.effectPct !== 0);
 

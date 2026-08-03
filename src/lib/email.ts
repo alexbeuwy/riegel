@@ -26,7 +26,37 @@ const resend = apiKey ? new Resend(apiKey) : null;
  * dafür sorgt das Reply-To auf TO weiter unten.
  */
 const FROM_FALLBACK = "RIEGEL Immobilien <onboarding@resend.dev>";
-const FROM = process.env.EMAIL_FROM || FROM_FALLBACK;
+/**
+ * EMAIL_FROM defensiv parsen statt roh durchreichen.
+ *
+ * Anlass (02.08.2026): Die Variable wurde im Vercel-Dashboard ohne die
+ * schließende spitze Klammer gespeichert ("RIEGEL Immobilien <info@…de").
+ * Resend versucht dann, die verstümmelte Domain aufzulösen, und beantwortet
+ * JEDEN Versand mit 503 "DNS resolution failure" — zwei Tage lang kam kein
+ * einziger Report mehr an, ohne dass es irgendwo sichtbar wurde (gegen die
+ * Resend-API nachgestellt: identischer Wert mit Klammer → 200, ohne → 503).
+ *
+ * Der Parser zieht Name und Adresse aus dem Wert heraus, egal ob die Klammer
+ * fehlt, doppelt ist oder Anführungszeichen drumhängen, und baut den Header
+ * neu. Nur wenn sich gar keine Adresse finden lässt, greift der Fallback —
+ * dann laut, denn von der Sandbox-Adresse stellt Resend nur an den
+ * Kontoinhaber zu.
+ */
+function parseFrom(roh: string | undefined): string {
+  if (!roh || !roh.trim()) return FROM_FALLBACK;
+  const s = roh.trim().replace(/^["']|["']$/g, "");
+  const m = s.match(/([^\s<>"']+@[^\s<>"',;]+)/);
+  if (!m) {
+    console.error(`[email] EMAIL_FROM enthält keine E-Mail-Adresse ("${s.slice(0, 40)}…") — Fallback auf die Sandbox-Adresse, die NUR an den Kontoinhaber zustellt.`);
+    return FROM_FALLBACK;
+  }
+  const adresse = m[1].replace(/\.+$/, "");
+  const name = s.slice(0, s.indexOf(m[1])).replace(/[<>"']/g, "").trim();
+  const gebaut = name ? `${name} <${adresse}>` : adresse;
+  if (gebaut !== s) console.warn(`[email] EMAIL_FROM war fehlerhaft formatiert und wurde zu "${gebaut}" repariert.`);
+  return gebaut;
+}
+const FROM = parseFrom(process.env.EMAIL_FROM);
 if (!process.env.EMAIL_FROM && process.env.NODE_ENV === "production") {
   console.error(
     "[email] EMAIL_FROM ist nicht gesetzt. Es wird die Resend-Sandbox-Adresse verwendet, " +
