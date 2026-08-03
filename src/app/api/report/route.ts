@@ -14,6 +14,7 @@ import {
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte, vermitteltGesamt } from "@/lib/report-objekte";
+import { createOnOfficeAddress } from "@/lib/onoffice";
 import { parseDeZahl } from "@/lib/parse-de-zahl";
 import { site } from "@/lib/site";
 
@@ -364,6 +365,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
 
   // 3) In Supabase protokollieren (Nachvollziehbarkeit)
   let logged = false;
+  let leadId: string | null = null;
   if (supabaseServer) {
     // Bisheriger Feldstand (heutiges Schema) — als Legacy-Fallback verwendet,
     // falls die neuen Spalten (s. u.) auf dieser Datenbank noch nicht existieren.
@@ -403,16 +405,60 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
       mikrolage,
       vervielfaeltiger: vervielfaeltiger ?? null,
     };
-    let { error } = await supabaseServer.from("valuation_requests").insert(fullRow);
+    let { data: eingefuegt, error } = await supabaseServer
+      .from("valuation_requests")
+      .insert(fullRow)
+      .select("id")
+      .single();
     // Migrations-Resilienz: die neuen Spalten existieren evtl. noch nicht auf
     // dieser Datenbank (Migration noch nicht gelaufen) — dann mit dem
     // bisherigen Feld-Set erneut versuchen, statt den ganzen Lead zu verlieren.
     if (error && /column|schema cache/i.test(error.message)) {
       console.warn("[report] valuation_requests: neue Spalten fehlen noch, Legacy-Insert", error.message);
-      ({ error } = await supabaseServer.from("valuation_requests").insert(legacyRow));
+      ({ data: eingefuegt, error } = await supabaseServer
+        .from("valuation_requests")
+        .insert(legacyRow)
+        .select("id")
+        .single());
     }
     if (error) console.error("[report] valuation_requests-Insert fehlgeschlagen:", error.message);
     logged = !error;
+    leadId = eingefuegt?.id != null ? String(eingefuegt.id) : null;
+  }
+
+  // Automatische CRM-Uebergabe (Freigabe Alex, 04.08.2026): Wer einen
+  // PDF-Report anfordert, hat Namen und E-Mail dagelassen und ist damit ein
+  // qualifizierter Kontakt — der landet ohne Handarbeit als Adressdatensatz
+  // in OnOffice. Ausgenommen sind die Bueroadressen (@riegel-immobilien.de):
+  // rund die Haelfte der Reports erfasst RIEGEL selbst im Kundengespraech,
+  // eine Automatik wuerde das CRM mit den eigenen Testlaeufen fluten.
+  // Doppelte Anfragen derselben Adresse faengt OnOffice ueber checkDuplicate
+  // selbst ab. Fail-soft: ein CRM-Fehler kostet nie den Report.
+  if (!email.trim().toLowerCase().endsWith("@riegel-immobilien.de")) {
+    const teile = name.trim().split(/\s+/);
+    const onofficeId = await createOnOfficeAddress({
+      vorname: teile.length > 1 ? teile.slice(0, -1).join(" ") : undefined,
+      name: teile[teile.length - 1] || name,
+      email,
+      telefon: phone || undefined,
+      strasse: address || undefined,
+      plz: postcode || undefined,
+      ort: city || undefined,
+      bemerkung: `Website-Lead: Marktwert-Report ${objektartLabel}${city ? ` in ${city}` : ""}, Schaetzwert ${eur(mid)} (${new Date().toLocaleDateString("de-DE")})`,
+    });
+    if (onofficeId && leadId && supabaseServer) {
+      // Verknuepfung ins Cockpit: der Knopf zeigt dann direkt "CRM" statt
+      // eine zweite Uebergabe anzubieten.
+      const { error: bErr } = await supabaseServer
+        .from("lead_bearbeitung")
+        .upsert(
+          { quelle: "report", quelle_id: leadId, onoffice_adresse_id: onofficeId, geaendert_am: new Date().toISOString() },
+          { onConflict: "quelle,quelle_id" },
+        );
+      if (bErr) console.error("[report] lead_bearbeitung-Verknuepfung fehlgeschlagen:", bErr.message);
+    } else if (!onofficeId) {
+      console.warn("[report] automatische OnOffice-Uebergabe fehlgeschlagen (fail-soft, Lead bleibt im Cockpit).");
+    }
   }
 
   // Observability: Zustellfehler in den Vercel-Logs sichtbar machen.
