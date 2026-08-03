@@ -620,31 +620,50 @@ function roundBarH(page: PDFPage, x: number, y: number, w: number, h: number, co
   page.drawCircle({ x: x + w - r, y: y + r, size: r, color, opacity });
 }
 
-/** Vollblaue Kennzahlen-Kachel: satte ACCENT-Fläche, großer weißer Wert,
- * kleines eisblaues Uppercase-Label mit Letter-Spacing, optionale Sub-Zeile.
- * Auf Weiß tragen diese Kacheln die Dramatik, die im dunklen Design die
- * Glow-Panels hatten — mutige blaue Flächen statt leuchtender Ränder. */
-function statTile(ctx: Ctx, page: PDFPage, x: number, y: number, w: number, h: number, value: string, label: string, sub?: string) {
+/** Kennzahlen-Kachel in zwei Ausführungen: Vollblau (satte ACCENT-Fläche,
+ * weißer Wert — der Hero unter den Kacheln) oder hell im Glass-Look der
+ * übrigen Panels (glowPanel-Grund, Wert in Akzentblau). Zu viele
+ * Vollblau-Kacheln nebeneinander erschlagen sich gegenseitig — hell ist
+ * der Standard fürs Raster, Vollblau das gezielte Highlight. */
+function statTile(
+  ctx: Ctx,
+  page: PDFPage,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  value: string,
+  label: string,
+  sub?: string,
+  opts: { hell?: boolean } = {},
+) {
   const r = 10;
-  softShadow(page, x, y, w, h, r);
-  roundedRect(page, x, y, w, h, r, { color: ACCENT });
-  beamTop(page, x, y, w, h, r, ON_ACCENT, 0.65);
+  if (opts.hell) {
+    glowPanel(page, x, y, w, h, { peak: 0.05 });
+  } else {
+    softShadow(page, x, y, w, h, r);
+    roundedRect(page, x, y, w, h, r, { color: ACCENT });
+    beamTop(page, x, y, w, h, r, ON_ACCENT, 0.65);
+  }
   const t = mkText(page);
   const cx = x + w / 2;
+  const valColor = opts.hell ? ACCENT : ON_ACCENT;
+  const subColor = opts.hell ? MUTED : ON_ACCENT_MUTED;
+  const lblColor = opts.hell ? FAINT : ON_ACCENT_MUTED;
   // Wert bewusst NICHT in AKIRA: die Display-Schrift ist bei Ziffern schlecht
   // lesbar (schmale, stilisierte Formen) — ctx.bold (Helvetica Bold, der
-  // Inter-Extrabold-Ersatz des PDFs) in Weiß auf Vollblau. AKIRA bleibt
-  // Headlines vorbehalten. Groß und sauber mittig in der oberen Zone, mit
-  // klarem Abstand zum Label (und ggf. der Punktreihe) darunter.
+  // Inter-Extrabold-Ersatz des PDFs). AKIRA bleibt Headlines vorbehalten.
+  // Groß und sauber mittig in der oberen Zone, mit klarem Abstand zum Label
+  // (und ggf. der Punktreihe) darunter.
   const valSize = fitFontSize(ctx.bold, value, w - 20, Math.min(26, h * 0.38), 12);
   const valY = sub ? y + h - 18 - valSize : y + h / 2 + 3 - valSize * 0.3;
-  t(value, cx - ctx.bold.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.bold, ON_ACCENT);
+  t(value, cx - ctx.bold.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.bold, valColor);
   if (sub) {
     const s = ellipsize(sub, ctx.reg, 8, w - 18);
-    t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 15, 8, ctx.reg, ON_ACCENT_MUTED);
+    t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 15, 8, ctx.reg, subColor);
   }
   const lbl = ellipsize(label.toUpperCase(), ctx.reg, 7.5, w - 16);
-  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 7.5) / 2, y + 13, 7.5, ctx.reg, ON_ACCENT_MUTED, 0.6);
+  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 7.5) / 2, y + 13, 7.5, ctx.reg, lblColor, 0.6);
 }
 
 /** Sparkline über drawLine-Segmente (Website-MarktPanel-Optik): Fläche
@@ -869,7 +888,7 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   // auf Weiß trägt die satte ACCENT-Fläche die Dramatik, die im dunklen
   // Design Light-Rays und Glow hatten. Der Marktwert steht riesig in
   // weißem AKIRA darauf — der unbestrittene Held der Seite.
-  const heroH = 176;
+  const heroH = 190;
   const heroTop = y;
   const heroBottom = y - heroH;
   page.drawRectangle({ x: 0, y: heroBottom, width: w, height: heroH, color: ACCENT });
@@ -887,22 +906,20 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
     t(ps, cx - ctx.reg.widthOfTextAtSize(ps, 10) / 2, heroTop - 100, 10, ctx.reg, ON_ACCENT_MUTED);
   }
 
-  // Spannen-Track im Band: weiße Transparenz-Spur mit weißem Marker an der
-  // Wert-Position (ersetzt das Gradient-Gauge-Bild des dunklen Designs).
+  // Spannen-Track im Band: weiße Transparenz-Spur, der Glow strahlt
+  // SYMMETRISCH vom Marker nach beiden Seiten aus — eine einseitig
+  // gefüllte Spur läse sich wie ein halb voller Fortschrittsbalken.
   const trackL = M + 40;
   const trackR = w - M - 40;
   const trackW = trackR - trackL;
-  const gaugeY = heroBottom + 48;
+  const gaugeY = heroBottom + 62;
   roundBarH(page, trackL, gaugeY - 3, trackW, 6, ON_ACCENT, 0.18);
-  // Verlauf vom "von"-Ende bis zum Marker mit zunehmender Deckkraft: man
-  // sieht auf einen Blick, WO in der Spanne das Objekt liegt (Ersatz für
-  // das Gradient-Gauge-Bild des dunklen Designs).
   const range = Math.max(1, d.value.high - d.value.low);
   let f = (d.value.mid - d.value.low) / range;
   f = Math.min(0.94, Math.max(0.06, Number.isFinite(f) ? f : 0.5));
   const mx = trackL + f * trackW;
-  page.drawCircle({ x: trackL + 3, y: gaugeY, size: 3, color: ON_ACCENT, opacity: 0.3 });
-  fadeRect(page, trackL + 3, gaugeY - 3, Math.max(10, mx - trackL - 3), 6, ON_ACCENT, 0.3, 0.95, 48, "right");
+  fadeRect(page, trackL + 3, gaugeY - 3, Math.max(6, mx - trackL - 3), 6, ON_ACCENT, 0.85, 0.05, 34, "left");
+  fadeRect(page, mx, gaugeY - 3, Math.max(6, trackR - 3 - mx), 6, ON_ACCENT, 0.85, 0.05, 34, "right");
   // Marker (Schein → Ring → Punkt) + dünne Führungslinie
   page.drawLine({ start: { x: mx, y: gaugeY + 12 }, end: { x: mx, y: gaugeY - 12 }, thickness: 1, color: ON_ACCENT, opacity: 0.55 });
   page.drawCircle({ x: mx, y: gaugeY, size: 11, color: ON_ACCENT, opacity: 0.25 });
@@ -914,6 +931,10 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   t(eur(d.value.low), trackL, gaugeY - 22, 10, ctx.bold, ON_ACCENT);
   textRight(page, "bis", trackR, gaugeY - 30, 7.5, ctx.reg, ON_ACCENT_MUTED);
   textRight(page, eur(d.value.high), trackR, gaugeY - 22, 10, ctx.bold, ON_ACCENT);
+  // Annotation, was den Wert innerhalb der Spanne bewegt — mit Beispielen,
+  // « » als Richtungspfeile (WinAnsi kennt keine echten Pfeil-Glyphen).
+  t("« drückt: Sanierungsstau, Energieklasse F–H", trackL, gaugeY - 46, 7.5, ctx.reg, ON_ACCENT_MUTED);
+  textRight(page, "hebt: Modernisierung, Lage, gute Ausstattung »", trackR, gaugeY - 46, 7.5, ctx.reg, ON_ACCENT_MUTED);
 
   y = heroBottom - 34;
 
@@ -1912,12 +1933,15 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
     [`Ø ${stats.oVermarktungstage} Tage`, "bis zum Verkauf"],
     [fmtInt(stats.googleBewertungen), "Google-Bewertungen"],
   ];
+  // Nur EINE Kachel als Vollblau-Highlight (die 12,5 Mio. — die größte
+  // Zahl), der Rest im hellen Glass-Look: sechs Vollblau-Flächen
+  // nebeneinander wären zu viel Knallblau auf einer Seite.
   tiles.forEach(([value, label], i) => {
     const col = i % 3;
     const row = Math.floor(i / 3);
     const tx = M + col * (tileW + gap);
     const ty = y - tileH - row * (tileH + gap);
-    statTile(ctx, page, tx, ty, tileW, tileH, value, label);
+    statTile(ctx, page, tx, ty, tileW, tileH, value, label, undefined, { hell: i !== 1 });
   });
   y -= tileH * 2 + gap + 28;
 
