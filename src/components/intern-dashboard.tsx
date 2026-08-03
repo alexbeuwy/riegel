@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
@@ -158,12 +158,15 @@ const OBJ_STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 /** Dezente Badge-Farben je Bearbeitungsstatus, im Stil von OBJ_STATUS/Feedback. */
-const STATUS_BADGE_CLS: Record<LeadStatus, string> = {
-  neu: "border-border text-faint",
-  kontaktiert: "border-accent/40 text-accent",
-  termin: "border-[#fbbf24]/40 text-[#fbbf24]",
-  gewonnen: "border-[#34d399]/40 text-[#34d399]",
-  verloren: "border-[#f87171]/40 text-[#f87171]",
+/** Farbe, Verlauf und Icon je Bearbeitungsstatus. Die Verlaeufe sind bewusst
+ *  leise (15 % nach transparent), damit die Tabelle nicht bunt wird und der
+ *  Blick trotzdem sofort gewonnen/verloren unterscheidet. */
+const STATUS_META: Record<LeadStatus, { cls: string; icon: IconName }> = {
+  neu: { cls: "border-border bg-gradient-to-r from-surface-2/80 to-transparent text-muted", icon: "sparkle" },
+  kontaktiert: { cls: "border-accent/40 bg-gradient-to-r from-accent/15 to-transparent text-accent-strong", icon: "phone" },
+  termin: { cls: "border-[#fbbf24]/40 bg-gradient-to-r from-[#fbbf24]/15 to-transparent text-[#fbbf24]", icon: "calendar" },
+  gewonnen: { cls: "border-[#34d399]/45 bg-gradient-to-r from-[#34d399]/15 to-transparent text-[#34d399]", icon: "check" },
+  verloren: { cls: "border-[#f87171]/40 bg-gradient-to-r from-[#f87171]/12 to-transparent text-[#f87171]", icon: "close" },
 };
 
 /** Icon/Label je Ereignistyp in der Kontakt-Akte. */
@@ -401,29 +404,32 @@ function OnOfficeButton({
   onSubmit: () => void;
 }) {
   const id = entry?.onoffice_adresse_id;
+  // Kompakt (Icon + Tooltip): drei uebereinander gestapelte Textpillen haben
+  // die Aktionsspalte so breit und hoch gemacht, dass die Tabelle am
+  // overflow-x-Rahmen abgeschnitten wirkte (Screenshot Alex, 03.08.).
   if (id) {
     return (
       <span
-        title={`OnOffice-Datensatz ${id}`}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[#34d399]/40 px-3 py-1.5 text-xs text-[#34d399]"
+        title={`In onOffice uebernommen · Datensatz ${id}`}
+        className="cockpit-auf inline-flex h-8 items-center gap-1 rounded-full border border-[#34d399]/45 bg-gradient-to-r from-[#34d399]/15 to-transparent px-2.5 text-xs text-[#34d399]"
       >
-        <Icon name="check" size={13} /> In onOffice · {id}
+        <Icon name="check" size={13} /> CRM
       </span>
     );
   }
   return (
-    <div className="flex flex-col items-start gap-1">
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={busy}
-        className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
-      >
-        <Icon name="building" size={13} />
-        {busy ? "Übergebe …" : "An onOffice übergeben"}
-      </button>
-      {error && <span className="text-[0.65rem] text-accent">{error}</span>}
-    </div>
+    <button
+      type="button"
+      onClick={onSubmit}
+      disabled={busy}
+      title={error ? `Fehler bei der Uebergabe: ${error} (erneut versuchen)` : "An onOffice uebergeben: legt den Kontakt als Adressdatensatz im CRM an"}
+      aria-label="An onOffice uebergeben"
+      className={`press inline-flex h-8 w-8 items-center justify-center rounded-full border text-fg transition-colors disabled:opacity-60 ${
+        error ? "border-[#f87171]/60 text-[#f87171]" : "border-border hover:border-accent hover:text-accent"
+      }`}
+    >
+      {busy ? <span className="text-[0.6rem]">…</span> : <Icon name="building" size={14} />}
+    </button>
   );
 }
 
@@ -622,16 +628,22 @@ export function InternDashboard() {
   async function saveBearbeitung(
     quelle: LeadQuelle,
     quelleId: string,
-    patch: { status: LeadStatus; notiz: string | null; wiedervorlage: string | null },
+    // Teil-Patches sind ausdruecklich erlaubt: das Status-Dropdown sendet nur
+    // {status}, das Panel alle drei Felder. Die Route laesst nicht uebergebene
+    // Felder unangetastet (partielles Upsert, per Smoke-Test verifiziert).
+    patch: { status?: LeadStatus; notiz?: string | null; wiedervorlage?: string | null },
   ) {
     const key = bearbeitungKey(quelle, quelleId);
     const prevEntry = bearbeitung[key];
+    // Teil-Patch mit dem Bestand mischen — exakt die Semantik des partiellen
+    // Upserts auf dem Server, sonst wuerde die Optimistik Felder leeren, die
+    // der Server behaelt.
     setBearbeitung((prev) => ({
       ...prev,
       [key]: {
-        status: patch.status,
-        notiz: patch.notiz,
-        wiedervorlage: patch.wiedervorlage,
+        status: patch.status ?? prev[key]?.status ?? "neu",
+        notiz: patch.notiz !== undefined ? patch.notiz : (prev[key]?.notiz ?? null),
+        wiedervorlage: patch.wiedervorlage !== undefined ? patch.wiedervorlage : (prev[key]?.wiedervorlage ?? null),
         onoffice_adresse_id: prev[key]?.onoffice_adresse_id ?? null,
       },
     }));
@@ -1044,7 +1056,7 @@ export function InternDashboard() {
               // Eingeloggt (RIEGEL-Konto): direkter Zugang, der Server prüft die
               // E-Mail-Freigabe. Kein Passwort nötig.
               <>
-                <p className="mt-5 rounded-lg border border-border bg-bg px-4 py-3 text-sm text-muted">
+                <p className="mt-5 rounded-lg border border-border bg-bg px-3 py-3 text-sm text-muted">
                   Angemeldet als{" "}
                   <span className="text-fg">{session?.user?.email}</span>
                 </p>
@@ -1070,7 +1082,7 @@ export function InternDashboard() {
                   }}
                   onKeyDown={(e) => e.key === "Enter" && load()}
                   placeholder="Passwort"
-                  className="mt-5 w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
+                  className="mt-5 w-full rounded-lg border border-border bg-bg px-3 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent"
                 />
                 {error && <p className="mt-3 text-sm text-accent" role="alert">{error}</p>}
                 <button
@@ -1122,8 +1134,12 @@ export function InternDashboard() {
           <div>
             <h1 className="text-2xl font-semibold">Lead-Cockpit</h1>
             <p className="mt-1 text-sm text-muted">
-              {stats?.reports} Reports · {stats?.leads} Anfragen · {(stats?.newReports ?? 0) + (stats?.newLeads ?? 0)} neu
-              in 7 Tagen
+              <span key={`r${stats?.reports}`} className="t-num-d tabular-nums">{stats?.reports}</span> Reports ·{" "}
+              <span key={`l${stats?.leads}`} className="t-num-d tabular-nums">{stats?.leads}</span> Anfragen ·{" "}
+              <span key={`n${(stats?.newReports ?? 0) + (stats?.newLeads ?? 0)}`} className="t-num-d tabular-nums">
+                {(stats?.newReports ?? 0) + (stats?.newLeads ?? 0)}
+              </span>{" "}
+              neu in 7 Tagen
             </p>
           </div>
           <button
@@ -1179,7 +1195,7 @@ export function InternDashboard() {
               ) : (
                 <div className="divide-y divide-border rounded-2xl border border-border">
                   {wiedervorlagen.map((w) => (
-                    <div key={w.key} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div key={w.key} className="flex items-center justify-between gap-3 px-3 py-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm text-fg">{w.name}</div>
                         <button
@@ -1221,7 +1237,7 @@ export function InternDashboard() {
                 </h2>
                 <div className="divide-y divide-border rounded-2xl border border-border">
                   {data.reports.slice(0, 6).map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm text-fg">{r.name || r.email || "—"}</div>
                         <div className="truncate text-xs text-faint">{r.address || r.city || "ohne Adresse"}</div>
@@ -1241,7 +1257,7 @@ export function InternDashboard() {
                 </h2>
                 <div className="divide-y divide-border rounded-2xl border border-border">
                   {data.leads.slice(0, 6).map((l) => (
-                    <div key={l.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div key={l.id} className="flex items-center justify-between gap-3 px-3 py-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm text-fg">{l.name || l.email || "—"}</div>
                         <div className="truncate text-xs text-faint">{l.subject || (l.kind === "booking" ? "Terminanfrage" : "Kontakt")}</div>
@@ -1298,7 +1314,7 @@ export function InternDashboard() {
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
                     {["Datum", "Name", "Kontakt", "Objekt", "Eckdaten", "Wert", "Status", ""].map((h) => (
-                      <th key={h} className="px-4 py-3 font-medium">{h}</th>
+                      <th key={h} className="px-3 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1313,46 +1329,71 @@ export function InternDashboard() {
                       return (
                         <Fragment key={r.id}>
                           <tr className="border-t border-border align-top hover:bg-surface/60">
-                            <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(r.created_at)}</td>
-                            <td className="px-4 py-3 text-fg">{r.name || "–"}</td>
-                            <td className="px-4 py-3">
+                            <td className="whitespace-nowrap px-3 py-3 text-muted">
+                              {fmtDate(r.created_at).split(", ")[0]}
+                              <div className="text-xs text-faint">{fmtDate(r.created_at).split(", ")[1]}</div>
+                            </td>
+                            <td className="px-3 py-3 text-fg">{r.name || "–"}</td>
+                            <td className="px-3 py-3">
                               {email && (
-                                <button
-                                  type="button"
-                                  onClick={() => openAkte(email)}
-                                  className="press text-accent hover:underline"
-                                >
-                                  {email}
-                                </button>
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAkte(email)}
+                                    className="press text-accent hover:underline"
+                                  >
+                                    {email}
+                                  </button>
+                                  {/* Bueroadresse = im Kundengespraech von RIEGEL selbst erfasst
+                                      (11 von 23 Reports laufen so, gemessen 03.08.) — sichtbar
+                                      kennzeichnen, damit die Liste lesbar bleibt. */}
+                                  {email.toLowerCase().endsWith("@riegel-immobilien.de") && (
+                                    <span
+                                      title="Mit der Bueroadresse erstellt, vermutlich im Kundengespraech erfasst"
+                                      className="rounded-full border border-border px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide text-faint"
+                                    >
+                                      intern
+                                    </span>
+                                  )}
+                                </div>
                               )}
                               {r.phone ? <div className="text-faint">{r.phone}</div> : null}
                             </td>
-                            <td className="px-4 py-3 text-muted">
+                            <td className="px-3 py-3 text-muted">
                               <div className="text-fg">{OBJEKTART_LABEL[r.objektart ?? ""] ?? r.objektart ?? "–"}</div>
                               <div className="text-xs">{[r.address, r.postcode && r.city ? `${r.postcode} ${r.city}` : r.city].filter(Boolean).join(", ") || "ohne Adresse"}</div>
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-faint">
+                            <td className="min-w-28 px-3 py-3 text-faint">
                               {[r.wohnflaeche ? `${r.wohnflaeche} m²` : null, r.zimmer ? `${r.zimmer} Zi.` : null, r.baujahr ? `Bj. ${r.baujahr}` : null].filter(Boolean).join(" · ") || "–"}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3">
+                            <td className="whitespace-nowrap px-3 py-3">
                               <div className="font-medium text-fg">{fmtEur(r.value_mid)}</div>
                               {r.price_per_sqm ? <div className="text-xs text-faint">{fmtEur(r.price_per_sqm)}/m²</div> : null}
                             </td>
-                            <td className="px-4 py-3">
-                              <StatusCell entry={bearbeitung[key]} open={open} onToggle={() => setBearbOpen(open ? null : key)} />
+                            <td className="px-3 py-3">
+                              <StatusCell
+                                entry={bearbeitung[key]}
+                                saving={bearbBusy.has(key)}
+                                onStatus={(st) => saveBearbeitung("report", r.id, { status: st })}
+                                onPanel={() => setBearbOpen(open ? null : key)}
+                              />
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-col items-start gap-1.5">
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-1.5">
                                 {r.report_requested && (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 px-2 py-0.5 text-xs text-accent">
-                                    <Icon name="sparkle" size={12} /> Report
+                                  <span
+                                    title="PDF-Report wurde vom Interessenten angefordert"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-accent/40 text-accent"
+                                  >
+                                    <Icon name="sparkle" size={13} />
                                   </span>
                                 )}
                                 <button
                                   type="button"
                                   onClick={() => downloadReport(r.id)}
                                   disabled={reportBusy.has(r.id)}
-                                  className="press inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
+                                  title="Report-PDF neu erzeugen und herunterladen"
+                                  className="press inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-2.5 text-xs text-fg transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
                                 >
                                   <Icon name="doc" size={13} />
                                   {reportFailed.has(r.id) ? "Fehler" : reportBusy.has(r.id) ? "…" : "PDF"}
@@ -1418,7 +1459,7 @@ export function InternDashboard() {
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
                     {["Datum", "Art", "Name", "Kontakt", "Betreff / Nachricht", "Status", ""].map((h) => (
-                      <th key={h} className="px-4 py-3 font-medium">{h}</th>
+                      <th key={h} className="px-3 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1433,33 +1474,54 @@ export function InternDashboard() {
                       return (
                         <Fragment key={l.id}>
                           <tr className="border-t border-border align-top hover:bg-surface/60">
-                            <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(l.created_at)}</td>
-                            <td className="px-4 py-3">
+                            <td className="whitespace-nowrap px-3 py-3 text-muted">
+                              {fmtDate(l.created_at).split(", ")[0]}
+                              <div className="text-xs text-faint">{fmtDate(l.created_at).split(", ")[1]}</div>
+                            </td>
+                            <td className="px-3 py-3">
                               <span className={`rounded-full border px-2 py-0.5 text-xs ${l.kind === "archiv" ? "border-border text-faint" : "border-accent/40 text-accent"}`}>
                                 {l.kind === "booking" ? "Termin" : l.kind === "archiv" ? "Alt-Kontakt" : "Kontakt"}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-fg">{l.name || "–"}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3 text-fg">{l.name || "–"}</td>
+                            <td className="px-3 py-3">
                               {email && (
-                                <button
-                                  type="button"
-                                  onClick={() => openAkte(email)}
-                                  className="press text-accent hover:underline"
-                                >
-                                  {email}
-                                </button>
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAkte(email)}
+                                    className="press text-accent hover:underline"
+                                  >
+                                    {email}
+                                  </button>
+                                  {/* Bueroadresse = im Kundengespraech von RIEGEL selbst erfasst
+                                      (11 von 23 Reports laufen so, gemessen 03.08.) — sichtbar
+                                      kennzeichnen, damit die Liste lesbar bleibt. */}
+                                  {email.toLowerCase().endsWith("@riegel-immobilien.de") && (
+                                    <span
+                                      title="Mit der Bueroadresse erstellt, vermutlich im Kundengespraech erfasst"
+                                      className="rounded-full border border-border px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide text-faint"
+                                    >
+                                      intern
+                                    </span>
+                                  )}
+                                </div>
                               )}
                               {l.phone ? <div className="text-faint">{l.phone}</div> : null}
                             </td>
-                            <td className="px-4 py-3 text-muted">
+                            <td className="px-3 py-3 text-muted">
                               <div className="text-fg">{l.subject || "–"}</div>
                               {l.message ? <div className="mt-0.5 max-w-md text-faint">{l.message}</div> : null}
                             </td>
-                            <td className="px-4 py-3">
-                              <StatusCell entry={bearbeitung[key]} open={open} onToggle={() => setBearbOpen(open ? null : key)} />
+                            <td className="px-3 py-3">
+                              <StatusCell
+                                entry={bearbeitung[key]}
+                                saving={bearbBusy.has(key)}
+                                onStatus={(st) => saveBearbeitung("lead", l.id, { status: st })}
+                                onPanel={() => setBearbOpen(open ? null : key)}
+                              />
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3">
                               <OnOfficeButton
                                 entry={bearbeitung[key]}
                                 busy={onofficeBusy.has(key)}
@@ -1502,7 +1564,7 @@ export function InternDashboard() {
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Bild</th>
+                    <th className="px-3 py-3 font-medium">Bild</th>
                     {(
                       [
                         ["title", "Objekt"],
@@ -1511,7 +1573,7 @@ export function InternDashboard() {
                         ["status", "Status"],
                       ] as [ObjSortKey, string][]
                     ).map(([key, label]) => (
-                      <th key={key} className="px-4 py-3 font-medium">
+                      <th key={key} className="px-3 py-3 font-medium">
                         <button
                           type="button"
                           onClick={() => objSortBy(key)}
@@ -1532,7 +1594,7 @@ export function InternDashboard() {
                         </button>
                       </th>
                     ))}
-                    <th className="px-4 py-3" />
+                    <th className="px-3 py-3" />
                   </tr>
                 </thead>
                 <tbody>
@@ -1562,13 +1624,13 @@ export function InternDashboard() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-fg">{o.title}</td>
-                            <td className="px-4 py-3 text-muted">{o.city}</td>
-                            <td className="whitespace-nowrap px-4 py-3 tabular-nums text-muted">{o.price}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-3 text-fg">{o.title}</td>
+                            <td className="px-3 py-3 text-muted">{o.city}</td>
+                            <td className="whitespace-nowrap px-3 py-3 tabular-nums text-muted">{o.price}</td>
+                            <td className="px-3 py-3">
                               <span className={`rounded-full border px-2 py-0.5 text-xs ${st.cls}`}>{st.label}</span>
                             </td>
-                            <td className="px-4 py-3 text-faint">
+                            <td className="px-3 py-3 text-faint">
                               <Icon
                                 name="chevronDown"
                                 size={16}
@@ -1646,12 +1708,12 @@ export function InternDashboard() {
             </div>
 
             {heroError && (
-              <p className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
+              <p className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-3 text-sm text-accent" role="alert">
                 {heroError}
               </p>
             )}
             {heroMsg && (
-              <p className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-fg">{heroMsg}</p>
+              <p className="rounded-xl border border-border bg-surface px-3 py-3 text-sm text-fg">{heroMsg}</p>
             )}
 
             {/* Drag & Drop-Zone */}
@@ -1965,7 +2027,7 @@ export function InternDashboard() {
                 <thead className="bg-surface-2 text-xs uppercase tracking-wider text-faint">
                   <tr>
                     {["E-Mail", "Rolle", "Registriert", "Letzter Login", "Bestätigt", ""].map((h) => (
-                      <th key={h} className="px-4 py-3 font-medium">{h}</th>
+                      <th key={h} className="px-3 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1993,14 +2055,14 @@ export function InternDashboard() {
                       const busy = deleteBusy.has(a.id);
                       return (
                         <tr key={a.id} className="border-t border-border align-top hover:bg-surface/60">
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             {a.email ? (
                               <a href={`mailto:${a.email}`} className="text-accent hover:underline">{a.email}</a>
                             ) : (
                               <span className="text-faint">ohne E-Mail</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             <span
                               className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${
                                 rolle.stark
@@ -2016,13 +2078,13 @@ export function InternDashboard() {
                               {rolle.text}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-muted">
+                          <td className="whitespace-nowrap px-3 py-3 text-muted">
                             {a.created_at ? fmtDate(a.created_at) : "–"}
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-muted">
+                          <td className="whitespace-nowrap px-3 py-3 text-muted">
                             {a.last_sign_in_at ? fmtDate(a.last_sign_in_at) : "–"}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             <span
                               className={`rounded-full border px-2 py-0.5 text-xs ${
                                 confirmed ? "border-accent/40 text-accent" : "border-border text-faint"
@@ -2031,7 +2093,7 @@ export function InternDashboard() {
                               {confirmed ? "Ja" : "Nein"}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-3">
                             <button
                               type="button"
                               onClick={() => deleteAccount(a.id, a.email)}
@@ -2197,28 +2259,138 @@ function FeedbackBatchCopy({
  * der Aufklapp-Auslöser für die BearbeitungPanel-Detailzeile. Zeigt zusätzlich
  * das Wiedervorlage-Datum, falls gesetzt, damit man es nicht extra aufklappen muss.
  */
+/**
+ * Status als echtes Dropdown (transitions-dev 05, .t-dropdown in globals.css):
+ * ein Klick setzt den Status direkt, der letzte Menuepunkt oeffnet das
+ * Notiz-/Wiedervorlage-Panel. Das Menue haengt per position:fixed am Button,
+ * weil die Tabellen in einem overflow-x-auto-Rahmen stehen und ein absolut
+ * positioniertes Menue an dessen Kante abgeschnitten wuerde (der urspruengliche
+ * Layout-Bruch dieser Spalte). Scroll oder Resize schliessen es deshalb.
+ */
 function StatusCell({
   entry,
-  open,
-  onToggle,
+  saving,
+  onStatus,
+  onPanel,
 }: {
   entry?: LeadBearbeitungMap[string];
-  open: boolean;
-  onToggle: () => void;
+  saving: boolean;
+  onStatus: (s: LeadStatus) => void;
+  onPanel: () => void;
 }) {
   const status = entry?.status ?? "neu";
+  const meta = STATUS_META[status];
+  const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number; oben: boolean } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const schliesse = () => {
+    if (!open) return;
+    setOpen(false);
+    setClosing(true);
+    // Dauer aus dem Motion-Token, damit CSS und Cleanup nie auseinanderlaufen.
+    const dur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--duration-quick")) || 150;
+    window.setTimeout(() => setClosing(false), dur);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const klick = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) schliesse();
+    };
+    const taste = (e: KeyboardEvent) => {
+      if (e.key === "Escape") schliesse();
+    };
+    const weg = () => schliesse();
+    document.addEventListener("mousedown", klick);
+    document.addEventListener("keydown", taste);
+    // capture: faengt auch das Scrollen des overflow-x-Tabellenrahmens.
+    window.addEventListener("scroll", weg, { capture: true, passive: true });
+    window.addEventListener("resize", weg);
+    return () => {
+      document.removeEventListener("mousedown", klick);
+      document.removeEventListener("keydown", taste);
+      window.removeEventListener("scroll", weg, { capture: true });
+      window.removeEventListener("resize", weg);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function oeffne() {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    // Nach oben klappen, wenn unten keine ~240px mehr frei sind.
+    const nachOben = window.innerHeight - r.bottom < 240;
+    setPos({ left: Math.round(r.left), top: Math.round(nachOben ? r.top - 6 : r.bottom + 6), oben: nachOben });
+    setOpen(true);
+  }
+
   return (
-    <button type="button" onClick={onToggle} className="press flex flex-col items-start gap-1">
-      <span
-        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_BADGE_CLS[status]}`}
+    <div ref={wrapRef} className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        disabled={saving}
+        onClick={() => (open ? schliesse() : oeffne())}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`press inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${meta.cls} ${saving ? "opacity-60" : ""}`}
       >
+        <Icon name={meta.icon} size={12} />
         {STATUS_LABELS[status]}
         <Icon name="chevronDown" size={11} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </span>
+      </button>
       {entry?.wiedervorlage && (
-        <span className="text-[0.65rem] text-faint">WV: {fmtWvDate(entry.wiedervorlage)}</span>
+        <div className="mt-1 text-[0.65rem] text-faint">WV: {fmtWvDate(entry.wiedervorlage)}</div>
       )}
-    </button>
+      {(open || closing) && pos && (
+        <div
+          role="menu"
+          data-origin="top-left"
+          style={{ position: "fixed", left: pos.left, top: pos.top, transform: pos.oben ? "translateY(-100%)" : undefined }}
+          className={`t-dropdown z-50 w-52 rounded-xl border border-border bg-surface p-1 shadow-2xl shadow-black/40 ${open ? "is-open" : ""} ${closing ? "is-closing" : ""}`}
+        >
+          {LEAD_STATUS_VALUES.map((s) => {
+            const m = STATUS_META[s];
+            const aktiv = s === status;
+            return (
+              <button
+                key={s}
+                type="button"
+                role="menuitemradio"
+                aria-checked={aktiv}
+                onClick={() => {
+                  schliesse();
+                  if (!aktiv) onStatus(s);
+                }}
+                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-surface-2 ${aktiv ? "bg-surface-2" : ""}`}
+              >
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${m.cls}`}>
+                  <Icon name={m.icon} size={11} />
+                </span>
+                <span className="flex-1 text-fg">{STATUS_LABELS[s]}</span>
+                {aktiv && <Icon name="check" size={12} className="text-accent-strong" />}
+              </button>
+            );
+          })}
+          <div className="my-1 border-t border-border" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              schliesse();
+              onPanel();
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          >
+            <Icon name="doc" size={13} />
+            Notiz &amp; Wiedervorlage
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2244,7 +2416,7 @@ function BearbeitungPanel({
   const [wiedervorlage, setWiedervorlage] = useState(entry?.wiedervorlage ?? "");
 
   return (
-    <div className="grid gap-4 sm:grid-cols-[minmax(140px,1fr)_minmax(0,2fr)_minmax(140px,1fr)_auto]">
+    <div className="cockpit-auf grid gap-4 sm:grid-cols-[minmax(140px,1fr)_minmax(0,2fr)_minmax(140px,1fr)_auto]">
       <div>
         <label className="mb-1 block text-xs text-faint">Status</label>
         <select
@@ -2341,7 +2513,7 @@ function AktePanel({ akte, onClose }: { akte: AkteState; onClose: () => void }) 
         {akte.busy ? (
           <p className="mt-8 text-center text-sm text-muted">Lädt …</p>
         ) : akte.error ? (
-          <p className="mt-8 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-accent" role="alert">
+          <p className="mt-8 rounded-xl border border-accent/30 bg-accent/5 px-3 py-3 text-sm text-accent" role="alert">
             {akte.error}
           </p>
         ) : (
