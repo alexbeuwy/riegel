@@ -161,3 +161,20 @@ create table if not exists public.feedback (
   user_agent text
 );
 alter table public.feedback enable row level security;
+
+-- 9) Lead-Bearbeitung (/intern-Cockpit) — Bearbeitungsstand je Report
+-- (valuation_requests) oder Anfrage (leads), referenziert per (quelle,
+-- quelle_id) statt Fremdschlüssel (zwei Quelltabellen). Schreibzugriff
+-- ausschließlich über /api/intern/bearbeitung mit dem service_role-Key —
+-- RLS an, aber bewusst OHNE Policies (kein anon-/authenticated-Zugriff).
+create table if not exists public.lead_bearbeitung (
+  quelle text not null check (quelle in ('report','lead')),
+  quelle_id text not null,
+  status text not null default 'neu' check (status in ('neu','kontaktiert','termin','gewonnen','verloren')),
+  notiz text,
+  wiedervorlage date,
+  onoffice_adresse_id text,
+  geaendert_am timestamptz not null default now(),
+  primary key (quelle, quelle_id)
+);
+alter table public.lead_bearbeitung enable row level security;

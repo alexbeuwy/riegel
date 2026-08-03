@@ -5,6 +5,7 @@ import { verifyInternAccess } from "@/lib/intern-access";
 import { FEEDBACK_STATUS_ROW_ID, parseFeedbackStatus } from "@/lib/intern-feedback";
 import { getEstateData } from "@/lib/estates";
 import { formatPrice } from "@/lib/format";
+import { bearbeitungKey, type LeadBearbeitungMap } from "@/lib/lead-bearbeitung";
 
 /**
  * Internes Lead-Dashboard-Backend. Liest Bewertungs-Reports + Termin-/Kontakt-Leads
@@ -59,6 +60,34 @@ export async function POST(req: Request) {
   }
   // Feedback ist optional — fehlt die Tabelle, bleibt das Dashboard nutzbar.
   if (feedbackRes.error) console.error("[intern] Feedback-Load-Fehler:", feedbackRes.error.message);
+
+  // Bearbeitungsstand (Status/Notiz/Wiedervorlage) je Report/Anfrage — EIN
+  // Select über beide id-Listen (kein N+1), fail-soft: bei Fehler bleibt die
+  // Karte leer, das übrige Dashboard bleibt nutzbar.
+  const reportIds = (reportsRes.data ?? []).map((r) => r.id);
+  const leadIds = (leadsRes.data ?? []).map((l) => l.id);
+  const bearbeitung: LeadBearbeitungMap = {};
+  if (reportIds.length || leadIds.length) {
+    const orParts: string[] = [];
+    if (reportIds.length) orParts.push(`and(quelle.eq.report,quelle_id.in.(${reportIds.join(",")}))`);
+    if (leadIds.length) orParts.push(`and(quelle.eq.lead,quelle_id.in.(${leadIds.join(",")}))`);
+    const bearbeitungRes = await admin
+      .from("lead_bearbeitung")
+      .select("quelle, quelle_id, status, notiz, wiedervorlage, onoffice_adresse_id")
+      .or(orParts.join(","));
+    if (bearbeitungRes.error) {
+      console.error("[intern] Bearbeitung-Load-Fehler:", bearbeitungRes.error.message);
+    } else {
+      for (const row of bearbeitungRes.data ?? []) {
+        bearbeitung[bearbeitungKey(row.quelle, row.quelle_id)] = {
+          status: row.status,
+          notiz: row.notiz,
+          wiedervorlage: row.wiedervorlage,
+          onoffice_adresse_id: row.onoffice_adresse_id,
+        };
+      }
+    }
+  }
 
   // Status liegt in einer Sentinel-Zeile derselben Tabelle -> herausfiltern.
   const allFeedback = feedbackRes.data ?? [];
@@ -138,5 +167,6 @@ export async function POST(req: Request) {
     feedbackStatus: parseFeedbackStatus(statusRow?.comment),
     accounts,
     objekte,
+    bearbeitung,
   });
 }
