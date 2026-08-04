@@ -662,8 +662,16 @@ function statTile(
     const s = ellipsize(sub, ctx.reg, 8, w - 18);
     t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 15, 8, ctx.reg, subColor);
   }
-  const lbl = ellipsize(label.toUpperCase(), ctx.reg, 7.5, w - 16);
-  t(lbl, cx - ctx.reg.widthOfTextAtSize(lbl, 7.5) / 2, y + 13, 7.5, ctx.reg, lblColor, 0.6);
+  // Label-Größe adaptiv (7,5 → 6 pt), erst danach kürzen: ein langes Label
+  // („Auf ImmoScout24 angezeigt") stieß sonst an den Kachelrand, statt sich
+  // die halbe Stufe kleiner sauber einzupassen. Der Spacing-Aufschlag muss
+  // dabei mitgemessen werden (s. textWidthSpaced).
+  const spacing = 0.6;
+  const rohLabel = label.toUpperCase();
+  let lblSize = 7.5;
+  while (lblSize > 6 && textWidthSpaced(ctx.reg, rohLabel, lblSize, spacing) > w - 16) lblSize -= 0.25;
+  const lbl = ellipsize(rohLabel, ctx.reg, lblSize, w - 16);
+  t(lbl, cx - textWidthSpaced(ctx.reg, lbl, lblSize, spacing) / 2, y + 13, lblSize, ctx.reg, lblColor, spacing);
 }
 
 /** Sparkline über drawLine-Segmente (Website-MarktPanel-Optik): Fläche
@@ -1927,8 +1935,10 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   // (>= 12,5 Mio., s. RIEGEL_STATS-Kommentar in lib/riegel-stats.ts).
   const tiles: [string, string][] = [
     [`${fmtInt(stats.aktiveSuchauftraege)}+`, "Aktive Suchaufträge"],
-    ["12,5 Mio.", "ImmoScout24-Ausspielungen"],
-    [fmtInt(stats.exposeAufrufe), "Exposé-Aufrufe"],
+    // „Ausspielungen" ist Werbe-Jargon — Eigentümer sollen sofort verstehen,
+    // was die Zahl bedeutet: so oft wurden RIEGEL-Objekte angezeigt.
+    ["12,5 Mio.", "Auf ImmoScout24 angezeigt"],
+    [fmtInt(stats.exposeAufrufe), "Exposé-Aufrufe im Monat"],
     [fmtInt(stats.besichtigungenProJahr), "Besichtigungen pro Jahr"],
     [`Ø ${stats.oVermarktungstage} Tage`, "bis zum Verkauf"],
     [fmtInt(stats.googleBewertungen), "Google-Bewertungen"],

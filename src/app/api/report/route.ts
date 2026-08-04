@@ -44,6 +44,10 @@ const eur = (n: unknown) => {
 };
 
 const num = (v: unknown): number | null => {
+  // Leere Werte vor Number() abfangen: Number(null) und Number("") sind 0 —
+  // bei den Koordinaten unten hieße das die Nullinsel im Atlantik statt
+  // "keine Koordinate", also falsches Luftbild und falscher Bodenrichtwert.
+  if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };

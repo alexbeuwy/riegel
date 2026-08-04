@@ -31,8 +31,15 @@ const OBJEKTART_LABEL: Record<string, string> = {
 /** Robust in eine endliche Zahl wandeln (numeric-Spalten kommen je nach
  *  PostgREST-Konfiguration mal als number, mal als String zurück) — sonst
  *  undefined, damit optionale ReportData-/ValuationInput-Felder sauber leer
- *  bleiben statt NaN durchzureichen. */
+ *  bleiben statt NaN durchzureichen.
+ *
+ *  Leere Werte MÜSSEN vor Number() abgefangen werden: Number(null) und
+ *  Number("") ergeben 0, und 0 ist endlich — die Felder unten fielen dann
+ *  per `?? calc.x` NICHT mehr auf den berechneten Wert zurück (`??` greift
+ *  nur bei null/undefined). Ein Haus ohne gespeicherten Vervielfältiger
+ *  zeigte so „0בim Report, ein Altlead ohne Mikrolage „0/10". */
 function n(v: unknown): number | undefined {
+  if (v === null || v === undefined || v === "") return undefined;
   const x = Number(v);
   return Number.isFinite(x) ? x : undefined;
 }

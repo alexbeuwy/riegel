@@ -31,8 +31,10 @@ export const RIEGEL_STATS = {
    *  darüber. Bewusst konservativ beim runden Begriff „12,5 Millionen" belassen. */
   immoscoutAufrufe: 12_500_000,
 
-  /** von Alex bestätigt — Exposé-Aufrufe des Anbieterprofils (= RIEGEL-Wert im
-   *  Reichweiten-Chart, s. reach-chart.tsx). */
+  /** von Alex bestätigt — Exposé-Aufrufe des Anbieterprofils PRO MONAT
+   *  (= RIEGEL-Wert im Reichweiten-Chart, s. reach-chart.tsx). Der Zeitbezug
+   *  gehört überall dazu, wo die Zahl steht: ohne ihn liest sie sich wie ein
+   *  Gesamtwert und wirkt kleiner, als sie ist. */
   exposeAufrufe: 416_054,
 
   /** von Manfred (Inhaber) — über 121.000 aktive Suchaufträge in der eigenen
