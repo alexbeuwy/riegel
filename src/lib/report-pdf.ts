@@ -1769,7 +1769,10 @@ function drawFactors(ctx: Ctx, pageNo: number, total: number) {
 
   heading(ctx, page, "Was Ihren Preis beeinflusst", M, y, 16);
   y -= 18;
-  for (const line of wrap("Aus über 25 Jahren regionaler Praxis: Diese Faktoren bewegen den erzielbaren Preis am stärksten. Die Bandbreiten sind Erfahrungswerte für die Metropolregion Rhein-Neckar — Ihr Objekt kann je nach Kombination abweichen.", ctx.reg, 9.5, w - 2 * M)) {
+  // Ohne den Vorspann „Aus über 25 Jahren regionaler Praxis" (Wunsch Alex).
+  // Er widersprach ohnehin der Warum-RIEGEL-Seite, die „über 40 Jahren
+  // Immobilienerfahrung" nennt — zwei Altersangaben im selben Dokument.
+  for (const line of wrap("Diese Faktoren bewegen den erzielbaren Preis am stärksten. Die Bandbreiten sind Erfahrungswerte für die Metropolregion Rhein-Neckar — Ihr Objekt kann je nach Kombination abweichen.", ctx.reg, 9.5, w - 2 * M)) {
     t(line, M, y, 9.5, ctx.reg, MUTED);
     y -= 13;
   }
