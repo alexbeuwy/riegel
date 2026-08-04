@@ -13,7 +13,7 @@ import {
 } from "@/lib/valuation";
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
-import { buildReportObjekte, vermitteltGesamt } from "@/lib/report-objekte";
+import { buildReportObjekte } from "@/lib/report-objekte";
 import { createOnOfficeAddress } from "@/lib/onoffice";
 import { parseDeZahl } from "@/lib/parse-de-zahl";
 import { site } from "@/lib/site";
@@ -265,15 +265,12 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
   // Luftbild (Esri, wie im Rechner) + echte OnOffice-Vergleichsobjekte parallel
   // holen — beide fail-soft und unabhängig; sequenziell würde der Interessent
   // nur unnötig länger auf seine Mail warten.
-  const [satelliteB64, vergleichsobjekte, vermittelt] = await Promise.all([
+  const [satelliteB64, vergleichsobjekte] = await Promise.all([
     fetchSatellite(lat, lng),
     // Ziel-Kontext (Koordinaten + Schätzwert + Wohnfläche) für die Relevanz-
     // Auswahl: nahe, preis- und größenähnliche Referenzen statt beliebiger
     // Verkaufs-Erfolge; Basis der ehrlichen Einordnung im PDF.
     buildReportObjekte(objektart, city, REFERENZ_MAX, { lat: lat ?? undefined, lng: lng ?? undefined, preis: mid, flaeche: wohnflaeche }),
-    // Kein zusätzlicher OnOffice-Call: greift auf denselben per-Request
-    // memoisierten Verkauft-Pool wie buildReportObjekte zu.
-    vermitteltGesamt(),
   ]);
 
   // PDF-Report bauen (markenkonform, dark) — als Anhang an Kunde & RIEGEL.
@@ -297,7 +294,6 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
       factors: calc.factors,
       context: buildReportContext({ city, lat, lng }),
       vergleichsobjekte,
-      vermitteltGesamt: vermittelt,
       jahresnettokaltmiete,
       wohneinheiten,
       gewerbeeinheiten,

@@ -55,7 +55,6 @@ const hausFixture: ReportData = {
   ],
   context: buildReportContext({ city: "Speyer" }),
   vergleichsobjekte: vergleichsobjekteHaus,
-  vermitteltGesamt: 744,
   value: {
     low: 725_000,
     mid: 780_000,

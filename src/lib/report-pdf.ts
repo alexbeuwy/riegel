@@ -15,7 +15,7 @@ import {
 import fontkit from "@pdf-lib/fontkit";
 import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
-import { KITCHEN_JPG_B64, DOCS_JPG_B64, MODEL_HERO_JPG_B64, AWARD_JPG_B64 } from "@/lib/report-assets/gallery";
+import { PAAR_REPORT_JPG_B64, BROSCHUERE_JPG_B64, BERATUNG_JPG_B64, LADEN_JPG_B64, AWARD_JPG_B64 } from "@/lib/report-assets/gallery";
 import { BORIS_ATTRIBUTION } from "@/lib/boris";
 import type { ReportContext } from "@/lib/report-context";
 import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
@@ -68,9 +68,6 @@ export interface ReportData {
   /** Echte OnOffice-Vergleichsobjekte (max. REFERENZ_MAX, s. lib/report-objekte.ts)
    * — ohne Treffer/Mock-Bestand leer, dann entfällt die Referenzobjekte-Seite. */
   vergleichsobjekte?: ReportVergleichsObjekt[];
-  /** Gesamtzahl der von RIEGEL vermittelten Objekte (vermitteltGesamt(), s.
-   * lib/report-objekte.ts). Fehlt oder 0 → die Belegzeile entfällt lautlos. */
-  vermitteltGesamt?: number;
   /** Nur bei objektartLabel === "Mehrfamilienhaus" (Ertragswert-Ansatz). */
   jahresnettokaltmiete?: string | number;
   wohneinheiten?: string | number;
@@ -206,11 +203,13 @@ interface Ctx {
    * in buildReportPdf() und die Fallback-Zeichnung an den jeweiligen Stellen. */
   mark: PDFImage | null;
   satellite: PDFImage | null;
-  /** Startseiten-Hero (Model in dunkler Wohnung) — Editorial-Band des Deckblatts. */
-  modelHero: PDFImage | null;
-  /** Dekorative, dunkle Marken-Bänder für Seiten mit viel Weißraum (gallery.ts). */
-  kitchen: PDFImage | null;
-  docs: PDFImage | null;
+  /** Helle Marken-Bänder für Seiten mit viel Weißraum (s. gallery.ts):
+   *  Paar mit WERT-REPORT (Deckblatt), Paar mit Broschüre (Vermarktung),
+   *  Beratung am Telefon (Warum RIEGEL), Ladenlokal Speyer (Referenzen). */
+  paarReport: PDFImage | null;
+  broschuere: PDFImage | null;
+  beratung: PDFImage | null;
+  laden: PDFImage | null;
   /** Christoph & Sissy beim ImmoAward — kleines Foto im Auszeichnungs-Band. */
   award: PDFImage | null;
 }
@@ -279,12 +278,13 @@ export async function buildReportPdf(input: ReportData): Promise<string> {
     }
   }
 
-  const modelHero = await tryEmbedJpg(MODEL_HERO_JPG_B64, "Band:ModelHero");
-  const kitchen = await tryEmbedJpg(KITCHEN_JPG_B64, "Band:Kitchen");
-  const docs = await tryEmbedJpg(DOCS_JPG_B64, "Band:Docs");
+  const paarReport = await tryEmbedJpg(PAAR_REPORT_JPG_B64, "Band:PaarReport");
+  const broschuere = await tryEmbedJpg(BROSCHUERE_JPG_B64, "Band:Broschuere");
+  const beratung = await tryEmbedJpg(BERATUNG_JPG_B64, "Band:Beratung");
+  const laden = await tryEmbedJpg(LADEN_JPG_B64, "Band:Laden");
   const award = await tryEmbedJpg(AWARD_JPG_B64, "Award-Foto");
 
-  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, modelHero, kitchen, docs, award };
+  const ctx: Ctx = { doc, reg, bold, akira, mark, satellite, paarReport, broschuere, beratung, laden, award };
   const objektTitle = d.address || [d.postcode, d.city].filter(Boolean).join(" ") || "Ihre Immobilie";
 
   // Vergleichsobjekt-Fotos vorab einbetten: Ctx-Bilder werden beim Zeichnen
@@ -485,6 +485,11 @@ function visualBand(
   w: number,
   bandH: number,
   caption?: string,
+  /** Vertikaler Bildausschnitt, wenn das Motiv höher ist als das Band:
+   *  0 = unterer Bildrand, 0,5 = Mitte (Standard), 1 = oberer Bildrand.
+   *  Bei Personen-Motiven höher setzen, sonst schneidet das flache Band
+   *  die Köpfe an. */
+  fokus = 0.5,
 ): number {
   if (!img) return yTop;
   const yBottom = yTop - bandH;
@@ -498,7 +503,7 @@ function visualBand(
     dw = bandH * ratio;
   }
   const dx = x + (w - dw) / 2;
-  const dy = yBottom + (bandH - dh) / 2;
+  const dy = yBottom - (dh - bandH) * Math.min(1, Math.max(0, fokus));
   // Clip-Ersatz: erst Rahmen-Rechteck als Maske drumherum wäre teuer — wir
   // zeichnen das Bild und maskieren den Überstand oben/unten mit BG-Flächen.
   // Echter Clip auf das Band-Rechteck statt weißer Deck-Masken: Masken
@@ -512,11 +517,11 @@ function visualBand(
   page.drawRectangle({ x, y: yTop - 2, width: w, height: 2, color: ACCENT });
   if (caption) {
     const cs = 8.5;
-    // Sanfter dunkler Scrim hinter der Caption: die Markenfotos sind zwar
-    // dunkel, haben aber helle Zonen (Papier, Bildschirme) — die fast-weiße
-    // Schrift muss auf JEDEM Ausschnitt lesbar bleiben.
-    fadeRect(page, x, yBottom, w, 36, rgb(0, 0, 0), 0.55, 0, 18, "up");
-    mkText(page)(caption, x + (w - ctx.reg.widthOfTextAtSize(caption, cs)) / 2, yBottom + 12, cs, ctx.reg, rgb(0.92, 0.93, 0.95), 0.5);
+    // Kräftiger dunkler Scrim unter der Caption: die Bänder sind seit dem
+    // Bild-Tausch HELLE Tageslicht-Motive, weiße Schrift braucht dort eine
+    // verlässlich dunkle Unterlage statt nur einer Andeutung.
+    fadeRect(page, x, yBottom, w, 44, rgb(0, 0, 0), 0.72, 0, 22, "up");
+    mkText(page)(caption, x + (w - ctx.reg.widthOfTextAtSize(caption, cs)) / 2, yBottom + 13, cs, ctx.reg, rgb(1, 1, 1), 0.5);
   }
   return yBottom;
 }
@@ -871,14 +876,14 @@ function drawCover(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   t(infoLine, cx - ctx.reg.widthOfTextAtSize(infoLine, 9) / 2, y, 9, ctx.reg, MUTED);
   y -= 34;
 
-  // Das Startseiten-Hero (Model in dunkler Wohnung mit blauem Lichtstrahl)
-  // als vollbreites Editorial-Band bis kurz über den Footer — der
-  // dramatische Gegenpol zum Papierweiß darüber, identisch mit dem ersten
-  // Eindruck der Website. Vollbreite (x = 0) statt Satzspiegel: das Band
-  // darf als einziges Element der Seite randlos wirken. Fail-soft: ohne
-  // Bild bleibt die Seite schlicht weiß.
+  // Paar mit dem RIEGEL-WERT-REPORT am Fenster als vollbreites
+  // Editorial-Band bis kurz über den Footer — Tageslicht, echte Menschen,
+  // und inhaltlich genau das Dokument in der Hand des Empfängers.
+  // Vollbreite (x = 0) statt Satzspiegel: das Band darf als einziges
+  // Element der Seite randlos wirken. Fail-soft: ohne Bild bleibt die
+  // Seite schlicht weiß.
   if (y - 60 > bandFloor) {
-    visualBand(ctx, page, ctx.modelHero, 0, y, w, y - bandFloor);
+    visualBand(ctx, page, ctx.paarReport, 0, y, w, y - bandFloor);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -1615,19 +1620,19 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
   heading(ctx, page, titel, M, y, fitFontSize(ctx.akira, titel.toUpperCase(), contentW, 19, 12));
   y -= 20;
 
-  // Belegzeile: die Gesamtzahl der Abschlüsse ist die konkreteste Zahl, die wir
-  // haben, und stammt aus derselben Quelle wie der Live-Ticker der Website.
-  // Bewusst auf 50 ABGERUNDET und erst ab 100 gezeigt — lieber untertreiben als
-  // eine Zahl behaupten, die morgen anders aussieht.
-  const gesamt = d.vermitteltGesamt ?? 0;
-  const beleg = gesamt >= 100 ? `Über ${Math.floor(gesamt / 50) * 50} vermittelte Objekte in der Metropolregion Rhein-Neckar. ` : "";
+  // KEINE Gesamtzahl vermittelter Objekte mehr (Einwand Sissy): Die Zahl aus
+  // OnOffice deckt nur den digital erfassten Bestand ab, nicht die Abschlüsse
+  // aus Jahrzehnten davor. „Über 700" liest sich für jemanden, der den Laden
+  // kennt, deshalb wie eine Untertreibung — bei realistisch 150 Verkäufen und
+  // 50 Vermietungen im Jahr wäre RIEGEL damit rechnerisch drei Jahre am Markt.
+  // Lieber gar keine Gesamtzahl als eine, die die eigene Historie kleinredet.
 
   // Entschärfte Copy (Feedback Manfred): NICHT mehr „derselben Objektklasse"
   // versprechen — die Karten tragen stattdessen eine ehrliche Einordnung je
   // Objekt („Vergleichbares Objekt" vs. „Referenz aus der Region") plus die
   // echte Distanz. Referenzen belegen Vermarktungserfolg, keine Gleichwertigkeit.
   for (const line of wrap(
-    `${beleg}Diese hier kommen Ihrem Objekt am nächsten. Direkt Vergleichbares ist entsprechend gekennzeichnet, alles Übrige belegt unsere Arbeit vor Ort und ist kein Wertermittlungs-Vergleich.`,
+    "Diese hier kommen Ihrem Objekt am nächsten. Direkt Vergleichbares ist entsprechend gekennzeichnet, alles Übrige belegt unsere Arbeit vor Ort und ist kein Wertermittlungs-Vergleich.",
     ctx.reg,
     9.5,
     contentW,
@@ -1727,10 +1732,11 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
   }
   y -= 14;
 
-  // Weißraum unten (bei nur 1-2 Objekten reichlich) mit einem dunklen
-  // Marken-Band füllen — nur, wenn noch spürbar Platz bis zum Footer ist.
+  // Weißraum unten (bei nur 1-2 Objekten reichlich) mit dem Ladenlokal
+  // Speyer füllen — nur, wenn noch spürbar Platz bis zum Footer ist.
+  // Passt zur Seitenaussage: der Beleg "vor Ort" als Bild.
   if (y - 90 > bandFloor) {
-    visualBand(ctx, page, ctx.kitchen, M, y, contentW, Math.min(240, y - bandFloor), "Regionale Expertise statt Massenabfertigung.");
+    visualBand(ctx, page, ctx.laden, M, y, contentW, Math.min(240, y - bandFloor), "Unser Büro in Speyer, Wormser Straße 13.", 0.62);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -1905,10 +1911,10 @@ function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   t("Kostenlose Vor-Ort-Bewertung: riegel-immobilien.de/termin   ·   06232 100 10 10", M + 20, y - 67, 9.5, ctx.reg, ON_ACCENT_MUTED);
   y -= ctaH + 28;
 
-  // Diese Seite hat unter der CTA reichlich Weißraum — mit einem dunklen
-  // Marken-Band füllen (die emptieste Report-Seite).
+  // Diese Seite hat unter der CTA reichlich Weißraum — mit dem Büro-Band
+  // füllen (die leerste Report-Seite).
   if (y - 100 > bandFloor) {
-    visualBand(ctx, page, ctx.docs, M, y, w - 2 * M, Math.min(250, y - bandFloor), "Ihre Immobilie verdient mehr als einen Algorithmus.");
+    visualBand(ctx, page, ctx.broschuere, M, y, w - 2 * M, Math.min(250, y - bandFloor), "Ihre Immobilie verdient mehr als einen Algorithmus.", 0.72);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -2002,10 +2008,10 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   }
   y -= calloutH + 22;
 
-  // Restlichen Weißraum bis zum Footer mit dem dunklen Küchen-Band füllen
-  // (nur, wenn noch spürbar Platz ist — sonst bleibt es leer).
+  // Restlichen Weißraum bis zum Footer mit dem Beratungs-Band füllen (nur,
+  // wenn noch spürbar Platz ist — sonst bleibt es leer).
   if (y - 78 > bandFloor) {
-    visualBand(ctx, page, ctx.kitchen, M, y, contentW, Math.min(230, y - bandFloor), "Regionale Expertise. Alles andere ist Fast Food.");
+    visualBand(ctx, page, ctx.beratung, M, y, contentW, Math.min(230, y - bandFloor), "Persönliche Beratung aus Speyer und Ludwigshafen.", 0.82);
   }
 
   footer(ctx, page, w, pageNo, total);

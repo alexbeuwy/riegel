@@ -7,7 +7,7 @@ import { buildReportContext } from "@/lib/report-context";
 import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
 import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
-import { buildReportObjekte, vermitteltGesamt } from "@/lib/report-objekte";
+import { buildReportObjekte } from "@/lib/report-objekte";
 
 /**
  * PDF-Regeneration für /intern: baut aus einer bereits in valuation_requests
@@ -152,7 +152,7 @@ export async function POST(req: Request) {
   // sonst bis zu ~20 s Wartezeit). Bei fehlender objektart in der (alten)
   // Zeile leerer String: buildReportObjekte liefert dann fail-soft ein leeres
   // Array statt zu raten.
-  const [satelliteB64, boris, vergleichsobjekte, vermittelt] = await Promise.all([
+  const [satelliteB64, boris, vergleichsobjekte] = await Promise.all([
     fetchSatellite(lat, lng),
     lat != null && lng != null && isInRlpBbox(lat, lng) ? fetchBodenrichtwert(lat, lng) : Promise.resolve(null),
     buildReportObjekte(row.objektart ?? "", row.city ?? undefined, REFERENZ_MAX, {
@@ -163,7 +163,6 @@ export async function POST(req: Request) {
     }),
     // Kein zusätzlicher OnOffice-Call: greift auf denselben per-Request
     // memoisierten Verkauft-Pool wie buildReportObjekte zu.
-    vermitteltGesamt(),
   ]);
 
   // Stand der ANFRAGE, nicht heute — der Report soll die Situation zum
@@ -192,7 +191,6 @@ export async function POST(req: Request) {
     factors: calc.factors,
     context: buildReportContext({ city: row.city ?? undefined, lat, lng }),
     vergleichsobjekte,
-    vermitteltGesamt: vermittelt,
     jahresnettokaltmiete: n(row.jahresnettokaltmiete),
     wohneinheiten: n(row.wohneinheiten),
     gewerbeeinheiten: n(row.gewerbeeinheiten),
