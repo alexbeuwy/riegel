@@ -660,23 +660,40 @@ function statTile(
   // Inter-Extrabold-Ersatz des PDFs). AKIRA bleibt Headlines vorbehalten.
   // Groß und sauber mittig in der oberen Zone, mit klarem Abstand zum Label
   // (und ggf. der Punktreihe) darunter.
+  // Label-Größe adaptiv (7,5 → 6 pt), dann Umbruch auf höchstens zwei Zeilen,
+  // erst zuletzt kürzen: lange Beschriftungen („Sichtkontakte bei Kauf- und
+  // Mietinteressenten") stießen sonst an den Kachelrand. Der Spacing-Aufschlag
+  // muss dabei mitgemessen werden (s. textWidthSpaced).
+  const spacing = 0.6;
+  const maxLabelW = w - 16;
+  const rohLabel = label.toUpperCase();
+  let lblSize = 7.5;
+  while (lblSize > 6 && textWidthSpaced(ctx.reg, rohLabel, lblSize, spacing) > maxLabelW) lblSize -= 0.25;
+  // wrap() misst ohne Spacing — die Zeilenbreite deshalb etwas konservativer
+  // ansetzen, sonst läuft eine umbrochene Zeile mit Spacing doch über.
+  const lblZeilen = (
+    textWidthSpaced(ctx.reg, rohLabel, lblSize, spacing) <= maxLabelW
+      ? [rohLabel]
+      : wrap(rohLabel, ctx.reg, lblSize, maxLabelW - rohLabel.length * spacing * 0.5)
+  ).slice(0, 2);
+  const lblHoehe = lblZeilen.length * (lblSize + 2.5);
+
   const valSize = fitFontSize(ctx.bold, value, w - 20, Math.min(26, h * 0.38), 12);
-  const valY = sub ? y + h - 18 - valSize : y + h / 2 + 3 - valSize * 0.3;
+  // Wert vertikal auf den Raum ÜBER dem Label zentrieren, damit ein
+  // zweizeiliges Label ihn nach oben schiebt statt ihn zu bedrängen.
+  const labelTop = y + 11 + lblHoehe;
+  const valY = sub ? y + h - 18 - valSize : labelTop + (y + h - labelTop) / 2 - valSize * 0.42;
   t(value, cx - ctx.bold.widthOfTextAtSize(value, valSize) / 2, valY, valSize, ctx.bold, valColor);
   if (sub) {
     const s = ellipsize(sub, ctx.reg, 8, w - 18);
     t(s, cx - ctx.reg.widthOfTextAtSize(s, 8) / 2, valY - 15, 8, ctx.reg, subColor);
   }
-  // Label-Größe adaptiv (7,5 → 6 pt), erst danach kürzen: ein langes Label
-  // („Auf ImmoScout24 angezeigt") stieß sonst an den Kachelrand, statt sich
-  // die halbe Stufe kleiner sauber einzupassen. Der Spacing-Aufschlag muss
-  // dabei mitgemessen werden (s. textWidthSpaced).
-  const spacing = 0.6;
-  const rohLabel = label.toUpperCase();
-  let lblSize = 7.5;
-  while (lblSize > 6 && textWidthSpaced(ctx.reg, rohLabel, lblSize, spacing) > w - 16) lblSize -= 0.25;
-  const lbl = ellipsize(rohLabel, ctx.reg, lblSize, w - 16);
-  t(lbl, cx - textWidthSpaced(ctx.reg, lbl, lblSize, spacing) / 2, y + 13, lblSize, ctx.reg, lblColor, spacing);
+  let ly = y + 11 + (lblZeilen.length - 1) * (lblSize + 2.5);
+  for (const zeile of lblZeilen) {
+    const l = ellipsize(zeile, ctx.reg, lblSize, maxLabelW);
+    t(l, cx - textWidthSpaced(ctx.reg, l, lblSize, spacing) / 2, ly, lblSize, ctx.reg, lblColor, spacing);
+    ly -= lblSize + 2.5;
+  }
 }
 
 /** Sparkline über drawLine-Segmente (Website-MarktPanel-Optik): Fläche
@@ -1935,15 +1952,20 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   const contentW = w - 2 * M;
   const gap = 14;
   const tileW = (contentW - gap * 2) / 3;
-  const tileH = 80;
+  // Etwas höher als früher (80): das längste Label läuft über zwei Zeilen,
+  // der große Wert soll darüber trotzdem frei stehen.
+  const tileH = 88;
   // "12,5 Mio." ist bewusst als kompakte Darstellungsform hardcodiert (die
   // erlaubte Ausnahme lt. Auftrag) — sie spiegelt stats.immoscoutAufrufe
   // (>= 12,5 Mio., s. RIEGEL_STATS-Kommentar in lib/riegel-stats.ts).
   const tiles: [string, string][] = [
     [`${fmtInt(stats.aktiveSuchauftraege)}+`, "Aktive Suchaufträge"],
-    // „Ausspielungen" ist Werbe-Jargon — Eigentümer sollen sofort verstehen,
-    // was die Zahl bedeutet: so oft wurden RIEGEL-Objekte angezeigt.
-    ["12,5 Mio.", "Auf ImmoScout24 angezeigt"],
+    // „Ausspielungen" war Werbe-Jargon; Manfreds Wunsch war der Bezug zu den
+    // Suchenden. Wörtlich „erreichte Kauf- und Mietinteressenten" wäre aber
+    // falsch: 12,5 Mio. sind Einblendungen, nicht Personen (das wären mehr
+    // Interessenten als Deutschland Einwohner hat). „Sichtkontakte" benennt
+    // genau das — die Einblendung bei jemandem, der sucht.
+    ["12,5 Mio.", "Sichtkontakte bei Kauf- und Mietinteressenten"],
     [fmtInt(stats.exposeAufrufe), "Exposé-Aufrufe im Monat"],
     [fmtInt(stats.besichtigungenProJahr), "Besichtigungen pro Jahr"],
     [`Ø ${stats.oVermarktungstage} Tage`, "bis zum Verkauf"],
