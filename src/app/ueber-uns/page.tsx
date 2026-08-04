@@ -32,7 +32,6 @@ const familie = [
 // `bereich` ist nur nötig, wo die angezeigte Rolle davon abweicht (Helena
 // steht als „Marketing (extern)" in der Bildunterschrift, zählt aber zum
 // Bereich Marketing).
-// Loana Sabielny: Porträt folgt (img null → Platzhalter-Kachel).
 const team: Mitarbeitend[] = [
   { name: "Lorenz Höll", rolle: "Sales", img: portraits.lorenz },
   { name: "Carina Büßecker", rolle: "Sales", img: portraits.carina },
@@ -48,7 +47,7 @@ const team: Mitarbeitend[] = [
 const nachwuchs: Mitarbeitend[] = [
   { name: "Julien Brenner", rolle: "Auszubildender", img: portraits.julien },
   { name: "Melanie Oblonk", rolle: "Auszubildende", img: portraits.melanie },
-  { name: "Loana Sabielny", rolle: "Auszubildende", img: null },
+  { name: "Loana Sabielny", rolle: "Auszubildende", img: portraits.loana },
 ];
 
 const werte: { icon: IconName; title: string; text: string }[] = [

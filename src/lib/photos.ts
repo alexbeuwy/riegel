@@ -66,8 +66,7 @@ export const engagement = {
 /**
  * Mitarbeiter-Porträts (Über-uns-Team) — einheitlicher, professioneller Satz
  * von Sissy im BunnyCDN-Ordner „Portraits Mitarbeiter" (Leerzeichen im Pfad +
- * Dateinamen daher als %20 kodiert). Alle quadratisch (750er/1125er). Loana
- * Sabielny hat noch kein Foto (Platzhalter-Kachel auf der Seite).
+ * Dateinamen daher als %20 kodiert). Alle quadratisch (750er/1125er).
  */
 const PORTRAIT_DIR = `${CDN}/Portraits%20Mitarbeiter`;
 export const portraits = {
@@ -82,4 +81,7 @@ export const portraits = {
   helena: `${PORTRAIT_DIR}/Helena.webp`,
   julien: `${PORTRAIT_DIR}/Julien.webp`,
   melanie: `${PORTRAIT_DIR}/Melanie.webp`,
+  // Nachgereicht. Liegt im Storage als „Azubi-1.webp", nicht unter ihrem
+  // Namen — gleiche Serie wie die übrigen (selbe Kulisse, 750er Quadrat).
+  loana: `${PORTRAIT_DIR}/Azubi-1.webp`,
 } as const;
