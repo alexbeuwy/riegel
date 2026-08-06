@@ -268,6 +268,48 @@ if (!f13anr || f13anr.wert >= 300 * 2000) {
 // (1.500 × 0,7 × 300 plus 500 × 0,45 × 300).
 check("F13 Gewerbe 900 m² + 2.000 m² Grundstück (BRW 300)", f13mit.mid, 1_780_000, 1_920_000);
 
+/* F14 — Mischobjekt (Hinweis Manfred: Halle, zwei Wohnungen und Büro im
+   Keller auf 1.692 m² Grundstück — Misch-/Dorfgebiet). 1.000 m² Nutzfläche:
+   600 m² Halle, 160 m² Wohnen (zwei Wohnungen), 240 m² Büro. Der Wohnanteil
+   muss den Wert GEGENÜBER derselben Fläche als Büro anheben (Wohnungs-Satz
+   liegt in jeder Region über dem Büro-Satz), und die Aufteilung muss offen
+   im Ergebnis stehen. */
+const f14basis = {
+  ort: "Speyer",
+  wohnflaeche: 1000,
+  hallenflaeche: 600,
+  grundflaeche: 1692,
+  zustand: "gepflegt" as const,
+  qualitaet: "normal" as const,
+  ausstattung: [] as string[],
+};
+const f14ohneWohnen = run({ objektart: "gewerbe", ...f14basis }, { bodenrichtwert: 300 });
+const f14 = run({ objektart: "gewerbe", ...f14basis, mischWohnflaeche: 160 }, { bodenrichtwert: 300 });
+if (!(f14.mid > f14ohneWohnen.mid)) {
+  failures++;
+  console.log(`❌ F14: Wohnanteil muss den Wert anheben (${f14.mid} vs. ${f14ohneWohnen.mid})`);
+}
+const f14a = f14.flaechenAufteilung;
+if (!f14a || f14a.bueroM2 !== 240 || f14a.halleM2 !== 600 || f14a.wohnM2 !== 160) {
+  failures++;
+  console.log(`❌ F14: Aufteilung falsch (${JSON.stringify(f14a)})`);
+}
+if (f14a && !(f14a.wohnSatz > f14a.bueroSatz && f14a.bueroSatz > f14a.halleSatz)) {
+  failures++;
+  console.log(`❌ F14: Satz-Ordnung Wohnen > Büro > Halle verletzt (${JSON.stringify(f14a)})`);
+}
+// Wohnsatz Speyer: 3.950 × Lagefaktor √(300/590) geklemmt auf 0,72 → 0,72,
+// × 0,9 Misch-Dämpfung ≈ 2.560 €/m². Zum Vergleich Büro ≈ 1.765, Halle ≈ 794.
+// Gesamt: Büro 424 Tsd. + Halle 476 Tsd. + Wohnen 410 Tsd. + Grundstück
+// (1.500 × 0,7 × 300 + 192 × 0,45 × 300 ≈ 341 Tsd.) ≈ 1,65 Mio. €.
+check("F14 Mischobjekt Halle + Wohnungen + Büro + 1.692 m²", f14.mid, 1_550_000, 1_750_000);
+// Rückwärtskompatibilität: mischWohnflaeche 0 muss exakt wie ohne Angabe rechnen.
+const f14null = run({ objektart: "gewerbe", ...f14basis, mischWohnflaeche: 0 }, { bodenrichtwert: 300 });
+if (f14null.mid !== f14ohneWohnen.mid) {
+  failures++;
+  console.log(`❌ F14: mischWohnflaeche 0 muss wie ohne Angabe rechnen (${f14null.mid} vs. ${f14ohneWohnen.mid})`);
+}
+
 /* Invarianten. */
 for (const [name, r] of [["F1", f1], ["F2", f2], ["F3", f3], ["F4", f4], ["F5", f5], ["F8", f8], ["F9", f9], ["F10", f10]] as const) {
   if (!(r.low < r.mid && r.mid < r.high)) {

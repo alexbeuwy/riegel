@@ -152,6 +152,14 @@ export interface ValuationInput {
    * (Hinweis Manfred: Objekte in Bensheim und Edenkoben).
    */
   hallenflaeche?: number;
+  /**
+   * Nur "gewerbe": Wohnfläche abgeschlossener Wohneinheiten im Objekt, in m²
+   * (Mischobjekt im Misch-/Dorfgebiet — Hinweis Manfred: Halle mit zwei
+   * Wohnungen und Büro auf 1.692 m² Grundstück). Wie `hallenflaeche` ein
+   * Anteil AN der Gesamtnutzfläche: Büro/Praxis ergibt sich als Rest.
+   * Ohne diese Angabe wurden Wohnungen zum (niedrigeren) Büro-Satz bewertet.
+   */
+  mischWohnflaeche?: number;
 }
 
 export interface ValuationFactor {
@@ -170,6 +178,24 @@ export interface GrundstuecksAnrechnung {
   gartenlandM2: number;
   /** Summe der drei Stufen in € (bei Haus inkl. der 0,6-Dämpfung). */
   wert: number;
+}
+
+/**
+ * Aufteilung der Nutzfläche eines Gewerbe-/Mischobjekts in Büro-, Hallen-
+ * und Wohnanteil samt der je Anteil angesetzten €/m² — nur bei objektart
+ * "gewerbe" mit Hallen- oder Wohnanteil gesetzt. Grundlage der
+ * Transparenz-Hinweise in Rechner-UI und PDF: ohne die Aufschlüsselung ist
+ * für den Eigentümer nicht nachvollziehbar, dass die drei Flächenarten
+ * unterschiedlich bewertet werden.
+ */
+export interface FlaechenAufteilung {
+  bueroM2: number;
+  halleM2: number;
+  wohnM2: number;
+  /** Angesetzte €/m² je Flächenart (Büro = ausgewiesener pricePerSqm). */
+  bueroSatz: number;
+  halleSatz: number;
+  wohnSatz: number;
 }
 
 /**
@@ -216,6 +242,9 @@ export interface ValuationResult {
   /** Gestaffelte Grundstücksanrechnung — nur bei objektart "haus" oder
    * "grundstueck" mit grundflaeche > 0 gesetzt (s. grundstuecksStaffel()). */
   grundstuecksAnrechnung?: GrundstuecksAnrechnung;
+  /** Büro/Halle/Wohnen-Split beim Gewerbe-/Mischobjekt — nur bei "gewerbe"
+   * mit Hallen- oder Wohnanteil gesetzt (s. FlaechenAufteilung). */
+  flaechenAufteilung?: FlaechenAufteilung;
   factors: ValuationFactor[];
 }
 
@@ -367,6 +396,18 @@ const LEERSTAND_ABSCHLAG_MAX_PCT = 8;
 const HALLEN_FAKTOR = 0.45;
 
 /**
+ * Dämpfung des Wohnungs-Quadratmeterpreises für Wohnflächen IN einem
+ * Gewerbeobjekt (Mischobjekt: Wohnungen über bzw. neben Halle und Büro).
+ * Solche Wohnungen erzielen nicht das Niveau einer reinen Wohnlage: das
+ * Umfeld ist gewerblich geprägt (Hof-, Rangier- und Lieferverkehr), der
+ * Käuferkreis sind Eigennutzer-Betreiber und Anleger, kein klassischer
+ * Wohnungsmarkt. −10 % ist bewusst moderat — die Misch-Nutzung selbst wird
+ * nicht doppelt bestraft, das Grundstück läuft ja bereits über die
+ * konservativere Gewerbe-Staffel. Heuristik, kein Sachwert-Ersatz.
+ */
+const MISCH_WOHN_FAKTOR = 0.9;
+
+/**
  * Gartenland-Satz in €/m² für nicht baulandtypische Restflächen — grob am
  * BRW-Niveau orientiert (6 %), geklemmt auf das in der Region übliche
  * Gartenland-Band von 5–15 €/m² (Praxisbeispiel Kleinkarlbach: 7 €/m²).
@@ -470,6 +511,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   let vervielfaeltiger: number | undefined;
   let mietAnsatz: MietAnsatz | undefined;
   let grundstuecksAnrechnung: GrundstuecksAnrechnung | undefined;
+  let flaechenAufteilung: FlaechenAufteilung | undefined;
 
   if (input.objektart === "grundstueck") {
     // Gestaffelte Bodenbewertung (s. grundstuecksStaffel): bis 1.000 m² voll,
@@ -565,14 +607,28 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       base * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * htFaktor * zfhFaktor * flFaktor,
     );
     const flaeche = input.wohnflaeche ?? 0;
-    if (input.objektart === "gewerbe" && input.hallenflaeche && input.hallenflaeche > 0) {
-      // Gewerbe mit Hallenanteil: Halle/Lager wird mit HALLEN_FAKTOR des
-      // Büro-Niveaus angesetzt. pricePerSqm bleibt der ausgewiesene
-      // Büro-Satz; das effektive Mittel liegt darunter und ergibt sich aus
-      // mid / Gesamtfläche.
-      const halle = Math.min(input.hallenflaeche, flaeche);
-      const rest = Math.max(flaeche - halle, 0);
-      mid = pricePerSqm * rest + Math.round(pricePerSqm * HALLEN_FAKTOR) * halle;
+    const halleM2 = input.objektart === "gewerbe" ? Math.min(Math.max(input.hallenflaeche ?? 0, 0), flaeche) : 0;
+    const wohnM2 =
+      input.objektart === "gewerbe"
+        ? Math.min(Math.max(input.mischWohnflaeche ?? 0, 0), Math.max(flaeche - halleM2, 0))
+        : 0;
+    if (halleM2 > 0 || wohnM2 > 0) {
+      // Gewerbe-/Mischobjekt: die Nutzfläche zerfällt in Büro (Rest), Halle
+      // und Wohnen — jede Flächenart zu ihrem Satz. Halle/Lager mit
+      // HALLEN_FAKTOR des Büro-Niveaus; Wohnflächen zum regionalen
+      // WOHNUNGS-Satz mit derselben Faktorkette wie der Büro-Satz (Zustand,
+      // Baujahr, Energie, Lage …), gedämpft um MISCH_WOHN_FAKTOR. Bewusst
+      // OHNE die Flächendämpfung großer Wohnungen (flaechenFaktor): der
+      // Wohnanteil sind typischerweise mehrere normal große Einheiten, keine
+      // einzelne Großwohnung. pricePerSqm bleibt der ausgewiesene Büro-Satz;
+      // das effektive Mittel ergibt sich aus mid / Gesamtfläche.
+      const bueroM2 = Math.max(flaeche - halleM2 - wohnM2, 0);
+      const halleSatz = Math.round(pricePerSqm * HALLEN_FAKTOR);
+      const wohnSatz = Math.round(
+        r.wohnung * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * MISCH_WOHN_FAKTOR,
+      );
+      mid = pricePerSqm * bueroM2 + halleSatz * halleM2 + wohnSatz * wohnM2;
+      flaechenAufteilung = { bueroM2, halleM2, wohnM2, bueroSatz: pricePerSqm, halleSatz, wohnSatz };
     } else {
       mid = pricePerSqm * flaeche;
     }
@@ -651,6 +707,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     vervielfaeltiger,
     mietAnsatz,
     grundstuecksAnrechnung,
+    flaechenAufteilung,
     factors,
   };
 }

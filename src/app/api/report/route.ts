@@ -152,6 +152,10 @@ export async function POST(req: Request) {
   const leerstehendeWohnflaeche = bounded(b.leerstehendeWohnflaeche, 1, 30_000);
   // Gewerbe: Hallen-/Lageranteil an der Nutzfläche (s. HALLEN_FAKTOR in valuation.ts).
   const hallenflaeche = bounded(b.hallenflaeche, 1, 100_000);
+  // Gewerbe-/Mischobjekt: Wohnfläche abgeschlossener Wohneinheiten im Objekt
+  // (s. MISCH_WOHN_FAKTOR in valuation.ts — Hinweis Manfred: Halle mit zwei
+  // Wohnungen und Büro).
+  const mischWohnflaeche = bounded(b.mischWohnflaeche, 1, 30_000);
   if (objektart === "mehrfamilienhaus") {
     const brauchtMiete = vermietungsstand !== "leer";
     if (brauchtMiete && jahresnettokaltmiete == null) {
@@ -196,10 +200,11 @@ export async function POST(req: Request) {
       vermietungsstand: objektart === "mehrfamilienhaus" ? vermietungsstand : undefined,
       leerstehendeWohnflaeche: vermietungsstand === "teilweise" ? leerstehendeWohnflaeche : undefined,
       hallenflaeche: objektart === "gewerbe" ? hallenflaeche : undefined,
+      mischWohnflaeche: objektart === "gewerbe" ? mischWohnflaeche : undefined,
     },
     { bodenrichtwert: boris?.brw ?? undefined },
   );
-  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger, mietAnsatz, grundstuecksAnrechnung } = calc;
+  const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger, mietAnsatz, grundstuecksAnrechnung, flaechenAufteilung } = calc;
   if (!mid || mid <= 0) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
@@ -215,7 +220,12 @@ export async function POST(req: Request) {
   const objektRows = emailRows([
     { label: "Adresse", value: esc(address) },
     { label: "Objektart", value: esc(objektartLabel) },
-    { label: "Wohnfläche", value: wohnflaeche ? `${wohnflaeche} m²` : "" },
+    {
+      label: objektart === "gewerbe" ? "Nutzfläche" : "Wohnfläche",
+      value: wohnflaeche ? `${wohnflaeche} m²` : "",
+    },
+    { label: "davon Halle/Lager", value: objektart === "gewerbe" && hallenflaeche ? `${hallenflaeche} m²` : "" },
+    { label: "davon Wohnfläche", value: objektart === "gewerbe" && mischWohnflaeche ? `${mischWohnflaeche} m²` : "" },
     { label: "Grundstück", value: grundflaeche ? `${grundflaeche} m²` : "" },
     { label: "Zimmer", value: zimmer ? String(zimmer) : "" },
     { label: "Baujahr", value: baujahr ? String(baujahr) : "" },
@@ -297,6 +307,8 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
       jahresnettokaltmiete,
       wohneinheiten,
       gewerbeeinheiten,
+      hallenflaeche,
+      mischWohnflaeche,
       value: {
         low,
         mid,
@@ -309,6 +321,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
         vervielfaeltiger,
         mietAnsatz,
         grundstuecksAnrechnung,
+        flaechenAufteilung,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
       bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,
@@ -400,6 +413,11 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
       jahresnettokaltmiete: jahresnettokaltmiete ?? null,
       wohneinheiten: wohneinheiten ?? null,
       gewerbeeinheiten: gewerbeeinheiten ?? null,
+      // Gewerbe-Split (Halle/Wohnen): ohne Persistenz rechnete das interne
+      // Regenerat (api/intern/report) den Report OHNE die Aufteilung nach —
+      // mit anderem Ergebnis als damals kommuniziert.
+      hallenflaeche: (objektart === "gewerbe" ? hallenflaeche : null) ?? null,
+      misch_wohnflaeche: (objektart === "gewerbe" ? mischWohnflaeche : null) ?? null,
       comparables,
       trend_pct: trendPct,
       mikrolage,

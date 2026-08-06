@@ -128,6 +128,10 @@ export async function POST(req: Request) {
     jahresnettokaltmiete: n(row.jahresnettokaltmiete),
     wohneinheiten: n(row.wohneinheiten),
     gewerbeeinheiten: n(row.gewerbeeinheiten),
+    // Gewerbe-Split (Halle/Wohnen, Mischobjekt) — Spalten evtl. noch nicht
+    // migriert, dann undefined und die Rechnung läuft wie bisher.
+    hallenflaeche: n(row.hallenflaeche),
+    mischWohnflaeche: n(row.misch_wohnflaeche),
   });
 
   // mid ist die tragende, damals kommunizierte Zahl — KEIN Fallback auf den
@@ -194,10 +198,13 @@ export async function POST(req: Request) {
     jahresnettokaltmiete: n(row.jahresnettokaltmiete),
     wohneinheiten: n(row.wohneinheiten),
     gewerbeeinheiten: n(row.gewerbeeinheiten),
-    // grundstuecksAnrechnung wird nicht historisch gespeichert, ist aber
-    // deterministisch aus Fläche + BRW ableitbar — calc liefert die aktuelle
-    // Staffel-Aufschlüsselung für den Hinweis auf der Zusammensetzungs-Seite.
-    value: { low, mid, high, pricePerSqm, comparables, trendPct, mikrolage, confidence, vervielfaeltiger, grundstuecksAnrechnung: calc.grundstuecksAnrechnung },
+    hallenflaeche: n(row.hallenflaeche),
+    mischWohnflaeche: n(row.misch_wohnflaeche),
+    // grundstuecksAnrechnung/flaechenAufteilung werden nicht historisch
+    // gespeichert, sind aber deterministisch aus den Eingaben ableitbar —
+    // calc liefert die aktuelle Aufschlüsselung für die Hinweise auf der
+    // Zusammensetzungs-Seite.
+    value: { low, mid, high, pricePerSqm, comparables, trendPct, mikrolage, confidence, vervielfaeltiger, grundstuecksAnrechnung: calc.grundstuecksAnrechnung, flaechenAufteilung: calc.flaechenAufteilung },
     dateLabel,
     bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,
   };

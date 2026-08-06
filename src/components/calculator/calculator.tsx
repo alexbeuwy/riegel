@@ -89,6 +89,9 @@ interface FormState {
   leerstehendeWohnflaeche: string;
   /** Nur Gewerbe: Hallen-/Lageranteil an der Nutzfläche in m². */
   hallenflaeche: string;
+  /** Nur Gewerbe: Wohnfläche abgeschlossener Wohneinheiten im Objekt in m²
+   *  (Mischobjekt — Hinweis Manfred: Halle mit zwei Wohnungen und Büro). */
+  mischWohnflaeche: string;
 }
 
 const EMPTY: FormState = {
@@ -112,6 +115,7 @@ const EMPTY: FormState = {
   vermietungsstand: "vermietet",
   leerstehendeWohnflaeche: "",
   hallenflaeche: "",
+  mischWohnflaeche: "",
 };
 
 // "building"-Icon aus components/icon.tsx (Pfaddaten 1:1 übernommen, keine
@@ -594,6 +598,16 @@ export function Calculator() {
         return "Bitte die Wohnfläche als Zahl angeben (z. B. 120 oder 92,5).";
       if (f.grundflaeche && parseDeZahl(f.grundflaeche) == null)
         return "Bitte die Grundstücksfläche als Zahl angeben (z. B. 450).";
+      // Gewerbe-/Mischobjekt: Hallen- und Wohnanteil sind Teilflächen der
+      // Nutzfläche — zusammen dürfen sie diese nicht übersteigen, sonst wäre
+      // die Bürofläche negativ (die Engine würde still klemmen und der
+      // Eigentümer wundert sich über den Wert).
+      if (f.objektart === "gewerbe") {
+        const nutz = parseDeZahl(f.wohnflaeche) ?? 0;
+        const teile = (parseDeZahl(f.hallenflaeche) ?? 0) + (parseDeZahl(f.mischWohnflaeche) ?? 0);
+        if (nutz > 0 && teile > nutz)
+          return "Hallen- und Wohnfläche zusammen dürfen die Gesamtnutzfläche nicht übersteigen.";
+      }
     }
     return null;
   }
@@ -645,6 +659,7 @@ export function Calculator() {
           ? parseDeZahl(f.leerstehendeWohnflaeche)
           : undefined,
       hallenflaeche: f.objektart === "gewerbe" ? parseDeZahl(f.hallenflaeche) : undefined,
+      mischWohnflaeche: f.objektart === "gewerbe" ? parseDeZahl(f.mischWohnflaeche) : undefined,
     };
     lastInputRef.current = input;
     setResult(estimateValue(input));
@@ -1095,19 +1110,32 @@ export function Calculator() {
                   </Field>
                 </>
               )}
-              {/* Gewerbe: Hallen-/Lageranteil statt Zimmer und Badezimmer
-                  (Hinweis Manfred: Bürogebäude mit Halle, ehemaliges Autohaus).
-                  Die Bürofläche ergibt sich als Rest aus der Nutzfläche. */}
+              {/* Gewerbe: Hallen-/Lager- und Wohnanteil statt Zimmer und
+                  Badezimmer (Hinweise Manfred: Bürogebäude mit Halle,
+                  ehemaliges Autohaus; Mischobjekt Halle + zwei Wohnungen +
+                  Büro). Beide Angaben sind Anteile AN der Nutzfläche —
+                  Büro/Praxis ergibt sich als Rest. */}
               {f.objektart === "gewerbe" && (
-                <Field label="Davon Hallen-/Lagerfläche (m²)">
-                  <input
-                    className={inputCls}
-                    inputMode="numeric"
-                    value={f.hallenflaeche}
-                    onChange={(e) => set("hallenflaeche", e.target.value)}
-                    placeholder="z. B. 400"
-                  />
-                </Field>
+                <>
+                  <Field label="Davon Hallen-/Lagerfläche (m²)">
+                    <input
+                      className={inputCls}
+                      inputMode="numeric"
+                      value={f.hallenflaeche}
+                      onChange={(e) => set("hallenflaeche", e.target.value)}
+                      placeholder="z. B. 400"
+                    />
+                  </Field>
+                  <Field label="Davon Wohnfläche (m²) — falls Wohnungen im Objekt">
+                    <input
+                      className={inputCls}
+                      inputMode="numeric"
+                      value={f.mischWohnflaeche}
+                      onChange={(e) => set("mischWohnflaeche", e.target.value)}
+                      placeholder="z. B. 160"
+                    />
+                  </Field>
+                </>
               )}
               {f.objektart !== "grundstueck" && f.objektart !== "gewerbe" && (
                 <>
@@ -1424,6 +1452,29 @@ function Result({
                   .
                 </p>
               )}
+            {result.flaechenAufteilung && (
+              // Transparenz beim Gewerbe-/Mischobjekt (Halle, Wohnungen und
+              // Büro in einem Objekt): jede Flächenart geht zu ihrem eigenen
+              // Satz ein — offen ausweisen, sonst wirkt der Wert wie
+              // „Nutzfläche × ein Preis" und ist nicht nachvollziehbar.
+              <p className="mx-auto mt-3 max-w-md text-xs leading-relaxed text-muted">
+                Mischobjekt anteilig bewertet:{" "}
+                {[
+                  result.flaechenAufteilung.bueroM2 > 0
+                    ? `${nfDE.format(result.flaechenAufteilung.bueroM2)} m² Büro/Praxis`
+                    : "",
+                  result.flaechenAufteilung.halleM2 > 0
+                    ? `${nfDE.format(result.flaechenAufteilung.halleM2)} m² Halle/Lager`
+                    : "",
+                  result.flaechenAufteilung.wohnM2 > 0
+                    ? `${nfDE.format(result.flaechenAufteilung.wohnM2)} m² Wohnen`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(", ")}{" "}
+                — jeweils zum markt&shy;üblichen Satz der Flächenart.
+              </p>
+            )}
             {f.objektart === "mehrfamilienhaus" && result.vervielfaeltiger != null && (
               // .t-num-d nur auf dem Text-Span (s. Kommentar oben) — der äußere
               // Flex-Wrapper bleibt unangetastet. flex-wrap wie beim Boris-Badge oben.

@@ -72,6 +72,10 @@ export interface ReportData {
   jahresnettokaltmiete?: string | number;
   wohneinheiten?: string | number;
   gewerbeeinheiten?: string | number;
+  /** Nur bei Gewerbe: Hallen-/Lager- bzw. Wohnanteil an der Nutzfläche in m²
+   *  (Mischobjekt, s. FlaechenAufteilung in lib/valuation.ts). */
+  hallenflaeche?: string | number;
+  mischWohnflaeche?: string | number;
   value: {
     low: number;
     mid: number;
@@ -100,6 +104,18 @@ export interface ReportData {
      * lib/valuation.ts. Basis des Staffel-Hinweises auf der
      * Preis-Zusammensetzungs-Seite. */
     grundstuecksAnrechnung?: { baulandM2: number; mehrflaecheM2: number; gartenlandM2: number; wert: number };
+    /** Büro/Halle/Wohnen-Split beim Gewerbe-/Mischobjekt — nur bei Gewerbe
+     * mit Hallen- oder Wohnanteil gesetzt (s. FlaechenAufteilung in
+     * lib/valuation.ts). Basis des Misch-Hinweises auf der
+     * Preis-Zusammensetzungs-Seite. */
+    flaechenAufteilung?: {
+      bueroM2: number;
+      halleM2: number;
+      wohnM2: number;
+      bueroSatz: number;
+      halleSatz: number;
+      wohnSatz: number;
+    };
   };
   dateLabel: string;
   /** Luftbild des Objekts (Base64-JPEG, Esri World Imagery an den Rechner-Koordinaten). */
@@ -995,7 +1011,11 @@ function drawValuation(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   };
   const a = section("Objektdaten", [
     ["building", "Objektart", d.objektartLabel ?? "–"],
-    ["ruler", "Wohnfläche", d.wohnflaeche ? `${d.wohnflaeche} m²` : "–"],
+    // Bei Gewerbe heißt die Fläche Nutzfläche (wie im Rechner-Formular) —
+    // darunter ggf. der Misch-Split (Halle/Wohnen), Büro ist der Rest.
+    ["ruler", d.objektartLabel === "Gewerbe" ? "Nutzfläche" : "Wohnfläche", d.wohnflaeche ? `${d.wohnflaeche} m²` : "–"],
+    ["building", "davon Halle/Lager", d.hallenflaeche ? `${d.hallenflaeche} m²` : ""],
+    ["bed", "davon Wohnfläche", d.mischWohnflaeche ? `${d.mischWohnflaeche} m²` : ""],
     ["tree", "Grundstück", d.grundflaeche ? `${d.grundflaeche} m²` : "–"],
     ["bed", "Zimmer", d.zimmer ? String(d.zimmer) : "–"],
     ["calendar", "Baujahr", d.baujahr ? String(d.baujahr) : "–"],
@@ -1473,7 +1493,27 @@ function drawComposition(ctx: Ctx, d: ReportData, pageNo: number, total: number)
   const contentW = w - 2 * M;
   const factors = d.factors && d.factors.length > 0 ? d.factors : undefined;
   if (factors) {
-    drawFactorComposition(ctx, page, factors, d.value.mid, M, y, contentW);
+    let fy = drawFactorComposition(ctx, page, factors, d.value.mid, M, y, contentW);
+    // Gewerbe-/Mischobjekt: die Büro/Halle/Wohnen-Zerlegung offen ausweisen —
+    // mit den je Flächenart angesetzten Sätzen. Ohne diese Zeilen sähe der
+    // Wert wie „Nutzfläche × ein Preis" aus und wäre gerade bei Mischobjekten
+    // (Halle mit Wohnungen und Büro) nicht nachvollziehbar.
+    const fa = d.value.flaechenAufteilung;
+    if (fa) {
+      fy -= 4;
+      const teile = [
+        fa.bueroM2 > 0 ? `${fmtDe(fa.bueroM2)} m² Büro/Praxis zu ${eur(fa.bueroSatz)}/m²` : "",
+        fa.halleM2 > 0 ? `${fmtDe(fa.halleM2)} m² Halle/Lager zu ${eur(fa.halleSatz)}/m²` : "",
+        fa.wohnM2 > 0 ? `${fmtDe(fa.wohnM2)} m² Wohnen zu ${eur(fa.wohnSatz)}/m²` : "",
+      ].filter(Boolean);
+      const grund = d.value.grundstuecksAnrechnung
+        ? ` — zzgl. Grundstücksanrechnung von ${eur(d.value.grundstuecksAnrechnung.wert)}`
+        : "";
+      for (const line of wrap(`Mischobjekt anteilig bewertet: ${teile.join(", ")}${grund}.`, ctx.reg, 9.5, contentW)) {
+        t(line, M, fy, 9.5, ctx.reg, MUTED);
+        fy -= 13;
+      }
+    }
   } else if (d.objektartLabel === "Mehrfamilienhaus") {
     drawErtragswertGraphic(ctx, page, d, M, y, contentW);
   } else if (d.objektartLabel === "Grundstück") {

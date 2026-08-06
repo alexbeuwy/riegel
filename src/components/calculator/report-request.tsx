@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { burstConfetti } from "@/lib/confetti";
 import type { GeoResult } from "@/lib/geocode";
-import type { ValuationResult, Objektart, Zustand, Qualitaet } from "@/lib/valuation";
+import type { ValuationResult, Objektart, Zustand, Qualitaet, Vermietungsstand } from "@/lib/valuation";
 
 /** Subset von FormState, das in den Report einfließt. */
 export interface ReportSource {
@@ -24,6 +24,12 @@ export interface ReportSource {
   jahresnettokaltmiete: string;
   wohneinheiten: string;
   gewerbeeinheiten: string;
+  vermietungsstand: Vermietungsstand;
+  leerstehendeWohnflaeche: string;
+  /** Nur für objektart === "gewerbe" — Hallen-/Lager- und Wohnanteil an der
+   * Nutzfläche (Mischobjekt), ebenfalls reine Durchreich-Werte. */
+  hallenflaeche: string;
+  mischWohnflaeche: string;
 }
 
 export function ReportRequest({
@@ -91,6 +97,14 @@ export function ReportRequest({
       jahresnettokaltmiete: f.jahresnettokaltmiete,
       wohneinheiten: f.wohneinheiten,
       gewerbeeinheiten: f.gewerbeeinheiten,
+      // Fehlten hier bisher komplett: der Server rechnete das PDF dadurch
+      // OHNE Hallen-Split und Vermietungsstand — ein Gewerbe mit Halle bekam
+      // im Report einen höheren Wert als im Rechner angezeigt, und ein leer
+      // stehendes MFH lief in die Miet-Pflichtprüfung (422, kein Report).
+      vermietungsstand: f.vermietungsstand,
+      leerstehendeWohnflaeche: f.leerstehendeWohnflaeche,
+      hallenflaeche: f.hallenflaeche,
+      mischWohnflaeche: f.mischWohnflaeche,
       valuation: {
         low: result.low,
         mid: result.mid,

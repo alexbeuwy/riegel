@@ -182,6 +182,56 @@ const mfhLeerFixture: ReportData = {
   dateLabel,
 };
 
+// ── Fixture 5: Gewerbe-MISCHOBJEKT (Hinweis Manfred): Halle, zwei Wohnungen
+//    und Büro im Keller auf 1.692 m² Grundstück. Werte aus estimateValue()
+//    gezogen, damit PDF und Rechner dieselbe Aufteilung zeigen. ──
+const mischCalc = estimateValue(
+  {
+    objektart: "gewerbe",
+    ort: "Speyer",
+    wohnflaeche: 1000,
+    hallenflaeche: 600,
+    mischWohnflaeche: 160,
+    grundflaeche: 1692,
+    baujahr: 1988,
+    zustand: "gepflegt",
+    qualitaet: "normal",
+    ausstattung: [],
+  },
+  { bodenrichtwert: 300 },
+);
+const mischFixture: ReportData = {
+  name: "Herr Manfred Muster",
+  address: "Gewerbering 3, 67346 Speyer",
+  city: "Speyer",
+  postcode: "67346",
+  objektartLabel: "Gewerbe",
+  wohnflaeche: 1000,
+  hallenflaeche: 600,
+  mischWohnflaeche: 160,
+  grundflaeche: 1692,
+  baujahr: 1988,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+  factors: mischCalc.factors,
+  context: buildReportContext({ city: "Speyer" }),
+  value: {
+    low: mischCalc.low,
+    mid: mischCalc.mid,
+    high: mischCalc.high,
+    pricePerSqm: mischCalc.pricePerSqm,
+    comparables: mischCalc.comparables,
+    trendPct: mischCalc.trendPct,
+    mikrolage: mischCalc.mikrolage,
+    confidence: mischCalc.confidence,
+    grundstuecksAnrechnung: mischCalc.grundstuecksAnrechnung,
+    flaechenAufteilung: mischCalc.flaechenAufteilung,
+  },
+  dateLabel,
+  bodenrichtwert: { brw: 300, zone: "Sp-Gew-4", stichtag: "01.01.2026" },
+};
+
 async function run(name: string, fixture: ReportData) {
   const pdfBase64 = await buildReportPdf(fixture);
   const bytes = Buffer.from(pdfBase64, "base64");
@@ -209,7 +259,18 @@ const results = await Promise.all([
   run("mfh.pdf", mfhFixture),
   run("ohne-kontext.pdf", ohneKontextFixture),
   run("mfh-leerstand.pdf", mfhLeerFixture),
+  run("mischobjekt.pdf", mischFixture),
 ]);
+
+// Kern des Hinweises Manfred (Mischgebiet): die drei Flächenarten müssen
+// getrennt und in der richtigen Satz-Ordnung bewertet sein.
+const fa = mischCalc.flaechenAufteilung;
+if (!fa || !(fa.wohnSatz > fa.bueroSatz && fa.bueroSatz > fa.halleSatz)) {
+  throw new Error(`mischobjekt: Aufteilung fehlt oder Satz-Ordnung verletzt (${JSON.stringify(fa)})`);
+}
+console.log(
+  `Misch-Fixture: Büro ${fa.bueroM2} m² à ${fa.bueroSatz} € + Halle ${fa.halleM2} m² à ${fa.halleSatz} € + Wohnen ${fa.wohnM2} m² à ${fa.wohnSatz} € → ${mischCalc.mid.toLocaleString("de-DE")} €`,
+);
 
 if (results[2] > 7) {
   throw new Error(`ohne-kontext.pdf hat ${results[2]} Seiten — erwartet ≤ 7 (Ihr-Markt-Seite muss ohne Stadt-Treffer entfallen).`);
