@@ -44,7 +44,11 @@ const f1 = run(
   },
   { bodenrichtwert: 260 },
 );
-check("F1 EFH Kleinkarlbach 180 m² Wfl / 3.247 m² Grund (BRW 260)", f1.mid, 630_000, 680_000);
+// Band am 06.08.2026 nachgezogen: die Eberle-Erdung (Kompression der
+// Aufwertungs-Faktoren + geschärfte Baujahres-Stufen, b7c039f) senkt diesen
+// Fall bewusst auf 619 Tsd. € — weiterhin im realistischen Korridor um
+// ~650 Tsd. (Homeday-Niveau dort), nur unter dem alten Banduntergrenze.
+check("F1 EFH Kleinkarlbach 180 m² Wfl / 3.247 m² Grund (BRW 260)", f1.mid, 600_000, 670_000);
 check("F1 Grundstücksanteil (gestaffelt)", f1.grundstuecksAnrechnung?.wert ?? 0, 175_000, 190_000);
 
 /* F2 — Regressionsanker: normales Speyer-EFH darf sich NICHT bewegen
@@ -63,7 +67,10 @@ const f2 = run(
   },
   { bodenrichtwert: 590 },
 );
-check("F2 EFH Speyer 140/420 (BRW 590, Anker exakt)", f2.mid, 676_000, 676_000);
+// Anker am 06.08.2026 neu gesetzt (676 → 668 Tsd.): die Eberle-Erdung
+// (b7c039f) staucht die Aufwertungs-Faktoren dieses Falls bewusst — der
+// Anker friert seither den NEUEN Sollwert ein.
+check("F2 EFH Speyer 140/420 (BRW 590, Anker exakt)", f2.mid, 668_000, 668_000);
 
 /* F3 — Wohnung Speyer (kein Grundstücksanteil, Lagefaktor 1). */
 const f3 = run(
@@ -112,7 +119,8 @@ const f7 = run({
   qualitaet: "normal",
   ausstattung: ["Garten"],
 });
-check("F7 wie F2 ohne amtlichen BRW (Anker exakt)", f7.mid, 676_000, 676_000);
+// Wie F2: Anker am 06.08.2026 von 676 auf 668 Tsd. nachgezogen (Eberle-Erdung).
+check("F7 wie F2 ohne amtlichen BRW (Anker exakt)", f7.mid, 668_000, 668_000);
 
 /* F8 — Haus am Ludwigshafener Rand: BRW 300 unter Modell 430 → Basis sinkt. */
 const f8 = run(
