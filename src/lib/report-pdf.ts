@@ -16,7 +16,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { AKIRA_B64 } from "@/lib/report-assets/akira";
 import { RIEGEL_MARK_B64 } from "@/lib/report-assets/mark";
 import { PAAR_REPORT_JPG_B64, BROSCHUERE_JPG_B64, BERATUNG_JPG_B64, LADEN_JPG_B64, AWARD_JPG_B64 } from "@/lib/report-assets/gallery";
-import { BORIS_ATTRIBUTION } from "@/lib/boris";
+import { BORIS_QUELLEN, type BorisQuelle } from "@/lib/boris";
 import type { ReportContext } from "@/lib/report-context";
 import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
 
@@ -121,12 +121,14 @@ export interface ReportData {
   /** Luftbild des Objekts (Base64-JPEG, Esri World Imagery an den Rechner-Koordinaten). */
   satelliteB64?: string;
   /**
-   * Amtlicher Bodenrichtwert (BORIS-RLP) für die Objekt-Koordinaten, falls
-   * ermittelt (s. lib/boris.ts) — optional, da außerhalb RLP/bebauter Zonen
-   * kein Wert vorliegt (fail-soft). Rohwerte; `brw` bleibt Zahl, Zone/Stichtag
-   * laufen wie andere Freitextfelder durch den WinAnsi-Sanitizer.
+   * Amtlicher Bodenrichtwert (RLP: BORIS-RLP, Hessen: BORIS Hessen) für die
+   * Objekt-Koordinaten, falls ermittelt (s. lib/boris.ts) — optional, da
+   * außerhalb der Länder/bebauter Zonen kein Wert vorliegt (fail-soft).
+   * Rohwerte; `brw` bleibt Zahl, Zone/Stichtag laufen wie andere
+   * Freitextfelder durch den WinAnsi-Sanitizer. `quelle` fehlt bei
+   * Alt-Datensätzen (vor der Hessen-Anbindung) → Anzeige fällt auf RLP zurück.
    */
-  bodenrichtwert?: { brw: number; stichtag: string; zone: string };
+  bodenrichtwert?: { brw: number; stichtag: string; zone: string; quelle?: BorisQuelle };
 }
 
 // Helle Print-Palette: Papierweiß als Grund, warme Fast-Schwarz-Tinte,
@@ -1455,7 +1457,7 @@ function drawGrundstueckGraphic(ctx: Ctx, page: PDFPage, d: ReportData, x: numbe
   const niveauLabel = gestaffelt
     ? "Angerechnetes Bodenwert-Niveau (Ø, gestaffelt)"
     : amtlich
-      ? "Bodenwert-Niveau (amtlich, BORIS-RLP)"
+      ? `Bodenwert-Niveau (amtlich, ${BORIS_QUELLEN[amtlich.quelle ?? "RLP"].name})`
       : "Bodenwert-Niveau (Modellwert)";
   let y = drawFormulaGraphic(ctx, page, x, yTop, w, [
     { label: "Grundstücksfläche", value: flaeche ? `${flaeche} m²` : "–" },
@@ -1616,7 +1618,7 @@ function drawMarketLocal(ctx: Ctx, d: ReportData, pageNo: number, total: number)
   heading(ctx, page, "Bodenrichtwert", M, y, 11);
   y -= 16;
   if (d.bodenrichtwert) {
-    t(`Amtlich (BORIS-RLP): ${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}`, M, y, 9.5, ctx.reg, FG);
+    t(`Amtlich (${BORIS_QUELLEN[d.bodenrichtwert.quelle ?? "RLP"].name}): ${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"}`, M, y, 9.5, ctx.reg, FG);
     y -= 14;
     t(`Modellwert Region: ${eur(markt.bodenrichtwert)}/m²`, M, y, 9.5, ctx.reg, MUTED);
   } else {
@@ -2133,8 +2135,9 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   ];
   if (d.bodenrichtwert) {
     const stichtag = d.bodenrichtwert.stichtag ? `, Stichtag ${d.bodenrichtwert.stichtag}` : "";
+    const q = BORIS_QUELLEN[d.bodenrichtwert.quelle ?? "RLP"];
     disc.push(
-      `Bodenrichtwert (amtlich, BORIS-RLP${stichtag}): ${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"} — ein amtlicher Bodenwert des Gutachterausschusses, kein Objektpreis. ${BORIS_ATTRIBUTION}.`,
+      `Bodenrichtwert (amtlich, ${q.name}${stichtag}): ${eur(d.bodenrichtwert.brw)}/m² · Zone ${d.bodenrichtwert.zone || "–"} — ein amtlicher Bodenwert des Gutachterausschusses, kein Objektpreis. ${q.attribution}.`,
     );
   }
   for (const para of disc) {

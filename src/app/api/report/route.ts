@@ -11,7 +11,7 @@ import {
   type Qualitaet,
   type Vermietungsstand,
 } from "@/lib/valuation";
-import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
+import { fetchBodenrichtwert, isImBorisGebiet, hintFuerObjektart } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
 import { createOnOfficeAddress } from "@/lib/onoffice";
@@ -169,12 +169,17 @@ export async function POST(req: Request) {
   // Amtlichen Bodenrichtwert VOR der Nachrechnung laden (gleicher Cache wie
   // /api/bodenrichtwert) — Client und Server nutzen dadurch dieselbe Zahl,
   // PDF und Anzeige im Rechner widersprechen sich also nie. Fail-soft: bei
-  // null (Timeout, außerhalb RLP, …) rechnet estimateValue mit dem Modellwert.
-  // Dieselbe grobe RLP-Bbox wie /api/bodenrichtwert vorschalten, damit sich
-  // über diese Route (Rate-Limit 6/10min, aber sonst ohne Bbox-Gate) nicht
-  // der externe LVermGeo-Dienst mit beliebigen Koordinaten anstoßen lässt.
+  // null (Timeout, außerhalb RLP/Hessen, …) rechnet estimateValue mit dem
+  // Modellwert. Dieselben groben Länder-Bboxen wie /api/bodenrichtwert
+  // vorschalten, damit sich über diese Route (Rate-Limit 6/10min, aber sonst
+  // ohne Bbox-Gate) nicht die externen Landesdienste mit beliebigen
+  // Koordinaten anstoßen lassen. Objektart-Hint: wählt bei überlappenden
+  // Hessen-Zonen die passende (EFH/MFH/Gewerbe) — gleicher Hint wie im
+  // Rechner-Client, sonst widersprechen sich Anzeige und PDF.
   const boris =
-    lat != null && lng != null && isInRlpBbox(lat, lng) ? await fetchBodenrichtwert(lat, lng) : null;
+    lat != null && lng != null && isImBorisGebiet(lat, lng)
+      ? await fetchBodenrichtwert(lat, lng, hintFuerObjektart(objektart))
+      : null;
 
   // Wert SERVERSEITIG nachrechnen (Kern der Engine ist deterministisch) —
   // Client-Zahlen werden nicht übernommen, sonst ließen sich per curl
@@ -324,7 +329,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
         flaechenAufteilung,
       },
       dateLabel: new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date()),
-      bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,
+      bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone, quelle: boris.quelle } : undefined,
     });
   } catch (e) {
     // Vollen Stack loggen (nicht nur die Fehlermeldung) — sonst lässt sich ein

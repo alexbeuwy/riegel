@@ -228,3 +228,39 @@ per BBox gerouteten Provider erweitern.
 - ArcGIS REST (technisch, undokumentiert, per curl verifiziert): <https://www.gis.nrw.de/arcgis/rest/services/immobilien/boris_bw_bodenrichtwerte_current/MapServer>
 - LGL-BW Open Data: <https://www.lgl-bw.de/Produkte/Open-Data/index.html> · <https://opengeodata.lgl-bw.de/>
 - ZGG-BW (Zentrale Geschäftsstelle Gutachterausschüsse BW): <https://www.zgg-bw.de/BORIS-BW/index.html>
+
+---
+
+## Bodenrichtwerte Hessen (Lampertheim/Viernheim/Bürstadt) — Befund & Anbindung (2026-08-08)
+
+**Anlass:** Kundin mit Bungalow in Lampertheim (Fall Manfred) — Hessen-Teil der Metropolregion
+lief komplett über Modellwerte. Wunsch Alex: BW und Hessen anbinden.
+
+**Befund Hessen: bester Dienst aller drei Länder.** Die HVBG veröffentlicht die zonalen
+Bodenrichtwerte als dokumentierten Open-Data-**WFS 2.0** (nicht nur WMS wie RLP):
+`https://www.gds.hessen.de/wfs2/boris/cgi-bin/brw/{stichtagsjahr}/wfs`, Jahrgänge alle zwei
+Jahre (2020/2022/2024 verifiziert; 2026 bei Anbindung noch 404 — Discovery mit Fallback
+eingebaut). Die Capabilities erklären den automatisierten, kostenfreien Abruf inkl. Einbindung
+in **kommerzielle** Produkte ausdrücklich für erlaubt (§ 1 Abs. 2 GAKostG, § 17 Abs. 4
+BauGB-AV). Punktabfrage per WFS-Intersects auf `adv:position` (EPSG:25832; WGS84→UTM32-
+Umrechnung in lib/boris.ts), Feature `boris:BR_BodenrichtwertZonal`, strukturierte
+GML-Attribute (bodenrichtwert, stichtag, art, ergaenzung, entwicklungszustand …).
+
+**Besonderheit überlappende Zonen:** Hessen führt teils deckungsgleiche W-Zonen je Bebauungsart
+(Lampertheim: 260 €/m² EFH vs. 490 €/m² MFH). Die Zonenwahl nutzt deshalb einen
+Objektart-Hint (wohnen/mfh/gewerbe), der vom Rechner bis in die Report-Routen durchgereicht
+wird und Teil aller Cache-Keys ist.
+
+**Anbindung:** lib/boris.ts als Zwei-Provider-Dispatcher (RLP-WMS zuerst, dann Hessen-WFS;
+BBoxen überlappen am Rhein, das jeweils andere Land antwortet leer). Gleiche
+fail-soft-Garantien wie RLP (Timeout 6 s, warnOnce, confirmed-Flag, gemeinsamer Cache).
+Quellenvermerk je Dienst (BORIS_QUELLEN), Badge im Rechner und PDF-Rechtstext quellen-bewusst.
+
+**BW erneut geprüft (2026-08-08), Entscheidung gegen Anbindung BESTÄTIGT:** Abdeckung im
+IT.NRW-Backend inzwischen besser (Weinheim 01.01.2026, Hockenheim/Schwetzingen/Brühl
+01.01.2025; Heidelberg weiterhin leer), aber der Endpunkt antwortet ohne gefälschten
+Referer-Header mit 403 — die Zugangsbeschränkung ist gewollt, ein produktiver Umgehungszugriff
+für eine kommerzielle Maklerseite bleibt rechtlich nicht vertretbar. LGL-BW Open Data führt
+weiterhin keine Bodenrichtwerte; BORIS-BW bleibt reiner Viewer. Sauberer Weg: schriftliche
+Nutzungszusage von ZGG-BW/LGL-BW einholen (Kontakt s. oben) — die Provider-Architektur nimmt
+einen dritten Dienst dann ohne Umbau auf.

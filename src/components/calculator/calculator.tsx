@@ -673,7 +673,9 @@ export function Calculator() {
       const ctrl = new AbortController();
       borisAbort.current = ctrl;
       setBoris({ loading: true, data: null, attribution: null });
-      fetch(`/api/bodenrichtwert?lat=${input.lat}&lng=${input.lng}`, { signal: ctrl.signal })
+      // objektart mitschicken: wählt bei überlappenden Hessen-Zonen die
+      // passende Zone (EFH/MFH/Gewerbe) und ist Teil des CDN-Cache-Keys.
+      fetch(`/api/bodenrichtwert?lat=${input.lat}&lng=${input.lng}&objektart=${input.objektart}`, { signal: ctrl.signal })
         .then((res) => res.json())
         .then((json: { ok?: boolean; data?: Bodenrichtwert | null; attribution?: string }) => {
           setBoris({ loading: false, data: json?.data ?? null, attribution: json?.attribution ?? null });
@@ -1431,7 +1433,9 @@ function Result({
                   Bodenrichtwert {b.brw} €/m²{b.zone ? ` · Zone ${b.zone}` : ""}
                 </span>
                 <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                  {borisPriceRelevant(f.objektart) ? "amtlich · BORIS-RLP" : "informativ · BORIS-RLP"}
+                  {/* Quellen-Name je Landesdienst (RLP/Hessen); Alt-Antworten
+                      ohne quelle-Feld fallen auf RLP zurück. */}
+                  {`${borisPriceRelevant(f.objektart) ? "amtlich" : "informativ"} · ${b.quelle === "HE" ? "BORIS Hessen" : "BORIS-RLP"}`}
                 </span>
               </div>
             )}

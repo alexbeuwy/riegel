@@ -5,7 +5,7 @@ import { verifyInternAccess } from "@/lib/intern-access";
 import { buildReportPdf, REFERENZ_MAX, type ReportData } from "@/lib/report-pdf";
 import { buildReportContext } from "@/lib/report-context";
 import { estimateValue, type Objektart, type Zustand, type Qualitaet } from "@/lib/valuation";
-import { fetchBodenrichtwert, isInRlpBbox } from "@/lib/boris";
+import { fetchBodenrichtwert, isImBorisGebiet, hintFuerObjektart } from "@/lib/boris";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
 
@@ -158,7 +158,9 @@ export async function POST(req: Request) {
   // Array statt zu raten.
   const [satelliteB64, boris, vergleichsobjekte] = await Promise.all([
     fetchSatellite(lat, lng),
-    lat != null && lng != null && isInRlpBbox(lat, lng) ? fetchBodenrichtwert(lat, lng) : Promise.resolve(null),
+    lat != null && lng != null && isImBorisGebiet(lat, lng)
+      ? fetchBodenrichtwert(lat, lng, hintFuerObjektart(objektart))
+      : Promise.resolve(null),
     buildReportObjekte(row.objektart ?? "", row.city ?? undefined, REFERENZ_MAX, {
       lat: lat ?? undefined,
       lng: lng ?? undefined,
@@ -206,7 +208,7 @@ export async function POST(req: Request) {
     // Zusammensetzungs-Seite.
     value: { low, mid, high, pricePerSqm, comparables, trendPct, mikrolage, confidence, vervielfaeltiger, grundstuecksAnrechnung: calc.grundstuecksAnrechnung, flaechenAufteilung: calc.flaechenAufteilung },
     dateLabel,
-    bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone } : undefined,
+    bodenrichtwert: boris ? { brw: boris.brw, stichtag: boris.stichtag, zone: boris.zone, quelle: boris.quelle } : undefined,
   };
 
   let pdfBase64: string;

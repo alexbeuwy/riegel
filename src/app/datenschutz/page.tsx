@@ -608,12 +608,15 @@ export default function DatenschutzPage() {
             </p>
 
             {/* 14 */}
-            <h2 id="bodenrichtwert">14. Bodenrichtwerte (BORIS Rheinland-Pfalz)</h2>
+            <h2 id="bodenrichtwert">14. Bodenrichtwerte (BORIS Rheinland-Pfalz und Hessen)</h2>
             <p>
               Um die Bewertung auf eine amtliche Grundlage zu stellen, fragen wir den
-              Bodenrichtwert für die Koordinaten des Objekts beim Geodatendienst des{" "}
+              Bodenrichtwert für die Koordinaten des Objekts — je nach Lage — beim
+              Geodatendienst des{" "}
               <strong>Landesamts für Vermessung und Geobasisinformation Rheinland-Pfalz
-              (LVermGeo, BORIS-RLP)</strong> ab.
+              (LVermGeo, BORIS-RLP)</strong> oder der{" "}
+              <strong>Hessischen Verwaltung für Bodenmanagement und Geoinformation
+              (HVBG, BORIS Hessen)</strong> ab.
             </p>
             <p>
               Diese Abfrage erfolgt <strong>serverseitig</strong>: Die Anfrage geht von unserem
