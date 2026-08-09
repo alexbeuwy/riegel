@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     { label: "E-Mail", value: esc(userEmail) },
     // Beweissicherung Button-Lösung (§ 312j Abs. 3 BGB, BGH I ZR 159/24):
     // die Beschriftung der Schaltfläche gehört mit in die Dokumentation.
-    { label: "Zustimmung", value: "aktiv bestätigt (Haken gesetzt, Schaltfläche „Zahlungspflichtig beauftragen“)" },
+    { label: "Zustimmung", value: "aktiv bestätigt (Haken gesetzt, Schaltfläche „Makler provisionspflichtig beauftragen“)" },
     { label: "Zeitpunkt", value: esc(timestamp) },
   ]);
 

@@ -245,7 +245,7 @@ export function ExposeCta({
           </div>
 
           <p>
-            Mit Klick auf ‚Zahlungspflichtig beauftragen’ stimmen Sie
+            Mit Klick auf ‚Makler provisionspflichtig beauftragen’ stimmen Sie
             der Provisionsvereinbarung des Anbieters zu dieser Immobilie zu.
           </p>
           <p>
@@ -342,11 +342,16 @@ export function ExposeCta({
                   I ZR 159/24): Die Schaltfläche, mit der der Maklervertrag
                   online zustande kommt, muss die Zahlungspflicht selbst
                   benennen — sonst ist der Vertrag nichtig und die Provision
-                  unwiederbringlich verloren. „Zahlungspflichtig beauftragen"
-                  ist die auf den Maklervertrag übertragene Gesetzesformel
-                  („zahlungspflichtig bestellen"); KEINE weiteren Wörter auf
-                  dem Button, Zusätze verwässern die Eindeutigkeit. */}
-              Zahlungspflichtig beauftragen
+                  unwiederbringlich verloren. Neutrale Beschriftungen
+                  („Senden", „Exposé anfordern") sind seither tot.
+                  „Makler provisionspflichtig beauftragen" ist die
+                  IS24-Standardformulierung (Entscheidung Alex): benennt
+                  Auftragnehmer UND Zahlungspflicht („eine entsprechende
+                  eindeutige Formulierung" i. S. d. Gesetzes) und deckt sich
+                  mit dem Haken-Text darüber. Beschriftung nur zusammen mit
+                  dem Dialogtext und der Doku-Zeile in
+                  api/expose/confirm/route.ts ändern. */}
+              Makler provisionspflichtig beauftragen
             </button>
           </div>
         </div>
