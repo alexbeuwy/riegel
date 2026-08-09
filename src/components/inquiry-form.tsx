@@ -155,6 +155,18 @@ export function InquiryForm({ objektTitel, objektId }: { objektTitel: string; ob
           <Icon name="mail" size={18} />
           {busy ? "Wird gesendet …" : "Anfrage senden"}
         </button>
+        {/* Klarstellung nach BGH, Urt. v. 09.10.2025 (I ZR 159/24): Über eine
+            neutrale „Senden"-Schaltfläche KANN kein provisionspflichtiger
+            Maklervertrag geschlossen werden (§ 312j Abs. 3 BGB). Diese Zeile
+            stellt aktiv klar, dass hier auch keiner geschlossen werden SOLL —
+            die Provisionsvereinbarung läuft ausschließlich über den dafür
+            gebauten Dialog mit zahlungspflichtig beschriftetem Button
+            (expose-cta.tsx) bzw. die dokumentierten Prozesse vor Ort. */}
+        <p className="mt-2.5 text-center text-[0.7rem] leading-relaxed text-faint">
+          Ihre Anfrage ist unverbindlich und begründet keine Provisionspflicht.
+          Eine Provisionsvereinbarung kommt erst durch eine gesonderte, ausdrücklich
+          als zahlungspflichtig gekennzeichnete Beauftragung zustande.
+        </p>
       </div>
     </div>
   );

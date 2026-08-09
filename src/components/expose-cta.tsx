@@ -245,7 +245,7 @@ export function ExposeCta({
           </div>
 
           <p>
-            Mit Klick auf ‚Makler provisionspflichtig beauftragen’ stimmen Sie
+            Mit Klick auf ‚Zahlungspflichtig beauftragen’ stimmen Sie
             der Provisionsvereinbarung des Anbieters zu dieser Immobilie zu.
           </p>
           <p>
@@ -338,7 +338,15 @@ export function ExposeCta({
                   aria-hidden
                 />
               )}
-              Makler provisionspflichtig beauftragen
+              {/* Button-Lösung § 312j Abs. 3 BGB (BGH, Urt. v. 09.10.2025 —
+                  I ZR 159/24): Die Schaltfläche, mit der der Maklervertrag
+                  online zustande kommt, muss die Zahlungspflicht selbst
+                  benennen — sonst ist der Vertrag nichtig und die Provision
+                  unwiederbringlich verloren. „Zahlungspflichtig beauftragen"
+                  ist die auf den Maklervertrag übertragene Gesetzesformel
+                  („zahlungspflichtig bestellen"); KEINE weiteren Wörter auf
+                  dem Button, Zusätze verwässern die Eindeutigkeit. */}
+              Zahlungspflichtig beauftragen
             </button>
           </div>
         </div>

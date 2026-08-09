@@ -313,6 +313,9 @@ export default async function EstateDetailPage({
               {estate.marketingType === "kauf" && !estate.provision.free && (
                 <p className="text-xs text-faint">
                   Bei Wohnimmobilien gilt der Halbteilungsgrundsatz (§ 656c BGB).
+                  Eine Provisionspflicht entsteht nicht durch Ihre Anfrage oder
+                  das Ansehen dieser Seite, sondern erst durch eine gesonderte,
+                  ausdrücklich als zahlungspflichtig gekennzeichnete Beauftragung.
                 </p>
               )}
             </section>
