@@ -357,6 +357,27 @@ export default function ImpressumPage() {
               als solche gekennzeichnet.
             </p>
 
+            {/* AI-Act-Transparenz (Art. 50 Abs. 4 EU-VO 2024/1689, anwendbar
+                seit 02.08.2026): zentrale Erläuterung zu den dezenten
+                „KI-visualisiert"-Labels direkt an den betroffenen Bildern.
+                Anker #ki wird vom Footer-Hinweis verlinkt. */}
+            <h2 id="ki">KI-generierte Bildwelten</h2>
+            <p>
+              Einzelne atmosphärische Bildwelten auf dieser Website (z.&nbsp;B.
+              Hero- und Hintergrundmotive unserer Markenwelt) sowie im
+              PDF-Marktwert-Report sind mithilfe künstlicher Intelligenz
+              erstellt und direkt am jeweiligen Bild dezent mit
+              „KI-visualisiert" gekennzeichnet (Art.&nbsp;50 der Verordnung
+              (EU) 2024/1689, „AI Act").
+            </p>
+            <p>
+              Nicht KI-generiert sind insbesondere: sämtliche Team- und
+              Porträtfotos, Büro- und Eventaufnahmen, Auszeichnungsfotos,
+              Objektfotos aus unserer Vermarktung sowie Luft- und
+              Kartenbilder. Diese zeigen reale Personen, Orte und Objekte und
+              tragen daher bewusst keine Kennzeichnung.
+            </p>
+
             <h2>Hinweis auf Rechtsverletzungen</h2>
             <p>
               Sollten Sie den Eindruck haben, dass über diese Website ein Recht von Ihnen

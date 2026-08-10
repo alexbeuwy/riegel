@@ -508,6 +508,11 @@ function visualBand(
    *  Bei Personen-Motiven höher setzen, sonst schneidet das flache Band
    *  die Köpfe an. */
   fokus = 0.5,
+  /** AI-Act-Label (Art. 50 Abs. 4 EU-VO 2024/1689): true bei KI-generierten
+   *  Motiven — zeichnet dezent „KI-visualisiert" unten rechts im Band.
+   *  Die Bildwelt-Bänder des Reports (Wert-Report-Serie, Ladenlokal-KI)
+   *  sind KI; das Award-Foto ist ECHT und bleibt ohne Label. */
+  ki = false,
 ): number {
   if (!img) return yTop;
   const yBottom = yTop - bandH;
@@ -540,6 +545,17 @@ function visualBand(
     // verlässlich dunkle Unterlage statt nur einer Andeutung.
     fadeRect(page, x, yBottom, w, 44, rgb(0, 0, 0), 0.72, 0, 22, "up");
     mkText(page)(caption, x + (w - ctx.reg.widthOfTextAtSize(caption, cs)) / 2, yBottom + 13, cs, ctx.reg, rgb(1, 1, 1), 0.5);
+  }
+  if (ki) {
+    const label = "KI-VISUALISIERT";
+    const ls = 6;
+    const lw = ctx.reg.widthOfTextAtSize(label, ls) + 1.2 * label.length; // inkl. Spacing
+    // Ohne Caption fehlt der dunkle Scrim — dann eine eigene kleine dunkle
+    // Unterlage, sonst säuft das Label auf hellen Motiven ab.
+    if (!caption) {
+      page.drawRectangle({ x: x + w - lw - 18, y: yBottom + 6, width: lw + 10, height: 13, color: rgb(0, 0, 0), opacity: 0.45 });
+    }
+    mkText(page)(label, x + w - lw - 13, yBottom + 10, ls, ctx.reg, rgb(1, 1, 1), 1.2);
   }
   return yBottom;
 }
@@ -918,7 +934,7 @@ function drawCover(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   // Element der Seite randlos wirken. Fail-soft: ohne Bild bleibt die
   // Seite schlicht weiß.
   if (y - 60 > bandFloor) {
-    visualBand(ctx, page, ctx.paarReport, 0, y, w, y - bandFloor);
+    visualBand(ctx, page, ctx.paarReport, 0, y, w, y - bandFloor, undefined, 0.5, true);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -1795,7 +1811,7 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
   // Speyer füllen — nur, wenn noch spürbar Platz bis zum Footer ist.
   // Passt zur Seitenaussage: der Beleg "vor Ort" als Bild.
   if (y - 90 > bandFloor) {
-    visualBand(ctx, page, ctx.laden, M, y, contentW, Math.min(240, y - bandFloor), "Unser Büro in Speyer, Wormser Straße 13.", 0.62);
+    visualBand(ctx, page, ctx.laden, M, y, contentW, Math.min(240, y - bandFloor), "Unser Büro in Speyer, Wormser Straße 13.", 0.62, true);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -1976,7 +1992,7 @@ function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   // Diese Seite hat unter der CTA reichlich Weißraum — mit dem Büro-Band
   // füllen (die leerste Report-Seite).
   if (y - 100 > bandFloor) {
-    visualBand(ctx, page, ctx.broschuere, M, y, w - 2 * M, Math.min(250, y - bandFloor), "Ihre Immobilie verdient mehr als einen Algorithmus.", 0.72);
+    visualBand(ctx, page, ctx.broschuere, M, y, w - 2 * M, Math.min(250, y - bandFloor), "Ihre Immobilie verdient mehr als einen Algorithmus.", 0.72, true);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -2078,7 +2094,7 @@ function drawWhyRiegel(ctx: Ctx, d: ReportData, pageNo: number, total: number) {
   // Restlichen Weißraum bis zum Footer mit dem Beratungs-Band füllen (nur,
   // wenn noch spürbar Platz ist — sonst bleibt es leer).
   if (y - 78 > bandFloor) {
-    visualBand(ctx, page, ctx.beratung, M, y, contentW, Math.min(230, y - bandFloor), "Persönliche Beratung aus Speyer und Ludwigshafen.", 0.82);
+    visualBand(ctx, page, ctx.beratung, M, y, contentW, Math.min(230, y - bandFloor), "Persönliche Beratung aus Speyer und Ludwigshafen.", 0.82, true);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -2131,7 +2147,7 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   y -= 16;
   const disc = [
     "Dieser Marktwert-Report ist eine unverbindliche, datenbasierte Sofort-Einschätzung und stellt KEIN Verkehrswertgutachten im Sinne des § 194 BauGB und keine Rechts-, Steuer- oder Finanzierungsberatung dar. Die Berechnung beruht auf amtlichen Bodenrichtwerten, regionalen Vergleichsdaten und Erfahrungswerten; tatsächlich erzielbare Preise können — abhängig von Objektzustand, Ausstattung, Markt- und Verhandlungslage — abweichen. Eine Haftung für die Richtigkeit und Vollständigkeit der Angaben ist ausgeschlossen.",
-    "Das dargestellte Luftbild stammt aus Esri World Imagery (u. a. Maxar) und dient ausschließlich der Veranschaulichung der Lage. Die im Report verarbeiteten Angaben wurden von Ihnen über den Online-Rechner bereitgestellt und werden gemäß unserer Datenschutzerklärung (riegel-immobilien.de/datenschutz) ausschließlich zur Bearbeitung Ihrer Anfrage verwendet. Sie können der Verarbeitung jederzeit widersprechen.",
+    "Das dargestellte Luftbild stammt aus Esri World Imagery (u. a. Maxar) und dient ausschließlich der Veranschaulichung der Lage. Die atmosphärischen Bildwelten dieses Reports sind mithilfe künstlicher Intelligenz erstellt und am jeweiligen Bild mit „KI-visualisiert“ gekennzeichnet (Art. 50 Verordnung (EU) 2024/1689); Team-, Auszeichnungs- und Objektfotos sind echte Aufnahmen. Die im Report verarbeiteten Angaben wurden von Ihnen über den Online-Rechner bereitgestellt und werden gemäß unserer Datenschutzerklärung (riegel-immobilien.de/datenschutz) ausschließlich zur Bearbeitung Ihrer Anfrage verwendet. Sie können der Verarbeitung jederzeit widersprechen.",
   ];
   if (d.bodenrichtwert) {
     const stichtag = d.bodenrichtwert.stichtag ? `, Stichtag ${d.bodenrichtwert.stichtag}` : "";

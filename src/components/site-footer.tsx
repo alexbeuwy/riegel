@@ -178,6 +178,13 @@ export function SiteFooter() {
           <Container className="flex flex-col items-center justify-between gap-3 py-6 text-xs text-faint sm:flex-row">
             <span>
               © {year} {site.legalName}. Alle Rechte vorbehalten.
+              {/* AI-Act-Transparenz (Art. 50 EU-VO 2024/1689): Sammelhinweis
+                  ergänzend zu den Labels direkt an den KI-Bildern — der
+                  Footer allein würde nicht genügen, s. lib/ki-bilder.ts. */}{" "}
+              <Link href="/impressum#ki" className="transition-colors hover:text-fg">
+                Bildwelten teils KI-visualisiert
+              </Link>
+              .
             </span>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <span className="hidden text-faint sm:inline">Speyer · Ludwigshafen · Rhein-Neckar</span>
