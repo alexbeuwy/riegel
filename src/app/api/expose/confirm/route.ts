@@ -4,6 +4,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { getEstateBySlug } from "@/lib/estates";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { readBuyerDetails, buyerValidationError } from "@/lib/buyer-details";
+import { recordExposeConfirmation } from "@/lib/expose-confirmations";
 
 /**
  * Aktive Bestätigung der Provisionsvereinbarung VOR dem Exposé-Download
@@ -140,16 +141,10 @@ export async function POST(req: Request) {
     html,
   });
 
-  // Fail-soft: Ist der Mailversand gar nicht konfiguriert (kein RESEND_API_KEY),
-  // ist das kein Fehler des Nutzers — Bestätigung gilt, Download darf starten.
-  if (sent.skipped) {
-    console.warn(
-      `[expose-confirm] Mailversand übersprungen (nicht konfiguriert) für Objekt ${estate.id} / Nutzer ${userEmail}`,
-    );
-    return NextResponse.json({ ok: true, mailed: false });
-  }
   // Echter Versandfehler: NICHT durchwinken — sonst „verpufft" die Bestätigung.
-  if (!sent.ok) {
+  // Vor dem Persistieren prüfen, damit ein fehlgeschlagener Vorgang auch keine
+  // gültige Download-Berechtigung hinterlässt.
+  if (!sent.skipped && !sent.ok) {
     console.error(
       `[expose-confirm] Mailversand fehlgeschlagen für Objekt ${estate.id} / Nutzer ${userEmail}: ${sent.error ?? "unbekannt"}`,
     );
@@ -157,6 +152,23 @@ export async function POST(req: Request) {
       { ok: false, error: "Bestätigung konnte nicht versendet werden, bitte erneut versuchen." },
       { status: 502 },
     );
+  }
+
+  // Bestätigung persistieren (Sicherheits-Audit 08/2026): erst dieser
+  // Datensatz erlaubt GET /api/expose serverseitig den Download dieses
+  // provisionspflichtigen Objekts — ohne ihn war das Client-Gate per curl
+  // umgehbar. Best-effort und migrations-resilient: fehlt die Tabelle noch
+  // (Migration nicht angewendet), NICHT den Nutzer blockieren — das
+  // Download-Gate ist ohne Tabelle ohnehin inaktiv.
+  await recordExposeConfirmation(user.id, estate, provisionText);
+
+  // Fail-soft: Ist der Mailversand gar nicht konfiguriert (kein RESEND_API_KEY),
+  // ist das kein Fehler des Nutzers — Bestätigung gilt, Download darf starten.
+  if (sent.skipped) {
+    console.warn(
+      `[expose-confirm] Mailversand übersprungen (nicht konfiguriert) für Objekt ${estate.id} / Nutzer ${userEmail}`,
+    );
+    return NextResponse.json({ ok: true, mailed: false });
   }
 
   return NextResponse.json({ ok: true, mailed: true });

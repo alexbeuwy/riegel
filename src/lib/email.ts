@@ -138,15 +138,27 @@ const LOGO_URL = `${EMAIL_ASSET_BASE}/email-logo-riegel-dark.png`;
  * und einem echten `<a>` für alle anderen Clients (Gmail, Apple Mail, mobil).
  */
 function ctaButton(label: string, href: string): string {
+  // Defense-in-Depth (Sicherheits-Audit 08/2026): href wird für den
+  // Attribut-Kontext escaped, damit ein „ aus einer (idealerweise schon am
+  // Ursprung validierten) URL nie aus dem href-Attribut ausbrechen kann.
+  // Schützt ALLE Mail-Aufrufer, nicht nur den Feedback-CTA. Eine legitime URL
+  // enthält keines dieser Zeichen roh; nur die kaufmännische Und-Verknüpfung
+  // (&) mehrerer Query-Parameter wird korrekt als &amp; kodiert.
+  const safeHref = String(href)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 4px;"><tr><td>
 <!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:46px;v-text-anchor:middle;width:280px;" arcsize="50%" stroke="f" fillcolor="#015cff">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:46px;v-text-anchor:middle;width:280px;" arcsize="50%" stroke="f" fillcolor="#015cff">
 <w:anchorlock/>
 <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;">${label}</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<a href="${href}" style="background:#015cff;border-radius:999px;color:#ffffff;display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:14px 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${label}</a>
+<a href="${safeHref}" style="background:#015cff;border-radius:999px;color:#ffffff;display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:14px 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${label}</a>
 <!--<![endif]-->
 </td></tr></table>`;
 }

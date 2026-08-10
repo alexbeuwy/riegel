@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { getEstateBySlug } from "@/lib/estates";
 import { getExposePdfCached } from "@/lib/expose-cache";
+import { hasExposeConfirmation } from "@/lib/expose-confirmations";
 
 /**
  * PDF-Exposé-Download (/immobilien/[slug]) — bewusst hinter dem Konto-Gate:
@@ -35,6 +36,28 @@ export async function GET(req: Request) {
   if (!found || found.source !== "onoffice") {
     // Mock-Objekte haben kein echtes Exposé; unbekannte Slugs sowieso nicht.
     return NextResponse.json({ ok: false, error: "Für dieses Objekt ist kein Exposé verfügbar." }, { status: 404 });
+  }
+
+  // Provisions-Gate serverseitig (Sicherheits-Audit 08/2026): Bei
+  // provisionspflichtigen Objekten muss für diesen Nutzer eine aktive
+  // Bestätigung persistiert sein (§ 312j Abs. 3 BGB / BGH I ZR 159/24). Ohne
+  // diese Prüfung war das Client-Gate (Bestätigungs-Dialog + Pflicht-Haken)
+  // per curl umgehbar, sodass für den Download kein dokumentierter
+  // Zustimmungsnachweis existierte. hasExposeConfirmation ist
+  // migrations-resilient (fehlt die Tabelle noch, bleibt das Gate inaktiv,
+  // statt legitime Downloads zu blockieren).
+  if (!found.estate.provision.free) {
+    const bestaetigt = await hasExposeConfirmation(userData.user.id, found.estate.id);
+    if (!bestaetigt) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Bitte bestätigen Sie zuerst die Provisionsvereinbarung, um das Exposé zu laden.",
+        },
+        { status: 403 },
+      );
+    }
   }
 
   // Cache in Supabase Storage vorgeschaltet (siehe expose-cache.ts) — nur bei

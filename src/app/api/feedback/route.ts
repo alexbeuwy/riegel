@@ -14,6 +14,27 @@ const esc = (s: unknown) =>
 const clean = (s: unknown, max: number) => String(s ?? "").trim().slice(0, max);
 
 /**
+ * Nutzergelieferte `pageUrl` auf einen SICHEREN, gleich-origin Pfad einengen,
+ * bevor sie in den Mail-CTA-`href` eingesetzt wird (Sicherheits-Audit 08/2026).
+ * Ohne diese Prüfung war die unauth. Feedback-Route zweifach angreifbar:
+ *   - HTML-/Attribut-Injection: ein `"` in pageUrl brach aus dem href-Attribut
+ *     der internen Mail aus (`href="${href}"` in ctaButton) → beliebiges HTML
+ *     im Postfach von Alex/Sissy.
+ *   - Open Redirect/Phishing: `@boese.tld/x` ergab
+ *     `https://riegel-immobilien.de@boese.tld/x` → der „Seite öffnen"-Link zeigte
+ *     auf eine Fremddomain.
+ * Regeln (analog zur next-Prüfung in konto/page.tsx): genau ein führender „/",
+ * kein „//" (protokoll-relativ), keine Zeichen, die aus dem Attribut ausbrechen
+ * oder den Host verbiegen. Alles andere → „/".
+ */
+function safePath(raw: string): string {
+  const s = String(raw ?? "").trim();
+  if (!s.startsWith("/") || s.startsWith("//") || s.startsWith("/\\")) return "/";
+  if (/[\s"'<>`\\]/.test(s)) return "/";
+  return s.slice(0, 500);
+}
+
+/**
  * „Auf der Seite kommentieren" (feedback-widget.tsx, nur fürs Team sichtbar).
  * Persistiert best effort in Supabase UND schickt immer eine interne Mail —
  * beides darf unabhängig voneinander fehlschlagen, ohne dass Sissys Kommentar
@@ -58,7 +79,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
 
-  const path = pageUrl || "/";
+  const path = safePath(pageUrl);
   // SITE_URL (aus site.url, riegel-immobilien.de) statt ASSET_BASE: die
   // kanonische Domain ist erreichbar, der "Seite öffnen"-Link soll auf die
   // echte Produktionsseite zeigen und nicht auf die Vorschau-Domain.
