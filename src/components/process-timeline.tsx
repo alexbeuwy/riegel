@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Icon, type IconName } from "@/components/icon";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 export interface ProcessStep {
   icon: IconName;
@@ -85,7 +86,9 @@ export function ProcessTimeline({ steps }: { steps: ProcessStep[] }) {
                   sizes="(max-width: 1024px) 50vw, 20vw"
                   className={`object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 ${s.imageClass ?? ""}`}
                 />
-              ) : (
+              ) : null}
+              {s.image && <KiHinweis src={s.image} />}
+              {!s.image && (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { site, type NavItem } from "@/lib/site";
 import { Icon } from "@/components/icon";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 function closeMs() {
   if (typeof window === "undefined") return 150;
@@ -115,6 +116,7 @@ function MobileNavItem({
                 sizes="360px"
                 className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
               />
+              <KiHinweis src={item.feature.image} />
               <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
               <span className="relative flex w-full items-center justify-between gap-3 p-3">
                 <span className="min-w-0">

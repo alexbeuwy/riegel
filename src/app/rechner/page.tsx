@@ -3,6 +3,7 @@ import { Container } from "@/components/container";
 import { Calculator } from "@/components/calculator/calculator";
 import { Icon, type IconName } from "@/components/icon";
 import { photos } from "@/lib/photos";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 export const metadata = {
   title: "Immobilienbewertung",
@@ -35,6 +36,7 @@ export default function RechnerPage() {
             sizes="100vw"
             className="object-cover object-center"
           />
+          <KiHinweis src={photos.rechnerHero} />
           {/* Lesbarkeit: oben/unten in den Seitenhintergrund auslaufen, damit der
               zentrierte Text auf jedem Bildausschnitt trägt. Foto ist bereits
               dunkel — Overlay bewusst leicht. */}

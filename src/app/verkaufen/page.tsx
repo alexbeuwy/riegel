@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
+import { KiHinweis } from "@/components/ki-hinweis";
 import { BentoGrid, BentoTile, BentoPhoto } from "@/components/bento";
 import { ProcessTimeline } from "@/components/process-timeline";
 import { TrustStrip } from "@/components/trust-strip";
@@ -106,6 +107,7 @@ export default function VerkaufenPage() {
             sizes="100vw"
             className="object-cover object-[75%_center]"
           />
+          <KiHinweis src={photos.modelWohnung} />
           {/* Foto ist bereits dunkel — Overlay bewusst leicht. */}
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/50 to-bg/15" />
           <div className="absolute inset-0 bg-gradient-to-r from-bg/55 via-bg/10 to-transparent" />
@@ -154,6 +156,7 @@ export default function VerkaufenPage() {
                 sizes="(max-width: 1024px) 100vw, 520px"
                 className="h-[clamp(300px,42vw,520px)] w-full object-cover object-top"
               />
+              <KiHinweis src={photos.broschuerePortrait} />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/40 to-transparent" />
             </div>
           </div>
@@ -187,6 +190,7 @@ export default function VerkaufenPage() {
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className="h-[260px] w-full object-cover sm:h-[360px]"
               />
+              <KiHinweis src={photos.analyse2} />
             </div>
             <div>
               <h2 className="akira text-2xl leading-tight text-fg sm:text-3xl">

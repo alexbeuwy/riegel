@@ -8,6 +8,7 @@ import { Icon } from "@/components/icon";
 import { contacts } from "@/lib/contacts";
 import { photos } from "@/lib/photos";
 import { site, whatsappHref } from "@/lib/site";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 export const metadata = { title: "Kontakt", alternates: { canonical: "/kontakt" } };
 
@@ -130,6 +131,7 @@ export default function KontaktPage() {
                       sizes="(max-width: 640px) 100vw, 45vw"
                       className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
                     />
+                    <KiHinweis src={i === 0 ? photos.standortSpeyer : photos.standortLudwigshafen} />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/85 to-transparent p-4">
                       <div className="flex items-center gap-2 text-fg">
                         <Icon name="pin" size={16} className="text-accent" />

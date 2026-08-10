@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Icon, type IconName } from "@/components/icon";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 /** Bento-Grid: asymmetrisches Kachel-Layout, dark-first, Akzent-Glow beim Hover. */
 export function BentoGrid({
@@ -159,6 +160,7 @@ export function BentoPhoto({
         className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-bg/10 to-transparent" />
+      <KiHinweis src={src} />
       {label ? (
         <span className="absolute bottom-4 left-4 right-4 text-sm font-medium text-fg">
           {label}

@@ -5,6 +5,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { EstatesTeaser } from "@/components/estates-teaser";
 import { site } from "@/lib/site";
 import { photos } from "@/lib/photos";
+import { KiHinweis } from "@/components/ki-hinweis";
 import { geoArticles, GEO_CONTENT_PUBLISHED, GEO_CONTENT_UPDATED, type GeoArticle } from "@/lib/geo";
 import {
   standortRegion,
@@ -586,14 +587,17 @@ export async function GeoArticleView({ article }: { article: GeoArticle }) {
               </nav>
             )}
             <div className="overflow-hidden rounded-2xl border border-accent/30 bg-surface">
-              <Image
-                src={article.kind === "standort" ? photos.analyse2 : photos.analyse1}
-                alt="RIEGEL Immobilien – Beratung und Bewertung vor Ort"
-                width={560}
-                height={360}
-                sizes="280px"
-                className="h-40 w-full object-cover"
-              />
+              <div className="relative">
+                <Image
+                  src={article.kind === "standort" ? photos.analyse2 : photos.analyse1}
+                  alt="RIEGEL Immobilien – Beratung und Bewertung vor Ort"
+                  width={560}
+                  height={360}
+                  sizes="280px"
+                  className="h-40 w-full object-cover"
+                />
+                <KiHinweis src={article.kind === "standort" ? photos.analyse2 : photos.analyse1} />
+              </div>
             <div className="p-6">
               <div className="flex items-center gap-2 text-sm text-accent">
                 <Icon name="sparkle" size={18} />

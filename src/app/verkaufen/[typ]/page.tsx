@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { Reveal } from "@/components/reveal";
+import { KiHinweis } from "@/components/ki-hinweis";
 import {
   ExpertenInfografik,
   type ExpertenInfografikTyp,
@@ -151,6 +152,7 @@ export default async function ExpertenPage({ params }: { params: Promise<{ typ: 
             className="object-cover"
             style={seite.heroFoto.position ? { objectPosition: seite.heroFoto.position } : undefined}
           />
+          <KiHinweis src={seite.heroFoto.src} />
           {/* Mobil liegt das Foto voll hinter dem Text → kräftig abdunkeln. */}
           <div aria-hidden className="absolute inset-0 bg-bg/55 lg:hidden" />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-bg via-bg/40 to-bg/30 lg:hidden" />
@@ -273,6 +275,7 @@ export default async function ExpertenPage({ params }: { params: Promise<{ typ: 
                     className="h-[260px] w-full object-cover sm:h-[380px]"
                     style={v.foto.position ? { objectPosition: v.foto.position } : undefined}
                   />
+                  <KiHinweis src={v.foto.src} />
                   <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/35 to-transparent" />
                 </div>
               </div>

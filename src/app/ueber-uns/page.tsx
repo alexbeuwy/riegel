@@ -3,6 +3,7 @@ import { PageIntro } from "@/components/page-intro";
 import { Container } from "@/components/container";
 import { Reveal } from "@/components/reveal";
 import { Icon, type IconName } from "@/components/icon";
+import { KiHinweis } from "@/components/ki-hinweis";
 import { site } from "@/lib/site";
 import { photos, portraits } from "@/lib/photos";
 import { EngagementBento } from "@/components/engagement-bento";
@@ -180,6 +181,7 @@ export default function UeberUnsPage() {
                     sizes="(max-width: 640px) 100vw, 50vw"
                     className="h-[230px] w-full object-cover sm:h-[300px]"
                   />
+                  <KiHinweis src={img.src} />
                 </div>
               ))}
             </div>
@@ -228,6 +230,7 @@ export default function UeberUnsPage() {
                       sizes="(max-width: 1024px) 100vw, 50vw"
                       className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
                     />
+                    <KiHinweis src={i === 0 ? photos.standortSpeyer : photos.standortLudwigshafen} />
                   </div>
                   <div className="space-y-2 p-6">
                     <div className="flex items-center gap-2 text-lg font-semibold text-fg">

@@ -9,6 +9,7 @@ import { FavoritesLink } from "@/components/favorites";
 import { Icon } from "@/components/icon";
 import { useAuth } from "@/components/auth";
 import { site, type NavItem } from "@/lib/site";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 function Wordmark() {
   return (
@@ -180,6 +181,7 @@ function DesktopNavItem({ item }: { item: NavItem }) {
                 sizes="212px"
                 className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
               />
+              <KiHinweis src={item.feature.image} />
               <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
               <span className="relative flex h-full min-h-[220px] flex-col justify-end p-4">
                 <span className="text-lg font-bold leading-snug text-white">{item.feature.label}</span>

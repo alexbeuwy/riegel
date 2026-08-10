@@ -26,6 +26,7 @@ import { TESTIMONIALS, TRUST_PLATFORMS } from "@/lib/trust-data";
 import { getSiteSetting } from "@/lib/site-settings";
 import { HERO_IMAGE_KEY } from "@/lib/site-settings-keys";
 import { ReachChart } from "@/components/reach-chart";
+import { KiHinweis } from "@/components/ki-hinweis";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
@@ -115,6 +116,7 @@ export default async function HomePage() {
             sizes="100vw"
             className="object-cover object-center"
           />
+          <KiHinweis src={heroImage} />
           {/* Foto ist bereits vorab abgedunkelt — Overlay bewusst leicht. */}
           <div className="absolute inset-0 bg-gradient-to-r from-bg/70 via-bg/20 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-bg/65 via-transparent to-bg/15" />
@@ -451,6 +453,7 @@ export default async function HomePage() {
                     sizes="(max-width: 1024px) 50vw, 28vw"
                     className="h-[300px] w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 md:h-[420px]"
                   />
+                  <KiHinweis src={photos.wertReport2} />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/50 via-transparent to-transparent" />
                   {/* Vertrauens-Badge, überlappt die Foto-Ecke — verbindet Bild und Botschaft. */}
                   <span className="pointer-events-none absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-border bg-bg/60 px-3.5 py-1.5 text-xs text-fg backdrop-blur">
@@ -470,6 +473,7 @@ export default async function HomePage() {
                       sizes="(max-width: 1024px) 50vw, 28vw"
                       className="h-[140px] w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 md:h-[198px]"
                     />
+                    <KiHinweis src={photos.analyse3} />
                   </div>
                 </Reveal>
                 <Reveal delay={240}>
@@ -482,6 +486,7 @@ export default async function HomePage() {
                       sizes="(max-width: 1024px) 50vw, 28vw"
                       className="h-[140px] w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105 md:h-[198px]"
                     />
+                    <KiHinweis src={photos.wertReport5} />
                   </div>
                 </Reveal>
               </div>
@@ -562,6 +567,7 @@ export default async function HomePage() {
                   sizes="(max-width: 1024px) 100vw, 45vw"
                   className="object-cover"
                 />
+                <KiHinweis src={photos.wertReport4} />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg/80 to-transparent p-4">
                   <span className="text-sm text-fg">Persönliche Beratung mit Blick auf Speyer: zwei Standorte, eine Region.</span>
                 </div>
