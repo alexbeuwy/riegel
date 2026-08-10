@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { verifyInternAccess } from "@/lib/intern-access";
 import { site } from "@/lib/site";
 
 /**
@@ -226,12 +227,24 @@ export async function GET(req: Request) {
 
   const variant = buildVariant(type);
 
-  // Test-Versand-Pfad: ruft sendMail() wirklich auf — eigenes, strengeres
-  // Rate-Limit, weil hier (mit gesetztem RESEND_API_KEY) tatsächlich Mails
-  // rausgehen könnten, anders als beim reinen HTML-Rendern oben.
+  // Test-Versand-Pfad: ruft sendMail() wirklich auf — ruft mit gesetztem
+  // RESEND_API_KEY echte Mails über RIEGELs verifizierte Domain aus.
+  // ZWINGEND hinter der /intern-Auth (Passwort ODER eingeloggte Session mit
+  // E-Mail-Allowlist): ohne dieses Gate wäre der Pfad ein offener Mail-Relay
+  // (Sicherheits-Audit 08/2026 — Versand von der Firmendomain an beliebige
+  // ?to=-Empfänger schädigt Zustellbarkeit/Reputation und verbrennt
+  // Resend-Kontingent, das schwache per-IP-Limit hält das nicht auf). Das
+  // reine HTML-Rendern unten bleibt bewusst offen (nur Beispieldaten).
   if (send) {
     if (!rateLimit(`mail-preview-send:${clientIp(req)}`, 3, 10 * 60_000)) {
       return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
+    }
+    const auth = await verifyInternAccess({
+      password: url.searchParams.get("password") ?? undefined,
+      accessToken: url.searchParams.get("accessToken") ?? undefined,
+    });
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
     if (!variant) {
       return NextResponse.json(
