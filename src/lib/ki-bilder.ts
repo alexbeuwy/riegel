@@ -37,6 +37,9 @@ const KI_FRAGMENTE = [
   "Riegel-Haus-lightrays",
   "RIEGEL-Speyer-KI",
   "RIEGEL-Ludwigshafen-KI",
+  // Aus den Experten-Seiten (Workflow-Inventur 08/2026): gleiche KI-Serie.
+  "Model-Frau-In-Wohnung",
+  "Paar-vor-Haus-schaut-auf-Smartphone",
 ] as const;
 
 /** Ist dieser Bild-src Teil der KI-generierten Bildwelt? */
