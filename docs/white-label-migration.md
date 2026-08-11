@@ -324,6 +324,9 @@ Damit Makler #2..#n **Tage** statt Wochen kosten:
 5. **Content-Pipeline** — die vorhandenen Generatoren (`scripts/build-experten-content.mjs`,
    `preisanalyse-onoffice.mts`, geo-Artikel) als reproduzierbaren „neue Region"-Lauf
    dokumentieren.
+6. **Rechner als Kern-Asset ausbauen** — Daten-Schichten, Kleine-n-Shrinkage, zentraler
+   beuwy-Marktdaten-Pool (Netzwerk-Effekt über alle Instanzen), Backtesting-KPIs:
+   s. **`docs/rechner-masterplan.md`** (Roadmap P1–P4 mit Abnahme-Kriterien).
 
 ---
 
