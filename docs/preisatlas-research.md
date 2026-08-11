@@ -264,3 +264,77 @@ für eine kommerzielle Maklerseite bleibt rechtlich nicht vertretbar. LGL-BW Ope
 weiterhin keine Bodenrichtwerte; BORIS-BW bleibt reiner Viewer. Sauberer Weg: schriftliche
 Nutzungszusage von ZGG-BW/LGL-BW einholen (Kontakt s. oben) — die Provider-Architektur nimmt
 einen dritten Dienst dann ohne Umbau auf.
+
+---
+
+## 7. Quellen-Strategie „200 km um Speyer" (11.08.2026, Frage Alex)
+
+**Frage:** Woher realistische VERKAUFS-Preise für alle Standorte im 200-km-Radius
+(RLP + BW + Hessen + Saarland + Ränder Bayern/NRW)? Kann man Homeday/Portale
+crawlen und Abschläge rechnen?
+
+### 7.1 Crawlen bleibt die falsche Antwort — auch mit Abschlag
+
+Homeday kann das, WEIL sie ein VC-finanziertes Tech-Unternehmen mit eigener
+Rechtsabteilung sind (10 Mio.+ Listings, 300+ Quellen, ML-Team — s. §1). Für
+beuwy/RIEGEL gilt unverändert §2: **Portal-Scraping ist nicht verteidigbar**
+(§87a–e UrhG Datenbankherstellerrecht, AGB/robots.txt kippen die
+§44b-TDM-Ausnahme, UWG) — und es wäre auch fachlich nur die zweitbeste Quelle,
+denn Portale kennen **Angebots**-, keine Verkaufspreise (IVD-Kritik an Homeday).
+Ein „realistischer Abschlag" auf illegal beschaffte Angebotsdaten bleibt illegal
+beschafft. **Die gute Nachricht: man kann genau dieselben Daten LEGAL kaufen (7.3).**
+
+### 7.2 Die einzigen echten VERKAUFS-Preisquellen (Kaufpreissammlungen)
+
+Notarielle Kaufverträge laufen per Gesetz an die **Gutachterausschüsse** — das
+ist die Quelle, die Homeday NICHT hat:
+
+| Quelle | Radius-Abdeckung | Zugang |
+|---|---|---|
+| **Immobilienmarktberichte der GAA** (RLP: Landesbericht; BW/Hessen/Saarland: je GAA bzw. Zentrale Geschäftsstelle) | flächendeckend, Kreis-/Stadt-Ebene, echte Median-/Durchschnittspreise je Teilmarkt | PDF, frei bzw. kleiner Schutzbetrag — **jährlich parsen → Kalibriertabelle** (gleiche Übernahme-Regeln wie preisanalyse-onoffice) |
+| **GREIX** (IfW Kiel, notarielle Transaktionen) | im Radius: **Karlsruhe, Frankfurt, Wiesbaden**, Stuttgart | frei — Trend-Anker für die BW-/Hessen-Flanke |
+| **Einzelauskunft aus der Kaufpreissammlung** | punktuell | als Makler mit berechtigtem Interesse je Anfrage — für Einzelbewertungen, nicht für Flächendaten |
+| **Eigener OnOffice-Pool** (seit 11.08.2026 produktiv) | dort, wo der Makler verkauft (n≥5) | Laufzeit-p75-Deckel + Basiskalibrierung — **wächst mit jedem Abschluss und jedem neuen white-label-Makler** |
+
+### 7.3 Angebotsdaten LEGAL: lizenzieren statt crawlen
+
+Das „Crawlen + Abschlag"-Modell gibt es fertig und rechtssauber zu kaufen —
+genau davon leben diese Anbieter:
+
+- **VALUE Marktdaten** (ehem. empirica-systeme): deutschlandweite
+  Angebotsdatenbank (~350k Mietdatenpunkte/Quartal, Kauf + Miete, alle
+  Objektarten), **REST-API**; Kreis-Ebene über empirica regio. DER Weg zu
+  flächendeckenden €/m² für jeden Ort im Radius.
+- **Sprengnetter** (bereits im OnOffice-Marketplace!): AVM-/REPORT-/MAPS-API —
+  kombiniert 10 Mio.+ Angebotspreise mit **2 Mio.+ echten Kaufpreisen**
+  (löst das Abschlag-Problem gleich mit), Pay-per-Use.
+- **PriceHubble** (OnOffice-Marketplace): AVM + Lead-Widget, s. §4.
+- **iib / IS24-Marktdaten**: Embed-Karten bzw. Datenprodukte, zweite Wahl.
+
+### 7.4 Der eigene Abschlags-Anker (Alleinstellung, kostenlos)
+
+Den Angebots→Abschluss-Abschlag muss niemand schätzen: **der eigene
+OnOffice-Bestand enthält beides** (Erstangebotspreis + notarieller Kaufpreis je
+Objekt, `priceReduced` existiert bereits im Estate-Modell). Ein Skript analog
+`preisanalyse-onoffice.mts` kann den echten RIEGEL-Abschlag je Objektart/Ort
+messen — damit lassen sich lizenzierte ANGEBOTSdaten (7.3) seriös auf
+VERKAUFSniveau umrechnen: „Angebotsdaten × eigener, gemessener Abschlag" ist
+methodisch genau das, was die Großen tun, nur mit ehrlicherer Abschlags-Basis.
+
+### 7.5 Empfehlung (Reihenfolge)
+
+1. **Jetzt, 0 €:** GAA-Marktberichte (RLP/BW/Hessen) einmal jährlich in eine
+   Kalibriertabelle übernehmen (erweitert REGIONS über die OnOffice-Orte
+   hinaus); GREIX als Trend-Anker; Abschlags-Skript (7.4) bauen.
+2. **Produkt-Layer, bezahlt:** Sprengnetter-API als erste Wahl (OnOffice-Nähe,
+   echte Kaufpreise im Modell, Pay-per-Use skaliert mit Makler-Instanzen —
+   Kosten je white-label-Kunde durchreichbar). Alternativ VALUE Marktdaten,
+   wenn wir die Rohdaten selbst modellieren wollen.
+3. **Nicht tun:** Portale/Homeday crawlen (7.1); BW-BORIS ohne schriftliche
+   Zusage (s. §6).
+
+Quellen: [VALUE Marktdaten / empirica-systeme-Integration](https://value.ag/pressemitteilung-erfolgreiche-integration-aus-empirica-systeme-wird-value-marktdaten/),
+[VALUE Wohnungsmarktdaten](https://www.value-marktdaten.de/en/portfolio/immobilienmarktdaten/wohnungsmarktdaten/),
+[VALUE REST-API](https://www.value-marktdaten.de/tag/rest-api-fuer-immobilienmarktdaten/),
+[Sprengnetter AVM-API](https://www.sprengnetter.de/avm-api/),
+[Sprengnetter API-Shop](https://shop.sprengnetter.de/Software/API-Loesungen/).
