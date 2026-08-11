@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
-import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
+import {
+  sendMail,
+  emailLayout,
+  emailRows,
+  emailTargets,
+  REPORT_HEADING_HTML,
+  reportValueHero,
+  reportMiniFacts,
+  reportPdfTeaser,
+  reportPdfCallout,
+} from "@/lib/email";
 import { buildReportPdf, REFERENZ_MAX } from "@/lib/report-pdf";
 import { buildReportContext } from "@/lib/report-context";
 import { supabaseServer } from "@/lib/supabase-server";
@@ -350,13 +360,24 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
     subject: `Ihr Marktwert-Report${city ? ` · ${city}` : ""} — RIEGEL Immobilien`,
     attachments,
     html: emailLayout({
-      heading: "Ihr persönlicher Marktwert-Report",
-      intro: `Vielen Dank, ${esc(name.split(" ")[0]) || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${esc(address)}` : ""} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
+      heading: REPORT_HEADING_HTML,
+      intro: `Vielen Dank, ${esc(name.split(" ")[0]) || "und herzlich willkommen"}! Hier ist Ihre Sofort-Einschätzung${address ? ` für ${esc(address)}` : ""}. Die vollständige Analyse mit allen Grafiken und Kennzahlen liegt als PDF im Anhang.`,
+      // Kompakte Kundenmail: Wert-Aufhänger, ein paar Eckdaten in zwei Spalten,
+      // PDF-Teaser + deutlicher Anhang-Callout. Alle Detail-Listen stehen im PDF.
       bodyHtml:
-        valueHero(mid, low, high, perSqm) +
-        `<div style="color:#6b7590;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
-        `<div style="color:#6b7590;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen +
-        ctaBtn + disclaimer,
+        reportValueHero({ mid, low, high, perSqm }) +
+        reportMiniFacts([
+          { label: "Objektart", value: esc(objektartLabel ?? "") },
+          { label: objektartLabel === "Gewerbe" ? "Nutzfläche" : "Wohnfläche", value: wohnflaeche ? `${wohnflaeche} m²` : "" },
+          { label: "Baujahr", value: baujahr ? String(baujahr) : "" },
+          { label: "Zustand", value: esc(zustand) },
+          { label: "Markttrend", value: `+${trendPct} % p.a.` },
+          { label: "Mikrolage", value: `${mikrolage}/10` },
+        ]) +
+        reportPdfTeaser() +
+        reportPdfCallout() +
+        ctaBtn +
+        disclaimer,
     }),
   });
 

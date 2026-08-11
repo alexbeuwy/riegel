@@ -132,6 +132,20 @@ const LOGO_URL = `${EMAIL_ASSET_BASE}/email-logo-riegel-dark.png`;
  */
 
 /**
+ * Geometrisch anmutender, e-mail-sicherer Font-Stack für Headlines. Spotifys
+ * „Circular"-Look lässt sich in HTML-Mails nicht einbetten (Webfonts werden
+ * gestrippt, s. Realitäts-Kommentar oben); Helvetica Neue ist die nächste
+ * überall vorhandene geometrische Annäherung. Der eigentliche „Circular"-
+ * Charakter entsteht hier ohnehin mehr aus Bold + engem Tracking (-0.02em) +
+ * normaler Groß-/Kleinschreibung als aus der exakten Schrift.
+ */
+const HEADING_FONT = "'Helvetica Neue',Helvetica,Arial,sans-serif";
+
+/** de-DE Euro ohne Nachkommastellen — für die Report-Bausteine unten. */
+const eur0 = (n: number) =>
+  new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+
+/**
  * Bulletproof CTA-Button: kein reiner `<a style="background:…">`-Button (den
  * ignoriert Outlook Desktop teils, v. a. bei abgerundeten Ecken), sondern das
  * Standard-E-Mail-Pattern aus Tabelle + MSO-VML-Roundrect-Fallback für Outlook
@@ -194,7 +208,7 @@ export function emailLayout(opts: {
 <![endif]-->
 </td></tr>
 <tr><td style="padding:14px 32px 24px;border-bottom:1px solid #e4e8f0;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:#015cff;border-radius:2px;">&nbsp;</div></td></tr>
-<tr><td style="padding:34px 32px 8px;"><h1 style="margin:0 0 14px;color:#141724;font-size:30px;font-weight:800;line-height:1.25;text-transform:uppercase;letter-spacing:1px;">${opts.heading}</h1>${
+<tr><td style="padding:34px 32px 8px;"><h1 style="margin:0 0 14px;color:#141724;font-family:${HEADING_FONT};font-size:28px;font-weight:800;line-height:1.16;letter-spacing:-0.02em;">${opts.heading}</h1>${
     opts.intro ? `<p style="margin:0 0 18px;color:#5a6072;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
   }${opts.bodyHtml ?? ""}${cta}</td></tr>
 <tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;"><p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">RIEGEL Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>
@@ -219,6 +233,97 @@ export function emailRows(rows: { label: string; value: string }[]): string {
       return `<tr><td style="padding:12px 0;${border}color:#6b7590;font-size:13px;width:38%;vertical-align:top;">${r.label}</td><td style="padding:12px 0;${border}color:#141724;font-size:14px;">${r.value}</td></tr>`;
     })
     .join("")}</table>
+</td></tr></table>`;
+}
+
+/* ─────────────────────  Bausteine der Kunden-Report-Mail  ─────────────────────
+ * Zentral hier, damit die echte Versand-Route (api/report) und die HTML-
+ * Vorschau (api/mail-preview) garantiert dasselbe rendern. Ziel des Redesigns
+ * (Wunsch Alex): Die Mail soll das angehängte PDF nicht verstecken, sondern
+ * aktiv darauf hinführen — die vollständigen Objekt-/Kennzahl-Listen stehen im
+ * PDF, die Mail zeigt nur den Aufhänger (Wert), ein paar kompakte Eckdaten und
+ * einen deutlichen Callout zum Anhang. */
+
+/** Report-Headline mit „als PDF-Anhang"-Akzent (HTML, wird als heading übergeben). */
+export const REPORT_HEADING_HTML =
+  `Ihr persönlicher Marktwert-Report` +
+  `<span style="display:block;margin-top:8px;color:#015cff;font-size:16px;font-weight:700;letter-spacing:-0.01em;">als PDF-Anhang</span>`;
+
+/** Wert-Hero: der große geschätzte Marktwert samt Spanne — der Aufhänger. */
+export function reportValueHero(v: { mid: number; low: number; high: number; perSqm?: number }): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 16px;background:#eef3ff;border:1px solid #dbe5fa;border-radius:16px;">
+<tr><td style="padding:22px 24px;text-align:center;">
+<div style="color:#6b7590;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
+<div style="color:#015cff;font-family:${HEADING_FONT};font-size:40px;font-weight:800;letter-spacing:-0.02em;margin:8px 0 4px;">${eur0(v.mid)}</div>
+<div style="color:#5a6072;font-size:14px;">Spanne ${eur0(v.low)} – ${eur0(v.high)}${v.perSqm ? ` · ${eur0(v.perSqm)}/m²` : ""}</div>
+</td></tr></table>`;
+}
+
+/**
+ * Kompakte Eckdaten in ZWEI Spalten (statt der langen Objektdaten-/Kennzahl-
+ * Tabellen — die stehen vollständig im PDF). Nimmt {label,value}-Paare, zeigt
+ * nur die befüllten, klein und dicht. Ungerade Anzahl → letzte Zelle leer.
+ */
+export function reportMiniFacts(rows: { label: string; value: string }[]): string {
+  const f = rows.filter((r) => r.value);
+  if (!f.length) return "";
+  const cell = (r?: { label: string; value: string }) =>
+    r
+      ? `<td width="50%" style="padding:9px 10px;vertical-align:top;">
+<div style="color:#8a90a3;font-size:10px;letter-spacing:1px;text-transform:uppercase;">${r.label}</div>
+<div style="color:#141724;font-size:14px;font-weight:700;letter-spacing:-0.01em;margin-top:2px;">${r.value}</div></td>`
+      : `<td width="50%" style="padding:9px 10px;">&nbsp;</td>`;
+  let body = "";
+  for (let i = 0; i < f.length; i += 2) body += `<tr>${cell(f[i])}${cell(f[i + 1])}</tr>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:2px 0 16px;background:#f5f7fc;border-radius:14px;"><tr><td style="padding:8px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${body}</table>
+</td></tr></table>`;
+}
+
+/**
+ * PDF-Teaser: deutet die Grafiken/Fakten des PDF an (eine kleine, farblich
+ * ausblendende Balken-Andeutung — „gefadeter" Chart als Preview) und listet in
+ * zwei Spalten, was drinsteht. Der Fade entsteht über die Balken-FARBE (von
+ * Vollton zu hellem Blau), nicht über CSS-Masken — die rendern in Outlook nicht.
+ */
+export function reportPdfTeaser(): string {
+  const bars = [22, 34, 28, 44, 38, 52, 46, 60];
+  const barColors = ["#015cff", "#1f6bff", "#3d7dff", "#5f93ff", "#82abff", "#a6c3ff", "#c4d7fb", "#dbe6fb"];
+  const chart = bars
+    .map(
+      (h, i) =>
+        `<td style="padding:0 2px;vertical-align:bottom;"><div style="height:${h}px;line-height:${h}px;font-size:0;background:${barColors[i]};border-radius:3px 3px 0 0;">&nbsp;</div></td>`,
+    )
+    .join("");
+  const inhalt = [
+    "📊 Werttreiber-Analyse",
+    "📈 Preis-Zusammensetzung",
+    "🗺️ Lage &amp; Bodenrichtwert",
+    "🏘️ Vergleichsobjekte aus Ihrer Region",
+  ];
+  let rowsHtml = "";
+  for (let i = 0; i < inhalt.length; i += 2) {
+    rowsHtml += `<tr><td width="50%" style="padding:5px 8px 5px 0;color:#3a4150;font-size:13px;">${inhalt[i]}</td><td width="50%" style="padding:5px 0;color:#3a4150;font-size:13px;">${inhalt[i + 1] ?? ""}</td></tr>`;
+  }
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 4px;background:#f5f7fc;border:1px solid #e4e8f0;border-radius:16px;"><tr><td style="padding:18px 20px;">
+<div style="color:#8a90a3;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Ein Blick ins PDF</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="height:60px;"><tr valign="bottom">${chart}</tr></table>
+<div style="height:1px;line-height:1px;font-size:0;background:#dbe5fa;margin:2px 0 12px;">&nbsp;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>
+</td></tr></table>`;
+}
+
+/**
+ * Großer, dunkler Callout ganz unten mit Pfeil nach unten — der klare
+ * Fingerzeig „öffne den PDF-Anhang". Der Pfeil ist ein echtes Unicode-Zeichen
+ * in einem runden blauen Kreis (kein Bild → immer sichtbar, auch bei
+ * geblockten Grafiken).
+ */
+export function reportPdfCallout(): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 4px;background:#141724;border-radius:16px;"><tr><td style="padding:26px 24px;text-align:center;">
+<div style="width:44px;height:44px;line-height:44px;border-radius:999px;background:#015cff;color:#ffffff;font-size:22px;font-weight:700;margin:0 auto 14px;text-align:center;">&#8595;</div>
+<div style="color:#ffffff;font-family:${HEADING_FONT};font-size:19px;font-weight:800;letter-spacing:-0.02em;line-height:1.3;">Alle Informationen im Detail im PDF</div>
+<div style="color:#9aa3b8;font-size:13px;line-height:1.6;margin-top:8px;">Öffnen Sie den <strong style="color:#c4d3ff;">PDF-Anhang</strong> dieser E-Mail — mit Lagekarte, Werttreibern, Vergleichsobjekten und der vollständigen Aufstellung.</div>
 </td></tr></table>`;
 }
 

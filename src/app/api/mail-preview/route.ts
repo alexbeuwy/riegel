@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
-import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
+import {
+  sendMail,
+  emailLayout,
+  emailRows,
+  emailTargets,
+  REPORT_HEADING_HTML,
+  reportValueHero,
+  reportMiniFacts,
+  reportPdfTeaser,
+  reportPdfCallout,
+} from "@/lib/email";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyInternAccess } from "@/lib/intern-access";
 import { site } from "@/lib/site";
@@ -142,45 +152,29 @@ function buildVariant(type: string): { subject: string; html: string } | null {
         }),
       };
 
-    // Spiegelt api/report/route.ts (Kunden-Mail): Wert-Hero + Objektdaten +
-    // Kennzahlen + CTA + Disclaimer — hier ohne PDF-Anhang (reine HTML-Vorschau).
+    // Spiegelt api/report/route.ts (Kunden-Mail) über dieselben zentralen
+    // Bausteine aus lib/email.ts — nur ohne echten PDF-Anhang (HTML-Vorschau).
     case "report": {
-      const valueHero = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#eef3ff;border:1px solid #dbe5fa;border-radius:16px;">
-<tr><td style="padding:22px 24px;text-align:center;">
-<div style="color:#6b7590;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
-<div style="color:#015cff;font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(VALUE.mid)}</div>
-<div style="color:#5a6072;font-size:14px;">Spanne ${eur(VALUE.low)} – ${eur(VALUE.high)} · ${eur(VALUE.perSqm)}/m²</div>
-</td></tr></table>`;
-      const objektRows = emailRows([
-        { label: "Adresse", value: esc(OBJ.adresse) },
-        { label: "Objektart", value: esc(OBJ.objektart) },
-        { label: "Wohnfläche", value: `${OBJ.wohnflaeche} m²` },
-        { label: "Grundstück", value: `${OBJ.grundflaeche} m²` },
-        { label: "Zimmer", value: String(OBJ.zimmer) },
-        { label: "Baujahr", value: String(OBJ.baujahr) },
-        { label: "Zustand", value: esc(OBJ.zustand) },
-        { label: "Qualität", value: esc(OBJ.qualitaet) },
-        { label: "Energieklasse", value: esc(OBJ.energieklasse) },
-      ]);
-      const kennzahlen = emailRows([
-        { label: "Preis / m²", value: eur(VALUE.perSqm) },
-        { label: "Vergleichsobjekte", value: "14" },
-        { label: "Markttrend", value: "+3,2 % p.a." },
-        { label: "Mikrolage", value: "8,4/10" },
-        { label: "Konfidenz", value: "86 %" },
-      ]);
       const disclaimer = `<p style="margin:18px 0 0;color:#6b7590;font-size:12px;line-height:1.6;">
 Unverbindliche, datenbasierte Sofort-Einschätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.
 Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose, ausführliche Bewertung vor Ort.</p>`;
       return {
         subject: `Ihr Marktwert-Report · Speyer — RIEGEL Immobilien`,
         html: emailLayout({
-          heading: "Ihr persönlicher Marktwert-Report",
-          intro: `Vielen Dank, ${esc(LEAD.name.split(" ")[0])}! Hier ist Ihre Sofort-Einschätzung für ${esc(OBJ.adresse)} — die vollständige Aufstellung finden Sie zusätzlich im angehängten PDF.`,
+          heading: REPORT_HEADING_HTML,
+          intro: `Vielen Dank, ${esc(LEAD.name.split(" ")[0])}! Hier ist Ihre Sofort-Einschätzung für ${esc(OBJ.adresse)}. Die vollständige Analyse mit allen Grafiken und Kennzahlen liegt als PDF im Anhang.`,
           bodyHtml:
-            valueHero +
-            `<div style="color:#6b7590;font-size:13px;margin:0 0 4px;">Objektdaten</div>` + objektRows +
-            `<div style="color:#6b7590;font-size:13px;margin:14px 0 4px;">Kennzahlen</div>` + kennzahlen +
+            reportValueHero({ mid: VALUE.mid, low: VALUE.low, high: VALUE.high, perSqm: VALUE.perSqm }) +
+            reportMiniFacts([
+              { label: "Objektart", value: esc(OBJ.objektart) },
+              { label: "Wohnfläche", value: `${OBJ.wohnflaeche} m²` },
+              { label: "Baujahr", value: String(OBJ.baujahr) },
+              { label: "Zustand", value: esc(OBJ.zustand) },
+              { label: "Markttrend", value: "+3,2 % p.a." },
+              { label: "Mikrolage", value: "8,4/10" },
+            ]) +
+            reportPdfTeaser() +
+            reportPdfCallout() +
             disclaimer,
           ctaLabel: "Vor-Ort-Bewertung vereinbaren",
           ctaHref: `${site.url}/rechner`,
