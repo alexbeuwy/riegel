@@ -167,8 +167,16 @@ Impressum, Datenschutz, Widerruf — komplett aus den echten Daten des neuen Mak
   UPDATED`), `experten.ts:103-104`.
 - **Marktdaten-/Geo-Engine (Fundament von Rechner + Preisatlas):**
   - `geo-taxonomy.ts:69-122` — 18 Städte mit **echten Koordinaten** + Nachfragefaktoren.
-  - `marktdaten.ts:43-69` **REGION_BASIS** (€/m² je Kernstadt) — ⚠️ **muss synchron mit
-    `valuation.ts:222-231` REGIONS gehalten werden** (zwei Dateien, kein Single-Source!).
+  - `marktdaten.ts` **REGION_BASIS** (€/m² je Kernstadt) — ⚠️ **muss synchron mit
+    REGIONS in `valuation.ts` gehalten werden** (zwei Dateien, kein Single-Source!). Beide
+    beschreiben den **Median echter Abschlüsse** — `scripts/preisanalyse-onoffice.mts` gibt
+    dafür einen fertigen Kalibriervorschlag aus (Lauf mit den OnOffice-Credentials des
+    jeweiligen Maklers).
+  - **`verkauft-stats.ts` + `/api/marktstats` (Laufzeit-Kalibrierung):** Die Engine deckelt
+    Modellwerte am p75 echter Orts-Abschlüsse aus dem OnOffice-Verkauft-Pool und zählt echte
+    Vergleichsverkäufe — **kalibriert sich also automatisch am Bestand des jeweiligen
+    Mandanten**. Bei einer Migration ist hier NICHTS zu übertragen (weniger als n=5 Abschlüsse
+    je Ort ⇒ die Instanz läuft rein modellbasiert, bis eigene Verkäufe auflaufen).
   - `marktdaten.ts:77-107` **STADT_FAKTOR** (Ortsmultiplikatoren) und `:153-169`
     **SPANNE_BELEGT** (reale Preisspannen aus OnOffice-Abschlüssen, `n=…`). Beides an
     RIEGELs eigene Verkaufshistorie gekoppelt → nur durch **eigene** OnOffice-Abschlüsse
@@ -291,6 +299,9 @@ Persönlichkeitsrechts-/Markenverletzung oder Irreführung.
   (`docs/supabase-schema.sql`), Security-Härtung (`supabase/migrations/`), AI-Act-Labels
   (`ki-bilder.ts` + `ki-hinweis.tsx`), Button-Lösung §312j — alles Produkt-Substanz, die
   jeder Makler erbt.
+- **Selbstkalibrierende Bewertungs-Engine:** `verkauft-stats.ts` + `/api/marktstats` deckeln
+  Modellwerte am p75 echter Abschlüsse **des jeweiligen OnOffice-Mandanten** und liefern echte
+  Vergleichszahlen — Makler #2 erbt den Mechanismus ohne Datenübernahme (s. §3.3).
 - **Claude-Skills reisen mit:** `.claude/skills/` + `skills-lock.json` sind versioniert —
   16 Design-/UX-/Frontend-Skills (design-taste-frontend, make-interfaces-feel-better,
   transitions-dev, …) laden in jeder Session automatisch aus dem Repo-Root. Ein Klon

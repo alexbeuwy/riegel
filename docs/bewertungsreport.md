@@ -62,12 +62,31 @@
 Heuristische Engine v2: regionale €/m²-Basiswerte für 8 Regionen (Speyer, Ludwigshafen,
 Schifferstadt, Frankenthal, Neustadt, Mannheim, Heidelberg, Vorderpfalz + Default) je Objektart
 (Wohnung/Haus/Gewerbe) plus Bodenrichtwert. Der Mittelwert entsteht aus Fläche × €/m², multipliziert
-mit Faktoren für Zustand, Ausstattungsqualität, Baujahr, Energieklasse und Ausstattungs-Bonus
-(max. +8 %) sowie einem bewussten „Optimismus"-Faktor von +6 % (Verkaufsargument); bei Häusern
-kommt anteilig Bodenwert fürs Grundstück dazu. Ergebnis ist eine Spanne (−7 %/+11 % um den
-Mittelwert), €/m², Kennzahlen (Comparables, Konfidenz, Trend, Mikrolage, Rendite — teils
-randomisiert, siehe `optimierung.md`) und die Einzelfaktoren mit %-Wirkung. Klar als Schätzung
-deklariert — **kein** Verkehrswertgutachten.
+mit Faktoren für Zustand, Ausstattungsqualität, Baujahr, Energieklasse, Ausstattungs-Bonus
+(max. +8 %) und — bei Wohnungen — einem **Hausgeld-Abschlag** (ab 3,50 €/m²/Monat, bis −12 %);
+bei Häusern kommt anteilig Bodenwert fürs Grundstück dazu.
+
+**Erdung an echten Daten (11.08.2026, Fall Manfred „Landauer Warte"):**
+
+- Basiswerte beschreiben den **Median echter Abschlüsse** (Speyer per
+  OnOffice-Vergleichsverkäufen rekalibriert; alle Orte:
+  `scripts/preisanalyse-onoffice.mts` gibt einen REGIONS-Kalibriervorschlag aus).
+- „Neuwertig" bei Baujahr < 1995 zählt nur **mit Kernsanierungs-Angabe** voll, sonst wie
+  „gepflegt"; fehlende Energieklasse bei Baujahr < 1980 → konservative Annahme E. Beides wird als
+  `annahmen[]` in UI und PDF offen ausgewiesen (Erwartungsmanagement).
+- Der BRW-Mikrolagefaktor ist für Städte mit eigener Basis nach oben auf +6 % geklemmt
+  (Stadt-Lage steckt schon in der Basis — keine Doppelzählung); nach unten bleibt −28 % für alle.
+- **Plausibilitäts-Deckel:** liegt der Modell-€/m² über dem p75 der echten Orts-Abschlüsse
+  (`src/lib/verkauft-stats.ts` aus dem OnOffice-Verkauft-Pool; Client via `/api/marktstats`,
+  Server direkt), wird auf p75 gekappt — transparent als Faktor-Zeile + `plausibilisierung`.
+- **Kennzahlen sind deterministisch** (kein `Math.random` mehr): Vergleichsobjekte = Zahl echter
+  Orts-Abschlüsse (0 → „–"/„Modellwert"), Konfidenz = benannter Datenlage-Score (max. 92),
+  Trend = dieselbe Hash-Mechanik wie der Preisatlas, Mikrolage aus dem BRW-Verhältnis,
+  Rendite aus dem Regionalmodell.
+
+Ergebnis ist eine Spanne (−7 %/+11 % um den Mittelwert), €/m², Kennzahlen und die Einzelfaktoren
+mit %-Wirkung. Klar als Schätzung deklariert — **kein** Verkehrswertgutachten. Regressionsschutz:
+`scripts/valuation-battery.mts` (inkl. Fall „Landauer Warte" als F15 und Determinismus-Anker F16).
 
 ### `src/lib/report-pdf.ts` — PDF-Generator (serverseitig)
 

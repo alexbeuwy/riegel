@@ -22,6 +22,7 @@ import {
   type Vermietungsstand,
 } from "@/lib/valuation";
 import { fetchBodenrichtwert, isImBorisGebiet, hintFuerObjektart } from "@/lib/boris";
+import { ortsAbschlussStats } from "@/lib/verkauft-stats";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
 import { createOnOfficeAddress } from "@/lib/onoffice";
@@ -146,6 +147,11 @@ export async function POST(req: Request) {
   const grundflaeche = bounded(b.grundflaeche, 20, 200000);
   const zimmer = bounded(b.zimmer, 1, 50);
   const baujahr = bounded(b.baujahr, 1800, 2030);
+  // Wohnung: monatliches Hausgeld (WEG) — realer Preisdrücker, s. valuation.ts
+  // (Fall Manfred „Landauer Warte": 700 €/Monat). Kernsaniert erdet die
+  // „neuwertig"-Selbstauskunft bei Altbaujahren.
+  const hausgeldMonat = objektart === "wohnung" ? bounded(b.hausgeldMonat, 1, 10_000) : undefined;
+  const kernsaniert = b.kernsaniert === true;
   const lat = num(b.lat);
   const lng = num(b.lng);
 
@@ -186,10 +192,16 @@ export async function POST(req: Request) {
   // Koordinaten anstoßen lassen. Objektart-Hint: wählt bei überlappenden
   // Hessen-Zonen die passende (EFH/MFH/Gewerbe) — gleicher Hint wie im
   // Rechner-Client, sonst widersprechen sich Anzeige und PDF.
-  const boris =
+  // Amtlichen BRW und die echten Orts-Abschlüsse (OnOffice-Verkauft-Pool)
+  // parallel laden — beide fließen als opts in die Engine: der BRW als
+  // Mikrolage, die Abschluss-Aggregate als Plausibilitäts-Deckel und als
+  // ehrliche Vergleichsobjekt-Zahl (statt der früheren Zufallswerte).
+  const [boris, ortsStats] = await Promise.all([
     lat != null && lng != null && isImBorisGebiet(lat, lng)
-      ? await fetchBodenrichtwert(lat, lng, hintFuerObjektart(objektart))
-      : null;
+      ? fetchBodenrichtwert(lat, lng, hintFuerObjektart(objektart))
+      : Promise.resolve(null),
+    ortsAbschlussStats(city, objektart),
+  ]);
 
   // Wert SERVERSEITIG nachrechnen (Kern der Engine ist deterministisch) —
   // Client-Zahlen werden nicht übernommen, sonst ließen sich per curl
@@ -216,21 +228,26 @@ export async function POST(req: Request) {
       leerstehendeWohnflaeche: vermietungsstand === "teilweise" ? leerstehendeWohnflaeche : undefined,
       hallenflaeche: objektart === "gewerbe" ? hallenflaeche : undefined,
       mischWohnflaeche: objektart === "gewerbe" ? mischWohnflaeche : undefined,
+      hausgeldMonat,
+      kernsaniert,
     },
-    { bodenrichtwert: boris?.brw ?? undefined },
+    { bodenrichtwert: boris?.brw ?? undefined, ortsStats: ortsStats ?? undefined },
   );
   const { low, mid, high, pricePerSqm: perSqm, vervielfaeltiger, mietAnsatz, grundstuecksAnrechnung, flaechenAufteilung } = calc;
   if (!mid || mid <= 0) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
 
-  // Kennzahlen: Client-Werte (gleiche Optik wie im Rechner angezeigt),
-  // aber auf plausible Bereiche geklemmt; sonst Server-Fallback.
-  const v = (b.valuation ?? {}) as Record<string, unknown>;
-  const comparables = Math.round(bounded(v.comparables, 3, 300) ?? calc.comparables);
-  const confidence = Math.round(bounded(v.confidence, 50, 96) ?? calc.confidence);
-  const trendPct = Math.round((bounded(v.trendPct, 0, 15) ?? calc.trendPct) * 10) / 10;
-  const mikrolage = Math.round((bounded(v.mikrolage, 1, 10) ?? calc.mikrolage) * 10) / 10;
+  // Kennzahlen kommen seit 11.08.2026 AUSSCHLIESSLICH aus der Server-Rechnung:
+  // Die Engine ist jetzt deterministisch (kein Math.random mehr) und
+  // comparables ist die Zahl ECHTER Orts-Abschlüsse (verkauft-stats) — die
+  // frühere Client-Übernahme war nur nötig, weil sonst neu gewürfelt worden
+  // wäre. Client-gesendete Kennzahlen werden bewusst ignoriert (Manipulation
+  // per curl ausgeschlossen).
+  const comparables = calc.comparables;
+  const confidence = calc.confidence;
+  const trendPct = calc.trendPct;
+  const mikrolage = calc.mikrolage;
 
   const objektRows = emailRows([
     { label: "Adresse", value: esc(address) },
@@ -245,6 +262,16 @@ export async function POST(req: Request) {
     { label: "Zimmer", value: zimmer ? String(zimmer) : "" },
     { label: "Baujahr", value: baujahr ? String(baujahr) : "" },
     { label: "Zustand", value: esc(zustand) },
+    { label: "Kernsaniert", value: kernsaniert ? "ja" : "" },
+    {
+      label: "Hausgeld",
+      value:
+        hausgeldMonat && wohnflaeche
+          ? `${eur(hausgeldMonat)}/Monat (${(hausgeldMonat / wohnflaeche).toFixed(2).replace(".", ",")} €/m²)`
+          : hausgeldMonat
+            ? `${eur(hausgeldMonat)}/Monat`
+            : "",
+    },
     { label: "Qualität", value: esc(qualitaet) },
     { label: "Energieklasse", value: esc(energieklasse) },
     { label: "Jahresnettokaltmiete", value: jahresnettokaltmiete ? `${eur(jahresnettokaltmiete)}/Jahr` : "" },
@@ -270,7 +297,9 @@ export async function POST(req: Request) {
 
   const kennzahlen = emailRows([
     { label: "Preis / m²", value: perSqm ? `${eur(perSqm)}` : "" },
-    { label: "Vergleichsobjekte", value: String(comparables) },
+    // 0 = keine belastbaren Orts-Abschlüsse → Zeile weglassen statt eine
+    // erfundene Zahl zeigen (leerer value wird von emailRows gefiltert).
+    { label: "Echte Vergleichsverkäufe vor Ort", value: comparables > 0 ? String(comparables) : "" },
     { label: "Markttrend", value: `+${trendPct} % p.a.` },
     { label: "Mikrolage", value: `${mikrolage}/10` },
     { label: "Konfidenz", value: `${confidence} %` },
@@ -317,6 +346,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
       energieklasse,
       ausstattung,
       factors: calc.factors,
+      annahmen: calc.annahmen,
       context: buildReportContext({ city, lat, lng }),
       vergleichsobjekte,
       jahresnettokaltmiete,
@@ -329,7 +359,8 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
         mid,
         high,
         pricePerSqm: perSqm,
-        comparables,
+        // 0 = keine belastbare Orts-Datenlage → PDF zeigt „–" statt Zahl.
+        comparables: comparables > 0 ? comparables : undefined,
         trendPct,
         mikrolage,
         confidence,
@@ -444,6 +475,11 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
       // mit anderem Ergebnis als damals kommuniziert.
       hallenflaeche: (objektart === "gewerbe" ? hallenflaeche : null) ?? null,
       misch_wohnflaeche: (objektart === "gewerbe" ? mischWohnflaeche : null) ?? null,
+      // Neue Eingaben 11.08.2026 (Hausgeld/Kernsanierung, Fall Manfred) —
+      // ohne Persistenz würde das interne Regenerat anders rechnen als das
+      // damals versendete PDF. Migration: 20260811_valuation_hausgeld.sql.
+      hausgeld_monat: hausgeldMonat ?? null,
+      kernsaniert: kernsaniert || null,
       comparables,
       trend_pct: trendPct,
       mikrolage,

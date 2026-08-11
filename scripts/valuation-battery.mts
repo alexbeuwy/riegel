@@ -68,16 +68,20 @@ const f2 = run(
   { bodenrichtwert: 590 },
 );
 // Anker am 06.08.2026 neu gesetzt (676 → 668 Tsd.): die Eberle-Erdung
-// (b7c039f) staucht die Aufwertungs-Faktoren dieses Falls bewusst — der
-// Anker friert seither den NEUEN Sollwert ein.
-check("F2 EFH Speyer 140/420 (BRW 590, Anker exakt)", f2.mid, 668_000, 668_000);
+// (b7c039f) staucht die Aufwertungs-Faktoren dieses Falls bewusst.
+// 11.08.2026 erneut nachgezogen (668 → 621 Tsd.): Speyer-Basis auf den
+// Median echter Abschlüsse rekalibriert (Fall Manfred „Landauer Warte",
+// Haus 3.800 → 3.450) — der Anker friert den NEUEN Sollwert ein.
+check("F2 EFH Speyer 140/420 (BRW 590, Anker exakt)", f2.mid, 621_000, 621_000);
 
 /* F3 — Wohnung Speyer (kein Grundstücksanteil, Lagefaktor 1). */
 const f3 = run(
   { objektart: "wohnung", ort: "Speyer", wohnflaeche: 90, baujahr: 2005, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
   { bodenrichtwert: 590 },
 );
-check("F3 Wohnung Speyer 90 m²", f3.mid, 365_000, 375_000);
+// Band 11.08.2026 nachgezogen: Speyer-Wohnungsbasis 3.950 → 3.600 (Median
+// echter Abschlüsse, s. REGIONS-Kommentar in valuation.ts).
+check("F3 Wohnung Speyer 90 m²", f3.mid, 328_000, 340_000);
 
 /* F4 — MFH: Ertragswert-Zweig komplett unberührt von der Staffel. */
 const f4 = run({
@@ -88,10 +92,12 @@ const f4 = run({
   qualitaet: "normal",
   ausstattung: [],
 });
-check("F4 MFH Speyer (JNKM 60.000, Anker exakt)", f4.mid, 936_000, 936_000);
-if (f4.vervielfaeltiger !== 15.6) {
+// 11.08.2026: Speyer-Rekalibrierung senkt auch den Vervielfältiger leicht
+// (er hängt am regionalen Wohnungs-Niveau, s. mfhVervielfaeltiger).
+check("F4 MFH Speyer (JNKM 60.000, Anker exakt)", f4.mid, 918_000, 918_000);
+if (f4.vervielfaeltiger !== 15.3) {
   failures++;
-  console.log(`❌ F4 Vervielfältiger: ${f4.vervielfaeltiger} (erwartet 15.6)`);
+  console.log(`❌ F4 Vervielfältiger: ${f4.vervielfaeltiger} (erwartet 15.3)`);
 }
 
 /* F5 — Großes Grundstück solo: vorher 844.220 € (Fläche × BRW), jetzt gestaffelt. */
@@ -119,8 +125,8 @@ const f7 = run({
   qualitaet: "normal",
   ausstattung: ["Garten"],
 });
-// Wie F2: Anker am 06.08.2026 von 676 auf 668 Tsd. nachgezogen (Eberle-Erdung).
-check("F7 wie F2 ohne amtlichen BRW (Anker exakt)", f7.mid, 668_000, 668_000);
+// Wie F2: Anker 06.08. (Eberle-Erdung) und 11.08.2026 (Speyer-Basis) nachgezogen.
+check("F7 wie F2 ohne amtlichen BRW (Anker exakt)", f7.mid, 621_000, 621_000);
 
 /* F8 — Haus am Ludwigshafener Rand: BRW 300 unter Modell 430 → Basis sinkt. */
 const f8 = run(
@@ -346,6 +352,77 @@ console.log(
 console.log(
   `Details F10 (teilweise): Ist ${nf.format(f10.mietAnsatz?.istMiete ?? 0)} € + Markt ${nf.format(f10.mietAnsatz?.marktmieteGeschaetzt ?? 0)} € = ${nf.format(f10.mietAnsatz?.ansatzMiete ?? 0)} €, Abschlag ${f10.mietAnsatz?.abschlagPct} % → ${nf.format(f10.mid)} €`,
 );
+
+/* F15 — Der Fall „Landauer Warte" (Manfred, 11.08.2026): Wohnung Speyer,
+ * 105 m², Bj. 1972, vom Eigentümer als „neuwertig" (renoviert) eingegeben,
+ * 700 € Hausgeld, BRW 790 (Zone 0602), 4 Ausstattungsmerkmale. Alt: 473.000 €
+ * (4.501 €/m²) — weit über jedem echten Abschluss vor Ort; realistisch laut
+ * Manfred 300–350 Tsd. Neu müssen VIER Erdungen greifen: neuwertig→gepflegt
+ * (ohne Kernsanierung), Energie-Annahme E, BRW-Obergrenze 1,06 statt 1,15,
+ * Hausgeld-Abschlag — plus p75-Deckel, sobald ortsStats vorliegen. */
+const manne: ValuationInput = {
+  objektart: "wohnung",
+  ort: "Speyer",
+  wohnflaeche: 105,
+  zimmer: 3,
+  baujahr: 1972,
+  zustand: "neuwertig",
+  qualitaet: "normal",
+  hausgeldMonat: 700,
+  ausstattung: ["Balkon / Terrasse", "Gäste-WC", "Garage / Stellplatz", "Keller"],
+};
+const f15 = run(manne, { bodenrichtwert: 790 });
+check("F15 Fall Manfred ohne ortsStats (Modell geerdet)", f15.mid, 300_000, 360_000);
+if (f15.annahmen.length < 2) {
+  failures++;
+  console.log(`❌ F15: Annahmen (neuwertig-Erdung + Energie-Annahme) müssen ausgewiesen sein (${f15.annahmen.length})`);
+}
+// Mit echten Orts-Abschlüssen (die 5 Vergleichsobjekte aus Mannes Report:
+// Median 3.594, p75 3.688 €/m²): Deckel darf NICHT unter dem geerdeten
+// Modellwert kappen, wenn der schon drunter liegt — und comparables = n.
+const f15s = run(manne, { bodenrichtwert: 790, ortsStats: { n: 5, medianQm: 3594, p75Qm: 3688 } });
+check("F15b Fall Manfred mit ortsStats", f15s.mid, 300_000, Math.round(3688 * 105 * 1.001));
+if (f15s.comparables !== 5) {
+  failures++;
+  console.log(`❌ F15b: comparables muss die echte Abschlusszahl sein (${f15s.comparables})`);
+}
+// Kernsaniert + Energieausweis D und OHNE Hausgeld-Last: jetzt darf
+// „neuwertig" voll zählen und das Modell klettert über p75 — der Deckel
+// muss exakt auf p75 × Fläche kappen (3.688 × 105 = 387.240 → 387.000)
+// und den Eingriff als `plausibilisierung` ausweisen. (Mit den 700 €
+// Hausgeld bleibt der Wert von selbst unter dem Deckel — F15b.)
+const f15k = run(
+  { ...manne, hausgeldMonat: undefined, kernsaniert: true, energieklasse: "D" },
+  { bodenrichtwert: 790, ortsStats: { n: 5, medianQm: 3594, p75Qm: 3688 } },
+);
+check("F15c kernsaniert + Energie D, ohne Hausgeld (p75-Deckel greift)", f15k.mid, 387_000, 387_000);
+if (!f15k.plausibilisierung) {
+  failures++;
+  console.log("❌ F15c: Plausibilisierung muss ausgewiesen sein, wenn der Deckel greift");
+}
+
+/* F16 — Determinismus-Anker: identische Eingabe ⇒ identisches Ergebnis
+ * (die Kennzahlen waren bis 11.08.2026 Math.random — der Kunde bekam bei
+ * jedem Aufruf andere „Vergleichsobjekte"/„Konfidenz"). */
+const f16a = run(manne, { bodenrichtwert: 790 });
+const f16b = run(manne, { bodenrichtwert: 790 });
+if (
+  f16a.comparables !== f16b.comparables ||
+  f16a.confidence !== f16b.confidence ||
+  f16a.trendPct !== f16b.trendPct ||
+  f16a.mikrolage !== f16b.mikrolage ||
+  f16a.rentYieldPct !== f16b.rentYieldPct
+) {
+  failures++;
+  console.log("❌ F16: Kennzahlen müssen deterministisch sein");
+} else {
+  console.log("✅ F16 Kennzahlen deterministisch (kein Math.random mehr)");
+}
+
+console.log(
+  `Details F15: mid ${nf.format(f15.mid)} € (${nf.format(f15.pricePerSqm ?? 0)} €/m²), Konfidenz ${f15.confidence} %, Annahmen: ${f15.annahmen.length}`,
+);
+console.log(`Details F15c: mid ${nf.format(f15k.mid)} €, Deckel p75 ${nf.format(f15k.plausibilisierung?.p75Qm ?? 0)} €/m² (n=${f15k.plausibilisierung?.n}), Modell davor ${nf.format(f15k.plausibilisierung?.modellMid ?? 0)} €`);
 
 if (failures > 0) {
   console.error(`\n${failures} Prüfung(en) fehlgeschlagen.`);

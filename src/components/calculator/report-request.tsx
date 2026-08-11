@@ -30,6 +30,10 @@ export interface ReportSource {
    * Nutzfläche (Mischobjekt), ebenfalls reine Durchreich-Werte. */
   hallenflaeche: string;
   mischWohnflaeche: string;
+  /** Wohnung: Hausgeld/Monat; Wohnung/Haus: Kernsanierung — Durchreich-Werte,
+   * der Server rechnet damit nach (s. /api/report, valuation.ts). */
+  hausgeld: string;
+  kernsaniert: boolean;
 }
 
 export function ReportRequest({
@@ -105,15 +109,16 @@ export function ReportRequest({
       leerstehendeWohnflaeche: f.leerstehendeWohnflaeche,
       hallenflaeche: f.hallenflaeche,
       mischWohnflaeche: f.mischWohnflaeche,
+      hausgeldMonat: f.hausgeld,
+      kernsaniert: f.kernsaniert,
+      // Kennzahlen werden NICHT mehr mitgesendet: der Server rechnet seit
+      // 11.08.2026 deterministisch selbst (inkl. echter Vergleichszahlen aus
+      // dem Verkauft-Pool) und ignoriert Client-Kennzahlen ohnehin.
       valuation: {
         low: result.low,
         mid: result.mid,
         high: result.high,
         pricePerSqm: result.pricePerSqm,
-        comparables: result.comparables,
-        confidence: result.confidence,
-        trendPct: result.trendPct,
-        mikrolage: result.mikrolage,
       },
     };
     try {

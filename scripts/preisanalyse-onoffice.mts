@@ -107,3 +107,29 @@ if (duenn.length) {
   console.log(`\nOrte mit 1-2 Abschlüssen (zu dünn für eine Spanne): ${duenn.length}`);
   console.log(duenn.map(([o, r]) => `${o} (${r.length})`).join(", "));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REGIONS-Kalibriervorschlag (11.08.2026, Fall Manfred „Landauer Warte"):
+// Die Basiswerte in valuation.ts REGIONS (und ihr Spiegel REGION_BASIS in
+// marktdaten.ts) sollen den MEDIAN echter Abschlüsse je Ort und Kategorie
+// beschreiben — nicht das Spitzenniveau. Dieser Block rechnet den Vorschlag
+// direkt aus, getrennt nach Wohnung und Haus (auf 50 € gerundet, ab n >= 5).
+// Übernahme bleibt bewusst Handarbeit: beide Dateien synchron ändern und die
+// Änderung im jeweiligen Kommentar begründen (s. CLAUDE.md / Playbook §3.3).
+// ─────────────────────────────────────────────────────────────────────────────
+const r50 = (n: number) => Math.round(n / 50) * 50;
+console.log("\n=== REGIONS-Kalibriervorschlag (Median echter Abschlüsse, ab n >= 5) ===");
+console.log("Ort                        Wohnung (n)      Haus (n)");
+for (const [ort, rows] of [...perOrt.entries()].sort((a, b) => b[1].length - a[1].length)) {
+  const wo = rows.filter((z) => z.typ === "wohnung");
+  const ha = rows.filter((z) => z.typ === "haus");
+  if (wo.length < 5 && ha.length < 5) continue;
+  const wTxt = wo.length >= 5 ? `${eur(r50(stats(wo).median))} (${wo.length})` : "– zu dünn –";
+  const hTxt = ha.length >= 5 ? `${eur(r50(stats(ha).median))} (${ha.length})` : "– zu dünn –";
+  console.log(`${ort.slice(0, 25).padEnd(26)} ${wTxt.padEnd(16)} ${hTxt}`);
+}
+console.log(
+  "\nHinweis: Zur Laufzeit deckelt die Engine zusätzlich am p75 echter Orts-" +
+    "\nAbschlüsse (src/lib/verkauft-stats.ts) — der Vorschlag hier kalibriert den" +
+    "\nSTARTPUNKT des Modells, nicht den Deckel.",
+);

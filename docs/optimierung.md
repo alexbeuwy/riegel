@@ -10,10 +10,12 @@ SEO/Performance/Conversion · Doku-Konsistenz) + Prod-Build-Härtetest
 **Alle P0–P3-Punkte und der komplette Doku-Backlog sind umgesetzt** — mit diesen
 bewussten Ausnahmen:
 
-- **P0 #4 (Zufalls-Kennzahlen)**: bleibt wie gehabt — Entscheidung Alex: ohne echte
-  BORIS-/Marktdaten wäre jede Ableitung weiterhin nur Annäherung. Absicherung trotzdem
-  eingebaut: `/api/report` rechnet den **Kernwert serverseitig nach** und **klemmt** die
-  Kennzahlen auf plausible Bereiche (keine Fantasie-PDFs per curl mehr).
+- **P0 #4 (Zufalls-Kennzahlen)**: ~~bleibt wie gehabt~~ → **behoben am 11.08.2026** (Fall
+  Manfred „Landauer Warte"): Engine ist jetzt komplett deterministisch — Vergleichsobjekte =
+  echte Orts-Abschlüsse (OnOffice-Verkauft-Pool via `verkauft-stats.ts`/`/api/marktstats`),
+  Konfidenz = benannter Datenlage-Score, Trend = Preisatlas-Mechanik, Mikrolage aus dem
+  BRW-Verhältnis. `/api/report` ignoriert Client-Kennzahlen vollständig (statt sie nur zu
+  klemmen). Details: `bewertungsreport.md`.
 - **openingHours im JSON-LD**: erst wenn Riegel echte Öffnungszeiten liefert (nicht erfinden).
 - **Reels-Poster**: `preload="metadata"` statt echter Poster-JPEGs (Ausbau: Bunny-Thumbnails).
 - **CSP**: Basis-Security-Header gesetzt; vollwertige CSP bräuchte Nonces (Ausbau).

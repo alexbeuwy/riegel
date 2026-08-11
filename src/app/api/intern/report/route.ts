@@ -110,9 +110,9 @@ export async function POST(req: Request) {
   // Faktoren-Seite sowie Fallback-Kennzahlen für alles, was in der Zeile
   // (noch) nicht gespeichert ist. mid/low/high etc. werden unten mit den
   // GESPEICHERTEN Werten überschrieben, damit das PDF exakt die damals
-  // kommunizierten Zahlen zeigt statt neu gewürfelter Zufallskomponenten
-  // (comparables/confidence/trendPct/mikrolage sind in estimateValue bewusst
-  // leicht randomisiert).
+  // kommunizierten Zahlen zeigt — die Engine ist seit 11.08.2026 zwar
+  // deterministisch, kann aber durch Modell-Nachschärfungen seither anders
+  // rechnen als damals.
   const calc = estimateValue({
     objektart,
     ort: row.city ?? "",
@@ -132,6 +132,10 @@ export async function POST(req: Request) {
     // migriert, dann undefined und die Rechnung läuft wie bisher.
     hallenflaeche: n(row.hallenflaeche),
     mischWohnflaeche: n(row.misch_wohnflaeche),
+    // Hausgeld/Kernsanierung (11.08.2026) — Spalten evtl. noch nicht migriert,
+    // dann undefined/false und die Faktoren-Seite rechnet ohne sie.
+    hausgeldMonat: n(row.hausgeld_monat),
+    kernsaniert: row.kernsaniert === true,
   });
 
   // mid ist die tragende, damals kommunizierte Zahl — KEIN Fallback auf den

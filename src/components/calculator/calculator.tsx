@@ -17,6 +17,7 @@ import {
   type Haustyp,
   QUALITAETEN,
   type Objektart,
+  type OrtsStats,
   type Qualitaet,
   type ValuationInput,
   type ValuationResult,
@@ -92,6 +93,12 @@ interface FormState {
   /** Nur Gewerbe: Wohnfläche abgeschlossener Wohneinheiten im Objekt in m²
    *  (Mischobjekt — Hinweis Manfred: Halle mit zwei Wohnungen und Büro). */
   mischWohnflaeche: string;
+  /** Nur Wohnung: monatliches Hausgeld in € — realer Preisdrücker, den das
+   *  Modell sonst nicht sieht (Fall Manfred „Landauer Warte": 700 €/Monat). */
+  hausgeld: string;
+  /** Wohnung/Haus: Kernsanierung (Elektrik, Leitungen, Fenster, Heizung) —
+   *  erdet die „neuwertig"-Selbstauskunft bei Altbaujahren (s. valuation.ts). */
+  kernsaniert: boolean;
 }
 
 const EMPTY: FormState = {
@@ -116,6 +123,8 @@ const EMPTY: FormState = {
   leerstehendeWohnflaeche: "",
   hallenflaeche: "",
   mischWohnflaeche: "",
+  hausgeld: "",
+  kernsaniert: false,
 };
 
 // "building"-Icon aus components/icon.tsx (Pfaddaten 1:1 übernommen, keine
@@ -246,15 +255,28 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
       // des Marktorts passt fachlich nicht als "Vergleichspreis" für ein
       // ganzes Zinshaus, daher hier auf den Vervielfältiger verweisen.
       if (f.objektart === "mehrfamilienhaus") {
-        return r.vervielfaeltiger != null ? `${nfDE.format(r.vervielfaeltiger)}× Jahresmiete` : `${r.comparables} Objekte`;
+        return r.vervielfaeltiger != null ? `${nfDE.format(r.vervielfaeltiger)}× Jahresmiete` : "Ertragswert-Ansatz";
       }
       const m = ctx.markt;
-      if (!m) return `${r.comparables} Objekte`;
+      // comparables ist seit 11.08.2026 die Zahl ECHTER Orts-Abschlüsse
+      // (0 = keine belastbare Datenlage) — keine erfundenen Zählwerte mehr.
+      if (!m) return r.comparables > 0 ? `${r.comparables} echte Abschlüsse` : "regional gewichtet";
       const spanne = f.objektart === "haus" ? m.haus : m.wohnung;
       return `${nfDE.format(spanne.min)}–${nfDE.format(spanne.max)} €/m²`;
     },
   },
-  { label: "Aktuelle Angebotspreise", sub: "Portale werden ausgewertet", value: (r) => `${r.comparables * 2} Inserate` },
+  {
+    label: "Aktuelle Angebotspreise",
+    sub: "Portale werden ausgewertet",
+    // Ehrlich statt erfundener Inserats-Zahl (war comparables × 2 und damit
+    // Zufall): oberes Ende der regionalen Marktspanne, sonst neutraler Text.
+    value: (_r, f, ctx) => {
+      const m = ctx.markt;
+      if (!m || f.objektart === "grundstueck" || f.objektart === "gewerbe") return "einbezogen";
+      const spanne = f.objektart === "haus" ? m.haus : m.wohnung;
+      return `bis ${nfDE.format(spanne.max)} €/m²`;
+    },
+  },
   {
     label: "Marktpreis-Index (12 Monate)",
     sub: "Preistrend wird berechnet",
@@ -274,7 +296,13 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
   },
   { label: "Zins- & Renditeumfeld", sub: "Finanzierungskonditionen", value: (r) => `${nfDE.format(r.rentYieldPct)} % Rendite` },
   { label: "Objekt-Faktoren", sub: "Baujahr, Zustand, Qualität", value: (_r, f) => f.qualitaet },
-  { label: "Eigene Transaktionsdatenbank", sub: "RIEGEL-Referenzobjekte", value: (r) => `${Math.round(r.comparables * 0.6)} Datensätze` },
+  {
+    label: "Eigene Transaktionsdatenbank",
+    sub: "RIEGEL-Referenzobjekte",
+    // Echte Abschluss-Zahl aus dem OnOffice-Verkauft-Pool (via /api/marktstats)
+    // — solange sie (noch) nicht da ist, kein erfundener Zählwert.
+    value: (r) => (r.comparables > 0 ? `${r.comparables} Abschlüsse vor Ort` : "wird abgeglichen"),
+  },
 ];
 
 /**
@@ -286,7 +314,9 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
 function statTiles(result: ValuationResult): { k: string; v: string; icon: IconName }[] {
   const tiles: { k: string; v: string; icon: IconName }[] = [
     { k: "Preis / m²", v: result.pricePerSqm != null ? formatEUR(result.pricePerSqm) : "–", icon: "euro" },
-    { k: "Vergleiche", v: `${result.comparables}`, icon: "layers" },
+    // Nur ECHTE Orts-Abschlüsse zählen (s. valuation.ts) — „–" statt einer
+    // erfundenen Zahl, wenn die Datenlage zu dünn ist.
+    { k: "Echte Verkäufe", v: result.comparables > 0 ? `${result.comparables}` : "–", icon: "layers" },
     { k: "Markttrend", v: `+${nfDE.format(result.trendPct)} %`, icon: "trend" },
     { k: "Mikrolage", v: `${nfDE.format(result.mikrolage)}/10`, icon: "compass" },
     { k: "Konfidenz", v: `${result.confidence} %`, icon: "shield" },
@@ -426,37 +456,36 @@ export function Calculator() {
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [boris, setBoris] = useState<BorisState>(BORIS_EMPTY);
+  // Echte Orts-Abschlüsse (Aggregate aus /api/marktstats, OnOffice-Pool) —
+  // Plausibilitäts-Deckel + ehrliche Vergleichszahl (s. valuation.ts).
+  const [stats, setStats] = useState<OrtsStats | null>(null);
   // Läuft parallel zur Analyzing-Animation; bei Unmount/Reset/neuer Analyse
   // wird die jeweils vorherige Abfrage abgebrochen.
   const borisAbort = useRef<AbortController | null>(null);
-  // Für den Override-Merge, sobald der amtliche Wert eintrifft (s. u.).
+  const statsAbort = useRef<AbortController | null>(null);
+  // Für den Override-Merge, sobald amtlicher Wert / echte Abschlüsse eintreffen.
   const lastInputRef = useRef<ValuationInput | null>(null);
 
-  useEffect(() => () => borisAbort.current?.abort(), []);
+  useEffect(() => () => {
+    borisAbort.current?.abort();
+    statsAbort.current?.abort();
+  }, []);
 
-  // Amtlicher BORIS-Wert trifft (ggf. erst nach der Analyzing-Phase) ein:
-  // NUR die bodenwertabhängigen Felder neu berechnen und einmischen — die
-  // übrigen (zufälligen) Kennzahlen bleiben unverändert, sonst „springt"
-  // das Ergebnis beim Nachladen unnötig.
+  // Amtlicher BORIS-Wert und/oder echte Orts-Abschlüsse treffen (ggf. erst
+  // nach der Analyzing-Phase) ein: komplette Neuberechnung mit allen
+  // verfügbaren Ankern. Seit die Engine deterministisch ist (11.08.2026),
+  // darf das Ergebnis vollständig ersetzt werden — es „springt" nichts mehr
+  // zufällig, nur die Daten werden präziser (und die Kennzahlen wie
+  // Vergleichsobjekte/Konfidenz ziehen ehrlich mit).
   useEffect(() => {
-    if (!boris.data || !lastInputRef.current) return;
-    const override = estimateValue(lastInputRef.current, { bodenrichtwert: boris.data.brw });
-    setResult((prev) =>
-      prev
-        ? {
-            ...prev,
-            low: override.low,
-            mid: override.mid,
-            high: override.high,
-            pricePerSqm: override.pricePerSqm,
-            bodenrichtwert: override.bodenrichtwert,
-            // Staffel-Aufschlüsselung hängt vom BRW ab — mitziehen, sonst
-            // zeigt der Transparenz-Hinweis nach dem Nachladen alte Werte.
-            grundstuecksAnrechnung: override.grundstuecksAnrechnung,
-          }
-        : prev,
+    if (!lastInputRef.current || (!boris.data && !stats)) return;
+    setResult(
+      estimateValue(lastInputRef.current, {
+        bodenrichtwert: boris.data?.brw,
+        ortsStats: stats ?? undefined,
+      }),
     );
-  }, [boris.data]);
+  }, [boris.data, stats]);
 
   // Adresse aus der URL übernehmen (Hero-Schnelleinstieg → direkt mit Satellit).
   useEffect(() => {
@@ -660,11 +689,33 @@ export function Calculator() {
           : undefined,
       hallenflaeche: f.objektart === "gewerbe" ? parseDeZahl(f.hallenflaeche) : undefined,
       mischWohnflaeche: f.objektart === "gewerbe" ? parseDeZahl(f.mischWohnflaeche) : undefined,
+      hausgeldMonat: f.objektart === "wohnung" ? parseDeZahl(f.hausgeld) : undefined,
+      kernsaniert: f.objektart === "wohnung" || f.objektart === "haus" ? f.kernsaniert : undefined,
     };
     lastInputRef.current = input;
     setResult(estimateValue(input));
     setRevealed(0);
     setPhase("analyzing");
+
+    // Echte Orts-Abschlüsse (OnOffice-Aggregate) parallel laden — gleiche
+    // Mechanik wie der Bodenrichtwert: die Anzeige startet mit dem
+    // Modellwert und erdet sich, sobald die echten Zahlen da sind. Ohne
+    // diesen Abgleich würde der Rechner mehr anzeigen als das PDF
+    // (der Kunde zitiert dann den höheren Wert — Fall Manfred).
+    statsAbort.current?.abort();
+    setStats(null);
+    if ((input.objektart === "wohnung" || input.objektart === "haus") && input.ort) {
+      const sctrl = new AbortController();
+      statsAbort.current = sctrl;
+      fetch(`/api/marktstats?ort=${encodeURIComponent(input.ort)}&objektart=${input.objektart}`, { signal: sctrl.signal })
+        .then((res) => res.json())
+        .then((json: { ok?: boolean; data?: OrtsStats | null }) => {
+          if (!sctrl.signal.aborted) setStats(json?.data ?? null);
+        })
+        .catch(() => {
+          /* fail-soft: Modellwert bleibt */
+        });
+    }
 
     // Amtlichen Bodenrichtwert parallel zur Analyse-Animation laden — nur
     // mit Koordinaten möglich, sonst bleibt es beim Modellwert.
@@ -1182,9 +1233,46 @@ export function Calculator() {
                       </select>
                     </Field>
                   )}
+                  {/* Hausgeld nur bei der Eigentumswohnung: realer Preisdrücker
+                      (Käufer rechnen die monatliche Dauerlast gegen), den das
+                      Modell ohne diese Angabe nicht sehen kann — Fall Manfred
+                      „Landauer Warte": 700 €/Monat bei 105 m². */}
+                  {f.objektart === "wohnung" && (
+                    <Field label="Hausgeld pro Monat (€, optional)">
+                      <input
+                        className={inputCls}
+                        inputMode="numeric"
+                        value={f.hausgeld}
+                        onChange={(e) => set("hausgeld", e.target.value)}
+                        placeholder="z. B. 320"
+                      />
+                    </Field>
+                  )}
                 </>
               )}
             </div>
+            {/* „Neuwertig" heißt bei Altbaujahren nur MIT Kernsanierung
+                neuwertig — sonst wertet die Engine wie „gepflegt"
+                (transparent im Ergebnis ausgewiesen, s. valuation.ts). Der
+                Schalter erscheint deshalb genau dann, wenn er die Rechnung
+                ändern kann. */}
+            {(f.objektart === "wohnung" || f.objektart === "haus") && f.zustand === "neuwertig" && (
+              <label className="press flex w-full cursor-pointer items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-accent/50 hover:bg-surface-2/60">
+                <input
+                  type="checkbox"
+                  checked={f.kernsaniert}
+                  onChange={(e) => set("kernsaniert", e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fg">Kernsaniert</span>
+                  <span className="mt-0.5 block text-xs leading-snug text-muted">
+                    Elektrik, Leitungen, Fenster und Heizung wurden grundlegend erneuert —
+                    nicht nur Böden, Bäder oder Malerarbeiten.
+                  </span>
+                </span>
+              </label>
+            )}
             {f.objektart !== "grundstueck" && (
               <div className="space-y-3">
                 <span className="text-sm text-muted">Ausstattung</span>
@@ -1550,6 +1638,24 @@ function Result({
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Modell-Annahmen offen ausweisen (Erwartungsmanagement): der
+            Eigentümer soll HIER schon sehen, warum das Modell z. B. seine
+            „neuwertig"-Angabe erdet oder am realen Abschlussniveau deckelt —
+            nicht erst im Vor-Ort-Termin (Fall Manfred „Landauer Warte"). */}
+        {result.annahmen.length > 0 && (
+          <div className="mx-auto mt-6 max-w-3xl rounded-xl border border-border bg-surface p-4">
+            <div className="mb-2 text-sm text-muted">So hat das Modell Ihre Angaben eingeordnet</div>
+            <ul className="space-y-1.5">
+              {result.annahmen.map((a) => (
+                <li key={a} className="flex gap-2 text-sm leading-snug text-muted">
+                  <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent-strong" />
+                  <span>{a}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

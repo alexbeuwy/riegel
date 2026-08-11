@@ -62,6 +62,12 @@ export interface ReportData {
   /** Werttreiber aus estimateValue (Zustand/Qualität/Baujahr/…, ±%) — Basis
    * der Preis-Zusammensetzungs-Seite. Bei Mehrfamilienhaus/Grundstück leer. */
   factors?: { label: string; effectPct: number }[];
+  /** Modell-Annahmen der Engine in Klartext (z. B. „neuwertig ohne
+   * Kernsanierung als gepflegt gewertet", Energieklasse-Annahme, Deckelung an
+   * echten Abschlüssen) — s. ValuationResult.annahmen. Erwartungsmanagement:
+   * der Eigentümer soll VOR dem Termin sehen, warum das Modell von seiner
+   * Selbsteinschätzung abweicht (Fall Manfred „Landauer Warte", 11.08.2026). */
+  annahmen?: string[];
   /** Website-Wissen (Preisatlas-Marktdaten, GEO-Standorttext, RIEGEL-Stats)
    * aus buildReportContext() — s. lib/report-context.ts. */
   context?: ReportContext;
@@ -1538,7 +1544,11 @@ function drawComposition(ctx: Ctx, d: ReportData, pageNo: number, total: number)
     drawGrundstueckGraphic(ctx, page, d, M, y, contentW);
   }
 
-  // Fußzeile-Hinweis: Modell-Näherungsbild, kein Gutachten.
+  // Modell-Annahmen offenlegen (Erwartungsmanagement): von unten nach oben
+  // über dem Disclaimer gestapelt — die Zeilenzahl variiert, der Disclaimer
+  // bleibt fix bei 82. Bewusst MUTED statt FAINT: das sind inhaltliche
+  // Aussagen („als gepflegt gewertet", „an echten Verkäufen gedeckelt"),
+  // die der Eigentümer lesen soll, kein Kleingedrucktes.
   let noteY = 82;
   for (const line of wrap(
     "Diese Zerlegung ist ein Modell-Näherungsbild unserer Rechner-Engine zur Veranschaulichung der wichtigsten Werttreiber. Sie ist kein Gutachten und keine Verkehrswertermittlung nach § 194 BauGB.",
@@ -1548,6 +1558,18 @@ function drawComposition(ctx: Ctx, d: ReportData, pageNo: number, total: number)
   )) {
     t(line, M, noteY, 8.5, ctx.reg, FAINT);
     noteY -= 11;
+  }
+  if (d.annahmen && d.annahmen.length > 0) {
+    // „–" statt „•": der Aufzählungspunkt ist nicht in jedem Font-Subset
+    // vorhanden, der Halbgeviertstrich wird im PDF bereits genutzt.
+    const zeilen = d.annahmen.flatMap((a) => wrap(`– ${a}`, ctx.reg, 9, contentW));
+    let ay = 82 + 14 + zeilen.length * 12;
+    t("So hat das Modell Ihre Angaben eingeordnet:", M, ay + 4, 9.5, ctx.bold, FG);
+    ay -= 10;
+    for (const line of zeilen) {
+      t(line, M, ay, 9, ctx.reg, MUTED);
+      ay -= 12;
+    }
   }
 
   footer(ctx, page, w, pageNo, total);

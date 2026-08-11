@@ -40,8 +40,13 @@ export const PREIS_DISCLAIMER =
 
 /* ─────────────────────────  Basiswerte (Spiegel von valuation.ts)  ───────────────────────── */
 
+// Speyer 11.08.2026 synchron zu valuation.ts rekalibriert (Fall Manfred
+// „Landauer Warte"): Basis beschreibt jetzt den Median echter Abschlüsse
+// (~3.594 €/m² Wohnung), nicht das Spitzenniveau — Begründung s. REGIONS-
+// Kommentar in valuation.ts. Die ausgewiesene Speyer-SPANNE bleibt unberührt
+// (SPANNE_BELEGT hat Vorrang vor der Modellformel).
 const REGION_BASIS: Record<string, { wohnung: number; haus: number; boden: number }> = {
-  speyer: { wohnung: 3950, haus: 3800, boden: 590 },
+  speyer: { wohnung: 3600, haus: 3450, boden: 590 },
   ludwigshafen: { wohnung: 2850, haus: 2700, boden: 430 },
   schifferstadt: { wohnung: 3200, haus: 3050, boden: 410 },
   frankenthal: { wohnung: 3050, haus: 2900, boden: 415 },

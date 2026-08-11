@@ -798,3 +798,38 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
 - **Portal-Filter**: `mehrfamilienhaus` ist noch keine wählbare Kategorie im Immobilien-Portal
   (`ObjectCategory`/`CATS` in `mock-estates.ts`/`portal-filter.ts` nicht erweitert — bewusst
   zurückgestellt, siehe Batch-Protokoll).
+
+## Update — Rechner an echten OnOffice-Werten geerdet (11.08.2026, Fall „Landauer Warte") ✅
+
+**Anlass (Manfred):** Wohnung Speyer, 105 m², Bj. 1972, 700 € Hausgeld — Rechner sagte
+473.000 € (4.501 €/m²), realistisch sind 300–350 Tsd.; der Eigentümer argumentierte mit
+„92 Vergleichsobjekten, 86 % Konfidenz" — beides war `Math.random()`.
+
+- **Echte Abschlüsse als Anker**: neu `src/lib/verkauft-stats.ts` (n/Median/p25/p75 €/m² je
+  Ort aus dem OnOffice-Verkauft-Pool, nur Aggregate, ab n=5) + `/api/marktstats` für den
+  Client. Engine deckelt am **p75 echter Orts-Verkäufe** (transparent als Faktor-Zeile +
+  `plausibilisierung`), Rechner-Anzeige und PDF nutzen dieselben Anker (kein „Client zeigt
+  mehr als das PDF").
+- **Selbstauskunft geerdet**: „neuwertig" bei Bj. < 1995 nur noch mit **Kernsaniert**-Angabe
+  (neue Checkbox), sonst wie „gepflegt"; fehlende Energieklasse bei Bj. < 1980 → Annahme E.
+  Beides offen als „So hat das Modell Ihre Angaben eingeordnet" in UI + PDF (`annahmen[]`).
+- **Hausgeld-Feld für Wohnungen** (realer Preisdrücker): Abschlag ab 3,50 €/m²/Monat, bis
+  −12 % — Mannes Fall: 6,67 €/m² → volle Wirkung.
+- **BRW-Doppelzählung behoben**: Obergrenze des Mikrolagefaktors für kalibrierte Städte +6 %
+  statt +15 % (Stadt steckt schon in der Basis); Untergrenze bleibt −28 % (F13/F14-Fälle).
+- **Basis rekalibriert**: Speyer Wohnung 3.950 → 3.600, Haus 3.800 → 3.450 (Median echter
+  Vergleichsabschlüsse; `valuation.ts` + `marktdaten.ts` synchron).
+  `scripts/preisanalyse-onoffice.mts` gibt jetzt einen **REGIONS-Kalibriervorschlag** für alle
+  Orte aus — ⚠️ **TODO Alex: einmal mit OnOffice-Env laufen lassen** und restliche Orte nachziehen.
+- **Kennzahlen deterministisch**: kein `Math.random` mehr in der Engine; `/api/report`
+  ignoriert Client-Kennzahlen komplett. Vergleichsobjekte = echte Zahl (sonst „–"),
+  Konfidenz = Datenlage-Score (max 92), Trend = Preisatlas-Hash, Mikrolage aus BRW.
+- **Persistenz**: `valuation_requests` + `hausgeld_monat`/`kernsaniert`
+  (Migration `20260811120000_valuation_hausgeld.sql` — ⚠️ in Supabase einspielen; Route hat
+  Legacy-Fallback).
+- **Regressionsschutz**: `valuation-battery.mts` erweitert — F15 (Fall Manfred: jetzt
+  **313.000 €** statt 473.000), F15c (p75-Deckel), F16 (Determinismus); Speyer-Anker
+  nachgezogen. Alle Prüfungen grün, Build grün.
+
+**Ergebnis Fall Manfred:** 473.000 € → **313.000 €** (2.984 €/m²) — in Mannes Korridor,
+mit nachvollziehbaren Annahmen-Hinweisen für den Kunden statt einer Wunschzahl.

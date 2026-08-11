@@ -55,6 +55,12 @@ const hausFixture: ReportData = {
   ],
   context: buildReportContext({ city: "Speyer" }),
   vergleichsobjekte: vergleichsobjekteHaus,
+  // Annahmen-Block (11.08.2026): prüft das Rendering der Modell-Annahmen auf
+  // der Preis-Zusammensetzungs-Seite (Zeilenumbruch + Stapelung überm Disclaimer).
+  annahmen: [
+    `Zustand „neuwertig" bei Baujahr 1972 ohne Kernsanierung: als „gepflegt" gewertet. Mit Kernsanierung (Elektrik, Leitungen, Fenster, Heizung) gilt der volle Zustands-Bonus.`,
+    `Modellwert an der Realität geerdet: 5 echte Verkäufe in Speyer (OnOffice) erzielten bis 3.688 €/m² im oberen Viertel — der Report bleibt innerhalb dieses belegten Niveaus.`,
+  ],
   value: {
     low: 725_000,
     mid: 780_000,

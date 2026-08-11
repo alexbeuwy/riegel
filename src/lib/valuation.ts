@@ -160,6 +160,22 @@ export interface ValuationInput {
    * Ohne diese Angabe wurden Wohnungen zum (niedrigeren) Büro-Satz bewertet.
    */
   mischWohnflaeche?: number;
+  /**
+   * Nur "wohnung": monatliches Hausgeld in € (WEG-Kosten). Fall Manfred
+   * 11.08.2026 („Landauer Warte", Speyer): 700 €/Monat bei 105 m² — der
+   * größte reale Preisdrücker der Wohnung, das Modell kannte ihn nicht.
+   * Hohes Hausgeld frisst dem Käufer Finanzierungsspielraum und signalisiert
+   * Instandhaltungslast der Anlage (s. hausgeldFaktor in estimateValue).
+   */
+  hausgeldMonat?: number;
+  /**
+   * Wohnung/Haus: Kernsanierung (Elektrik, Leitungen, Fenster, Heizung
+   * erneuert). Ohne diese Angabe wertet die Engine „neuwertig" bei
+   * Altbaujahren als „gepflegt" — eine Renovierung (Böden, Bäder, Malerei)
+   * macht aus einem 1972er-Bau kein neuwertiges Objekt, der Zustand-Bonus
+   * hebelte sonst den Baujahr-Abschlag aus (derselbe Fall Manfred).
+   */
+  kernsaniert?: boolean;
 }
 
 export interface ValuationFactor {
@@ -221,6 +237,33 @@ export interface MietAnsatz {
   ansatzMiete: number;
 }
 
+/**
+ * Aggregat ECHTER Abschlüsse des Orts (€/m² Wohnfläche) — kommt server-seitig
+ * aus src/lib/verkauft-stats.ts (OnOffice-Verkauft-Pool) bzw. im Client über
+ * /api/marktstats. Die Engine nutzt p75 als Plausibilitäts-Deckel und n als
+ * ehrliche Vergleichsobjekt-Zahl. Bewusst als eigener Typ hier (statt Import
+ * aus verkauft-stats): valuation.ts läuft im Client, verkauft-stats ist
+ * server-only.
+ */
+export interface OrtsStats {
+  n: number;
+  medianQm: number;
+  p75Qm: number;
+}
+
+/**
+ * Transparenz-Daten, wenn der Modellwert an den echten Abschlüssen des Orts
+ * gedeckelt wurde (s. Plausibilisierung in estimateValue).
+ */
+export interface Plausibilisierung {
+  /** Anzahl echter Abschlüsse, auf denen der Deckel beruht. */
+  n: number;
+  /** 75 %-Perzentil der echten Abschlüsse in €/m² (der Deckel). */
+  p75Qm: number;
+  /** Ungedeckelter Modellwert (mid) — für die ehrliche Einordnung im PDF. */
+  modellMid: number;
+}
+
 export interface ValuationResult {
   low: number;
   mid: number;
@@ -245,11 +288,32 @@ export interface ValuationResult {
   /** Büro/Halle/Wohnen-Split beim Gewerbe-/Mischobjekt — nur bei "gewerbe"
    * mit Hallen- oder Wohnanteil gesetzt (s. FlaechenAufteilung). */
   flaechenAufteilung?: FlaechenAufteilung;
+  /** Gesetzt, wenn der Modellwert am p75 echter Orts-Abschlüsse gedeckelt wurde. */
+  plausibilisierung?: Plausibilisierung;
+  /**
+   * Modell-Annahmen und -Eingriffe in Klartext (z. B. „neuwertig ohne
+   * Kernsanierung als gepflegt gewertet") — Rechner-UI und PDF zeigen sie an,
+   * damit der Eigentümer nachvollziehen kann, warum das Modell von seiner
+   * Selbsteinschätzung abweicht. Erwartungsmanagement statt Überraschung im
+   * Vor-Ort-Termin (Hinweis Manfred, Fall „Landauer Warte").
+   */
+  annahmen: string[];
   factors: ValuationFactor[];
 }
 
+// Speyer nach unten rekalibriert (11.08.2026, Fall Manfred „Landauer Warte"):
+// 3.950 €/m² Wohnung war kein Durchschnitts-, sondern Spitzenniveau. Die
+// echten OnOffice-Vergleichsabschlüsse desselben Reports lagen bei 2.989 /
+// 3.442 / 3.594 / 3.688 €/m² (Median 3.594, ein Ausreißer 5.489) — die Basis
+// muss das TYPISCHE Objekt beschreiben, die Faktoren werten dann auf/ab.
+// 3.600 (Wohnung) trifft diesen Median; Haus proportional mitgezogen.
+// Endgültige Kalibrierung ALLER Orte: scripts/preisanalyse-onoffice.mts
+// ausführen (braucht OnOffice-Credentials) — gibt seit 08/2026 einen
+// REGIONS-Kalibriervorschlag aus Medianen echter Abschlüsse aus.
+// Zusätzlich deckelt die Engine seither zur Laufzeit am p75 echter
+// Orts-Abschlüsse (opts.ortsStats), Basiswerte sind also nur der Startpunkt.
 const REGIONS: Record<string, { wohnung: number; haus: number; gewerbe: number; boden: number }> = {
-  speyer: { wohnung: 3950, haus: 3800, gewerbe: 2450, boden: 590 },
+  speyer: { wohnung: 3600, haus: 3450, gewerbe: 2450, boden: 590 },
   ludwigshafen: { wohnung: 2850, haus: 2700, gewerbe: 1950, boden: 430 },
   schifferstadt: { wohnung: 3200, haus: 3050, gewerbe: 1900, boden: 410 },
   frankenthal: { wohnung: 3050, haus: 2900, gewerbe: 1850, boden: 415 },
@@ -312,6 +376,47 @@ function flaechenFaktor(objektart: Objektart, wohnflaeche?: number): number {
   const ref = FLAECHEN_REF_M2[objektart];
   if (!ref || !wohnflaeche || wohnflaeche <= ref) return 1;
   return Math.max(0.75, Math.pow(ref / wohnflaeche, 0.45));
+}
+
+/**
+ * Hausgeld-Abschlag für Eigentumswohnungen (Fall Manfred „Landauer Warte":
+ * 700 €/Monat bei 105 m² = 6,67 €/m² — real der größte Preisdrücker, das
+ * Modell kannte ihn nicht).
+ *
+ * Herleitung: Bis ~3,50 €/m²/Monat ist Hausgeld marktüblich und bereits im
+ * Preisniveau enthalten. Jeder Euro darüber ist dauerhafte Mehrbelastung, die
+ * Käufer kapitalisieren (12 Monate × ~11er-Jahresfaktor ≈ 130 € Wertabschlag
+ * je €/m²/Monat Mehrbelastung — bei 3.500 €/m²-Niveau knapp 4 %). Linear bis
+ * 6,50 €/m², dort gedeckelt bei −12 %: mehr gibt die Heuristik nicht her,
+ * extreme Fälle (Sonderumlagen, Sanierungsstau der WEG) gehören in den
+ * Vor-Ort-Termin, nicht in ein Online-Modell.
+ */
+const HAUSGELD_NORMAL_M2 = 3.5;
+const HAUSGELD_KAPPE_M2 = 6.5;
+const HAUSGELD_MAX_ABSCHLAG = 0.12;
+function hausgeldFaktor(objektart: Objektart, hausgeldMonat?: number, wohnflaeche?: number): number {
+  if (objektart !== "wohnung" || !hausgeldMonat || !wohnflaeche || wohnflaeche <= 0) return 1;
+  const proM2 = hausgeldMonat / wohnflaeche;
+  if (proM2 <= HAUSGELD_NORMAL_M2) return 1;
+  const anteil = Math.min(proM2 - HAUSGELD_NORMAL_M2, HAUSGELD_KAPPE_M2 - HAUSGELD_NORMAL_M2) /
+    (HAUSGELD_KAPPE_M2 - HAUSGELD_NORMAL_M2);
+  return 1 - anteil * HAUSGELD_MAX_ABSCHLAG;
+}
+
+/**
+ * djb2-Hash (XOR-Variante) — BIT-IDENTISCH zu djb2() in marktdaten.ts, damit
+ * der Rechner-Trend für z. B. „speyer" exakt dem Preisatlas-Trend entspricht
+ * (Rechner und Preisatlas dürfen nicht zwei verschiedene Trends erzählen).
+ * Dupliziert statt importiert: marktdaten.ts importiert bereits regionKey von
+ * hier, ein Rückimport wäre ein Zirkelbezug (gleiches Muster wie
+ * regionalRentYieldPct).
+ */
+function ortHash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i);
+  }
+  return hash >>> 0;
 }
 
 // Deal-orientiert bewusst OHNE pauschalen Markt-Aufschlag (früher 1,06):
@@ -478,13 +583,52 @@ export interface EstimateOptions {
    * bestehende Aufrufe ohne `opts` bleiben unverändert gültig.
    */
   bodenrichtwert?: number;
+  /**
+   * Aggregat echter Orts-Abschlüsse derselben Kategorie (Server:
+   * verkauft-stats.ts, Client: /api/marktstats). Wirkt nur bei Wohnung/Haus:
+   * p75 deckelt den Modellwert (Plausibilisierung), n wird als ehrliche
+   * `comparables`-Zahl ausgewiesen. Ohne Angabe rechnet die Engine wie
+   * bisher rein modellbasiert (comparables = 0, UI zeigt „Modellwert").
+   */
+  ortsStats?: OrtsStats;
 }
 
 export function estimateValue(input: ValuationInput, opts?: EstimateOptions): ValuationResult {
+  const bekannteRegion = regionKey(input.ort) !== "";
   const r = REGIONS[regionKey(input.ort)] ?? DEFAULT_REGION;
   const boden = opts?.bodenrichtwert ?? r.boden;
   const ausstBonus = Math.min(input.ausstattung.length * 0.012, 0.08);
   const bf = baujahrFactor(input.baujahr);
+  const annahmen: string[] = [];
+
+  // SELBSTAUSKUNFT ERDEN (Fall Manfred „Landauer Warte", 11.08.2026): Eine
+  // renovierte 1972er-Wohnung wurde als „neuwertig" eingegeben — +7 % Zustand
+  // hebelten die −10 % Baujahr fast aus, das Objekt rechnete wie ein Neubau.
+  // Renoviert (Böden, Bäder, Malerei) ist aber nicht kernsaniert (Elektrik,
+  // Leitungen, Fenster, Heizung): „neuwertig" gilt bei Baujahren vor 1995 nur
+  // noch MIT Kernsanierungs-Angabe, sonst wird wie „gepflegt" gerechnet —
+  // sichtbar gemacht über `annahmen`, nicht stillschweigend.
+  const altbau = (input.baujahr ?? 9999) < 1995;
+  const flaechenObjekt = input.objektart === "wohnung" || input.objektart === "haus";
+  let zustandEffektiv: Zustand = input.zustand;
+  if (flaechenObjekt && input.zustand === "neuwertig" && altbau && !input.kernsaniert) {
+    zustandEffektiv = "gepflegt";
+    annahmen.push(
+      `Zustand „neuwertig" bei Baujahr ${input.baujahr} ohne Kernsanierung: als „gepflegt" gewertet. Mit Kernsanierung (Elektrik, Leitungen, Fenster, Heizung) gilt der volle Zustands-Bonus.`,
+    );
+  }
+
+  // Fehlende Energieklasse ist bei Altbauten KEINE neutrale Information: ein
+  // nicht kernsanierter Bau vor 1980 liegt real fast nie bei C (Faktor 1,0).
+  // Konservative Annahme Klasse E — transparent ausgewiesen; die echte
+  // Klasse aus dem Energieausweis überschreibt die Annahme jederzeit.
+  let energieklasseEffektiv = input.energieklasse;
+  if (!energieklasseEffektiv && flaechenObjekt && (input.baujahr ?? 9999) < 1980 && !input.kernsaniert) {
+    energieklasseEffektiv = "E";
+    annahmen.push(
+      `Energieklasse nicht angegeben (Baujahr ${input.baujahr}, keine Kernsanierung): konservative Annahme Klasse E. Der echte Energieausweis präzisiert das Ergebnis.`,
+    );
+  }
   // AUFWERTUNGS-KOMPRESSION (Fall Eberle, 02.08.2026): Zustand, Qualität,
   // Energieklasse und Ausstattung stapelten sich multiplikativ ungebremst —
   // neuwertig × gehoben × Ausstattung × BRW-Lage ergab +47 % und damit
@@ -500,11 +644,12 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // "tendenziell lieber kleineren Preis"). Der BRW-Lagefaktor bleibt voll —
   // er ist amtlich gemessen, keine Selbstauskunft.
   const stauche = (f: number) => (f > 1 ? Math.pow(f, 0.6) : f);
-  const zf = stauche(ZUSTAND_FACTOR[input.zustand]);
+  const zf = stauche(ZUSTAND_FACTOR[zustandEffektiv]);
   const qf = stauche(QUALITAET_FACTOR[input.qualitaet]);
-  const efRoh = input.energieklasse ? ENERGIE_FACTOR[input.energieklasse] ?? 1.0 : 1.0;
+  const efRoh = energieklasseEffektiv ? ENERGIE_FACTOR[energieklasseEffektiv] ?? 1.0 : 1.0;
   const ef = stauche(efRoh);
   const ausstFaktor = stauche(1 + ausstBonus);
+  const hgFaktor = hausgeldFaktor(input.objektart, input.hausgeldMonat, input.wohnflaeche);
 
   let pricePerSqm: number | undefined;
   let mid: number;
@@ -590,10 +735,24 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // DEFAULT_REGION zurückfallen (Beispiel Kleinkarlbach: BRW 260 vs.
     // Modell 400 → Gebäudebasis sinkt von 3.200 auf ~2.580 €/m², was dem
     // Marktniveau dort entspricht). sqrt dämpft bewusst: Gebäudewerte streuen
-    // schwächer als Bodenwerte. Klemme 0,72–1,15 gegen Ausreißer (z. B.
-    // gewerbliche BRW-Zonen). Ohne amtlichen Wert ist boden === r.boden und
+    // schwächer als Bodenwerte. Ohne amtlichen Wert ist boden === r.boden und
     // der Faktor exakt 1 — Verhalten dann unverändert.
-    const lageFaktor = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+    //
+    // OBERGRENZE NACH REGIONSTYP (11.08.2026, Fall Manfred „Landauer Warte"):
+    // Für Orte MIT eigenem REGIONS-Eintrag steckt die Stadt-Lage bereits im
+    // Basiswert — nach OBEN darf der BRW dort nur noch die Mikrolage
+    // INNERHALB der Stadt verschieben (max. +6 %), nicht die Stadt ein
+    // zweites Mal aufwerten: die alte Klemme (bis 1,15) gab praktisch jeder
+    // zentralen Speyerer Adresse +15 % auf eine Basis, in der Speyer schon
+    // eingepreist war (Modell-Boden 590 ist konservativer kalibriert als die
+    // realen Innenstadt-BORIS-Zonen, z. B. 790 in Zone 0602). Die UNTERGRENZE
+    // bleibt bewusst für alle bei 0,72: ein niedriger BRW ist echte
+    // Information über die konkrete Zone (Gewerbegebiet, schwache Mikrolage
+    // — s. F13/F14 der Battery), kein Doppelzählungs-Problem — und
+    // Abwertungen nicht zu bremsen passt zur Linie „lieber kleiner nennen".
+    // Fallback-Orte ohne eigene Basis behalten die volle Spanne nach oben
+    // (dort IST der BRW die beste Ortsinformation).
+    const lageFaktor = Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
     // Bauform wirkt NUR auf den Gebäudeanteil, nie auf den Boden — der wird
     // unten aus der tatsächlich eingegebenen Grundstücksfläche gerechnet.
     // Genau deshalb stehen in HAUSTYP_FAKTOR die reinen Baukostenverhältnisse
@@ -604,7 +763,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       input.objektart === "haus" && input.zweifamilienhaus ? ZWEIFAMILIEN_FAKTOR : 1;
     const flFaktor = flaechenFaktor(input.objektart, input.wohnflaeche);
     pricePerSqm = Math.round(
-      base * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * htFaktor * zfhFaktor * flFaktor,
+      base * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * htFaktor * zfhFaktor * flFaktor * hgFaktor,
     );
     const flaeche = input.wohnflaeche ?? 0;
     const halleM2 = input.objektart === "gewerbe" ? Math.min(Math.max(input.hallenflaeche ?? 0, 0), flaeche) : 0;
@@ -650,6 +809,32 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   const round = (n: number) => Math.round(n / 1000) * 1000;
   const pct = (x: number) => Math.round((x - 1) * 100);
 
+  // PLAUSIBILITÄTS-DECKEL AN ECHTEN ABSCHLÜSSEN (Fall Manfred „Landauer
+  // Warte", 11.08.2026): Das Modell nannte 473.000 €, die echten
+  // OnOffice-Abschlüsse desselben Orts lagen bei ~3,0–3,7 T€/m². Liegt der
+  // effektive Modell-€/m² (mid/Wohnfläche — beim Haus also inkl. Bodenanteil,
+  // genau wie ein realer Kaufpreis) über dem p75 der echten Orts-Abschlüsse,
+  // wird auf p75 gedeckelt. p75 statt Median, weil das konkrete Objekt
+  // legitim im oberen Viertel liegen kann — aber nicht oberhalb dessen, was
+  // vor Ort überhaupt bezahlt wird. Der Eingriff ist voll transparent:
+  // eigene Faktor-Zeile + `plausibilisierung` + Annahmen-Text.
+  let plausibilisierung: Plausibilisierung | undefined;
+  let deckelFaktor = 1;
+  const s = opts?.ortsStats;
+  const wf = input.wohnflaeche ?? 0;
+  if (s && s.n >= 5 && flaechenObjekt && wf > 0 && mid / wf > s.p75Qm) {
+    const rawMid = mid;
+    plausibilisierung = { n: s.n, p75Qm: Math.round(s.p75Qm), modellMid: round(rawMid) };
+    deckelFaktor = (s.p75Qm * wf) / rawMid;
+    mid = s.p75Qm * wf;
+    // Bei der Wohnung IST mid/Fläche der ausgewiesene €/m² — nachziehen.
+    // Beim Haus bleibt pricePerSqm der Gebäudeanteil (mid enthält Boden).
+    if (input.objektart === "wohnung") pricePerSqm = Math.round(s.p75Qm);
+    annahmen.push(
+      `Modellwert an der Realität geerdet: ${s.n} echte Verkäufe in ${input.ort} (OnOffice) erzielten bis ${Math.round(s.p75Qm).toLocaleString("de-DE")} €/m² im oberen Viertel — der Report bleibt innerhalb dieses belegten Niveaus.`,
+    );
+  }
+
   const factors: ValuationFactor[] =
     input.objektart === "mehrfamilienhaus"
       ? // Zustand und Qualität stecken beim Zinshaus schon im Vervielfältiger
@@ -690,24 +875,66 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
             label: "Objektgröße (€/m² sinkt mit Fläche)",
             effectPct: pct(flaechenFaktor(input.objektart, input.wohnflaeche)),
           },
+          // Hausgeld nur bei der Wohnung (hausgeldFaktor prüft das selbst).
+          { label: "Hausgeld (WEG-Kosten)", effectPct: pct(hgFaktor) },
+          // Deckelung an echten Orts-Abschlüssen — als eigene Zeile, damit
+          // die Wasserfall-Zerlegung im PDF weiterhin exakt auf mid aufgeht.
+          {
+            label: s ? `Abgleich mit ${s.n} echten Verkäufen vor Ort` : "Abgleich mit echten Verkäufen",
+            effectPct: pct(deckelFaktor),
+          },
           { label: "Marktoptimismus", effectPct: pct(OPTIMISM) },
         ].filter((x) => x.effectPct !== 0);
+
+  // KENNZAHLEN OHNE WÜRFEL (11.08.2026): comparables/confidence/trendPct/
+  // mikrolage/rentYieldPct waren Math.random() — genau die Zahlen, mit denen
+  // Kunden dem Makler gegenüber argumentieren („92 Vergleichsobjekte, 86 %
+  // Konfidenz"), waren erfunden. Jetzt deterministisch bzw. aus echten Daten:
+  //
+  // comparables: NUR echte Abschlüsse (ortsStats.n), sonst 0 — UI/PDF zeigen
+  //   dann „Modellwert" statt einer erfundenen Zahl.
+  // confidence: benannter Score aus der tatsächlichen Datenlage — Basis 62,
+  //   +8 kalibrierte Region, +8 amtlicher BRW, +n echte Abschlüsse (max +12),
+  //   +3 Energieausweis, +2 Baujahr; Deckel 92 (100 % gäbe es nur mit
+  //   Vor-Ort-Termin, und genau dorthin soll der Report führen).
+  // trendPct: hash-basiert je Region (dieselbe 2,6–6,2-%-Mechanik wie
+  //   trendYoy in marktdaten.ts — Preisatlas und Rechner erzählen dieselbe
+  //   Geschichte).
+  // mikrolage: aus dem BRW-Verhältnis abgeleitet (amtlich gemessen) statt
+  //   gewürfelt; ohne BRW neutral 7,0.
+  // rentYieldPct: regionales Renditemodell (s. regionalRentYieldPct).
+  const comparables = s?.n ?? 0;
+  let confidence = 62;
+  if (bekannteRegion) confidence += 8;
+  if (opts?.bodenrichtwert != null) confidence += 8;
+  confidence += Math.min(12, comparables);
+  if (input.energieklasse) confidence += 3;
+  if (input.baujahr) confidence += 2;
+  confidence = Math.min(92, confidence);
+  const trendPct = Math.round((2.6 + ((ortHash(regionKey(input.ort) || input.ort.toLowerCase()) % 1000) / 1000) * 3.6) * 10) / 10;
+  const lageRatio = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+  const mikrolage =
+    opts?.bodenrichtwert != null
+      ? Math.min(9.5, Math.max(5, Math.round((7 + (lageRatio - 1) * 10) * 10) / 10))
+      : 7;
 
   return {
     low: round(mid * 0.93),
     mid: round(mid),
     high: round(mid * 1.11),
     pricePerSqm,
-    comparables: 48 + Math.floor(Math.random() * 110),
-    confidence: 85 + Math.floor(Math.random() * 11),
-    trendPct: Math.round((3 + Math.random() * 3.6) * 10) / 10,
+    comparables,
+    confidence,
+    trendPct,
     bodenrichtwert: boden,
-    mikrolage: Math.round((7.2 + Math.random() * 2.4) * 10) / 10,
-    rentYieldPct: Math.round((2.8 + Math.random() * 1.6) * 10) / 10,
+    mikrolage,
+    rentYieldPct: Math.round(regionalRentYieldPct(r.wohnung) * 10) / 10,
     vervielfaeltiger,
     mietAnsatz,
     grundstuecksAnrechnung,
     flaechenAufteilung,
+    plausibilisierung,
+    annahmen,
     factors,
   };
 }
