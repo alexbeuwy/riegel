@@ -291,6 +291,10 @@ Persönlichkeitsrechts-/Markenverletzung oder Irreführung.
   (`docs/supabase-schema.sql`), Security-Härtung (`supabase/migrations/`), AI-Act-Labels
   (`ki-bilder.ts` + `ki-hinweis.tsx`), Button-Lösung §312j — alles Produkt-Substanz, die
   jeder Makler erbt.
+- **Claude-Skills reisen mit:** `.claude/skills/` + `skills-lock.json` sind versioniert —
+  16 Design-/UX-/Frontend-Skills (design-taste-frontend, make-interfaces-feel-better,
+  transitions-dev, …) laden in jeder Session automatisch aus dem Repo-Root. Ein Klon
+  bringt damit auch die Arbeitsumgebung mit, nicht nur den Code.
 
 ---
 

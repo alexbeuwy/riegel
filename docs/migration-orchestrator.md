@@ -19,11 +19,14 @@
    Supabase-Projekt, Resend + DNS, Bunny-Zone, Vercel-Projekt. Der Orchestrator kann
    Supabase (MCP) und Code-Seite übernehmen; Verträge/DNS/Konten sind beuwy-Handarbeit.
 3. **Leeres GitHub-Repo anlegen** (z. B. `beuwy/<makler>-immobilien`) und der
-   Orchestrator-Session Zugriff auf **beide** Repos geben: Quelle (`alexbeuwy/riegel`)
-   und Ziel.
-4. **Orchestrator-Prompt aus §2 unten** in eine frische Fable-5-Session (Claude Code)
-   geben — mit ausgefülltem Intake. Bei großem Umfang: „ultracode" / Workflow-Modus
-   erlauben, damit der Orchestrator Subagenten parallel fährt.
+   Orchestrator-Session Zugriff auf **beide** Repos geben: Quelle (`alexbeuwy/riegel`,
+   privat — ohne Zugriff scheitert Schritt 0 des Prompts) und Ziel.
+4. **Mega-Prompt aus §2 unten** in eine frische Fable-5-Session (Claude Code) geben —
+   nur zwei Dinge einsetzen: Ziel-Repo und Intake. **Alles andere zieht sich die
+   Session selbst über den Quell-Repo-Link** (Code, Doku, Design-System, die
+   versionierten Claude-Skills unter `.claude/skills/`). Bei großem Umfang:
+   „ultracode" / Workflow-Modus erlauben, damit der Orchestrator Subagenten
+   parallel fährt.
 5. **Abschlussbericht lesen:** Der Orchestrator liefert am Ende einen Migrationsreport
    mit drei Listen — *erledigt*, *offene Makler-Zulieferungen (credential)*,
    *bewusste Abweichungen*. Erst wenn die Credential-Liste leer ist, ist Go-Live erlaubt.
@@ -34,50 +37,114 @@ Angaben werden sichtbare `TODO`-Platzhalter plus Eintrag im Report, nie „plaus
 
 ---
 
-## 2. Der Orchestrator-Prompt (Copy-Paste)
+## 2. Der Mega-Prompt (Copy-Paste, selbst-bootstrappend)
 
-Den folgenden Block als Erstauftrag in die neue Session geben. Platzhalter in
-`<spitzen Klammern>` vorher ersetzen.
+Den folgenden Block als Erstauftrag in die neue Session geben. **Nur zwei Platzhalter
+ersetzen:** `<ZIEL-REPO>` und das Intake. Alles Weitere holt sich die Session selbst
+über den Quell-Repo-Link — inkl. der im Repo versionierten Claude-Skills, des
+Design-Systems und der kompletten Doku. Der Prompt ist bewusst redundant zum Playbook:
+er muss auch funktionieren, wenn die Session mit **null Vorwissen** startet.
 
 ```text
-Du bist der Migrations-Orchestrator der beuwy agency. Aufgabe: das beuwy
-Makler-System (Quelle: Repo <QUELL-REPO, z. B. alexbeuwy/riegel>, Branch main)
-in das leere Ziel-Repo <ZIEL-REPO> kopieren und vollständig auf den neuen
-Makler umbranden. Instanz #1 war RIEGEL Immobilien (Speyer) — im Ziel darf
-davon NICHTS Markenspezifisches übrig bleiben.
+Du bist der Migrations-Orchestrator der beuwy agency (Dienstleister für
+white-label Immobilienmakler-Websites auf OnOffice-Basis).
 
-Deine beiden Pflicht-Grundlagen im Quell-Repo:
-- docs/white-label-migration.md  — das Playbook: Migrations-Typen, Runbook,
-  alle Touchpoints (§3), Env-Fallen (§4), rote Liste (§5), Security (§6),
-  Region-Abhängigkeiten (§7). Du arbeitest JEDEN Paragraphen als Checkliste ab.
-- docs/migration-orchestrator.md §3 — dein Phasenplan mit Abnahme-Kriterien.
+AUFTRAG
+Kopiere das beuwy Makler-System in das leere Ziel-Repo <ZIEL-REPO> und brande
+es vollständig auf den neuen Makler um. Instanz #1 des Systems war RIEGEL
+Immobilien (Speyer/Ludwigshafen) — im Ziel darf davon NICHTS
+Markenspezifisches, Personenbezogenes oder Regionsgebundenes übrig bleiben.
+Ergebnis: baubare, rechtlich saubere, deploybare Instanz + Abschlussreport.
 
-Deine einzige Datenquelle für Makler-Angaben ist das Intake:
-<PFAD ZUR intake.yaml ODER INHALT HIER EINFÜGEN>
+QUELLE (dein einziger Einstiegspunkt — alles andere ziehst du dir selbst)
+https://github.com/alexbeuwy/riegel  (privates Repo, Branch main; dein
+Session-Zugriff ist eingerichtet — falls nicht: STOPP, beuwy informieren)
 
-Eiserne Regeln:
+SCHRITT 0 — SELBST-BOOTSTRAP (vor jeder inhaltlichen Arbeit)
+a) Quell-Repo klonen. Damit hast du automatisch:
+   - den kompletten Code (src/, content/, public/, scripts/, supabase/),
+   - die gesamte Doku (docs/),
+   - die versionierten Claude-Skills (.claude/skills/ + skills-lock.json) —
+     16 Design-/UX-/Frontend-Skills (design-taste-frontend,
+     make-interfaces-feel-better, transitions-dev, high-end-visual-design,
+     redesign-existing-projects, brandkit, animate-text, u. a.). Sie laden
+     aus dem Repo-Root; nutze sie bei allen visuellen Arbeiten (Logo-
+     Platzhalter, OG-Images, Farbwelt-Umbau, UI-Anpassungen).
+b) Selbst-Briefing — diese Dateien in DIESER Reihenfolge lesen, bevor du
+   irgendetwas änderst:
+   1. CLAUDE.md                          — Arbeitsregeln, beuwy-Brille,
+                                           zentrale Orte, Konventionen
+   2. docs/white-label-migration.md      — DAS Playbook: Migrations-Typen,
+                                           Runbook, alle ~140 Touchpoints (§3),
+                                           Env-Fallen (§4), rote Liste (§5),
+                                           Security (§6), Region-Abhängig-
+                                           keiten (§7). Jeder Paragraph ist
+                                           eine Checkliste, die du abarbeitest.
+   3. docs/migration-orchestrator.md     — dein Phasenplan 0–9 mit Abnahme-
+                                           Kriterien (§3) + Reportformat (§4)
+   4. docs/architecture.md               — Stack, Routen, Datenflüsse
+   5. docs/design-system.md              — verbindliche UX-/Design-Regeln
+   6. docs/onoffice-integration.md       — API-Anbindung, Feld-Mapping
+   7. docs/betrieb.md + docs/legal-checklist.md — Betrieb, Recht, BFSG/WCAG
+   8. docs/preisatlas-research.md        — Bodenrichtwert-Quellen je Bundesland
+c) Stack verifizieren: package.json ist die Wahrheit. Zur Orientierung:
+   Next.js 16 (App Router) + React 19 + TypeScript; Tailwind v4 CSS-first
+   (@theme in src/app/globals.css, KEIN tailwind.config); KEIN shadcn/ui,
+   KEIN Framer Motion (eigene Komponenten + CSS-Transitions mit
+   transitions-dev-Tokens); eigenes Inline-SVG-Icon-System; maplibre-gl
+   (Karten, consent-gated); pdf-lib + fontkit (Server-PDF-Report, Assets
+   Base64); Supabase (EU, RLS an); Resend (Mail); BunnyCDN (Bilder);
+   Fonts self-hosted via next/font/local (Inter + AKIRA — Akira-Lizenz je
+   Makler klären!). Diese Entscheidungen NICHT umwerfen — du migrierst,
+   du re-architektierst nicht.
+d) UX-Regeln (aus design-system.md, verbindlich auch nach Umbrand):
+   - Dark-first, Near-Black-Basis, EINE Akzentfarbe (kommt aus dem Intake,
+     ersetzt RIEGEL-Blau #015CFF überall — zentralisiert, s. Regel 3).
+   - Akzent-Text auf Dark braucht die helle Tönung (accent-strong-Muster),
+     Voll-Akzent nur als Fläche mit weißem Text; WCAG-Kontraste der
+     Token-Tabelle einhalten (BFSG!).
+   - Display-Font nur sparsam für Headlines; ruhige Grotesk für Body/UI.
+   - Langsame, subtile Scroll-Reveals; prefers-reduced-motion respektieren;
+     keine Effekt-Feuerwerke, keine neuen UI-Libraries.
+   - Deutschsprachige Code-Kommentare erklären das Warum (Repo-Konvention).
+e) Baseline: npm install && npm run build im geklonten Stand — muss grün
+   sein, BEVOR du änderst (sonst sind spätere Fehler nicht zuordenbar).
+
+INTAKE (deine EINZIGE Datenquelle für Makler-Angaben; Schema:
+docs/migration-intake.md im Quell-Repo)
+<INHALT DER AUSGEFÜLLTEN intake.yaml HIER EINFÜGEN — oder Pfad/Anhang>
+
+EISERNE REGELN
 1. Rote Liste (Playbook §5): Impressum-/Registerdaten, §34c, Auszeichnungen,
    Kundenstimmen, Team-Personen/Fotos, Plattform-Bewertungen, Secrets — NIE
    erfinden, NIE von RIEGEL übernehmen. Fehlt etwas im Intake: sichtbarer
    TODO-Platzhalter im Code/Text + Eintrag in den Abschlussreport.
 2. Kein RIEGEL-Asset shippen: Logos, Fotos (auch Base64 in
-   src/lib/report-assets/* und og-assets.ts), Ladenlokal-Bilder, Porträts.
-   Ersatz aus dem Intake; sonst neutraler Platzhalter + Report-Eintrag.
-3. Zentral vor hart (CLAUDE.md): Beim Umbau Literale nicht 1:1 durch neue
-   Literale ersetzen, sondern die Refactor-Backlog-Tabelle (Playbook §3.1)
+   src/lib/report-assets/* und og-assets.ts), Ladenlokal-Bilder, Porträts,
+   die Speyer-Landmarke. Ersatz aus dem Intake; sonst neutraler Platzhalter
+   + Report-Eintrag.
+3. Zentral vor hart (CLAUDE.md): Literale nicht 1:1 durch neue Literale
+   ersetzen, sondern die Refactor-Backlog-Tabelle (Playbook §3.1)
    abarbeiten — Werte nach site.ts/Env ziehen. Das Ziel-Repo soll billiger
    zu migrieren sein als das Quell-Repo.
 4. Secrets niemals ins Repo — nur Env-Namen dokumentieren (.env.example).
-5. Nichts gilt als fertig ohne Nachweis: npm run build grün + die Grep-Sweeps
-   und Checks aus §3 Phase 8. Bei jedem Phasenende: Zwischenstand committen.
-6. Playbook & CLAUDE.md wandern MIT ins Ziel-Repo und werden dort auf den
-   neuen Makler umgestellt (Instanz-Name, erledigte Refactor-Punkte abhaken).
+5. Nichts gilt als fertig ohne Nachweis: npm run build grün + Grep-Sweeps
+   und Checks aus Phasenplan Phase 8. Jedes Phasenende = ein Commit.
+6. Die Doku wandert MIT ins Ziel-Repo und wird dort auf die neue Instanz
+   umgestellt: CLAUDE.md, Playbook (erledigte §3.1-Punkte abhaken),
+   design-system.md (neue Farb-/Font-Werte), .claude/skills unverändert.
+   RIEGEL-Projektjournale (RELAUNCH-LOG.md, EXECUTION-PLAN.md) bleiben
+   zurück. Git-Historie der Quelle NICHT übernehmen (frische Historie).
 
-Arbeite die Phasen 0–9 aus docs/migration-orchestrator.md §3 der Reihe nach
-ab. Parallelisiere innerhalb der Phasen mit Subagenten wo sinnvoll (Assets,
-Content, Recht sind unabhängig), aber halte die Phasen-Reihenfolge und die
-Abnahme-Kriterien strikt ein. Committe auf den Default-Branch des Ziel-Repos
-mit klaren deutschen Commit-Messages. Am Ende: Abschlussreport nach §4.
+ARBEITSWEISE
+Arbeite die Phasen 0–9 aus docs/migration-orchestrator.md §3 der Reihe
+nach ab. Parallelisiere innerhalb der Phasen mit Subagenten, wo die
+Arbeitspakete unabhängig sind (Assets ∥ Content ∥ Recht), aber halte
+Phasen-Reihenfolge und Abnahme-Kriterien strikt ein. Committe auf den
+Default-Branch des Ziel-Repos mit klaren deutschen Commit-Messages.
+Am Ende: Abschlussreport nach §4 (drei Listen: erledigt / offene
+Makler-Zulieferungen / bewusste Abweichungen) als
+docs/migrationsreport-<makler>.md — Go-Live erst, wenn Liste 2 leer ist.
 ```
 
 ---
