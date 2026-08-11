@@ -44,6 +44,10 @@ klebt es hart im Code (Refactor-Schuld)?*
 
 - `docs/white-label-migration.md` — **das Migrations-/Umbrand-Playbook** (Runbook, alle
   Touchpoints, Env-Fallen, rote Liste, Region-Abhängigkeiten, Produktisierungs-Roadmap).
+- `docs/migration-orchestrator.md` + `docs/migration-intake.md` — **der ausführbare
+  Migrations-Workflow**: Orchestrator-Prompt (leeres Repo → neue Makler-Instanz),
+  Phasenplan mit Abnahme-Kriterien, Makler-Datenblatt. Ändert man Touchpoints im
+  Playbook, diese beiden mitprüfen.
 - `docs/onoffice-integration.md`, `docs/preisatlas-research.md` (Bodenrichtwerte RLP/HE/BW),
   `docs/architecture.md`, `docs/betrieb.md`, `docs/legal-checklist.md`.
 

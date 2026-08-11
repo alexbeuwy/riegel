@@ -10,6 +10,11 @@
 >
 > Basis: vollständige Code-Inventur 08/2026 (140 Touchpoints). Stand-Marker im Code:
 > `site.ts`, `docs/supabase-schema.sql`, `docs/onoffice-integration.md`.
+>
+> **Ausführbarer Teil:** `docs/migration-orchestrator.md` (Fable-5-Orchestrator-Auftrag
+> „leeres Repo → umgebrandete Instanz" mit Phasenplan + Abnahme-Kriterien) und
+> `docs/migration-intake.md` (Makler-Datenblatt — einzige zulässige Datenquelle für
+> Credential-Angaben). Dieses Playbook bleibt die Wissensbasis dahinter.
 
 ---
 
@@ -304,3 +309,21 @@ Damit Makler #2..#n **Tage** statt Wochen kosten:
 5. **Content-Pipeline** — die vorhandenen Generatoren (`scripts/build-experten-content.mjs`,
    `preisanalyse-onoffice.mts`, geo-Artikel) als reproduzierbaren „neue Region"-Lauf
    dokumentieren.
+
+---
+
+## 10. Orchestrator-Workflow — Migration per Agent ausführen
+
+Die Migration ist als **agentischer Workflow** ausführbar: ein Fable-5-Orchestrator
+bekommt ein leeres Ziel-Repo, dieses Quell-Repo und ein ausgefülltes Intake — und
+arbeitet dieses Playbook als Checkliste ab.
+
+- **`docs/migration-orchestrator.md`** — Ablauf aus beuwy-Sicht, der Copy-Paste-Prompt
+  für die Orchestrator-Session, Phasenplan 0–9 mit Abnahme-Kriterien pro Phase,
+  Pflichtformat des Abschlussreports, Grenzen der Automatisierung.
+- **`docs/migration-intake.md`** — das Makler-Datenblatt (`intake.yaml`-Vorlage).
+  Credential-Felder (§5) kommen ausschließlich hierüber vom Makler; was fehlt, wird
+  sichtbarer `TODO` + Report-Eintrag, nie erfunden.
+
+Wer Touchpoints in diesem Playbook ändert, prüft, ob Orchestrator-Phasenplan (§3 dort)
+und Intake-Felder noch dazu passen — die drei Dateien bilden **ein** System.
