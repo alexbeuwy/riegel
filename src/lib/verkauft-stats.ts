@@ -42,6 +42,16 @@ const MIN_N = 5;
 const QM_MIN = 500;
 const QM_MAX = 15_000;
 
+/**
+ * Die OnOffice-Kategorie "haus" enthält auch Mehrfamilien-/Zinshäuser und
+ * Wohn-/Geschäftshäuser (eigene Objektart gibt es dafür im CRM-Export nicht).
+ * Ertragsobjekte handeln in €/m² deutlich UNTER Eigenheimen und würden den
+ * p75-Deckel für Einfamilienhäuser fälschlich nach unten ziehen (Befund
+ * Kalibrierlauf 11.08.2026: Ludwigshafen-"Haus"-Median 2.200 €/m² war
+ * zinshaus-getrieben). Gleicher Filter wie in scripts/preisanalyse-onoffice.mts.
+ */
+const MFH_TYP = /mehrfamilien|zinshaus|wohn.*gesch|renditeobjekt|apartmenthaus/i;
+
 const norm = (s: string) => s.replace(/^\d{5}\s*/, "").replace(/\s*\([^)]*\)\s*/g, " ").trim().toLowerCase();
 
 /**
@@ -71,7 +81,12 @@ export const ortsAbschlussStats = cache(
     try {
       const archiv = await getVerkaufteArchiv();
       const qms = archiv
-        .filter((e) => e.category === kategorie && ortTrifft(ort, e.city))
+        .filter(
+          (e) =>
+            e.category === kategorie &&
+            !(kategorie === "haus" && e.objectType && MFH_TYP.test(e.objectType)) &&
+            ortTrifft(ort, e.city),
+        )
         .map((e) =>
           typeof e.price === "number" && typeof e.livingArea === "number" && e.livingArea >= 20 && e.price >= 20_000
             ? e.price / e.livingArea

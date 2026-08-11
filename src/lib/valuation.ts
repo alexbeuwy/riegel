@@ -301,21 +301,30 @@ export interface ValuationResult {
   factors: ValuationFactor[];
 }
 
-// Speyer nach unten rekalibriert (11.08.2026, Fall Manfred „Landauer Warte"):
-// 3.950 €/m² Wohnung war kein Durchschnitts-, sondern Spitzenniveau. Die
-// echten OnOffice-Vergleichsabschlüsse desselben Reports lagen bei 2.989 /
-// 3.442 / 3.594 / 3.688 €/m² (Median 3.594, ein Ausreißer 5.489) — die Basis
-// muss das TYPISCHE Objekt beschreiben, die Faktoren werten dann auf/ab.
-// 3.600 (Wohnung) trifft diesen Median; Haus proportional mitgezogen.
-// Endgültige Kalibrierung ALLER Orte: scripts/preisanalyse-onoffice.mts
-// ausführen (braucht OnOffice-Credentials) — gibt seit 08/2026 einen
-// REGIONS-Kalibriervorschlag aus Medianen echter Abschlüsse aus.
-// Zusätzlich deckelt die Engine seither zur Laufzeit am p75 echter
-// Orts-Abschlüsse (opts.ortsStats), Basiswerte sind also nur der Startpunkt.
+// KALIBRIERT AN ECHTEN ONOFFICE-ABSCHLÜSSEN (Lauf 11.08.2026, Fall Manfred
+// „Landauer Warte"; scripts/preisanalyse-onoffice.mts, 774 Verkauft-Records,
+// 543 verwertbar, MFH/Zinshäuser aus der Haus-Statistik gefiltert):
+//
+//   Regel 1: Hartkodiert wird nur ab n >= 20 je Ort+Kategorie — darunter
+//     bleibt der Modellwert stehen und der Laufzeit-p75-Deckel
+//     (opts.ortsStats / verkauft-stats.ts) regelt allein.
+//   Regel 2 (Wohnung): Basis = Median ÷ 0,93 (der Pool ist ein typischer
+//     Altbau-Mix, ≈ Baujahr-Faktor) — Speyer 3.200 (n=79) → 3.450;
+//     Ludwigshafen 2.550 (n=39) → 2.750.
+//   Regel 3 (Haus): Verkaufs-€/m² ENTHALTEN das Grundstück, die Engine
+//     addiert es separat → typischen Bodenanteil abziehen (BRW × 0,6 × 3,
+//     d. h. 420 m² Grund je 140 m² Wfl.), dann ÷ 0,93 — Speyer 3.950
+//     (n=45) → 3.100; Ludwigshafen 2.850 (n=28) → 2.250; Schifferstadt
+//     3.050 (n=20) → 2.500.
+//
+// Frankenthal/Neustadt/Mannheim/Heidelberg/Vorderpfalz: keine belastbare
+// eigene Fallzahl im Pool (n < 20) — Modellwerte, bewusst unverändert.
+// Neu kalibrieren: preisanalyse-onoffice.mts (gibt den fertigen Vorschlag
+// samt Übernahme-Regeln aus; braucht OnOffice-Credentials).
 const REGIONS: Record<string, { wohnung: number; haus: number; gewerbe: number; boden: number }> = {
-  speyer: { wohnung: 3600, haus: 3450, gewerbe: 2450, boden: 590 },
-  ludwigshafen: { wohnung: 2850, haus: 2700, gewerbe: 1950, boden: 430 },
-  schifferstadt: { wohnung: 3200, haus: 3050, gewerbe: 1900, boden: 410 },
+  speyer: { wohnung: 3450, haus: 3100, gewerbe: 2450, boden: 590 },
+  ludwigshafen: { wohnung: 2750, haus: 2250, gewerbe: 1950, boden: 430 },
+  schifferstadt: { wohnung: 3200, haus: 2500, gewerbe: 1900, boden: 410 },
   frankenthal: { wohnung: 3050, haus: 2900, gewerbe: 1850, boden: 415 },
   neustadt: { wohnung: 3550, haus: 3400, gewerbe: 2050, boden: 490 },
   mannheim: { wohnung: 3800, haus: 3600, gewerbe: 2550, boden: 570 },

@@ -69,19 +69,21 @@ const f2 = run(
 );
 // Anker am 06.08.2026 neu gesetzt (676 → 668 Tsd.): die Eberle-Erdung
 // (b7c039f) staucht die Aufwertungs-Faktoren dieses Falls bewusst.
-// 11.08.2026 erneut nachgezogen (668 → 621 Tsd.): Speyer-Basis auf den
-// Median echter Abschlüsse rekalibriert (Fall Manfred „Landauer Warte",
-// Haus 3.800 → 3.450) — der Anker friert den NEUEN Sollwert ein.
-check("F2 EFH Speyer 140/420 (BRW 590, Anker exakt)", f2.mid, 621_000, 621_000);
+// 11.08.2026 nachgezogen (668 → 573 Tsd.): Speyer-Haus-Basis an echten
+// OnOffice-Eigenheim-Abschlüssen kalibriert (n=45, Median 3.950 abzgl.
+// Bodenanteil → 3.100; Fall Manfred „Landauer Warte") — der Anker friert
+// den NEUEN Sollwert ein.
+check("F2 EFH Speyer 140/420 (BRW 590, Anker exakt)", f2.mid, 573_000, 573_000);
 
 /* F3 — Wohnung Speyer (kein Grundstücksanteil, Lagefaktor 1). */
 const f3 = run(
   { objektart: "wohnung", ort: "Speyer", wohnflaeche: 90, baujahr: 2005, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
   { bodenrichtwert: 590 },
 );
-// Band 11.08.2026 nachgezogen: Speyer-Wohnungsbasis 3.950 → 3.600 (Median
-// echter Abschlüsse, s. REGIONS-Kommentar in valuation.ts).
-check("F3 Wohnung Speyer 90 m²", f3.mid, 328_000, 340_000);
+// Band 11.08.2026 nachgezogen: Speyer-Wohnungsbasis 3.950 → 3.450
+// (Kalibrierlauf: Median 3.200 bei n=79, ÷ 0,93 Altbau-Mix — s.
+// REGIONS-Kommentar in valuation.ts).
+check("F3 Wohnung Speyer 90 m²", f3.mid, 315_000, 325_000);
 
 /* F4 — MFH: Ertragswert-Zweig komplett unberührt von der Staffel. */
 const f4 = run({
@@ -94,10 +96,10 @@ const f4 = run({
 });
 // 11.08.2026: Speyer-Rekalibrierung senkt auch den Vervielfältiger leicht
 // (er hängt am regionalen Wohnungs-Niveau, s. mfhVervielfaeltiger).
-check("F4 MFH Speyer (JNKM 60.000, Anker exakt)", f4.mid, 918_000, 918_000);
-if (f4.vervielfaeltiger !== 15.3) {
+check("F4 MFH Speyer (JNKM 60.000, Anker exakt)", f4.mid, 912_000, 912_000);
+if (f4.vervielfaeltiger !== 15.2) {
   failures++;
-  console.log(`❌ F4 Vervielfältiger: ${f4.vervielfaeltiger} (erwartet 15.3)`);
+  console.log(`❌ F4 Vervielfältiger: ${f4.vervielfaeltiger} (erwartet 15.2)`);
 }
 
 /* F5 — Großes Grundstück solo: vorher 844.220 € (Fläche × BRW), jetzt gestaffelt. */
@@ -126,19 +128,22 @@ const f7 = run({
   ausstattung: ["Garten"],
 });
 // Wie F2: Anker 06.08. (Eberle-Erdung) und 11.08.2026 (Speyer-Basis) nachgezogen.
-check("F7 wie F2 ohne amtlichen BRW (Anker exakt)", f7.mid, 621_000, 621_000);
+check("F7 wie F2 ohne amtlichen BRW (Anker exakt)", f7.mid, 573_000, 573_000);
 
 /* F8 — Haus am Ludwigshafener Rand: BRW 300 unter Modell 430 → Basis sinkt. */
 const f8 = run(
   { objektart: "haus", ort: "Ludwigshafen", wohnflaeche: 160, grundflaeche: 900, baujahr: 1970, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
   { bodenrichtwert: 300 },
 );
-check("F8 EFH Ludwigshafen-Rand 160/900 (BRW 300)", f8.mid, 440_000, 510_000);
+// Band 11.08.2026 nachgezogen: LU-Haus-Basis 2.700 → 2.250 (Kalibrierlauf:
+// Eigenheim-Median 2.850 bei n=28, abzgl. Bodenanteil — die 2.700 lagen
+// deutlich über dem realen Abschlussniveau).
+check("F8 EFH Ludwigshafen-Rand 160/900 (BRW 300)", f8.mid, 380_000, 430_000);
 
 /* F9 — MFH LEERSTEHEND (Rückfrage Manfred): ohne Mieteinnahmen ergab der
    Ertragswert-Zweig früher 0 €. Jetzt setzt die Engine für die leere Fläche
-   eine marktübliche Miete an (LU: 2.850/380 = 7,50 €/m²) und zieht 8 %
-   Leerstandsabschlag ab: 400 m² × 7,50 × 12 = 36.000 € × 14,8 × 0,92. */
+   eine marktübliche Miete an (LU seit Kalibrierung 11.08.2026:
+   2.750/380 = 7,24 €/m²) und zieht 8 % Leerstandsabschlag ab. */
 const f9 = run({
   objektart: "mehrfamilienhaus",
   ort: "Ludwigshafen",
@@ -175,9 +180,11 @@ if (f10.mietAnsatz?.abschlagPct !== 2) {
   failures++;
   console.log(`❌ F10 Abschlag: ${f10.mietAnsatz?.abschlagPct} % (erwartet 2 %)`);
 }
-if (f10.mietAnsatz?.ansatzMiete !== 27_000 + 9_000) {
+// 11.08.2026: LU-Wohnungsbasis 2.850 → 2.750 senkt die Marktmiete für die
+// leeren 100 m² von 7,50 auf 7,24 €/m² (marktmieteM2 = Basis / 380).
+if (f10.mietAnsatz?.ansatzMiete !== 27_000 + 8_688) {
   failures++;
-  console.log(`❌ F10 Ansatzmiete: ${f10.mietAnsatz?.ansatzMiete} (erwartet 36.000)`);
+  console.log(`❌ F10 Ansatzmiete: ${f10.mietAnsatz?.ansatzMiete} (erwartet 35.688)`);
 }
 // Teilleerstand muss zwischen Vollvermietung und Vollleerstand liegen.
 const f10voll = run({
@@ -372,7 +379,7 @@ const manne: ValuationInput = {
   ausstattung: ["Balkon / Terrasse", "Gäste-WC", "Garage / Stellplatz", "Keller"],
 };
 const f15 = run(manne, { bodenrichtwert: 790 });
-check("F15 Fall Manfred ohne ortsStats (Modell geerdet)", f15.mid, 300_000, 360_000);
+check("F15 Fall Manfred ohne ortsStats (Modell geerdet)", f15.mid, 285_000, 355_000);
 if (f15.annahmen.length < 2) {
   failures++;
   console.log(`❌ F15: Annahmen (neuwertig-Erdung + Energie-Annahme) müssen ausgewiesen sein (${f15.annahmen.length})`);
@@ -386,16 +393,16 @@ if (f15s.comparables !== 5) {
   failures++;
   console.log(`❌ F15b: comparables muss die echte Abschlusszahl sein (${f15s.comparables})`);
 }
-// Kernsaniert + Energieausweis D und OHNE Hausgeld-Last: jetzt darf
-// „neuwertig" voll zählen und das Modell klettert über p75 — der Deckel
+// Kernsaniert + Energieausweis D, gehobene Qualität und OHNE Hausgeld-Last:
+// jetzt darf „neuwertig" voll zählen und das Modell klettert über p75 — der Deckel
 // muss exakt auf p75 × Fläche kappen (3.688 × 105 = 387.240 → 387.000)
 // und den Eingriff als `plausibilisierung` ausweisen. (Mit den 700 €
 // Hausgeld bleibt der Wert von selbst unter dem Deckel — F15b.)
 const f15k = run(
-  { ...manne, hausgeldMonat: undefined, kernsaniert: true, energieklasse: "D" },
+  { ...manne, hausgeldMonat: undefined, kernsaniert: true, energieklasse: "D", qualitaet: "gehoben" },
   { bodenrichtwert: 790, ortsStats: { n: 5, medianQm: 3594, p75Qm: 3688 } },
 );
-check("F15c kernsaniert + Energie D, ohne Hausgeld (p75-Deckel greift)", f15k.mid, 387_000, 387_000);
+check("F15c kernsaniert + gehoben + Energie D, ohne Hausgeld (p75-Deckel greift)", f15k.mid, 387_000, 387_000);
 if (!f15k.plausibilisierung) {
   failures++;
   console.log("❌ F15c: Plausibilisierung muss ausgewiesen sein, wenn der Deckel greift");

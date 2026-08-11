@@ -817,10 +817,14 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
   −12 % — Mannes Fall: 6,67 €/m² → volle Wirkung.
 - **BRW-Doppelzählung behoben**: Obergrenze des Mikrolagefaktors für kalibrierte Städte +6 %
   statt +15 % (Stadt steckt schon in der Basis); Untergrenze bleibt −28 % (F13/F14-Fälle).
-- **Basis rekalibriert**: Speyer Wohnung 3.950 → 3.600, Haus 3.800 → 3.450 (Median echter
-  Vergleichsabschlüsse; `valuation.ts` + `marktdaten.ts` synchron).
-  `scripts/preisanalyse-onoffice.mts` gibt jetzt einen **REGIONS-Kalibriervorschlag** für alle
-  Orte aus — ⚠️ **TODO Alex: einmal mit OnOffice-Env laufen lassen** und restliche Orte nachziehen.
+- **Basis rekalibriert — mit echtem OnOffice-Lauf** (Credentials von Alex, gleiche Session):
+  774 Verkauft-Records, 543 verwertbar. Regeln: hartkodiert nur ab n ≥ 20; Wohnung =
+  Median ÷ 0,93 (Altbau-Mix); Haus = Eigenheim-Median abzgl. typ. Bodenanteil (Engine addiert
+  Boden separat), **MFH/Zinshäuser aus der Haus-Statistik gefiltert** (57 Stück — hätten die
+  Mediane nach unten verzerrt; Filter auch im Laufzeit-Deckel `verkauft-stats.ts`).
+  Ergebnis: Speyer W 3.450 (n=79) / H 3.100 (n=45), Ludwigshafen W 2.750 (n=39) / H 2.250
+  (n=28), Schifferstadt H 2.500 (n=20). Frankenthal/Neustadt/Mannheim/Heidelberg: n < 20 →
+  Modellwerte bleiben, Laufzeit-Deckel regelt. `valuation.ts` + `marktdaten.ts` synchron.
 - **Kennzahlen deterministisch**: kein `Math.random` mehr in der Engine; `/api/report`
   ignoriert Client-Kennzahlen komplett. Vergleichsobjekte = echte Zahl (sonst „–"),
   Konfidenz = Datenlage-Score (max 92), Trend = Preisatlas-Hash, Mikrolage aus BRW.

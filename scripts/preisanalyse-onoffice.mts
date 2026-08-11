@@ -14,7 +14,9 @@ import { fetchVerkaufteReferenzen } from "../src/lib/onoffice";
 const nf = new Intl.NumberFormat("de-DE");
 const eur = (n: number) => `${nf.format(Math.round(n))} €`;
 
-const estates = await fetchVerkaufteReferenzen(500);
+// 1000 statt 500: der Verkauft-Pool liegt bei ~774 Records (Stand 08/2026) —
+// mit 500 fehlte ein Drittel der Historie in der Kalibrierung.
+const estates = await fetchVerkaufteReferenzen(1000);
 if (!estates) {
   console.error("OnOffice-Abfrage fehlgeschlagen (Credentials/Netz?).");
   process.exit(1);
@@ -24,10 +26,22 @@ console.log(`Verkaufte Objekte gesamt: ${estates.length}\n`);
 interface Zeile {
   ort: string;
   typ: string;
+  /** Roher OnOffice-Objekttyp (z. B. "Mehrfamilien", "Einfamilien") — für den MFH-Filter. */
+  objektTyp: string;
   preis: number;
   flaeche: number;
   qm: number;
 }
+
+/**
+ * Die OnOffice-Kategorie "haus" enthält auch Mehrfamilien-/Zinshäuser und
+ * Wohn-/Geschäftshäuser — die handeln in €/m² deutlich UNTER Eigenheimen
+ * (Ertragsobjekte) und würden Median/p75 der Haus-Kalibrierung nach unten
+ * verzerren (Befund 11.08.2026: Ludwigshafen-"Haus"-Median 2.200 €/m² war
+ * zinshaus-getrieben). Gleicher Filter wie in src/lib/verkauft-stats.ts.
+ */
+const MFH_TYP = /mehrfamilien|zinshaus|wohn.*gesch|renditeobjekt|apartmenthaus/i;
+const istEigenheim = (z: Zeile) => z.typ !== "haus" || !MFH_TYP.test(z.objektTyp);
 
 const zeilen: Zeile[] = [];
 for (const e of estates) {
@@ -41,6 +55,7 @@ for (const e of estates) {
   zeilen.push({
     ort: (e.city || "?").trim(),
     typ: e.category || "?",
+    objektTyp: e.objectType || "",
     preis,
     flaeche,
     qm,
@@ -118,18 +133,28 @@ if (duenn.length) {
 // Änderung im jeweiligen Kommentar begründen (s. CLAUDE.md / Playbook §3.3).
 // ─────────────────────────────────────────────────────────────────────────────
 const r50 = (n: number) => Math.round(n / 50) * 50;
-console.log("\n=== REGIONS-Kalibriervorschlag (Median echter Abschlüsse, ab n >= 5) ===");
-console.log("Ort                        Wohnung (n)      Haus (n)");
+const mfhRaus = zeilen.filter((z) => z.typ === "haus" && !istEigenheim(z)).length;
+console.log(`\n=== REGIONS-Kalibriervorschlag (Median echter Abschlüsse, ab n >= 5) ===`);
+console.log(`(Haus = nur Eigenheime; ${mfhRaus} MFH/Zinshaus/WGH-Abschlüsse herausgefiltert)`);
+console.log("Ort                        Wohnung (n)      Haus o. MFH (n)  p75 Wohnung   p75 Haus");
 for (const [ort, rows] of [...perOrt.entries()].sort((a, b) => b[1].length - a[1].length)) {
   const wo = rows.filter((z) => z.typ === "wohnung");
-  const ha = rows.filter((z) => z.typ === "haus");
+  const ha = rows.filter((z) => z.typ === "haus" && istEigenheim(z));
   if (wo.length < 5 && ha.length < 5) continue;
   const wTxt = wo.length >= 5 ? `${eur(r50(stats(wo).median))} (${wo.length})` : "– zu dünn –";
   const hTxt = ha.length >= 5 ? `${eur(r50(stats(ha).median))} (${ha.length})` : "– zu dünn –";
-  console.log(`${ort.slice(0, 25).padEnd(26)} ${wTxt.padEnd(16)} ${hTxt}`);
+  const wP = wo.length >= 5 ? eur(Math.round(stats(wo).p75)) : "–";
+  const hP = ha.length >= 5 ? eur(Math.round(stats(ha).p75)) : "–";
+  console.log(`${ort.slice(0, 25).padEnd(26)} ${wTxt.padEnd(16)} ${hTxt.padEnd(16)} ${wP.padStart(10)} ${hP.padStart(10)}`);
 }
 console.log(
-  "\nHinweis: Zur Laufzeit deckelt die Engine zusätzlich am p75 echter Orts-" +
-    "\nAbschlüsse (src/lib/verkauft-stats.ts) — der Vorschlag hier kalibriert den" +
-    "\nSTARTPUNKT des Modells, nicht den Deckel.",
+  "\nÜbernahme-Hinweise:" +
+    "\n- WOHNUNG: Median ÷ 0,93 (typischer Altbau-Mix des Pools ≈ Baujahr-Faktor)" +
+    "\n  ergibt den REGIONS-Basiswert; erst ab n >= 20 hartkodieren, darunter" +
+    "\n  regelt der Laufzeit-p75-Deckel (verkauft-stats.ts) allein." +
+    "\n- HAUS: Verkaufs-€/m² enthalten das GRUNDSTÜCK — vor der Übernahme den" +
+    "\n  typischen Bodenanteil abziehen (≈ BRW × 0,6 × 3 [420 m² Grund je" +
+    "\n  140 m² Wfl.]), sonst zählt der Boden doppelt (Engine addiert ihn separat)." +
+    "\n- Zur Laufzeit deckelt die Engine zusätzlich am p75 echter Orts-Abschlüsse —" +
+    "\n  der Vorschlag hier kalibriert den STARTPUNKT des Modells, nicht den Deckel.",
 );
