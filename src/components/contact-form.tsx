@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icon";
@@ -42,15 +42,13 @@ function ContactFormInner() {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    // Objektbezug aus vorgelagerten Links (?objekt=…) — befüllt die
-    // Nachricht vor, aber nur solange sie noch leer ist (keine Nutzereingabe
-    // überschreiben).
-    const objekt = searchParams.get("objekt");
-    if (!objekt) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setF((s) => (s.message ? s : { ...s, message: `Ich interessiere mich für: ${objekt}` }));
-  }, [searchParams]);
+  // Objektbezug aus vorgelagerten Links (?objekt=…&objektId=…) — seit
+  // 12.08.2026 ein ECHTES Datenfeld statt Nachrichten-Vorbelegung (Fall Maik
+  // Steinert im Termin-Tool: Kunde überschreibt den Text → Objektbezug weg).
+  // Wird als Badge angezeigt und im Payload mitgesendet, unabhängig davon,
+  // was der Kunde in die Nachricht schreibt.
+  const objektTitel = searchParams.get("objekt")?.trim() ?? "";
+  const objektId = searchParams.get("objektId")?.trim() ?? "";
 
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => {
     setError(null);
@@ -83,7 +81,16 @@ function ContactFormInner() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, topic: f.topic, message: f.message, website: f.website }),
+        body: JSON.stringify({
+          name: f.name,
+          email: f.email,
+          phone: f.phone,
+          topic: f.topic,
+          message: f.message,
+          website: f.website,
+          objekt: objektTitel,
+          objektId,
+        }),
       });
       if (!res.ok) throw new Error("send failed");
       setDone(true);
@@ -117,6 +124,14 @@ function ContactFormInner() {
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+      {objektTitel && (
+        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/5 px-3.5 py-2.5 text-sm">
+          <Icon name="building" size={16} className="shrink-0 text-accent" />
+          <span className="min-w-0 truncate text-fg">
+            Ihre Anfrage bezieht sich auf: <span className="font-medium">{objektTitel}</span>
+          </span>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-2">
           <span className="text-sm text-muted">Name</span>

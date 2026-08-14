@@ -36,7 +36,11 @@ export function RequestViewingButton({ title, objektId }: { title: string; objek
           <p className="text-xs text-faint">Oder direkt:</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <Link
-              href={`/termin?objekt=${encodeURIComponent(title)}`}
+              // objektId mitgeben (12.08.2026, Fall Maik Steinert): der Titel
+              // allein wurde im Termin-Tool nur als Nachrichten-Text vorbelegt
+              // und ging beim Überschreiben verloren — jetzt reist der Bezug
+              // als echtes Datenfeld bis in Mail, leads.detail und /intern.
+              href={`/termin?objekt=${encodeURIComponent(title)}${objektId ? `&objektId=${encodeURIComponent(objektId)}` : ""}`}
               onClick={() => setOpen(false)}
               className="rounded-full border border-border px-3 py-2 text-center text-xs text-fg transition-colors hover:border-accent hover:text-accent sm:text-sm"
             >
@@ -53,7 +57,7 @@ export function RequestViewingButton({ title, objektId }: { title: string; objek
               </a>
             )}
             <Link
-              href={`/kontakt?objekt=${encodeURIComponent(title)}`}
+              href={`/kontakt?objekt=${encodeURIComponent(title)}${objektId ? `&objektId=${encodeURIComponent(objektId)}` : ""}`}
               onClick={() => setOpen(false)}
               className="rounded-full border border-border px-3 py-2 text-center text-xs text-fg transition-colors hover:border-accent hover:text-accent sm:text-sm"
             >

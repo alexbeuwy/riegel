@@ -837,3 +837,24 @@ Karten-Fehlerhinweis bei Tile-Ausfall.
 
 **Ergebnis Fall Manfred:** 473.000 € → **313.000 €** (2.984 €/m²) — in Mannes Korridor,
 mit nachvollziehbaren Annahmen-Hinweisen für den Kunden statt einer Wunschzahl.
+
+## Update — Anfragen ohne Objektbezug + Doppel-Anfragen behoben (12.08.2026, Fall Maik Steinert) ✅
+
+**Anlass (Sissy):** Besichtigungs-Terminanfrage kam doppelt und ohne Objekt an.
+
+- **Ursache 1 (kein Objekt):** Der Objektbezug war im Termin-/Kontakt-Flow nur eine
+  Nachrichten-**Vorbelegung** („Ich interessiere mich für: …") — tippt der Kunde eine eigene
+  Nachricht, ist der Bezug weg; die APIs kannten gar kein Objekt-Feld. Jetzt: `objekt` +
+  `objektId` als echte Datenfelder durch den ganzen Flow (Objektseite → `?objekt&objektId` →
+  unlöschbares Badge im Buchungstool/Kontaktformular → Payload → Validierung → Betreff +
+  „Objekt"-Zeile in der internen Mail → `leads.detail.objektTitel/objektId`, Feldnamen wie
+  bei `inquiry`).
+- **Ursache 2 (doppelt):** Die Booking-Route braucht mehrere Sekunden (2× Resend + Supabase
+  sequenziell); bei Verbindungsabbruch sah der Kunde „bitte erneut versuchen", obwohl schon
+  versendet war — kein Duplikat-Schutz. Jetzt: idempotente Route mit 15-Min-Dedupe
+  (Client-`requestId` je Formular-Session + Slot-Prüfung email/date/time; In-Memory je
+  Instanz **und** Supabase-Abgleich instanzübergreifend). Duplikat ⇒ ok-Antwort ohne
+  zweite Mail/Lead; „gesehen" wird erst nach erfolgreicher Verarbeitung markiert.
+- **`/intern`** zeigt den Objektbezug jetzt direkt an jeder Anfrage (Übersicht + Leads-Tab,
+  „Titel · ID" in Akzentfarbe; ID = OnOffice-auffindbar) und die Lead-Suche findet
+  Objekt-Titel.

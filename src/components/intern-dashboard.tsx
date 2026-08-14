@@ -46,6 +46,21 @@ interface LeadRow {
   phone?: string;
   subject?: string;
   message?: string;
+  /** jsonb-Spalte — Objektbezug (objektTitel/objektId) schreiben inquiry seit
+   * je, booking + contact seit 12.08.2026 (Fall Maik Steinert: Terminanfrage
+   * kam ohne Objekt an, weil der Bezug nur Nachrichten-Text war). */
+  detail?: { objektTitel?: string | null; objektId?: string | null } | null;
+}
+
+/**
+ * Objektbezug einer Anfrage für die Anzeige — „Titel · ID", damit Sissy das
+ * Objekt sofort zuordnen und über die ID in OnOffice finden kann.
+ */
+function leadObjekt(l: LeadRow): string | null {
+  const titel = l.detail?.objektTitel?.trim();
+  if (!titel) return null;
+  const id = l.detail?.objektId?.trim();
+  return id ? `${titel} · ID ${id}` : titel;
 }
 
 interface FeedbackRow {
@@ -982,7 +997,7 @@ export function InternDashboard() {
       if (lKind !== "all" && l.kind !== lKind) return false;
       if (!inDateRange(l.created_at, lVon, lBis)) return false;
       if (!q) return true;
-      return norm(`${l.name ?? ""} ${l.email ?? ""} ${l.subject ?? ""} ${l.message ?? ""}`).includes(q);
+      return norm(`${l.name ?? ""} ${l.email ?? ""} ${l.subject ?? ""} ${l.message ?? ""} ${l.detail?.objektTitel ?? ""}`).includes(q);
     });
   }, [data, lQuery, lKind, lVon, lBis]);
 
@@ -1261,6 +1276,8 @@ export function InternDashboard() {
                       <div className="min-w-0">
                         <div className="truncate text-sm text-fg">{l.name || l.email || "—"}</div>
                         <div className="truncate text-xs text-faint">{l.subject || (l.kind === "booking" ? "Terminanfrage" : "Kontakt")}</div>
+                        {/* Objektbezug direkt sichtbar (12.08.2026, Wunsch Alex). */}
+                        {leadObjekt(l) && <div className="truncate text-xs text-accent">{leadObjekt(l)}</div>}
                       </div>
                       <div className="shrink-0 text-right">
                         <span className={`rounded-full border px-2 py-0.5 text-xs ${l.kind === "booking" ? "border-accent/40 text-accent" : "border-border text-faint"}`}>
@@ -1511,6 +1528,9 @@ export function InternDashboard() {
                             </td>
                             <td className="px-3 py-3 text-muted">
                               <div className="text-fg">{l.subject || "–"}</div>
+                              {/* Objektbezug direkt in der Anfrage-Zeile (12.08.2026, Wunsch
+                                  Alex) — die ID macht das Objekt in OnOffice auffindbar. */}
+                              {leadObjekt(l) && <div className="mt-0.5 text-xs text-accent">{leadObjekt(l)}</div>}
                               {l.message ? <div className="mt-0.5 max-w-md text-faint">{l.message}</div> : null}
                             </td>
                             <td className="px-3 py-3">

@@ -12,6 +12,22 @@ const esc = (s: unknown) =>
 
 const clean = (s: unknown, max: number) => String(s ?? "").trim().slice(0, max);
 
+/**
+ * Duplikat-Schutz (12.08.2026, Fall Maik Steinert): Die Route braucht für
+ * eine Anfrage mehrere Sekunden (zwei Resend-Calls + Supabase sequenziell).
+ * Bricht währenddessen die Verbindung des Kunden ab, zeigt der Client
+ * „bitte erneut versuchen", obwohl der Server längst versendet hat — der
+ * zweite Klick erzeugte dann Mail UND Lead doppelt.
+ *
+ * Zwei Schichten, beide auf ein 15-Minuten-Fenster begrenzt:
+ * 1. In-Memory je Serverless-Instanz (fängt schnelle Retries ohne DB-Roundtrip),
+ * 2. Supabase-Abgleich über Instanzen hinweg (gleiche requestId aus derselben
+ *    Formular-Session ODER gleicher Slot email+date+time).
+ * Ein Duplikat antwortet idempotent mit ok — der Erstversand war ja erfolgreich.
+ */
+const DEDUPE_FENSTER_MS = 15 * 60_000;
+const zuletztGesehen = new Map<string, number>();
+
 export async function POST(req: Request) {
   if (!rateLimit(`booking:${clientIp(req)}`, 5, 10 * 60_000)) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429 });
@@ -39,6 +55,13 @@ export async function POST(req: Request) {
   const email = clean(b.email, 200);
   const phone = clean(b.phone, 80);
   const messageTxt = clean(b.message, 2000);
+  // Objektbezug als echtes Datenfeld (12.08.2026, Fall Maik Steinert) — kam
+  // vorher nur als überschreibbarer Nachrichten-Text an und ging verloren.
+  // Feldnamen wie bei /api/inquiry (leads.detail.objektTitel/objektId), damit
+  // /intern alle Anfrage-Arten einheitlich auflösen kann.
+  const objektTitel = clean(b.objekt, 200);
+  const objektId = clean(b.objektId, 80);
+  const requestId = clean(b.requestId, 80);
 
   if (
     !name ||
@@ -49,7 +72,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
   }
 
+  // Duplikat-Prüfung VOR jedem Versand (Begründung s. oben am Modul).
+  const jetzt = Date.now();
+  for (const [k, t] of zuletztGesehen) if (jetzt - t > DEDUPE_FENSTER_MS) zuletztGesehen.delete(k);
+  const slotKey = `slot:${email.toLowerCase()}|${date}|${time}`;
+  const ridKey = requestId ? `rid:${requestId}` : null;
+  let duplikat = zuletztGesehen.has(slotKey) || (ridKey !== null && zuletztGesehen.has(ridKey));
+  if (!duplikat && supabaseServer) {
+    const seit = new Date(jetzt - DEDUPE_FENSTER_MS).toISOString();
+    const { data: vorhanden } = await supabaseServer
+      .from("leads")
+      .select("detail")
+      .eq("kind", "booking")
+      .eq("email", email)
+      .gte("created_at", seit)
+      .limit(10);
+    duplikat = (vorhanden ?? []).some((r) => {
+      const d = (r.detail ?? {}) as Record<string, unknown>;
+      return (requestId !== "" && d.requestId === requestId) || (d.date === date && d.time === time);
+    });
+  }
+  if (duplikat) {
+    // Idempotent ok: der Kunde sieht seine Bestätigung, Sissy bekommt KEINE
+    // zweite Mail und KEINEN zweiten Lead.
+    return NextResponse.json({ ok: true, delivered: true, logged: true, duplicate: true });
+  }
+
   const rows = emailRows([
+    {
+      label: "Objekt",
+      value: objektTitel ? `${esc(objektTitel)}${objektId ? ` · ID ${esc(objektId)}` : ""}` : "",
+    },
     { label: "Anlass", value: esc(type) },
     { label: "Art", value: esc(mode) },
     { label: "Ort", value: esc(location) },
@@ -62,7 +115,7 @@ export async function POST(req: Request) {
   ]);
 
   const internal = await sendMail({
-    subject: `Terminanfrage: ${type || "Termin"} am ${date} ${time} — ${name}`,
+    subject: `Terminanfrage: ${type || "Termin"} am ${date} ${time} — ${name}${objektTitel ? ` · ${objektTitel.slice(0, 60)}` : ""}`,
     replyTo: email,
     html: emailLayout({
       heading: "Neue Terminanfrage",
@@ -90,7 +143,19 @@ export async function POST(req: Request) {
       phone: phone || null,
       subject: `${type || "Termin"} · ${mode}`,
       message: messageTxt || null,
-      detail: { type, mode, location, duration, date, time },
+      detail: {
+        type,
+        mode,
+        location,
+        duration,
+        date,
+        time,
+        // Objektbezug + Idempotenz-Schlüssel (12.08.2026) — Feldnamen wie
+        // bei kind "inquiry", damit /intern einheitlich rendert.
+        objektTitel: objektTitel || null,
+        objektId: objektId || null,
+        requestId: requestId || null,
+      },
     });
     if (error) console.error("[booking] leads-Insert fehlgeschlagen:", error.message);
     logged = !error;
@@ -101,6 +166,12 @@ export async function POST(req: Request) {
     console.error("[booking] Lead weder gemailt noch gespeichert — 502.");
     return NextResponse.json({ ok: false, error: "persistence" }, { status: 502 });
   }
+
+  // Erst NACH erfolgreicher Verarbeitung als „gesehen" markieren — ein
+  // komplett fehlgeschlagener Versand (502 oben) darf einen echten Retry
+  // nicht blockieren.
+  zuletztGesehen.set(slotKey, jetzt);
+  if (ridKey) zuletztGesehen.set(ridKey, jetzt);
 
   return NextResponse.json({ ok: true, delivered: internal.ok, logged, skipped: internal.skipped ?? false });
 }

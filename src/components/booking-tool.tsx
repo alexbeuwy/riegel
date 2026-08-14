@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Icon, type IconName } from "@/components/icon";
@@ -54,6 +54,15 @@ export function BookingTool() {
   );
 }
 
+/** Kollisionssichere Session-Id; Fallback für alte Browser ohne randomUUID. */
+function newRequestId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
 function BookingToolInner() {
   const searchParams = useSearchParams();
   const [days, setDays] = useState<Day[]>([]);
@@ -103,15 +112,21 @@ function BookingToolInner() {
     setDays(out);
   }, []);
 
-  useEffect(() => {
-    // Objektbezug aus dem Besichtigungs-Modal (?objekt=…) — befüllt die
-    // Nachricht vor, aber nur solange sie noch leer ist (keine Nutzereingabe
-    // überschreiben).
-    const objekt = searchParams.get("objekt");
-    if (!objekt) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMessage((prev) => (prev ? prev : `Ich interessiere mich für: ${objekt}`));
-  }, [searchParams]);
+  // Objektbezug aus dem Besichtigungs-Modal (?objekt=…&objektId=…) — seit
+  // 12.08.2026 ein ECHTES Datenfeld statt einer Nachrichten-Vorbelegung.
+  // Fall Maik Steinert: Der Kunde ersetzte den vorbefüllten Text durch seine
+  // eigene Nachricht, damit war der einzige Objektbezug weg und die
+  // Terminanfrage kam ohne Objekt bei Sissy an. Jetzt reist der Bezug
+  // unlöschbar mit: Rail-Badge, Payload, interne Mail, leads.detail, /intern.
+  const objektTitel = searchParams.get("objekt")?.trim() ?? "";
+  const objektId = searchParams.get("objektId")?.trim() ?? "";
+
+  // Idempotenz-Schlüssel der Formular-Session: bleibt bei „erneut versuchen"
+  // identisch, damit der Server einen Retry nach Netz-Abbruch als Duplikat
+  // erkennt (derselbe Fall: Anfrage kam doppelt an, weil der Server schon
+  // versendet hatte, der Client aber einen Fehler sah). Nach Erfolg wird er
+  // erneuert, damit eine bewusste zweite Buchung wieder durchgeht.
+  const requestIdRef = useRef(newRequestId());
 
   const selectedDay = useMemo(() => days.find((d) => d.iso === date), [days, date]);
   const modeMeta = MODES.find((m) => m.value === mode)!;
@@ -138,7 +153,22 @@ function BookingToolInner() {
     setError(null);
     setBusy(true);
 
-    const payload = { type, mode: modeMeta.label, location: locationLabel, duration, date, time, name, email, phone, message, website };
+    const payload = {
+      type,
+      mode: modeMeta.label,
+      location: locationLabel,
+      duration,
+      date,
+      time,
+      name,
+      email,
+      phone,
+      message,
+      website,
+      objekt: objektTitel,
+      objektId,
+      requestId: requestIdRef.current,
+    };
     try {
       const key = "riegel:bookings";
       const cur = JSON.parse(localStorage.getItem(key) || "[]");
@@ -154,6 +184,9 @@ function BookingToolInner() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("booking failed");
+      // Neue Session-Id NACH Erfolg — der nächste Klick ist dann bewusst
+      // eine neue Buchung, kein Retry mehr.
+      requestIdRef.current = newRequestId();
       setBusy(false);
       setDone(true);
       burstConfetti();
@@ -229,6 +262,7 @@ function BookingToolInner() {
           </div>
 
           <div className="divide-y divide-border px-8 py-2 text-sm">
+            {objektTitel && <SummaryRow icon="building" label="Objekt" value={objektTitel} />}
             <SummaryRow icon="sparkle" label="Anlass" value={type} />
             <SummaryRow icon="calendar" label="Datum" value={selectedDay ? `${selectedDay.weekday}, ${selectedDay.day}. ${selectedDay.month}` : date} />
             <SummaryRow icon="clock" label="Uhrzeit" value={`${time} Uhr · ${duration} Min.`} />
@@ -277,6 +311,8 @@ function BookingToolInner() {
           </div>
         </div>
         <div className="space-y-3.5 pt-5 text-sm">
+          {/* Objektbezug sichtbar UND unlöschbar — kein Freitext (s. o.). */}
+          {objektTitel && <RailRow icon="building" value={objektTitel} active />}
           <RailRow icon="sparkle" value={type} active />
           <RailRow icon="clock" value={`${duration} Minuten`} active />
           <RailRow icon={modeMeta.icon} value={locationLabel} active />

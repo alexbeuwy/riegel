@@ -34,6 +34,10 @@ export async function POST(req: Request) {
   const phone = clean(b.phone, 80);
   const topic = clean(b.topic, 120);
   const message = clean(b.message, 5000);
+  // Objektbezug als echtes Datenfeld (12.08.2026, Fall Maik Steinert) —
+  // Feldnamen wie /api/inquiry und /api/booking (leads.detail.objektTitel/-Id).
+  const objektTitel = clean(b.objekt, 200);
+  const objektId = clean(b.objektId, 80);
 
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
@@ -41,7 +45,7 @@ export async function POST(req: Request) {
 
   // 1) Benachrichtigung an RIEGEL
   const internal = await sendMail({
-    subject: `Neue Anfrage: ${topic || "Kontakt"} — ${name}`,
+    subject: `Neue Anfrage: ${topic || "Kontakt"} — ${name}${objektTitel ? ` · ${objektTitel.slice(0, 60)}` : ""}`,
     replyTo: email,
     html: emailLayout({
       heading: "Neue Kontaktanfrage",
@@ -52,6 +56,10 @@ export async function POST(req: Request) {
           { label: "E-Mail", value: esc(email) },
           { label: "Telefon", value: esc(phone) },
           { label: "Anliegen", value: esc(topic) },
+          {
+            label: "Objekt",
+            value: objektTitel ? `${esc(objektTitel)}${objektId ? ` · ID ${esc(objektId)}` : ""}` : "",
+          },
         ]) +
         `<p style="margin:14px 0 6px;color:#6b7590;font-size:13px;">Nachricht</p><p style="margin:0;color:#141724;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`,
     }),
@@ -80,6 +88,9 @@ export async function POST(req: Request) {
       phone: phone || null,
       subject: topic || "Kontakt",
       message: message || null,
+      // Objektbezug nur setzen, wenn vorhanden — bestehende Kontakt-Leads
+      // haben kein detail, das bleibt so (null statt leerem Objekt).
+      detail: objektTitel || objektId ? { objektTitel: objektTitel || null, objektId: objektId || null } : null,
     });
     if (error) console.error("[contact] leads-Insert fehlgeschlagen:", error.message);
     logged = !error;
