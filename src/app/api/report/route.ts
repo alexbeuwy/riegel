@@ -23,6 +23,7 @@ import {
 } from "@/lib/valuation";
 import { fetchBodenrichtwert, isImBorisGebiet, hintFuerObjektart } from "@/lib/boris";
 import { ortsAbschlussStats } from "@/lib/verkauft-stats";
+import { ortAusLabel } from "@/lib/geocode";
 import { fetchSatellite } from "@/lib/satellite";
 import { buildReportObjekte } from "@/lib/report-objekte";
 import { createOnOfficeAddress } from "@/lib/onoffice";
@@ -123,7 +124,10 @@ export async function POST(req: Request) {
   }
 
   const address = clean(b.address, 240);
-  const city = clean(b.city, 120);
+  // city kann aus Hero-URLs leer ankommen (Fall Bad Vilbel, 12.08.2026) —
+  // dann aus dem Adress-Label ziehen, sonst rechnen Engine-Schichten und
+  // verkauft-stats serverseitig ohne Ort.
+  const city = clean(b.city, 120) || ortAusLabel(address);
   const postcode = clean(b.postcode, 20);
 
   const objektart = String(b.objektart ?? "") as Objektart;

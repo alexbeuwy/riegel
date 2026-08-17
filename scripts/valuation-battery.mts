@@ -607,6 +607,15 @@ const f19c = run(
 check("F19c Wohnung München 90 m² (Stadt-Niveau)", f19c.pricePerSqm ?? 0, 8_000, 9_200, "€/m²");
 check("F19c Konfidenz", f19c.confidence, 70, 82, "%");
 
+// F19d — Sicherheitsnetz (der EXAKTE Live-Fall vom 12.08.2026): Hero-URL
+// lieferte city= LEER, aber address="Bad Vilbel, 61118" — der Ort muss aus
+// dem Label gezogen werden, sonst sind alle Stadt-Schichten blind (Live-
+// Ergebnis war wieder 2.1xx €/m² trotz Stadt-Niveau-Tabelle).
+const f19d = run(
+  { objektart: "wohnung", ort: "", addressLabel: "Bad Vilbel, 61118", wohnflaeche: 80, baujahr: 1995, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+);
+check("F19d leeres city-Feld, Ort aus Label (Live-Fall)", f19d.pricePerSqm ?? 0, 4_000, 4_400, "€/m²");
+
 console.log(
   `Details F18: mid ${nf.format(f18.mid)} € (${nf.format(f18.pricePerSqm ?? 0)} €/m²), Basis aus BRW 650 → ${nf.format(f18basis.wohnung)} €/m² Wohnung / ${nf.format(f18basis.haus)} €/m² Haus, Konfidenz ${f18.confidence} % (ohne BRW: ${nf.format(f18b.pricePerSqm ?? 0)} €/m², ${f18b.confidence} %)`,
 );

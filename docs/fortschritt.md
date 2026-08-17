@@ -960,3 +960,24 @@ Stadt-Faktor → BRW-Ableitung → Default):
 alle F1–F17-Anker wertgleich; Backtest Vorderpfalz unverändert (MdAPE 14,8 %, Spanne
 55,8 %); Build grün. White-label: beide Schichten sind makler-neutral — ein Klon startet
 damit bundesweit brauchbar, bevor eigene Abschlüsse (Schicht 0) auflaufen.
+
+## Update — Live-Bug Bad Vilbel: Ort ging in der Übergabe verloren (12.08.2026) ✅
+
+**Symptom (Alex):** Trotz Stadt-Niveau-Schicht live wieder ~2.100 €/m². Die Test-URL
+verriet es: `…&city=&plz=61118` — **city war leer**. Bei PLZ-/Ortssuchen liefert Photon
+den Ortsnamen nur in `properties.name`; unsere `cityOf()`-Kette (city/town/village/…)
+übersah das → der Ort erreichte die Engine nie, alle Stadt-Schichten blind, Fallback auf
+den Regions-Default. Die Battery war korrekt grün — sie testete die Engine, nicht die
+Zuliefer-Kette.
+
+**Fix auf drei Ebenen (defense in depth):**
+1. **Quelle** (`api/geocode`): `cityOf()` nutzt `p.name`, wenn das Ergebnis selbst ein
+   Ort ist (osm_key place bzw. type city/town/…).
+2. **Übergabe** (`calculator.tsx` + `/api/report`): leeres city → `ortAusLabel()`
+   (neu in `geocode.ts`): „Bad Vilbel, 61118" → „Bad Vilbel" (PLZ-Segmente übersprungen).
+3. **Engine-Sicherheitsnetz** (`valuation.ts`): `ortName = input.ort || ortAusLabel(addressLabel)`
+   — fängt alte Links/Bookmarks und künftige Zuliefer-Lücken.
+
+**Regressionsschutz:** F19d = der exakte Live-Fall (ort leer, Label „Bad Vilbel, 61118")
+→ 4.171 €/m². Lehre fürs Playbook: Engine-Tests prüfen die Engine — die ZULIEFER-Kette
+(Geocoder → URL → Formular → API) braucht eigene Fixtures.

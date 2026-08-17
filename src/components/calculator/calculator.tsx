@@ -6,7 +6,7 @@ import { HeroBackdrop } from "@/components/hero-backdrop";
 import { Icon, type IconName } from "@/components/icon";
 import { MapConsentGate } from "@/components/consent";
 import { formatEUR } from "@/lib/format";
-import { searchAddress, type GeoResult } from "@/lib/geocode";
+import { ortAusLabel, searchAddress, type GeoResult } from "@/lib/geocode";
 import {
   estimateValue,
   AUSSTATTUNG_HAUS,
@@ -498,7 +498,10 @@ export function Calculator() {
         label,
         lat,
         lng,
-        city: p.get("city") || "",
+        // city kann in Hero-URLs leer sein (PLZ-/Ortssuche, Fall Bad Vilbel
+        // 12.08.2026) — dann aus dem Label ableiten, sonst rechnen alle
+        // ortsbasierten Engine-Schichten mit einem leeren Ort.
+        city: p.get("city") || ortAusLabel(label),
         postcode: p.get("plz") || "",
       };
       // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliger URL-Prefill beim Mount

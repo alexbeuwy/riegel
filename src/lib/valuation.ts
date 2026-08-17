@@ -14,6 +14,7 @@
  */
 import { stadtFaktorFuerOrt } from "@/lib/stadt-faktor";
 import { stadtNiveauFuerOrt } from "@/lib/stadt-niveau";
+import { ortAusLabel } from "@/lib/geocode";
 
 export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
 
@@ -712,8 +713,15 @@ export interface EstimateOptions {
 }
 
 export function estimateValue(input: ValuationInput, opts?: EstimateOptions): ValuationResult {
-  const bekannteRegion = regionKey(input.ort) !== "";
-  const r = REGIONS[regionKey(input.ort)] ?? DEFAULT_REGION;
+  // SICHERHEITSNETZ ORT (Fall Bad Vilbel, 12.08.2026): Hero-URLs können ein
+  // leeres city-Feld tragen, obwohl das Adress-Label den Ort enthält
+  // („Bad Vilbel, 61118" mit city=) — dann waren ALLE ortsbasierten
+  // Schichten blind. Der Ort wird deshalb notfalls aus dem Label gezogen;
+  // die eigentliche Quelle ist gefixt (geocode-Route + Rechner-URL-Übernahme),
+  // dieses Netz fängt alte Links, Bookmarks und künftige Zuliefer-Lücken.
+  const ortName = input.ort.trim() || ortAusLabel(input.addressLabel ?? "");
+  const bekannteRegion = regionKey(ortName) !== "";
+  const r = REGIONS[regionKey(ortName)] ?? DEFAULT_REGION;
   // let statt const: für Stadt-Niveau-Orte ohne amtlichen BRW ersetzt der
   // modellierte Stadt-Boden (stadt-niveau.ts) den Regions-Default — s. u.
   let boden = opts?.bodenrichtwert ?? r.boden;
@@ -726,7 +734,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // REGIONS-Eintrag (kalibrierte Kernstadt) und kein Treffer in der
   // Dorf-/Kleinstadt-Tabelle (stadt-faktor.ts). Genau dort rechnete die
   // Engine bisher stillschweigend mit dem Rhein-Neckar-Default weiter.
-  const ortsFaktorTabelle = stadtFaktorFuerOrt(input.ort);
+  const ortsFaktorTabelle = stadtFaktorFuerOrt(ortName);
   const fallbackOrt = !bekannteRegion && ortsFaktorTabelle === 1;
 
   // STADT_NIVEAU-HOOK — Schicht 1: recherchierte Tabelle ABSOLUTER
@@ -736,7 +744,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // Stadt-Median die bessere Information ist als ein aus dem Bodenrichtwert
   // abgeleiteter Modellwert; kennt die Tabelle den Ort nicht, übernimmt die
   // Ableitung unten.
-  const stadtNiveau = fallbackOrt ? stadtNiveauFuerOrt(input.ort) : null;
+  const stadtNiveau = fallbackOrt ? stadtNiveauFuerOrt(ortName) : null;
   /** true, sobald das Stadt-Niveau tatsächlich in den Wert eingeht. */
   let stadtNiveauGenutzt = false;
   // Ohne amtlichen BRW liefert der modellierte Stadt-Boden die Grundlage für
@@ -1066,21 +1074,21 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     fallbackOrt && !brwBasisGenutzt && !stadtNiveauGenutzt && input.objektart !== "grundstueck";
   if (stadtNiveauGenutzt && stadtNiveau) {
     annahmen.push(
-      `Basis: veröffentlichtes Marktniveau für ${input.ort} (${stadtNiveau.quelle}, konservativ auf Abschlussniveau abgeschlagen) — ${input.ort} liegt außerhalb unserer Kernregion und eigene Abschlüsse liegen dort noch nicht vor; der Vor-Ort-Termin präzisiert das Ergebnis.`,
+      `Basis: veröffentlichtes Marktniveau für ${ortName} (${stadtNiveau.quelle}, konservativ auf Abschlussniveau abgeschlagen) — ${ortName} liegt außerhalb unserer Kernregion und eigene Abschlüsse liegen dort noch nicht vor; der Vor-Ort-Termin präzisiert das Ergebnis.`,
     );
   } else if (brwBasisGenutzt) {
     const abgeleiteteBasis = input.objektart === "haus" || input.objektart === "mehrfamilienhaus"
       ? brwAbleitung?.haus
       : brwAbleitung?.wohnung;
     annahmen.push(
-      `Basis aus dem amtlichen Bodenrichtwert Ihrer Zone abgeleitet (${boden.toLocaleString("de-DE")} €/m² Boden → ${(abgeleiteteBasis ?? 0).toLocaleString("de-DE")} €/m² Gebäude): ${input.ort} liegt außerhalb unserer kalibrierten Kernregion, deshalb rechnen wir hier mit dem amtlichen Lagewert statt mit einem regionalen Erfahrungswert.`,
+      `Basis aus dem amtlichen Bodenrichtwert Ihrer Zone abgeleitet (${boden.toLocaleString("de-DE")} €/m² Boden → ${(abgeleiteteBasis ?? 0).toLocaleString("de-DE")} €/m² Gebäude): ${ortName} liegt außerhalb unserer kalibrierten Kernregion, deshalb rechnen wir hier mit dem amtlichen Lagewert statt mit einem regionalen Erfahrungswert.`,
     );
   } else if (nurModellwert) {
     annahmen.push(
       // Bewusst OHNE Aussage zum Bodenrichtwert: der Fall trifft auch Orte,
       // für die ein amtlicher Wert vorliegt, er aber unterhalb unseres
       // belegten Anker-Bereichs liegt (s. BRW_ANKER_MIN).
-      `Ort außerhalb unserer Kernregion: Modellwert ohne lokale Kalibrierung — für ${input.ort} liegen uns keine eigenen Abschlüsse und keine ortsspezifisch kalibrierte Basis vor. Der Vor-Ort-Termin ist hier besonders wichtig.`,
+      `Ort außerhalb unserer Kernregion: Modellwert ohne lokale Kalibrierung — für ${ortName} liegen uns keine eigenen Abschlüsse und keine ortsspezifisch kalibrierte Basis vor. Der Vor-Ort-Termin ist hier besonders wichtig.`,
     );
   }
 
@@ -1113,7 +1121,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // Beim Haus bleibt pricePerSqm der Gebäudeanteil (mid enthält Boden).
     if (input.objektart === "wohnung") pricePerSqm = Math.round(s.p75Qm);
     annahmen.push(
-      `Modellwert an der Realität geerdet: ${s.n} echte Verkäufe in ${input.ort} (OnOffice) erzielten bis ${Math.round(s.p75Qm).toLocaleString("de-DE")} €/m² im oberen Viertel — der Report bleibt innerhalb dieses belegten Niveaus.`,
+      `Modellwert an der Realität geerdet: ${s.n} echte Verkäufe in ${ortName} (OnOffice) erzielten bis ${Math.round(s.p75Qm).toLocaleString("de-DE")} €/m² im oberen Viertel — der Report bleibt innerhalb dieses belegten Niveaus.`,
     );
   }
 
@@ -1210,7 +1218,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   if (stadtNiveauGenutzt) confidence = Math.min(82, Math.max(70, confidence));
   else if (brwBasisGenutzt) confidence = Math.min(80, Math.max(68, confidence));
   else if (nurModellwert) confidence = Math.min(64, confidence);
-  const trendPct = Math.round((2.6 + ((ortHash(regionKey(input.ort) || input.ort.toLowerCase()) % 1000) / 1000) * 3.6) * 10) / 10;
+  const trendPct = Math.round((2.6 + ((ortHash(regionKey(ortName) || ortName.toLowerCase()) % 1000) / 1000) * 3.6) * 10) / 10;
   const lageRatio = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
   const mikrolage =
     opts?.bodenrichtwert != null

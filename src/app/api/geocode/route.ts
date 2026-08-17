@@ -14,7 +14,15 @@ interface PhotonFeature {
 }
 
 function cityOf(p: Record<string, string | undefined>): string {
-  return p.city || p.town || p.village || p.municipality || p.district || "";
+  // Ist das Ergebnis der ORT selbst (PLZ-/Stadtsuche wie „Bad Vilbel"),
+  // liefert Photon den Namen NUR in p.name — die Feld-Kette unten ist dann
+  // leer. Folge (Fall Bad Vilbel, 12.08.2026): city= wanderte leer bis in
+  // die Engine, alle Stadt-Schichten (REGIONS/Stadt-Faktor/Stadt-Niveau)
+  // waren blind und der Rechner fiel auf den Regions-Default zurück.
+  const istOrt =
+    p.osm_key === "place" ||
+    ["city", "town", "village", "municipality", "district", "suburb"].includes(p.type ?? "");
+  return p.city || p.town || p.village || p.municipality || (istOrt ? p.name ?? "" : "") || p.district || "";
 }
 
 function buildLabel(p: Record<string, string | undefined>): string {

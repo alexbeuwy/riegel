@@ -12,6 +12,22 @@ export interface GeoResult {
   postcode: string;
 }
 
+/**
+ * Ortsnamen aus einem Adress-Label ziehen — Sicherheitsnetz, wenn das
+ * city-Feld leer ist (Fall Bad Vilbel, 12.08.2026: Hero-URL trug
+ * `address=Bad+Vilbel%2C+61118&city=` und die Engine bekam keinen Ort).
+ * „Wormser Str. 13, 67346 Speyer" → „Speyer"; „Bad Vilbel, 61118" →
+ * „Bad Vilbel" (reine PLZ-Segmente werden übersprungen).
+ */
+export function ortAusLabel(label: string): string {
+  const teile = label.split(",").map((t) => t.trim());
+  for (let i = teile.length - 1; i >= 0; i--) {
+    const ohnePlz = teile[i].replace(/\b\d{5}\b/g, "").trim();
+    if (ohnePlz) return ohnePlz;
+  }
+  return "";
+}
+
 export async function searchAddress(q: string, signal?: AbortSignal): Promise<GeoResult[]> {
   if (q.trim().length < 3) return [];
   try {
