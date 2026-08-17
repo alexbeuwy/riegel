@@ -931,3 +931,32 @@ Backtest gegen dieselben 489 Abschlüsse:
 Streuung kommt v. a. aus unbekanntem Zustand (Backtest nimmt überall „gepflegt" an);
 GAA-Kalibriertabelle + Zeit-Indexierung + beuwy-Pool stehen aus. Größte Rest-Ausreißer:
 unrenovierte Uralt-Häuser (Bj. < 1950) in Orten ohne Tabellen-Eintrag.
+
+## Update — „Allzweckwaffe": bundesweite Basis-Schichten (12.08.2026, Fall Bad Vilbel) ✅
+
+**Anlass (Alex):** Bad Vilbel (Rhein-Main, real ~4.400 €/m²) bekam 2.143 €/m² bei 73 %
+Konfidenz — außerhalb der Vorderpfalz kannte die Engine nur den Rhein-Neckar-Default.
+Umsetzung per unlazy-Orchestrierung (PLAN + Gates, Opus-5- und Sonnet-5-Leaves, Gates
+mit CHECK/EXPECT-Beweisen, Orchestrator hat alle Checks selbst nachgeprüft).
+
+**Zwei neue Schichten für Orte ohne eigene Basis** (Reihenfolge: Stadt-Niveau →
+Stadt-Faktor → BRW-Ableitung → Default):
+
+- **`src/lib/stadt-niveau.ts`** — 20 recherchierte, quellenbelegte Großstadt-Basiswerte
+  (Homeday/WohnBarometer/GAA Karlsruhe amtlich; Tabelle + Quellen:
+  `preisatlas-research.md` §8) mit dokumentierten Transformationen (Angebot × 0,95,
+  Haus-Gebäudeanteil × 0,78). Konfidenz-Fenster 70–82.
+- **BRW-Ableitung** (`brwBasis()` in valuation.ts) — lineare Regression über die 7
+  eigenen kalibrierten REGIONS-Anker (Wohnung: 1.213 + 4,33 × BRW, R² 0,90; Haus × 0,905),
+  geklemmt 1.800–6.500, aktiv nur ab BRW ≥ 410 (schützt Kleinkarlbach-Anker) und nur für
+  Orte ohne jede Tabellen-Basis MIT amtlichem BORIS-Wert. Keine BRW-Doppelzählung
+  (Mikrolage-Faktor entfällt dann). Konfidenz-Fenster 68–80.
+- **Reiner Fallback ohne alles:** Konfidenz ehrlich ≤ 64 + Annahmen-Hinweis „außerhalb
+  unserer Kernregion … Vor-Ort-Termin besonders wichtig".
+
+**Beweise:** Bad Vilbel 4.171 €/m² @ 70 % (Stadt-Niveau) bzw. Bad Homburg 3.908 €/m²
+@ 72 % (reine BRW-Ableitung) statt 2.143 @ 73; München 8.635 €/m². Battery erweitert
+(F18/F18b/F18c Ableitung + Kontrollen, F19/F19b/F19c Stadt-Niveau inkl. Vorrang-Test);
+alle F1–F17-Anker wertgleich; Backtest Vorderpfalz unverändert (MdAPE 14,8 %, Spanne
+55,8 %); Build grün. White-label: beide Schichten sind makler-neutral — ein Klon startet
+damit bundesweit brauchbar, bevor eigene Abschlüsse (Schicht 0) auflaufen.

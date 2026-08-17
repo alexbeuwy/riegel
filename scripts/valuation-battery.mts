@@ -13,16 +13,18 @@
  *
  *   npx tsx scripts/valuation-battery.mts        → Exit 0 = alles grün
  */
-import { estimateValue, type ValuationInput, type EstimateOptions } from "../src/lib/valuation";
+import { brwBasis, estimateValue, type ValuationInput, type EstimateOptions } from "../src/lib/valuation";
 
 const nf = new Intl.NumberFormat("de-DE");
 let failures = 0;
 
-function check(name: string, actual: number, lo: number, hi: number) {
+/** `einheit` nur, weil seit F18 auch Konfidenz-Punkte geprüft werden — ein
+ *  „72 €" für einen Prozentwert liest sich im Protokoll wie ein Fehler. */
+function check(name: string, actual: number, lo: number, hi: number, einheit = "€") {
   const ok = actual >= lo && actual <= hi;
   if (!ok) failures++;
   console.log(
-    `${ok ? "✅" : "❌"} ${name}: ${nf.format(actual)} € ${ok ? "" : `(erwartet ${nf.format(lo)}–${nf.format(hi)})`}`,
+    `${ok ? "✅" : "❌"} ${name}: ${nf.format(actual)} ${einheit} ${ok ? "" : `(erwartet ${nf.format(lo)}–${nf.format(hi)})`}`,
   );
 }
 
@@ -479,6 +481,135 @@ if (f17c.vervielfaeltiger === undefined || f17c.mid <= f17.mid) {
 } else {
   console.log(`✅ F17c 3-FH vermietet (JNKM 40.000) bleibt Ertragswert: ${nf.format(f17c.mid)} €`);
 }
+
+/* F18 — BRW-Ableitung isoliert (12.08.2026, Anlass Fall „Bad Vilbel"):
+ * Ort OHNE REGIONS-Eintrag, OHNE STADT_FAKTOR-Treffer und OHNE
+ * STADT_NIVEAU-Eintrag — vorher Rhein-Neckar-Default (2.143 €/m² bei 73 %
+ * Konfidenz im Original-Fall). „Bad Homburg" statt „Bad Vilbel", weil Bad
+ * Vilbel seit der Stadt-Niveau-Tabelle über Schicht 1 läuft (s. F19) — hier
+ * soll gezielt Schicht 3 (Ableitung aus dem amtlichen BRW) getestet werden. */
+const badVilbel: ValuationInput = {
+  objektart: "wohnung",
+  ort: "Bad Homburg",
+  wohnflaeche: 80,
+  baujahr: 1995,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+};
+const f18 = run(badVilbel, { bodenrichtwert: 650 });
+// Basis 4.029 €/m² (Regression bei BRW 650) × 0,97 Baujahr = 3.908 €/m²,
+// konservativ unter dem Homeday-Anker 4.400 — genau die Richtung, die die
+// Linie „lieber kleiner nennen" verlangt.
+check("F18 Wohnung Bad Homburg 80 m² (BRW 650, reine Ableitung)", f18.pricePerSqm ?? 0, 3_400, 4_600, "€/m²");
+check("F18 Konfidenz (BRW-Ableitung: 68–80)", f18.confidence, 68, 80, "%");
+if (!f18.annahmen.some((a) => a.includes("Bodenrichtwert Ihrer Zone abgeleitet"))) {
+  failures++;
+  console.log(`❌ F18: Annahme zur BRW-Ableitung fehlt (${JSON.stringify(f18.annahmen)})`);
+}
+// Der Mikrolage-Faktor darf NICHT zusätzlich wirken (der BRW steckt schon in
+// der Basis): pricePerSqm muss exakt Basis × Baujahr-Faktor sein.
+const f18basis = brwBasis(650);
+if (f18.pricePerSqm !== Math.round(f18basis.wohnung * 0.97)) {
+  failures++;
+  console.log(
+    `❌ F18: Doppelzählung des BRW — ${f18.pricePerSqm} statt ${Math.round(f18basis.wohnung * 0.97)} €/m²`,
+  );
+}
+// Klemmen: unterhalb/oberhalb des Anker-Bereichs darf die Gerade nicht ins
+// Absurde extrapolieren.
+if (brwBasis(50).wohnung !== 1800 || brwBasis(3000).wohnung !== 6500) {
+  failures++;
+  console.log(`❌ F18: Klemmen greifen nicht (${brwBasis(50).wohnung} / ${brwBasis(3000).wohnung})`);
+}
+
+/* F18b — derselbe Ort OHNE amtlichen Bodenrichtwert: die Engine hat dann
+ * wirklich nichts Lokales in der Hand. Der Wert bleibt der Modellwert, aber
+ * die Konfidenz muss das zugeben (≤ 64) und der Annahmen-Text es sagen. */
+const f18b = run(badVilbel);
+check("F18b Bad Homburg ohne BRW — Konfidenz (ehrlich gedeckelt)", f18b.confidence, 0, 64, "%");
+if (!f18b.annahmen.some((a) => a.includes("ohne lokale Kalibrierung"))) {
+  failures++;
+  console.log(`❌ F18b: Kernregion-Hinweis fehlt (${JSON.stringify(f18b.annahmen)})`);
+}
+if (!(f18b.mid < f18.mid)) {
+  failures++;
+  console.log(`❌ F18b: ohne BRW muss der Default-Pfad unter der BRW-Ableitung liegen (${f18b.mid} vs. ${f18.mid})`);
+}
+
+/* F18c — KONTROLLE: Die Ableitung darf ausschließlich Fallback-Orte
+ * betreffen. Drei Anker, exakt eingefroren:
+ *   1. Speyer (REGIONS-Eintrag) — wie F2/F3, plus Konfidenz;
+ *   2. Otterstadt (kein REGIONS-Eintrag, aber STADT_FAKTOR 0,87) — muss den
+ *      alten Pfad (Default × Ortsfaktor × Mikrolage) behalten;
+ *   3. Kleinkarlbach (echter Fallback-Ort, BRW 260 UNTERHALB des kleinsten
+ *      Ankers) — Ableitung bleibt aus, F1-Wert unverändert. */
+const f18cSpeyer = run(
+  { objektart: "wohnung", ort: "Speyer", wohnflaeche: 90, baujahr: 2005, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+  { bodenrichtwert: 590 },
+);
+check("F18c-1 Wohnung Speyer 90 m² (Anker exakt, = F3)", f18cSpeyer.mid, 342_000, 342_000);
+if (f18cSpeyer.pricePerSqm !== 3795 || f18cSpeyer.confidence !== 80 || f18cSpeyer.annahmen.length !== 0) {
+  failures++;
+  console.log(
+    `❌ F18c-1: Speyer bewegt sich (${f18cSpeyer.pricePerSqm} €/m², Konfidenz ${f18cSpeyer.confidence}, ${f18cSpeyer.annahmen.length} Annahmen — erwartet 3.795 / 80 / 0)`,
+  );
+}
+const f18cOtterstadt = run(
+  { objektart: "wohnung", ort: "Otterstadt", wohnflaeche: 90, baujahr: 2005, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+  { bodenrichtwert: 500 },
+);
+// 3.350 Default × 0,87 Ortsfaktor × 1,10 Baujahr × √(500/400) = 3.584 €/m².
+if (f18cOtterstadt.pricePerSqm !== 3584 || f18cOtterstadt.confidence !== 72 || f18cOtterstadt.annahmen.length !== 0) {
+  failures++;
+  console.log(
+    `❌ F18c-2: STADT_FAKTOR-Ort bewegt sich (${f18cOtterstadt.pricePerSqm} €/m², Konfidenz ${f18cOtterstadt.confidence}, ${f18cOtterstadt.annahmen.length} Annahmen — erwartet 3.584 / 72 / 0)`,
+  );
+}
+if (f1.pricePerSqm !== 2424 || f1.mid !== 619_000) {
+  failures++;
+  console.log(`❌ F18c-3: Kleinkarlbach (BRW 260 < Anker-Minimum) muss unverändert bleiben (${f1.pricePerSqm} €/m², ${f1.mid} €)`);
+} else {
+  console.log("✅ F18c Kontrolle: Speyer, Otterstadt (STADT_FAKTOR) und Kleinkarlbach (BRW unter Anker-Minimum) unverändert");
+}
+
+/* F19 — Schicht 1: STADT_NIVEAU (der eigentliche Fall „Bad Vilbel" +
+ * bundesweite Städte, 12.08.2026). Recherchierte, quellenbelegte Basiswerte
+ * (stadt-niveau.ts) schlagen Default UND BRW-Ableitung. */
+const f19 = run(
+  { objektart: "wohnung", ort: "Bad Vilbel", wohnflaeche: 80, baujahr: 1995, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+);
+// Basis 4.300 (Homeday 4.550 × 0,95-Abschlag) × 0,97 Baujahr = 4.171 €/m² —
+// nah am Homeday-Anker 4.400, konservativ darunter. Vorher: 2.143 €/m².
+check("F19 Wohnung Bad Vilbel 80 m² (Stadt-Niveau, ohne BRW)", f19.pricePerSqm ?? 0, 4_000, 4_400, "€/m²");
+check("F19 Konfidenz (Stadt-Niveau: 70–82)", f19.confidence, 70, 82, "%");
+if (!f19.annahmen.some((a) => a.includes("veröffentlichtes Marktniveau"))) {
+  failures++;
+  console.log(`❌ F19: Stadt-Niveau-Annahme fehlt (${JSON.stringify(f19.annahmen)})`);
+}
+// F19b — Vorrang: MIT amtlichem BRW bleibt die Stadt-Basis führend (Annahme
+// nennt das Marktniveau, nicht die Ableitung); der BRW wirkt nur als kleine
+// Mikro-Korrektur am modellierten Stadt-Boden (700): √(650/700) = 0,964.
+const f19b = run(
+  { objektart: "wohnung", ort: "Bad Vilbel", wohnflaeche: 80, baujahr: 1995, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+  { bodenrichtwert: 650 },
+);
+if (!f19b.annahmen.some((a) => a.includes("veröffentlichtes Marktniveau")) || f19b.annahmen.some((a) => a.includes("Zone abgeleitet"))) {
+  failures++;
+  console.log(`❌ F19b: Stadt-Niveau muss Vorrang vor der BRW-Ableitung haben (${JSON.stringify(f19b.annahmen)})`);
+}
+check("F19b Bad Vilbel MIT BRW 650 (Mikro-Korrektur am Stadt-Boden)", f19b.pricePerSqm ?? 0, 3_850, 4_300, "€/m²");
+// F19c — München (kein BORIS-Land angebunden): allein über die Tabelle.
+const f19c = run(
+  { objektart: "wohnung", ort: "München", wohnflaeche: 90, baujahr: 2010, zustand: "gepflegt", qualitaet: "normal", ausstattung: [] },
+);
+// 7.850 × 1,10 Baujahr = 8.635 €/m² — WohnBarometer-Niveau statt 3.685 (Default × 1,1).
+check("F19c Wohnung München 90 m² (Stadt-Niveau)", f19c.pricePerSqm ?? 0, 8_000, 9_200, "€/m²");
+check("F19c Konfidenz", f19c.confidence, 70, 82, "%");
+
+console.log(
+  `Details F18: mid ${nf.format(f18.mid)} € (${nf.format(f18.pricePerSqm ?? 0)} €/m²), Basis aus BRW 650 → ${nf.format(f18basis.wohnung)} €/m² Wohnung / ${nf.format(f18basis.haus)} €/m² Haus, Konfidenz ${f18.confidence} % (ohne BRW: ${nf.format(f18b.pricePerSqm ?? 0)} €/m², ${f18b.confidence} %)`,
+);
 
 console.log(
   `Details F15: mid ${nf.format(f15.mid)} € (${nf.format(f15.pricePerSqm ?? 0)} €/m²), Konfidenz ${f15.confidence} %, Annahmen: ${f15.annahmen.length}`,

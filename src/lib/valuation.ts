@@ -13,6 +13,7 @@
  * bewertet — Ergebnis 1,67 Mio. € statt realistischer ~650 Tsd. €.
  */
 import { stadtFaktorFuerOrt } from "@/lib/stadt-faktor";
+import { stadtNiveauFuerOrt } from "@/lib/stadt-niveau";
 
 export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
 
@@ -335,6 +336,86 @@ const REGIONS: Record<string, { wohnung: number; haus: number; gewerbe: number; 
 };
 const DEFAULT_REGION = { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 400 };
 
+/**
+ * BRW-ABLEITUNG (Fall Bad Vilbel, 12.08.2026) — Basiswerte für Orte, die
+ * überhaupt keine kalibrierte Basis haben.
+ *
+ * Problem: Jeder Ort ohne REGIONS-Eintrag rechnete mit DEFAULT_REGION, also
+ * dem Rhein-Neckar-Niveau (3.350 €/m² Wohnung), nur gedämpft/gehoben durch
+ * den geklemmten Mikrolage-Faktor √(BRW/400) (max +15 %). Bad Vilbel
+ * (Rhein-Main, real ~4.400 €/m²) landete damit bei 2.143 €/m² — die Engine
+ * war außerhalb der Vorderpfalz strukturell blind. Der amtliche
+ * Bodenrichtwert liegt für solche Orte aber vor (BORIS Hessen deckt Bad
+ * Vilbel), und er ist der einzige bundesweit einheitlich verfügbare
+ * Lage-Indikator, den wir haben.
+ *
+ * HERLEITUNG DER KOEFFIZIENTEN: Kleinste-Quadrate-Gerade durch die sieben
+ * REGIONS-Anker (boden → wohnung / haus), also durch Basiswerte, die selbst
+ * an echten OnOffice-Abschlüssen kalibriert sind:
+ *
+ *   430 → 2.750 / 2.250   (Ludwigshafen)     410 → 3.200 / 2.500 (Schifferstadt)
+ *   590 → 3.450 / 3.100   (Speyer)           415 → 3.050 / 2.900 (Frankenthal)
+ *   860 → 5.000 / 4.700   (Heidelberg)       490 → 3.550 / 3.400 (Neustadt)
+ *                                            570 → 3.800 / 3.600 (Mannheim)
+ *
+ *   n = 7, x̄ = 537,857
+ *   Wohnung: b = Sxy/Sxx = 4,332399 ; a = ȳ − b·x̄ = 3.542,857 − 4,332399·537,857
+ *            = 1.212,645        → R² = 0,90
+ *   Haus:    b = 4,644476 ; a = 3.207,143 − 4,644476·537,857 = 709,079
+ *                              → R² = 0,84
+ *
+ * Die Koeffizienten stehen bewusst FEST als Konstanten und werden nicht zur
+ * Laufzeit gefittet: die Anker ändern sich nur beim Kalibrierlauf
+ * (preisanalyse-onoffice.mts), und ein Laufzeit-Fit würde jede Änderung an
+ * REGIONS still in die Fallback-Basis durchreichen, ohne dass die
+ * Regressions-Batterie das als bewusste Entscheidung sichtbar macht. Wer
+ * REGIONS neu kalibriert, rechnet die vier Zahlen hier neu nach.
+ *
+ * KLEMMEN: Wohnung 1.800–6.500 €/m². Unten, weil die Gerade bei kleinen
+ * Bodenwerten unter jedes plausible Baukostenniveau fällt (Extrapolation
+ * gegen y-Achse: 1.213 €/m² bei BRW 0), oben, weil oberhalb des größten
+ * Ankers (860) niemand mehr weiß, ob die Beziehung linear bleibt — München
+ * mit BRW 3.000 bekäme sonst 14.200 €/m². Die Haus-Klemmen ergeben sich
+ * proportional aus dem Verhältnis der Anker-Mittelwerte (3.207/3.543 =
+ * 0,905), damit Haus und Wohnung nicht an verschiedenen Stellen anschlagen.
+ */
+const BRW_FIT_WOHNUNG = { a: 1212.65, b: 4.3324 };
+const BRW_FIT_HAUS = { a: 709.08, b: 4.6445 };
+const BRW_KLEMME_WOHNUNG = { min: 1800, max: 6500 };
+/** Haus-Niveau je Wohnungs-Niveau im Anker-Mittel (22.450 / 24.800). */
+const BRW_HAUS_ANTEIL = 0.905;
+
+/**
+ * Kleinster Anker-Bodenrichtwert (Schifferstadt, 410 €/m²). Unterhalb davon
+ * greift die Ableitung NICHT, sondern der bisherige Pfad (DEFAULT_REGION ×
+ * √-Mikrolagenfaktor) bleibt stehen — zwei Gründe: die Gerade extrapoliert
+ * dort nach unten aus dem belegten Bereich heraus (bei BRW 260 ergäbe sie
+ * 1.917 €/m² Haus, während echte Abschlüsse in solchen Dörfern bei ~2.500
+ * liegen), und genau dieser Niedrig-BRW-Fall ist mit der √-Dämpfung bereits
+ * an echten Daten kalibriert (Fall Kleinkarlbach, F1 der Battery). Nach OBEN
+ * gibt es bewusst keine Aktivierungsgrenze: teure Orte sind der Anlass für
+ * die Ableitung, die Extrapolation dorthin fängt die Klemme ab.
+ */
+const BRW_ANKER_MIN = 410;
+
+/**
+ * Wohnungs-/Haus-Basis (€/m² Gebäudeanteil) aus dem amtlichen Bodenrichtwert
+ * ableiten — s. Herleitung oben. Reine Funktion, damit die Regressions-
+ * Batterie sie direkt prüfen kann.
+ */
+export function brwBasis(boden: number): { wohnung: number; haus: number } {
+  const wohnungRoh = BRW_FIT_WOHNUNG.a + BRW_FIT_WOHNUNG.b * boden;
+  const hausRoh = BRW_FIT_HAUS.a + BRW_FIT_HAUS.b * boden;
+  const klemme = (x: number, faktor: number) =>
+    Math.round(
+      Math.min(
+        BRW_KLEMME_WOHNUNG.max * faktor,
+        Math.max(BRW_KLEMME_WOHNUNG.min * faktor, x),
+      ),
+    );
+  return { wohnung: klemme(wohnungRoh, 1), haus: klemme(hausRoh, BRW_HAUS_ANTEIL) };
+}
+
 const ZUSTAND_FACTOR: Record<Zustand, number> = {
   neuwertig: 1.12,
   gepflegt: 1.0,
@@ -633,10 +714,46 @@ export interface EstimateOptions {
 export function estimateValue(input: ValuationInput, opts?: EstimateOptions): ValuationResult {
   const bekannteRegion = regionKey(input.ort) !== "";
   const r = REGIONS[regionKey(input.ort)] ?? DEFAULT_REGION;
-  const boden = opts?.bodenrichtwert ?? r.boden;
+  // let statt const: für Stadt-Niveau-Orte ohne amtlichen BRW ersetzt der
+  // modellierte Stadt-Boden (stadt-niveau.ts) den Regions-Default — s. u.
+  let boden = opts?.bodenrichtwert ?? r.boden;
   const ausstBonus = Math.min(input.ausstattung.length * 0.012, 0.08);
   const bf = baujahrFactor(input.baujahr);
   const annahmen: string[] = [];
+
+  // SCHICHTEN FÜR ORTE OHNE EIGENE BASIS (Fall Bad Vilbel, 12.08.2026).
+  // Ein „Fallback-Ort" ist ein Ort, für den wir GAR NICHTS haben: kein
+  // REGIONS-Eintrag (kalibrierte Kernstadt) und kein Treffer in der
+  // Dorf-/Kleinstadt-Tabelle (stadt-faktor.ts). Genau dort rechnete die
+  // Engine bisher stillschweigend mit dem Rhein-Neckar-Default weiter.
+  const ortsFaktorTabelle = stadtFaktorFuerOrt(input.ort);
+  const fallbackOrt = !bekannteRegion && ortsFaktorTabelle === 1;
+
+  // STADT_NIVEAU-HOOK — Schicht 1: recherchierte Tabelle ABSOLUTER
+  // Basiswerte für Großstädte und teure Speckgürtel mit belegter Quelle je
+  // Stadt (src/lib/stadt-niveau.ts, Leaf-B-Recherche 12.08.2026 — Bad Vilbel,
+  // München, Berlin, …). Sie greift VOR der BRW-Ableitung, weil ein belegter
+  // Stadt-Median die bessere Information ist als ein aus dem Bodenrichtwert
+  // abgeleiteter Modellwert; kennt die Tabelle den Ort nicht, übernimmt die
+  // Ableitung unten.
+  const stadtNiveau = fallbackOrt ? stadtNiveauFuerOrt(input.ort) : null;
+  /** true, sobald das Stadt-Niveau tatsächlich in den Wert eingeht. */
+  let stadtNiveauGenutzt = false;
+  // Ohne amtlichen BRW liefert der modellierte Stadt-Boden die Grundlage für
+  // Grundstücks-Staffel/Mikrolage — ein echter BORIS-Wert geht immer vor.
+  if (stadtNiveau && opts?.bodenrichtwert == null) boden = stadtNiveau.boden;
+
+  // Schicht 3: Basis aus dem amtlichen Bodenrichtwert ableiten (s. brwBasis).
+  // Nur für Fallback-Orte OHNE Stadt-Niveau-Treffer, nur mit amtlichem Wert
+  // und nur oberhalb des kleinsten Ankers — sonst bleibt alles wie bisher.
+  const brwAbleitung =
+    fallbackOrt && stadtNiveau === null && opts?.bodenrichtwert != null && opts.bodenrichtwert >= BRW_ANKER_MIN
+      ? brwBasis(opts.bodenrichtwert)
+      : undefined;
+  /** true, sobald die abgeleitete Basis tatsächlich in den Wert eingeht
+   * (nicht bei Gewerbe und nicht beim reinen Grundstück). Steuert Konfidenz
+   * und Annahmen-Text. */
+  let brwBasisGenutzt = false;
 
   // SELBSTAUSKUNFT ERDEN (Fall Manfred „Landauer Warte", 11.08.2026): Eine
   // renovierte 1972er-Wohnung wurde als „neuwertig" eingegeben — +7 % Zustand
@@ -773,20 +890,36 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // Faktorkette wie beim Haus, gleiche Grundstücks-Staffel, Maximum gewinnt.
     const we = input.wohneinheiten ?? 0;
     if (we >= 1 && we <= MFH_KLEIN_MAX_WE && wf > 0) {
-      const lageFaktorMfh = Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+      // Wie im Haus-Zweig: Stadt-Niveau (Schicht 1) vor BRW-Ableitung
+      // (Schicht 3); in beiden Fällen steckt die Lage schon in der Basis,
+      // der Mikrolage-Faktor entfällt bzw. wirkt nur als Mikro-Korrektur
+      // am Stadt-Boden (keine Doppelzählung).
+      const hausBasisMfh = stadtNiveau?.haus ?? brwAbleitung?.haus ?? r.haus;
+      const lageFaktorMfh = stadtNiveau
+        ? opts?.bodenrichtwert != null
+          ? Math.min(1.06, Math.max(0.72, Math.sqrt(opts.bodenrichtwert / stadtNiveau.boden)))
+          : 1
+        : brwAbleitung
+          ? 1
+          : Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
       // Gleicher Orts-Faktor wie im Haus-Zweig (Dorf-Dämpfung, s. stadt-faktor.ts).
-      const ortsFaktorMfh = bekannteRegion ? 1 : stadtFaktorFuerOrt(input.ort);
+      const ortsFaktorMfh = bekannteRegion ? 1 : ortsFaktorTabelle;
       const anrechnung = input.grundflaeche
         ? grundstuecksStaffel(input.grundflaeche, boden, "haus")
         : undefined;
       const vergleichswert =
-        wf * r.haus * MFH_KLEIN_GEBAEUDE_FAKTOR * ortsFaktorMfh * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
+        wf * hausBasisMfh * MFH_KLEIN_GEBAEUDE_FAKTOR * ortsFaktorMfh * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
         (anrechnung?.wert ?? 0);
       if (vergleichswert > mid) {
         annahmen.push(
           `Mehrfamilienhaus mit ${we} Wohneinheiten: bewertet im Vergleichswert-Ansatz wie ein Wohnhaus — Käufer kleiner Mehrfamilienhäuser sind meist Eigennutzer und zahlen Wohnhaus-Niveau (kalibriert an 57 echten Mehrfamilienhaus-Verkäufen). Der reine Ertragswert läge bei ${(Math.round(mid / 1000) * 1000).toLocaleString("de-DE")} € und unterschätzt ein kleines Mehrfamilienhaus mit Grundstück deutlich.`,
         );
         mid = vergleichswert;
+        // Nur wenn der Vergleichswert auch gewinnt, geht die Stadt-/
+        // abgeleitete Basis wirklich in den Preis ein (der Ertragswert-Zweig
+        // rechnet weiter über Miete × Vervielfältiger).
+        if (stadtNiveau) stadtNiveauGenutzt = true;
+        else if (brwAbleitung) brwBasisGenutzt = true;
         pricePerSqm = Math.round(mid / wf);
         grundstuecksAnrechnung = anrechnung;
         // Ertragswert-Anzeigen zurücknehmen: PDF und Rechner sollen die
@@ -798,7 +931,30 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       }
     }
   } else {
-    const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
+    // Abgeleitete Basis nur für Wohnung/Haus: Gewerbe bleibt bewusst
+    // unverändert — die sieben Anker sind reine WOHN-Basiswerte, für
+    // Büro/Halle gibt es keine belegte BRW-Beziehung, und eine erfundene
+    // wäre schlechter als der bisherige Default (s. brwBasis-Herleitung).
+    const abgeleitet = brwAbleitung !== undefined && input.objektart !== "gewerbe";
+    // Schicht 1 vor Schicht 3: recherchiertes Stadt-Niveau (belegte Quelle)
+    // schlägt die BRW-Ableitung; Gewerbe bleibt in beiden Fällen beim
+    // Default (die Tabellen/Anker sind reine WOHN-Basiswerte).
+    const stadtBasis = stadtNiveau !== null && input.objektart !== "gewerbe" ? stadtNiveau : null;
+    const base = stadtBasis
+      ? input.objektart === "haus"
+        ? stadtBasis.haus
+        : stadtBasis.wohnung
+      : abgeleitet
+        ? input.objektart === "haus"
+          ? brwAbleitung.haus
+          : brwAbleitung.wohnung
+        : input.objektart === "haus"
+          ? r.haus
+          : input.objektart === "gewerbe"
+            ? r.gewerbe
+            : r.wohnung;
+    if (stadtBasis) stadtNiveauGenutzt = true;
+    else if (abgeleitet) brwBasisGenutzt = true;
     // Orts-Faktor für Orte OHNE eigenen REGIONS-Eintrag (12.08.2026): dieselbe
     // Dorf-/Kleinstadt-Tabelle wie der Preisatlas (src/lib/stadt-faktor.ts).
     // Der Backtest gegen 489 echte Abschlüsse zeigte genau hier die größten
@@ -806,7 +962,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // (z. B. Altbau im Weindorf: Modell +100 % über dem realen Preis).
     // Kernstädte tragen ihre Lage bereits in der kalibrierten Basis (Faktor 1);
     // unbekannte Orte bleiben neutral, dort korrigiert der amtliche BRW.
-    const ortsFaktor = bekannteRegion ? 1 : stadtFaktorFuerOrt(input.ort);
+    const ortsFaktor = bekannteRegion ? 1 : ortsFaktorTabelle;
     // Mikrolagen-Faktor: der amtliche Bodenrichtwert (falls via opts geliefert)
     // ist der beste verfügbare Indikator dafür, ob die konkrete Lage über oder
     // unter dem regionalen Modellniveau liegt — gerade für Dörfer, die auf
@@ -830,7 +986,24 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // Abwertungen nicht zu bremsen passt zur Linie „lieber kleiner nennen".
     // Fallback-Orte ohne eigene Basis behalten die volle Spanne nach oben
     // (dort IST der BRW die beste Ortsinformation).
-    const lageFaktor = Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+    //
+    // KEINE DOPPELZÄHLUNG BEI ABGELEITETER BASIS: Steht die Basis schon aus
+    // dem Bodenrichtwert (abgeleitet === true), dann steckt die Lage bereits
+    // IN ihr — den Mikrolage-Faktor zusätzlich anzuwenden, hieße denselben
+    // BRW zweimal zu verrechnen (bei Bad Vilbel wären das +15 % auf einen
+    // Wert, der genau aus diesem BRW kommt). Deshalb dort exakt 1.
+    // STADT-NIVEAU-BASIS: Die Stadt-Lage steckt in der Basis — ein amtlicher
+    // BRW verschiebt nur noch die Mikrolage INNERHALB der Stadt (gleiche
+    // Logik wie bekannteRegion, gemessen am modellierten Stadt-Boden statt
+    // am Regions-Default). Ohne amtlichen Wert exakt 1 (boden ist dann der
+    // Stadt-Boden selbst, sqrt(1) — hier nur explizit gemacht).
+    const lageFaktor = stadtBasis
+      ? opts?.bodenrichtwert != null
+        ? Math.min(1.06, Math.max(0.72, Math.sqrt(opts.bodenrichtwert / stadtBasis.boden)))
+        : 1
+      : abgeleitet
+        ? 1
+        : Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
     // Bauform wirkt NUR auf den Gebäudeanteil, nie auf den Boden — der wird
     // unten aus der tatsächlich eingegebenen Grundstücksfläche gerechnet.
     // Genau deshalb stehen in HAUSTYP_FAKTOR die reinen Baukostenverhältnisse
@@ -882,6 +1055,33 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       grundstuecksAnrechnung = grundstuecksStaffel(input.grundflaeche, boden, "gewerbe");
       mid += grundstuecksAnrechnung.wert;
     }
+  }
+
+  // EHRLICH SAGEN, WORAUF DER WERT STEHT (Fall Bad Vilbel): Ein Ort ohne
+  // eigene Basis bekommt entweder den Hinweis auf die BRW-Ableitung oder,
+  // wenn nicht einmal die greift, den klaren Hinweis, dass hier ein reiner
+  // Modellwert steht. Beim reinen Grundstück ist der amtliche Bodenrichtwert
+  // selbst die Bewertungsgrundlage — dort wäre beides irreführend.
+  const nurModellwert =
+    fallbackOrt && !brwBasisGenutzt && !stadtNiveauGenutzt && input.objektart !== "grundstueck";
+  if (stadtNiveauGenutzt && stadtNiveau) {
+    annahmen.push(
+      `Basis: veröffentlichtes Marktniveau für ${input.ort} (${stadtNiveau.quelle}, konservativ auf Abschlussniveau abgeschlagen) — ${input.ort} liegt außerhalb unserer Kernregion und eigene Abschlüsse liegen dort noch nicht vor; der Vor-Ort-Termin präzisiert das Ergebnis.`,
+    );
+  } else if (brwBasisGenutzt) {
+    const abgeleiteteBasis = input.objektart === "haus" || input.objektart === "mehrfamilienhaus"
+      ? brwAbleitung?.haus
+      : brwAbleitung?.wohnung;
+    annahmen.push(
+      `Basis aus dem amtlichen Bodenrichtwert Ihrer Zone abgeleitet (${boden.toLocaleString("de-DE")} €/m² Boden → ${(abgeleiteteBasis ?? 0).toLocaleString("de-DE")} €/m² Gebäude): ${input.ort} liegt außerhalb unserer kalibrierten Kernregion, deshalb rechnen wir hier mit dem amtlichen Lagewert statt mit einem regionalen Erfahrungswert.`,
+    );
+  } else if (nurModellwert) {
+    annahmen.push(
+      // Bewusst OHNE Aussage zum Bodenrichtwert: der Fall trifft auch Orte,
+      // für die ein amtlicher Wert vorliegt, er aber unterhalb unseres
+      // belegten Anker-Bereichs liegt (s. BRW_ANKER_MIN).
+      `Ort außerhalb unserer Kernregion: Modellwert ohne lokale Kalibrierung — für ${input.ort} liegen uns keine eigenen Abschlüsse und keine ortsspezifisch kalibrierte Basis vor. Der Vor-Ort-Termin ist hier besonders wichtig.`,
+    );
   }
 
   const round = (n: number) => Math.round(n / 1000) * 1000;
@@ -993,6 +1193,23 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   if (input.energieklasse) confidence += 3;
   if (input.baujahr) confidence += 2;
   confidence = Math.min(92, confidence);
+  // KONFIDENZ EHRLICH FÜR FALLBACK-ORTE (Fall Bad Vilbel, 12.08.2026): Der
+  // Score kannte bis dahin nur „kalibrierte Region ja/nein" (+8). Bad Vilbel
+  // bekam damit 73 % auf einen Wert, der aus dem Rhein-Neckar-Default kam —
+  // strukturell blind UND zu selbstsicher. Jetzt entscheidet, was wirklich
+  // unter dem Wert liegt:
+  //   • abgeleitete BRW-Basis → 68–80: besser als ein Default, aber ohne
+  //     einen einzigen echten Abschluss vor Ort; die Obergrenze bleibt unter
+  //     dem, was eine kalibrierte Kernstadt erreichen kann.
+  //   • gar nichts → höchstens 64: der Wert IST dann ein Modellniveau aus
+  //     einer anderen Region, und genau das soll die Zahl sagen.
+  // Orte mit REGIONS-Eintrag oder STADT_FAKTOR-Treffer sind nicht betroffen
+  // (fallbackOrt === false) — deren Konfidenz-Pfade bleiben unverändert.
+  //   • Stadt-Niveau-Basis (belegte Quelle je Stadt) → 70–82: die beste
+  //     Nicht-Abschluss-Quelle, minimal über der BRW-Ableitung.
+  if (stadtNiveauGenutzt) confidence = Math.min(82, Math.max(70, confidence));
+  else if (brwBasisGenutzt) confidence = Math.min(80, Math.max(68, confidence));
+  else if (nurModellwert) confidence = Math.min(64, confidence);
   const trendPct = Math.round((2.6 + ((ortHash(regionKey(input.ort) || input.ort.toLowerCase()) % 1000) / 1000) * 3.6) * 10) / 10;
   const lageRatio = Math.min(1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
   const mikrolage =
