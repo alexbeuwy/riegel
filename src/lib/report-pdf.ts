@@ -1538,7 +1538,11 @@ function drawComposition(ctx: Ctx, d: ReportData, pageNo: number, total: number)
         fy -= 13;
       }
     }
-  } else if (d.objektartLabel === "Mehrfamilienhaus") {
+  } else if (d.objektartLabel === "Mehrfamilienhaus" && d.value.vervielfaeltiger != null) {
+    // Ertragswert-Herleitung nur, wenn der Wert auch so entstanden ist —
+    // kleine MFH (1–4 WE) rechnen seit 12.08.2026 ggf. im Vergleichswert-
+    // Ansatz (s. valuation.ts MFH_KLEIN_*): dann ist vervielfaeltiger
+    // undefined und die Seite zeigt Faktoren (falls vorhanden) + Annahmen.
     drawErtragswertGraphic(ctx, page, d, M, y, contentW);
   } else if (d.objektartLabel === "Grundstück") {
     drawGrundstueckGraphic(ctx, page, d, M, y, contentW);

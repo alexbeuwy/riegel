@@ -858,3 +858,23 @@ mit nachvollziehbaren Annahmen-Hinweisen für den Kunden statt einer Wunschzahl.
 - **`/intern`** zeigt den Objektbezug jetzt direkt an jeder Anfrage (Übersicht + Leads-Tab,
   „Titel · ID" in Akzentfarbe; ID = OnOffice-auffindbar) und die Lead-Suche findet
   Objekt-Titel.
+
+## Update — Kleine Mehrfamilienhäuser: Vergleichswert-Anker (12.08.2026, Fall Manfred) ✅
+
+**Anlass (Manne):** 3-Familienhaus Ludwigshafen, leer, 500 m² Grundstück → Rechner sagte
+1.186 €/m², „weit weg von der Realität".
+
+- **Diagnose:** Der reine Ertragswert-Zweig (a) ignorierte das Grundstück komplett und
+  (b) bewertet kleine MFH wie Rendite-Zinshäuser — real kaufen 2–4-Familienhäuser aber
+  meist **Eigennutzer zu Wohnhaus-Preisen**. Gemessen am eigenen Pool: 57 echte
+  MFH-Abschlüsse, Median 2.273 €/m² (LU 1.942 bei n=14, Speyer 2.313 bei n=9).
+- **Fix (keine neuen Formularfelder!):** Bei 1–4 Wohneinheiten rechnet die Engine
+  zusätzlich einen **Vergleichswert wie beim Wohnhaus** (Gebäudebasis r.haus × 0,65 —
+  kalibriert an den Pool-Medianen — × volle Faktorkette + Grundstücks-Staffel) und nimmt
+  das **Maximum** beider Ansätze. 5+ WE und stark vermietete Häuser bleiben im
+  Ertragswert; der Anker drückt nie nach unten. Leerstand ist im Vergleichswert bewusst
+  kein Malus (bezugsfrei = Vorteil für Eigennutzer).
+- **Transparenz:** Annahmen-Hinweis erklärt den Ansatz-Wechsel inkl. des verworfenen
+  Ertragswerts; PDF zeigt die Ertragswert-Herleitung nur noch, wenn der Wert auch so
+  entstanden ist. Battery: F17/F17b/F17c (Mannes Fall: jetzt **480.000 € = 2.000 €/m²**
+  statt 285.000 € = 1.186 €/m²).

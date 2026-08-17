@@ -493,6 +493,28 @@ function marktmieteM2(basisWohnung: number, zustand: Zustand, qualitaet: Qualita
 }
 
 /**
+ * Kleine Mehrfamilienhäuser (2–4 Wohneinheiten) — Fall Manfred 12.08.2026
+ * (3-Familienhaus Ludwigshafen, leer, 500 m² Grundstück): Der reine
+ * Ertragswert ergab 1.186 €/m², die 57 ECHTEN MFH-Abschlüsse des
+ * OnOffice-Pools liegen beim Median 2.273 €/m² (LU 1.942 bei n=14, Speyer
+ * 2.313 bei n=9). Zwei Gründe: Käufer kleiner MFH sind überwiegend
+ * Eigennutzer (selbst wohnen + vermieten) und zahlen Wohnhaus-Niveau, und
+ * der Ertragswert-Zweig ignorierte das Grundstück komplett.
+ *
+ * Deshalb rechnet die Engine bei 1–4 WE ZUSÄTZLICH einen Vergleichswert wie
+ * beim Wohnhaus (gleiche Faktorkette + Grundstücks-Staffel, Gebäudebasis =
+ * r.haus × 0,65) und nimmt das MAXIMUM beider Ansätze. 0,65 ist an den
+ * Pool-Medianen kalibriert: nach Abzug des typischen Bodenanteils liegt der
+ * MFH-Gebäudewert bei ~0,61 (Speyer) bis ~0,73 (LU) des Eigenheim-Niveaus —
+ * 0,65 bewusst am unteren Rand („lieber kleiner nennen"). Der Ertragswert
+ * bleibt maßgeblich für 5+ WE und immer dann, wenn er höher liegt (voll
+ * vermietet mit starker Ist-Miete). Leerstand ist im Vergleichswert bewusst
+ * KEIN Abschlag: für den Eigennutzer-Käufer ist „bezugsfrei" ein Vorteil.
+ */
+const MFH_KLEIN_MAX_WE = 4;
+const MFH_KLEIN_GEBAEUDE_FAKTOR = 0.65;
+
+/**
  * Maximaler Abschlag bei Vollleerstand (%). Begründung: der Käufer bekommt ab
  * Tag 1 keinen Cashflow, trägt Vermietungsaufwand und -risiko, und die
  * angesetzte Marktmiete ist ein Neuvermietungswert (also am oberen Rand
@@ -664,6 +686,9 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   let mid: number;
   let vervielfaeltiger: number | undefined;
   let mietAnsatz: MietAnsatz | undefined;
+  /** true, wenn ein kleines MFH im Vergleichswert-Ansatz bewertet wurde —
+   * dann zeigen UI/PDF die Faktor-Zerlegung statt der Ertragswert-Herleitung. */
+  let mfhVergleichswert = false;
   let grundstuecksAnrechnung: GrundstuecksAnrechnung | undefined;
   let flaechenAufteilung: FlaechenAufteilung | undefined;
 
@@ -736,6 +761,34 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       ansatzMiete,
     };
     pricePerSqm = wf ? Math.round(mid / wf) : undefined;
+
+    // Kleines MFH (1–4 WE): Vergleichswert-Anker gegen die Ertragswert-Falle
+    // (Begründung + Kalibrierung s. MFH_KLEIN_*-Kommentar oben) — gleiche
+    // Faktorkette wie beim Haus, gleiche Grundstücks-Staffel, Maximum gewinnt.
+    const we = input.wohneinheiten ?? 0;
+    if (we >= 1 && we <= MFH_KLEIN_MAX_WE && wf > 0) {
+      const lageFaktorMfh = Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+      const anrechnung = input.grundflaeche
+        ? grundstuecksStaffel(input.grundflaeche, boden, "haus")
+        : undefined;
+      const vergleichswert =
+        wf * r.haus * MFH_KLEIN_GEBAEUDE_FAKTOR * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
+        (anrechnung?.wert ?? 0);
+      if (vergleichswert > mid) {
+        annahmen.push(
+          `Mehrfamilienhaus mit ${we} Wohneinheiten: bewertet im Vergleichswert-Ansatz wie ein Wohnhaus — Käufer kleiner Mehrfamilienhäuser sind meist Eigennutzer und zahlen Wohnhaus-Niveau (kalibriert an 57 echten Mehrfamilienhaus-Verkäufen). Der reine Ertragswert läge bei ${(Math.round(mid / 1000) * 1000).toLocaleString("de-DE")} € und unterschätzt ein kleines Mehrfamilienhaus mit Grundstück deutlich.`,
+        );
+        mid = vergleichswert;
+        pricePerSqm = Math.round(mid / wf);
+        grundstuecksAnrechnung = anrechnung;
+        // Ertragswert-Anzeigen zurücknehmen: PDF und Rechner sollen die
+        // Faktor-Zerlegung zeigen, keine Miet-Herleitung, die nicht mehr
+        // aufs Ergebnis führt.
+        vervielfaeltiger = undefined;
+        mietAnsatz = undefined;
+        mfhVergleichswert = true;
+      }
+    }
   } else {
     const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
     // Mikrolagen-Faktor: der amtliche Bodenrichtwert (falls via opts geliefert)
@@ -845,7 +898,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   }
 
   const factors: ValuationFactor[] =
-    input.objektart === "mehrfamilienhaus"
+    input.objektart === "mehrfamilienhaus" && !mfhVergleichswert
       ? // Zustand und Qualität stecken beim Zinshaus schon im Vervielfältiger
         // und dürfen hier nicht doppelt erscheinen. Die Ausstattung bekommt
         // eine eigene Zeile, damit sichtbar ist, dass sie wirkt — und wie

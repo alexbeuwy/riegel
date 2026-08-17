@@ -426,8 +426,63 @@ if (
   console.log("✅ F16 Kennzahlen deterministisch (kein Math.random mehr)");
 }
 
+/* F17 — Der Fall „3-Familienhaus Ludwigshafen" (Manfred, 12.08.2026): leer,
+ * 500 m² Grundstück. Der reine Ertragswert ergab 1.186 €/m² — die 57 echten
+ * MFH-Abschlüsse des Pools liegen bei LU-Median 1.942 €/m² (inkl. Boden).
+ * Kleine MFH (1–4 WE) bekommen deshalb einen Vergleichswert-Anker
+ * (max(Ertragswert, Wohnhaus-Ansatz × 0,65 + Grundstücks-Staffel)). */
+const f17basis = {
+  objektart: "mehrfamilienhaus" as const,
+  ort: "Ludwigshafen",
+  wohnflaeche: 240,
+  grundflaeche: 500,
+  vermietungsstand: "leer" as const,
+  zustand: "gepflegt" as const,
+  qualitaet: "normal" as const,
+  ausstattung: [] as string[],
+};
+const f17 = run({ ...f17basis, wohneinheiten: 3 });
+// 240 × 2.250 × 0,65 × Faktoren 1 + Staffel(500 m², BRW 430) ≈ 480 Tsd.
+// → ~2.000 €/m² inkl. Boden — am realen LU-MFH-Median (1.942) statt 1.186.
+check("F17 3-FH Ludwigshafen leer, 500 m² Grund (Vergleichswert-Anker)", f17.mid, 455_000, 495_000);
+if (!((f17.pricePerSqm ?? 0) >= 1_800)) {
+  failures++;
+  console.log(`❌ F17: €/m² muss am realen MFH-Niveau liegen (${f17.pricePerSqm} statt >= 1.800)`);
+}
+if (f17.vervielfaeltiger !== undefined || f17.mietAnsatz !== undefined) {
+  failures++;
+  console.log("❌ F17: Ertragswert-Anzeigen müssen im Vergleichswert-Ansatz entfallen");
+}
+// Faktor-Zeilen können bei komplett neutralen Eingaben (gepflegt/normal,
+// kein Baujahr) legitim leer sein — der Annahmen-Hinweis muss aber IMMER da
+// sein, damit der Eigentümer den Ansatz-Wechsel versteht.
+if (f17.annahmen.length === 0) {
+  failures++;
+  console.log("❌ F17: Annahmen-Hinweis (Vergleichswert-Ansatz) muss vorhanden sein");
+}
+// F17b — 8 WE: großes Zinshaus bleibt im reinen Ertragswert (Status quo).
+const f17b = run({ ...f17basis, wohneinheiten: 8 });
+if (f17b.vervielfaeltiger === undefined || f17b.mid >= f17.mid) {
+  failures++;
+  console.log(`❌ F17b: 8 WE muss Ertragswert bleiben und unter dem Vergleichswert liegen (${nf.format(f17b.mid)})`);
+} else {
+  console.log(`✅ F17b Zinshaus 8 WE bleibt Ertragswert: ${nf.format(f17b.mid)} €`);
+}
+// F17c — kleines MFH, aber voll vermietet mit starker Ist-Miete: der höhere
+// Ertragswert gewinnt, der Anker drückt NIE nach unten.
+const f17c = run({ ...f17basis, vermietungsstand: "vermietet", wohneinheiten: 3, jahresnettokaltmiete: 40_000 });
+if (f17c.vervielfaeltiger === undefined || f17c.mid <= f17.mid) {
+  failures++;
+  console.log(`❌ F17c: starke Ist-Miete muss im Ertragswert bleiben (${nf.format(f17c.mid)})`);
+} else {
+  console.log(`✅ F17c 3-FH vermietet (JNKM 40.000) bleibt Ertragswert: ${nf.format(f17c.mid)} €`);
+}
+
 console.log(
   `Details F15: mid ${nf.format(f15.mid)} € (${nf.format(f15.pricePerSqm ?? 0)} €/m²), Konfidenz ${f15.confidence} %, Annahmen: ${f15.annahmen.length}`,
+);
+console.log(
+  `Details F17: mid ${nf.format(f17.mid)} € (${nf.format(f17.pricePerSqm ?? 0)} €/m² inkl. Boden), Grundstück ${nf.format(f17.grundstuecksAnrechnung?.wert ?? 0)} €`,
 );
 console.log(`Details F15c: mid ${nf.format(f15k.mid)} €, Deckel p75 ${nf.format(f15k.plausibilisierung?.p75Qm ?? 0)} €/m² (n=${f15k.plausibilisierung?.n}), Modell davor ${nf.format(f15k.plausibilisierung?.modellMid ?? 0)} €`);
 
