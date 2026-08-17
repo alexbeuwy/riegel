@@ -84,8 +84,9 @@ bei Häusern kommt anteilig Bodenwert fürs Grundstück dazu.
   Trend = dieselbe Hash-Mechanik wie der Preisatlas, Mikrolage aus dem BRW-Verhältnis,
   Rendite aus dem Regionalmodell.
 
-Ergebnis ist eine Spanne (−7 %/+11 % um den Mittelwert), €/m², Kennzahlen und die Einzelfaktoren
-mit %-Wirkung. Klar als Schätzung deklariert — **kein** Verkehrswertgutachten. Regressionsschutz:
+Ergebnis ist eine **konfidenz-abhängige Spanne** (±12 % bei bester Datenlage bis ±24 % ohne
+lokale Anker — die alte Fix-Spanne −7 %/+11 % traf im Backtest nur 31,5 % der echten
+Verkaufspreise), €/m², Kennzahlen und die Einzelfaktoren mit %-Wirkung. Klar als Schätzung deklariert — **kein** Verkehrswertgutachten. Regressionsschutz:
 `scripts/valuation-battery.mts` (inkl. Fall „Landauer Warte" als F15 und Determinismus-Anker F16).
 
 ### `src/lib/report-pdf.ts` — PDF-Generator (serverseitig)

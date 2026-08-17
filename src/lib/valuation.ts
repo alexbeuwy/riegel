@@ -12,6 +12,8 @@
  * Bauland, Rest Gartenland) wurde zuvor mit vollem BRW auf die Gesamtfläche
  * bewertet — Ergebnis 1,67 Mio. € statt realistischer ~650 Tsd. €.
  */
+import { stadtFaktorFuerOrt } from "@/lib/stadt-faktor";
+
 export type Objektart = "wohnung" | "haus" | "grundstueck" | "gewerbe" | "mehrfamilienhaus";
 
 /** Bauform eines Wohnhauses. Nur relevant für objektart === "haus". */
@@ -353,10 +355,14 @@ const ENERGIE_FACTOR: Record<string, number> = {
 // Schnitt über ALLE Baujahre; ein unsanierter 60er-Bau liegt darunter, nicht
 // darüber. Die Stufen bleiben bewusst grob — das Formular fragt keine
 // Modernisierungshistorie ab, mehr Präzision wäre vorgetäuscht.
+// Neubau nach oben nachgezogen (12.08.2026): Der Backtest gegen 489 echte
+// Abschlüsse zeigte für Baujahr >= 2000 einen systematischen Bias von −15 %
+// (n=69) — Käufer zahlen für junge Substanz (GEG-Standard, keine
+// Sanierungs-Pipeline) real deutlich mehr, als 1,03/1,10 abbildeten.
 function baujahrFactor(y?: number): number {
   if (!y) return 1.0;
-  if (y >= 2015) return 1.1;
-  if (y >= 2000) return 1.03;
+  if (y >= 2015) return 1.2;
+  if (y >= 2000) return 1.1;
   if (y >= 1980) return 0.97;
   if (y >= 1960) return 0.9;
   if (y >= 1945) return 0.86;
@@ -768,11 +774,13 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     const we = input.wohneinheiten ?? 0;
     if (we >= 1 && we <= MFH_KLEIN_MAX_WE && wf > 0) {
       const lageFaktorMfh = Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
+      // Gleicher Orts-Faktor wie im Haus-Zweig (Dorf-Dämpfung, s. stadt-faktor.ts).
+      const ortsFaktorMfh = bekannteRegion ? 1 : stadtFaktorFuerOrt(input.ort);
       const anrechnung = input.grundflaeche
         ? grundstuecksStaffel(input.grundflaeche, boden, "haus")
         : undefined;
       const vergleichswert =
-        wf * r.haus * MFH_KLEIN_GEBAEUDE_FAKTOR * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
+        wf * r.haus * MFH_KLEIN_GEBAEUDE_FAKTOR * ortsFaktorMfh * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
         (anrechnung?.wert ?? 0);
       if (vergleichswert > mid) {
         annahmen.push(
@@ -791,6 +799,14 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     }
   } else {
     const base = input.objektart === "haus" ? r.haus : input.objektart === "gewerbe" ? r.gewerbe : r.wohnung;
+    // Orts-Faktor für Orte OHNE eigenen REGIONS-Eintrag (12.08.2026): dieselbe
+    // Dorf-/Kleinstadt-Tabelle wie der Preisatlas (src/lib/stadt-faktor.ts).
+    // Der Backtest gegen 489 echte Abschlüsse zeigte genau hier die größten
+    // Ausreißer — Dörfer rechneten mit der vollen Regions-Default-Basis
+    // (z. B. Altbau im Weindorf: Modell +100 % über dem realen Preis).
+    // Kernstädte tragen ihre Lage bereits in der kalibrierten Basis (Faktor 1);
+    // unbekannte Orte bleiben neutral, dort korrigiert der amtliche BRW.
+    const ortsFaktor = bekannteRegion ? 1 : stadtFaktorFuerOrt(input.ort);
     // Mikrolagen-Faktor: der amtliche Bodenrichtwert (falls via opts geliefert)
     // ist der beste verfügbare Indikator dafür, ob die konkrete Lage über oder
     // unter dem regionalen Modellniveau liegt — gerade für Dörfer, die auf
@@ -825,7 +841,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       input.objektart === "haus" && input.zweifamilienhaus ? ZWEIFAMILIEN_FAKTOR : 1;
     const flFaktor = flaechenFaktor(input.objektart, input.wohnflaeche);
     pricePerSqm = Math.round(
-      base * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * htFaktor * zfhFaktor * flFaktor * hgFaktor,
+      base * ortsFaktor * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * htFaktor * zfhFaktor * flFaktor * hgFaktor,
     );
     const flaeche = input.wohnflaeche ?? 0;
     const halleM2 = input.objektart === "gewerbe" ? Math.min(Math.max(input.hallenflaeche ?? 0, 0), flaeche) : 0;
@@ -846,7 +862,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       const bueroM2 = Math.max(flaeche - halleM2 - wohnM2, 0);
       const halleSatz = Math.round(pricePerSqm * HALLEN_FAKTOR);
       const wohnSatz = Math.round(
-        r.wohnung * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * MISCH_WOHN_FAKTOR,
+        r.wohnung * ortsFaktor * zf * bf * qf * ef * ausstFaktor * OPTIMISM * lageFaktor * MISCH_WOHN_FAKTOR,
       );
       mid = pricePerSqm * bueroM2 + halleSatz * halleM2 + wohnSatz * wohnM2;
       flaechenAufteilung = { bueroM2, halleM2, wohnM2, bueroSatz: pricePerSqm, halleSatz, wohnSatz };
@@ -882,9 +898,13 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // eigene Faktor-Zeile + `plausibilisierung` + Annahmen-Text.
   let plausibilisierung: Plausibilisierung | undefined;
   let deckelFaktor = 1;
+  // Mindest-n 8 statt 5 (12.08.2026): Der Backtest zeigte, dass der Deckel
+  // bei Mini-Fallzahlen kippen kann (Otterstadt, n=7: Fehler stieg von 16 %
+  // auf 34 %) — ein p75 aus einer Handvoll Verkäufen ist selbst nur Rauschen.
+  const DECKEL_MIN_N = 8;
   const s = opts?.ortsStats;
   const wf = input.wohnflaeche ?? 0;
-  if (s && s.n >= 5 && flaechenObjekt && wf > 0 && mid / wf > s.p75Qm) {
+  if (s && s.n >= DECKEL_MIN_N && flaechenObjekt && wf > 0 && mid / wf > s.p75Qm) {
     const rawMid = mid;
     plausibilisierung = { n: s.n, p75Qm: Math.round(s.p75Qm), modellMid: round(rawMid) };
     deckelFaktor = (s.p75Qm * wf) / rawMid;
@@ -980,10 +1000,20 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       ? Math.min(9.5, Math.max(5, Math.round((7 + (lageRatio - 1) * 10) * 10) / 10))
       : 7;
 
+  // EHRLICHE SPANNE STATT SCHEINPRÄZISION (12.08.2026, Freigabe Alex): Die
+  // alte Fix-Spanne (−7 %/+11 %) traf im Backtest nur 31,5 % der 489 echten
+  // Verkaufspreise — in 2 von 3 Fällen lag der echte Preis AUSSERHALB der
+  // angezeigten Spanne. Jetzt hängt die Halbbreite an der Datenlage
+  // (Konfidenz-Score, s. oben): beste Datenlage (92) → ±12 %, schwächste
+  // (62) → ±24 %. Das ist die gemessene Streuung (MdAPE 13,5–17,6 % je
+  // Segment), keine Marketing-Kosmetik — eine enge Spanne, die meistens
+  // daneben liegt, bewaffnet nur den Kunden gegen den Makler.
+  const halbbreite = Math.min(0.24, Math.max(0.12, 0.12 + ((92 - confidence) * 0.12) / 30));
+
   return {
-    low: round(mid * 0.93),
+    low: round(mid * (1 - halbbreite)),
     mid: round(mid),
-    high: round(mid * 1.11),
+    high: round(mid * (1 + halbbreite)),
     pricePerSqm,
     comparables,
     confidence,

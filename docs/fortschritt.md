@@ -905,3 +905,29 @@ notariellen Preis (Variante A pur, Variante B mit p75-Deckel leave-one-out).
 (konfidenz-abhängig ±10–18 % statt fix −7/+11), (2) Neubau-Faktoren anheben, (3)
 Dorf-Dämpfung in die Engine, (4) Deckel-Mindest-n. Prozess steht: jeder Manfred-Fall wird
 Battery-Fixture, jeder Engine-Release läuft Battery + Backtest.
+
+## Update — Bulletproof-Runde 1 umgesetzt + Mehr-Quellen-Gewichtung (12.08.2026) ✅
+
+Alle fünf Punkte aus dem Backtest-Befund (Freigabe Alex), verifiziert per erneutem
+Backtest gegen dieselben 489 Abschlüsse:
+
+- **Ehrliche Spannen:** Halbbreite hängt jetzt am Konfidenz-Score (±12 % bei bester
+  Datenlage bis ±24 % ohne lokale Anker) statt fix −7 %/+11 %. **Spannen-Trefferquote
+  31,5 % → 54,6 %**; im echten Flow höher (Backtest kennt weder Zustand noch BRW).
+- **Neubau-Kalibrierung:** Baujahr-Faktor ≥ 2015: 1,1 → 1,2; ≥ 2000: 1,03 → 1,1.
+  **Bias Bj ≥ 2000: −15,2 % → −9,4 %** (Rest bewusst konservativ, „lieber kleiner").
+- **Orts-Faktoren in der Engine:** STADT_FAKTOR in gemeinsames Modul
+  `src/lib/stadt-faktor.ts` extrahiert (Preisatlas importiert von dort — keine
+  Doppelpflege mehr); die Engine dämpft jetzt ~30 Dörfer/Kleinstädte, die vorher mit
+  der vollen Regions-Default-Basis rechneten. Unbekannte Orte bleiben neutral — dort
+  korrigiert der amtliche BRW als zweite Quelle.
+- **Deckel-Mindest-n 5 → 8** (Otterstadt-Befund: p75 aus n=7 war selbst Rauschen).
+- **Mehr-Quellen-Schichtung für Lagen ohne Verkäufe** (white-label-tauglich):
+  1. eigene Abschlüsse (Deckel ab n=8) → 2. kalibrierte REGIONS-Basis → 3. Orts-Faktor
+  → 4. amtlicher BRW (Mikrolage, volle Spanne bei Fallback-Orten) → 5. Default.
+  Die Konfidenz (und damit die Spannen-Breite) spiegelt, welche Schichten greifen.
+
+**Bekannte Grenzen (nächste Hebel, Masterplan P1/P2):** MdAPE stabil ~15 % — die
+Streuung kommt v. a. aus unbekanntem Zustand (Backtest nimmt überall „gepflegt" an);
+GAA-Kalibriertabelle + Zeit-Indexierung + beuwy-Pool stehen aus. Größte Rest-Ausreißer:
+unrenovierte Uralt-Häuser (Bj. < 1950) in Orten ohne Tabellen-Eintrag.

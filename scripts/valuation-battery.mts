@@ -82,8 +82,9 @@ const f3 = run(
 );
 // Band 11.08.2026 nachgezogen: Speyer-Wohnungsbasis 3.950 → 3.450
 // (Kalibrierlauf: Median 3.200 bei n=79, ÷ 0,93 Altbau-Mix — s.
-// REGIONS-Kommentar in valuation.ts).
-check("F3 Wohnung Speyer 90 m²", f3.mid, 315_000, 325_000);
+// REGIONS-Kommentar in valuation.ts). 12.08.2026: Neubau-Faktor Bj ≥ 2000
+// von 1,03 auf 1,10 (Backtest-Bias −15 % bei n=69) → Band +7 %.
+check("F3 Wohnung Speyer 90 m²", f3.mid, 338_000, 348_000);
 
 /* F4 — MFH: Ertragswert-Zweig komplett unberührt von der Staffel. */
 const f4 = run({
@@ -384,12 +385,13 @@ if (f15.annahmen.length < 2) {
   failures++;
   console.log(`❌ F15: Annahmen (neuwertig-Erdung + Energie-Annahme) müssen ausgewiesen sein (${f15.annahmen.length})`);
 }
-// Mit echten Orts-Abschlüssen (die 5 Vergleichsobjekte aus Mannes Report:
-// Median 3.594, p75 3.688 €/m²): Deckel darf NICHT unter dem geerdeten
-// Modellwert kappen, wenn der schon drunter liegt — und comparables = n.
-const f15s = run(manne, { bodenrichtwert: 790, ortsStats: { n: 5, medianQm: 3594, p75Qm: 3688 } });
+// Mit echten Orts-Abschlüssen (Niveau aus Mannes Report: Median 3.594,
+// p75 3.688 €/m²; n=9, seit 12.08.2026 braucht der Deckel n >= 8): Deckel
+// darf NICHT unter dem geerdeten Modellwert kappen, wenn der schon drunter
+// liegt — und comparables = n.
+const f15s = run(manne, { bodenrichtwert: 790, ortsStats: { n: 9, medianQm: 3594, p75Qm: 3688 } });
 check("F15b Fall Manfred mit ortsStats", f15s.mid, 300_000, Math.round(3688 * 105 * 1.001));
-if (f15s.comparables !== 5) {
+if (f15s.comparables !== 9) {
   failures++;
   console.log(`❌ F15b: comparables muss die echte Abschlusszahl sein (${f15s.comparables})`);
 }
@@ -400,7 +402,7 @@ if (f15s.comparables !== 5) {
 // Hausgeld bleibt der Wert von selbst unter dem Deckel — F15b.)
 const f15k = run(
   { ...manne, hausgeldMonat: undefined, kernsaniert: true, energieklasse: "D", qualitaet: "gehoben" },
-  { bodenrichtwert: 790, ortsStats: { n: 5, medianQm: 3594, p75Qm: 3688 } },
+  { bodenrichtwert: 790, ortsStats: { n: 9, medianQm: 3594, p75Qm: 3688 } },
 );
 check("F15c kernsaniert + gehoben + Energie D, ohne Hausgeld (p75-Deckel greift)", f15k.mid, 387_000, 387_000);
 if (!f15k.plausibilisierung) {
