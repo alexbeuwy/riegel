@@ -878,3 +878,30 @@ mit nachvollziehbaren Annahmen-Hinweisen für den Kunden statt einer Wunschzahl.
   Ertragswerts; PDF zeigt die Ertragswert-Herleitung nur noch, wenn der Wert auch so
   entstanden ist. Battery: F17/F17b/F17c (Mannes Fall: jetzt **480.000 € = 2.000 €/m²**
   statt 285.000 € = 1.186 €/m²).
+
+## Update — Backtest-Harness: Engine gegen 489 echte Abschlüsse gemessen (12.08.2026) ✅
+
+**Frage Alex: „Wie machen wir den Rechner bulletproof?"** → Antwort: messen statt auf den
+nächsten Manfred-Fund warten. Neues Werkzeug `scripts/backtest-engine.mts` (Masterplan-P1):
+rechnet jeden verkauften Bestand mit den damaligen Objektdaten nach und misst gegen den
+notariellen Preis (Variante A pur, Variante B mit p75-Deckel leave-one-out).
+
+**Erste Messung (Zustand überall „gepflegt" angenommen, ohne BRW, ohne Zeit-Indexierung):**
+
+- GESAMT **MdAPE 15,1 %**, Bias −1,7 % (Kalibrierung stimmt im Mittel; Speyer −7 %/LU −8 %
+  bewusst leicht konservativ). Wohnungen 13,6 %, Häuser 17,2 %.
+- ⚠️ **Spannen-Trefferquote nur 31,5 %**: die Anzeige-Spanne (−7 %/+11 %) ist viel zu eng
+  für die reale Streuung → wichtigster Bulletproof-Hebel = konfidenz-abhängige, ehrliche
+  Spannen (Produktentscheidung, s. offene Punkte).
+- ⚠️ **Neubau ab 2000 systematisch −15 % unterschätzt** (n=69) → Baujahr-Faktoren ≥2000
+  anheben (Kalibrier-Kandidat).
+- Größte Ausreißer: unrenovierte Altbauten (Bj. 1860–1954) in Dörfern — Modell deutlich zu
+  hoch; im echten Flow mildern BORIS-Lagefaktor + Zustand-Angabe, strukturell fehlt der
+  Engine aber die Dorf-Dämpfung (STADT_FAKTOR existiert nur in marktdaten.ts).
+- p75-Deckel mit Mini-n kann kippen (Otterstadt n=7: B schlechter als A) → Mindest-n für
+  den Deckel ggf. 5 → 8.
+
+**Offene Bulletproof-Entscheidungen (Alex):** (1) Spannen ehrlich verbreitern
+(konfidenz-abhängig ±10–18 % statt fix −7/+11), (2) Neubau-Faktoren anheben, (3)
+Dorf-Dämpfung in die Engine, (4) Deckel-Mindest-n. Prozess steht: jeder Manfred-Fall wird
+Battery-Fixture, jeder Engine-Release läuft Battery + Backtest.
