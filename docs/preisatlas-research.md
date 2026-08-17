@@ -338,3 +338,44 @@ Quellen: [VALUE Marktdaten / empirica-systeme-Integration](https://value.ag/pres
 [VALUE REST-API](https://www.value-marktdaten.de/tag/rest-api-fuer-immobilienmarktdaten/),
 [Sprengnetter AVM-API](https://www.sprengnetter.de/avm-api/),
 [Sprengnetter API-Shop](https://shop.sprengnetter.de/Software/API-Loesungen/).
+
+---
+
+## 8. Stadt-Niveau-Tabelle Deutschland (Leaf-B-Recherche, 12.08.2026)
+
+**Anlass „Bad Vilbel":** Rechner nannte 2.143 €/m² (Rhein-Neckar-Default), real ~4.400 €.
+Recherche mit Quellenpflicht für 20 Städte außerhalb der Vorderpfalz — übernommen in
+`src/lib/stadt-niveau.ts` mit zwei dokumentierten Transformationen (Angebot × 0,95;
+Haus-Gebäudeanteil × 0,78, da die Engine den Boden separat staffelt).
+
+| Stadt | Wohnung €/m² (roh) | Haus €/m² (roh) | Typ | Stand |
+|---|---|---|---|---|
+| München | 8.250 | 9.250 | Angebot (WohnBarometer) | Q4 25/Q1 26 |
+| Frankfurt a. M. | 5.700 | 5.000 | Angebot | Q2 26 |
+| Stuttgart | 4.700 | 4.450 (abgeleitet) | Angebot | Q4 25 |
+| Karlsruhe | 4.000 | 4.400 | **Transaktion (GAA 2025)** | 2025 |
+| Wiesbaden | 4.200 | 4.900 | Angebot | Q1/Q2 26 |
+| Mainz | 4.400 | 4.700 | Angebot | Q1 26 |
+| Darmstadt | 4.650 | 4.900 | Angebot | Q1 26 |
+| Bad Vilbel | 4.550 | 4.900 | Angebot | Q1 26 |
+| Berlin | 4.900 | 4.850 | Angebot | Q4 25 |
+| Hamburg | 5.600 | 5.200 | Angebot | Q1 26 |
+| Köln | 4.550 | 5.050 | Angebot | Q2 26 |
+| Kaiserslautern | 2.550 | 2.600 | Angebot | Q2 26 |
+| Bonn | 4.300 | 4.500 | Angebot | Q2 26 |
+| Freiburg i. Br. | 5.150 | 5.450 | Angebot | Q1 26 |
+| Würzburg | 4.200 | 4.300 | Angebot | Q2 26 |
+| Saarbrücken | 2.400 | 2.150 | Angebot | Q1 26 |
+| Trier | 3.350 | 3.050 | Angebot | Q2 26 |
+| Koblenz | 3.500 | 3.150 | Angebot | Q2 26 |
+| Offenbach a. M. | 4.000 | 4.100 | Angebot | Q1 26 |
+| Aschaffenburg | 3.750 | 3.650 | Angebot | Q2 26 |
+
+Quellen: ImmoScout24 WohnBarometer Q4 2025 (presseportal.de/pm/31321/6192423),
+Homeday-Preisatlas je Stadt (homeday.de/de/preisatlas/<stadt>), GAA Karlsruhe
+Immobilienmarktbericht 2025 (karlsruhe.de, Transaktionen), IfW-Kiel/GREIX-Kontext.
+Auffälligkeiten (Frankfurt-Streuung 5.100–6.550, Stuttgart-Hauswert widersprüchlich →
+Ableitungsregel Haus ≈ Wohnung × 0,95 Metropole / × 1,05–1,15 Umland, Freiburg-Ausreißer
+verworfen): Original-Recherchebericht der Session, Kernpunkte hier.
+**Pflege:** Werte jährlich aktualisieren (gleiche Quellen); Städte, in denen ein
+white-label-Makler startet, wandern per Kalibrierlauf in REGIONS um.
