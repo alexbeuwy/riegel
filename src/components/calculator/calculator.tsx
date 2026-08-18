@@ -767,6 +767,11 @@ export function Calculator() {
       return;
     }
     setError(null);
+    // Trichter-Nenner: „Start" darf NICHT nur am Objektart-Klick hängen — die
+    // Objektart ist mit „Wohnung" vorbelegt, und wer über den Hero mit fertiger
+    // Adresse einsteigt, klickt oft keine Kachel und fiel bisher komplett aus
+    // der Statistik. track() dedupliziert je Seitenaufruf, doppelt zählt also nichts.
+    track("rechner_start");
     if (step < 2) {
       userNav.current = true;
       // Funnel-Messung: der ABGESCHLOSSENE Schritt zählt (1-basiert), nicht
