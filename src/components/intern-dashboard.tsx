@@ -304,6 +304,68 @@ function StatCard({
   );
 }
 
+/**
+ * System-Status-Kachel für die Übersicht (ganz unten, s. TABS-Rendering):
+ * Ampel für OnOffice/Supabase/Resend aus /api/health — Kontrakt mit dem Leaf,
+ * das die Route baut: { ok, onoffice:{source,objekte}, supabase, resend, ts }.
+ * source !== "onoffice" heißt: die Objekte-Seite zeigt gerade Beispieldaten
+ * statt echter OnOffice-Listings — das ist der Fall, der hier am dringendsten
+ * auffallen soll, daher der explizite Warnhinweis statt nur eines roten Punkts.
+ */
+function SystemStatusKachel({
+  health,
+  busy,
+  failed,
+}: {
+  health: { ok: boolean; onoffice: { source: string; objekte: number }; supabase: boolean; resend: boolean; ts: string } | null;
+  busy: boolean;
+  failed: boolean;
+}) {
+  if (failed) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm text-muted">
+        Health-Check nicht erreichbar.
+      </div>
+    );
+  }
+  if (!health) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface px-5 py-4 text-sm text-muted">
+        {busy ? "Prüft System-Status …" : "System-Status noch nicht geladen."}
+      </div>
+    );
+  }
+  const onofficeOk = health.onoffice?.source === "onoffice";
+  const zeilen: { label: string; ok: boolean; sub: string }[] = [
+    {
+      label: "OnOffice",
+      ok: onofficeOk,
+      sub: onofficeOk ? `${health.onoffice.objekte} Objekte live` : "Beispieldaten aktiv!",
+    },
+    { label: "Supabase", ok: Boolean(health.supabase), sub: health.supabase ? "erreichbar" : "nicht erreichbar" },
+    { label: "Resend", ok: Boolean(health.resend), sub: health.resend ? "konfiguriert" : "nicht konfiguriert" },
+  ];
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-5">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {zeilen.map((z) => (
+          <div key={z.label} className="flex items-center gap-2.5">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${z.ok ? "bg-[#34d399]" : "bg-[#f87171]"}`}
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <div className="text-sm text-fg">{z.label}</div>
+              <div className={`truncate text-xs ${z.ok ? "text-faint" : "text-[#f87171]"}`}>{z.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 text-[0.65rem] text-faint">Stand {fmtDate(health.ts)}</div>
+    </div>
+  );
+}
+
 function Toolbar({
   query,
   setQuery,
@@ -2596,12 +2658,39 @@ function QuellenKachel({ quelle }: { quelle: { cta: number; badge: number } }) {
   );
 }
 
+/** Sprechende Namen je bereich-Slug (data-track-bereich in der Rechner-Seite)
+ *  — sowohl für die Bereichs-Balken als auch die Heatmap-Tooltips. "seite" ist
+ *  der Sammel-Fallback für Klicks außerhalb der benannten Bereiche. */
+const BEREICH_LABEL: Record<string, string> = {
+  formular: "Formular (Schritt 1–3)",
+  ergebnis: "Ergebnis-Ansicht",
+  "report-formular": "Report-Formular",
+  "pdf-badge": "Oranger PDF-Button",
+  "praezisere-kalkulation": "Aufklapper Präzisere Kalkulation",
+  seite: "Sonstige Seite",
+};
+const bereichLabel = (slug: string) => BEREICH_LABEL[slug] ?? slug;
+
+/** Pfad des Rechner-Referenzscreenshots (Formular-Ansicht, Desktop), den die
+ *  Heatmap als Hintergrund unterlegt — s. KlickHeatmap. Muss manuell/per
+ *  Skript unter public/intern/ abgelegt werden; fehlt die Datei, blendet die
+ *  Komponente den Hintergrund automatisch aus (onError, kein toter Zustand). */
+const HEATMAP_REFERENZBILD = "/intern/rechner-referenz.jpg";
+
 /**
  * Klick-Heatmap als 20×20-CSS-Raster über die gesamte Seite (x = Breite,
  * y = Scrolltiefe). Die Rohdaten liegen als 5 %-Buckets 0–100 vor, das sind
  * 21 Werte je Achse — der 100 %-Rand fällt bewusst mit der 95 %-Zelle
  * zusammen, damit ein sauberes 20×20-Raster entsteht (Randklicks sind ohnehin
  * dieselbe Region).
+ *
+ * Betreiber-Feedback 18.08.2026: "Heatmap ohne Screenshot — man rafft gar
+ * nichts." Das Raster legt sich deshalb standardmäßig über ein Referenzbild
+ * der Rechner-Seite (position:relative + absolutes Grid). WICHTIG, ehrlich:
+ * x_pct/y_pct kommen von UNTERSCHIEDLICHEN Seitenzuständen (Formular- UND
+ * Ergebnis-Ansicht, Desktop UND Mobil) — das Referenzbild zeigt nur die
+ * Formular-Ansicht Desktop. Der Hinweistext unter der Karte sagt das offen,
+ * statt Präzision vorzutäuschen, die die Daten nicht hergeben.
  */
 function KlickHeatmap({
   punkte,
@@ -2611,6 +2700,11 @@ function KlickHeatmap({
   limitErreicht: boolean;
 }) {
   const RASTER = 20;
+  const [bg, setBg] = useState<"seite" | "neutral">("seite");
+  // null = noch nicht versucht, true/false = Ergebnis des Bildladens. Startet
+  // NICHT auf false, damit der Toggle nicht kurz aufblitzt, wenn das Bild da ist.
+  const [bildOk, setBildOk] = useState<boolean | null>(null);
+
   const zellen = useMemo(() => {
     const map = new Map<number, { n: number; bereich: string }>();
     for (const p of punkte) {
@@ -2628,12 +2722,81 @@ function KlickHeatmap({
 
   const max = Math.max(1, ...[...zellen.values()].map((z) => z.n));
   const gesamt = [...zellen.values()].reduce((a, z) => a + z.n, 0);
+  // Bild nur zeigen, wenn "Seite" gewählt UND das Laden nicht bereits als
+  // fehlgeschlagen bekannt ist (kein kaputtes <img> im Layout).
+  const zeigtBild = bg === "seite" && bildOk !== false;
+
+  const zellenGrid = (
+    <div
+      className={zeigtBild ? "absolute inset-0 grid gap-px" : "grid flex-1 gap-px"}
+      style={{
+        gridTemplateColumns: `repeat(${RASTER}, minmax(0, 1fr))`,
+        gridTemplateRows: zeigtBild ? `repeat(${RASTER}, minmax(0, 1fr))` : undefined,
+      }}
+    >
+      {Array.from({ length: RASTER * RASTER }, (_, i) => {
+        const z = zellen.get(i);
+        const x = (i % RASTER) * 5;
+        const y = Math.floor(i / RASTER) * 5;
+        if (!z) {
+          // Ohne Bild: leere Zelle dezent sichtbar (Rasterlinie). Mit Bild:
+          // ganz durchsichtig, sonst verdeckt ein Raster aus 400 Kacheln das
+          // Foto komplett.
+          return (
+            <div
+              key={i}
+              className={`aspect-square rounded-[2px] ${zeigtBild ? "" : "bg-surface-2/50"}`}
+            />
+          );
+        }
+        // Wurzel-Skala: sonst verschluckt ein einzelner Hotspot (z. B. der
+        // „Weiter"-Button) alle übrigen Zellen optisch komplett.
+        const dichte = 0.12 + 0.88 * Math.sqrt(z.n / max);
+        return (
+          <div
+            key={i}
+            title={`${x}–${x + 5} % Breite · ${y}–${y + 5} % Tiefe · ${z.n} Klick${
+              z.n === 1 ? "" : "s"
+            } · ${bereichLabel(z.bereich)}`}
+            className={`rounded-[2px] bg-accent ${zeigtBild ? "" : "aspect-square"}`}
+            style={{ opacity: dichte, transition: "opacity var(--duration-fast) var(--ease-smooth-out)" }}
+          />
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
-      <div className="mb-2 flex items-center justify-between text-xs text-faint">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-faint">
         <span>← Seitenbreite →</span>
-        <span className="tabular-nums">{gesamt} Klicks</span>
+        <div className="flex items-center gap-3">
+          <span className="tabular-nums">{gesamt} Klicks</span>
+          {/* Umschalter nur zeigen, solange nicht feststeht, dass das
+              Referenzbild fehlt — sonst ein Knopf, der nichts umschaltet. */}
+          {bildOk !== false && (
+            <div className="inline-flex rounded-full border border-border p-0.5">
+              {(
+                [
+                  { key: "seite", label: "Seite" },
+                  { key: "neutral", label: "Neutral" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() => setBg(o.key)}
+                  aria-pressed={bg === o.key}
+                  className={`press rounded-full px-2.5 py-1 text-[0.65rem] transition-colors ${
+                    bg === o.key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex gap-2">
         <div className="flex w-4 shrink-0 flex-col justify-between py-0.5 text-[0.6rem] leading-none text-faint">
@@ -2641,30 +2804,25 @@ function KlickHeatmap({
           <span className="[writing-mode:vertical-rl]">Scrolltiefe</span>
           <span>unten</span>
         </div>
-        <div
-          className="grid flex-1 gap-px"
-          style={{ gridTemplateColumns: `repeat(${RASTER}, minmax(0, 1fr))` }}
-        >
-          {Array.from({ length: RASTER * RASTER }, (_, i) => {
-            const z = zellen.get(i);
-            if (!z) return <div key={i} className="aspect-square rounded-[2px] bg-surface-2/50" />;
-            const x = (i % RASTER) * 5;
-            const y = Math.floor(i / RASTER) * 5;
-            // Wurzel-Skala: sonst verschluckt ein einzelner Hotspot (z. B. der
-            // „Weiter"-Button) alle übrigen Zellen optisch komplett.
-            const dichte = 0.12 + 0.88 * Math.sqrt(z.n / max);
-            return (
-              <div
-                key={i}
-                title={`${x}–${x + 5} % Breite · ${y}–${y + 5} % Tiefe · ${z.n} Klick${
-                  z.n === 1 ? "" : "s"
-                } · ${z.bereich}`}
-                className="aspect-square rounded-[2px] bg-accent"
-                style={{ opacity: dichte, transition: "opacity var(--duration-fast) var(--ease-smooth-out)" }}
-              />
-            );
-          })}
-        </div>
+        {zeigtBild ? (
+          // Bild bestimmt die Höhe des Containers (normaler Textfluss), das
+          // Raster legt sich absolut exakt darüber — dieselbe Seitenproportion,
+          // da beide dieselbe Breite (flex-1) nutzen.
+          <div className="relative flex-1 overflow-hidden rounded-lg bg-surface-2">
+            <img
+              src={HEATMAP_REFERENZBILD}
+              alt=""
+              aria-hidden
+              draggable={false}
+              onLoad={() => setBildOk(true)}
+              onError={() => setBildOk(false)}
+              className="block w-full select-none"
+            />
+            {zellenGrid}
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center">{zellenGrid}</div>
+        )}
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-faint">
         <span className="inline-flex items-center gap-2">
@@ -2679,11 +2837,83 @@ function KlickHeatmap({
           Hinweis: Es werden die neuesten 20.000 Klicks des Zeitraums ausgewertet.
         </p>
       )}
+      {zeigtBild ? (
+        <p className="mt-2 text-xs text-faint">
+          Referenzbild = Formular-Ansicht der Rechner-Seite (Desktop). Klicks aus
+          Ergebnis-Ansicht und Mobilgeräten sind näherungsweise projiziert.
+        </p>
+      ) : (
+        bildOk === false && (
+          <p className="mt-2 text-xs text-faint">
+            Kein Referenzbild hinterlegt ({HEATMAP_REFERENZBILD}) — Raster ohne Hintergrund.
+          </p>
+        )
+      )}
+      {/* Unsichtbarer Vorab-Test: lädt das Bild einmal, damit der Umschalter
+          in der Kopfzeile von Anfang an korrekt erscheint/verschwindet, auch
+          wenn "Neutral" der zuletzt gewählte Modus war. */}
+      {bg === "neutral" && bildOk === null && (
+        <img
+          src={HEATMAP_REFERENZBILD}
+          alt=""
+          aria-hidden
+          className="hidden"
+          onLoad={() => setBildOk(true)}
+          onError={() => setBildOk(false)}
+        />
+      )}
     </div>
   );
 }
 
-/** Meistgeklickte Seitenbereiche (data-track-bereich) als Balkenliste. */
+/**
+ * Kompakte Balkenliste „Klicks nach Bereich" mit sprechenden Namen und
+ * Anteils-% — DIREKT ÜBER der Heatmap platziert, weil sie auch ohne
+ * Referenzbild sofort verständlich ist (Betreiber-Feedback 18.08.2026).
+ * Nutzt dieselben conv.bereiche-Daten wie TopBereiche, nur mit Klartext-Namen
+ * und Prozentanteil statt Rohdaten-Slug.
+ */
+function BereichBalken({ bereiche }: { bereiche: { bereich: string; n: number }[] }) {
+  const gesamt = bereiche.reduce((a, b) => a + b.n, 0);
+  if (bereiche.length === 0 || gesamt === 0) {
+    return (
+      <p className="rounded-2xl border border-border bg-surface px-4 py-6 text-center text-sm text-muted">
+        Noch keine Klicks erfasst.
+      </p>
+    );
+  }
+  const max = Math.max(...bereiche.map((b) => b.n));
+  return (
+    <div className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 sm:p-5">
+      {bereiche.map((b) => {
+        const pct = (b.n / gesamt) * 100;
+        return (
+          <div key={b.bereich}>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="truncate text-fg">{bereichLabel(b.bereich)}</span>
+              <span className="shrink-0 tabular-nums text-muted">
+                <span className="font-medium text-fg">{b.n}</span> · {fmtPctDe(pct)} %
+              </span>
+            </div>
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{
+                  width: `${Math.max(1.5, (b.n / max) * 100)}%`,
+                  transition: "width var(--duration-slow) var(--ease-smooth-out)",
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Meistgeklickte Seitenbereiche (data-track-bereich) als Balkenliste — die
+ *  schlanke Variante ohne Prozentanteil, neben der PDF-Sparkline. Für die
+ *  prominente Fassung direkt über der Heatmap s. BereichBalken. */
 function TopBereiche({ bereiche }: { bereiche: { bereich: string; n: number }[] }) {
   if (bereiche.length === 0) {
     return (
@@ -2698,7 +2928,7 @@ function TopBereiche({ bereiche }: { bereiche: { bereich: string; n: number }[] 
       {bereiche.map((b) => (
         <div key={b.bereich}>
           <div className="flex justify-between text-xs">
-            <span className="truncate text-fg">{b.bereich}</span>
+            <span className="truncate text-fg">{bereichLabel(b.bereich)}</span>
             <span className="shrink-0 tabular-nums text-faint">{b.n}</span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
