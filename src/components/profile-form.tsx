@@ -273,7 +273,8 @@ export function ProfileForm() {
         Ihr Suchprofil
       </div>
       <p className="mt-2 text-sm text-muted">
-        Je genauer Ihr Profil, desto passender informieren wir Sie — auf Wunsch
+        Passt ein <strong className="text-fg">neues Kaufobjekt</strong> zu Ihrem Profil, erhalten
+        Sie automatisch eine E-Mail — auf Wunsch
         <strong className="text-fg"> noch bevor Objekte öffentlich online gehen</strong>.
       </p>
 
@@ -336,7 +337,9 @@ export function ProfileForm() {
             </div>
             <p className="text-xs text-faint">
               Ihr Wunschort ist nicht dabei? Einfach eintippen — wir informieren Sie,
-              sobald dort etwas Passendes hereinkommt.
+              sobald dort etwas Passendes hereinkommt. Keine Auswahl heißt:{" "}
+              <strong className="text-muted">alle Standorte</strong> — so verpassen Sie
+              auch Objekte im Umland nicht.
             </p>
           </div>
 

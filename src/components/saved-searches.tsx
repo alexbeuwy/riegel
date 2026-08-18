@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useSearchParams } from "next/navigation";
 import { activeChips, parseFilters } from "@/lib/portal-filter";
 import { marketingLabel } from "@/lib/format";
+import { searchAddress } from "@/lib/geocode";
 import { useAuth } from "@/components/auth";
 import { supabase } from "@/lib/supabase";
 
@@ -35,6 +36,7 @@ export function SavedSearchesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const r = localStorage.getItem(KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- einmalige localStorage-Hydration beim Mount (Bestandsmuster)
       if (r) setSearches(JSON.parse(r));
     } catch {}
     setReady(true);
@@ -129,11 +131,21 @@ export function useSavedSearches() {
   return c;
 }
 
-/** „Suche speichern" — speichert die aktuellen Filter (URL) als Suchauftrag. */
+/** „Suche speichern" — speichert die aktuellen Filter (URL) als Suchauftrag.
+ *
+ * Umkreis-Upgrade (18.08.2026, Fall Alex/Aylin): Suchaufträge mit EXAKTEM Ort
+ * feuern fast nie — neue Häuser kommen meist im Umland rein (Aylins „Haus ·
+ * Speyer" hätte in 2 Wochen 0 Mails ausgelöst, mit 20 km Umkreis 3). Deshalb
+ * erscheint nach dem Speichern einer Exakt-Ort-Suche ein Ein-Klick-Angebot,
+ * das den Suchauftrag auf „Ort + 20 km" umstellt (Ort → umkreis_ort, Zentrum
+ * via Photon; die alte Exakt-Suche wird ersetzt, sie ist eine Teilmenge). */
 export function SaveSearchButton() {
   const sp = useSearchParams();
-  const { add } = useSavedSearches();
+  const { searches, add, remove } = useSavedSearches();
   const [saved, setSaved] = useState(false);
+  const [umkreisAngebot, setUmkreisAngebot] = useState<{ ort: string; query: string; label: string } | null>(null);
+  const [umkreisBusy, setUmkreisBusy] = useState(false);
+  const [umkreisFertig, setUmkreisFertig] = useState(false);
 
   const onSave = () => {
     const obj: Record<string, string> = {};
@@ -146,15 +158,61 @@ export function SaveSearchButton() {
     add(sp.toString(), label);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+    if (f.ort && !sp.get("umkreis")) {
+      setUmkreisAngebot({ ort: f.ort, query: sp.toString(), label });
+      setUmkreisFertig(false);
+    }
+  };
+
+  const aufUmkreis = async () => {
+    if (!umkreisAngebot || umkreisBusy) return;
+    setUmkreisBusy(true);
+    try {
+      const q = new URLSearchParams(umkreisAngebot.query);
+      q.delete("ort");
+      q.set("umkreis_ort", umkreisAngebot.ort);
+      q.set("umkreis", "20");
+      // Zentrum mitgeben, damit der Umkreis auch ohne aktuellen Bestand im
+      // Ort funktioniert (readCenter in umkreis.ts); Fehlschlag ist ok — dann
+      // greift der Bestands-Zentroid als Fallback.
+      try {
+        const hits = await searchAddress(umkreisAngebot.ort);
+        const c = hits.find((h) => h.city.trim().toLowerCase() === umkreisAngebot.ort.trim().toLowerCase()) ?? hits[0];
+        if (c) {
+          q.set("ort_lat", String(c.lat));
+          q.set("ort_lng", String(c.lng));
+        }
+      } catch {}
+      const alt = searches.find((s) => s.query === umkreisAngebot.query);
+      if (alt) remove(alt.id);
+      add(q.toString(), `${umkreisAngebot.label} · +20 km`);
+      setUmkreisFertig(true);
+      setTimeout(() => setUmkreisAngebot(null), 2500);
+    } finally {
+      setUmkreisBusy(false);
+    }
   };
 
   return (
-    <button
-      type="button"
-      onClick={onSave}
-      className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
-    >
-      {saved ? "Suchauftrag gespeichert ✓" : "Suche speichern"}
-    </button>
+    <span className="inline-flex shrink-0 flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={onSave}
+        className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-fg transition-colors hover:border-accent hover:text-accent"
+      >
+        {saved ? "Suchauftrag gespeichert ✓" : "Suche speichern"}
+      </button>
+      {umkreisAngebot && (
+        <button
+          type="button"
+          onClick={aufUmkreis}
+          disabled={umkreisBusy || umkreisFertig}
+          title={`Neue Objekte erscheinen oft im Umland von ${umkreisAngebot.ort} — mit Umkreis verpassen Sie nichts.`}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-400/10 px-3.5 py-2 text-xs font-medium text-amber-300 transition-colors hover:border-amber-300 hover:bg-amber-400/15 disabled:opacity-80"
+        >
+          {umkreisFertig ? "Umkreis aktiv ✓" : umkreisBusy ? "Wird umgestellt …" : `Tipp: ${umkreisAngebot.ort} + 20 km Umland`}
+        </button>
+      )}
+    </span>
   );
 }

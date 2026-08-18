@@ -1107,3 +1107,26 @@ Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion`
   nicht prominent im Dashboard): Wohnung / Haus / Mehrfamilienhaus, öffnen in neuem Tab.
 - **Kein Statistik-Müll:** `track.ts` ignoriert alle Events, wenn `?demo=` in der URL
   steht — Tests verfälschen die Funnel-/Heatmap-Zahlen im Conversion-Tab nicht.
+
+## Update — Suchprofil ans Matching angeschlossen + Umkreis-UX (18.08.2026, Fall Alex) ✅
+
+**Befund:** Das /konto-Suchprofil („Ich interessiere mich als …") versprach Objekt-Mails,
+war aber an NICHTS angebunden — der Matching-Cron las nur Portal-Suchaufträge
+(`saved_searches`). Alex' Profil (Haus, ≥4 Zi.) hätte seit 06.08. drei Treffer gehabt
+(EFH Freisbach 759k, DHH Böhl-Iggelheim 390k, Bungalow LU 425k). Zweiter Befund: Exakt-
+Ort-Suchaufträge (Aylins „Haus · Speyer") feuern fast nie — Häuser kommen im Umland rein.
+
+- **`matchProfil()` in `matching.ts`:** Profile mit Präferenzen matchen jetzt jeden
+  Cron-Lauf mit (nur Kaufobjekte — „Budget bis" vs. Kaltmiete wäre Unsinn; ohne jedes
+  Kriterium kein Versand = Spam-Schutz; leere Regionen = bewusst „alle Standorte").
+  Gleiche Nutzer-Vereinigung + `matching_sent`-Dedupe: nie doppelte Mails, auch mit
+  Suchauftrag UND Profil. E-Mail direkt aus `profiles.email` (Admin-Lookup nur Fallback).
+- **Umkreis-Upgrade beim „Suche speichern":** Nach dem Speichern einer Exakt-Ort-Suche
+  erscheint ein Ein-Klick-Angebot „Tipp: {Ort} + 20 km Umland" — stellt den Suchauftrag
+  auf Umkreis um (ort → umkreis_ort + Photon-Zentrum, alte Exakt-Suche wird ersetzt).
+- **Profil-Copy ehrlich:** „Passt ein neues Kaufobjekt zu Ihrem Profil, erhalten Sie
+  automatisch eine E-Mail" + „Keine Auswahl heißt: alle Standorte".
+- **E2E-Test über den echten Cron:** Objekt 12305 (Bungalow LU) aus `matching_seen`
+  entfernt → nächster 6:00-UTC-Lauf verschickt echte Mails an die passenden Profile
+  (alex@beuwy.com + 1 echter Interessent mit passendem Profil). matchProfil vorab gegen
+  alle 7 echten Profil-Datensätze verifiziert (Skript im Scratchpad).

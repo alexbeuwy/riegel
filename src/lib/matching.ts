@@ -35,6 +35,8 @@ export interface MatchingSummary {
   aktiveObjekte?: number;
   neueObjekte?: number;
   gepruefteSuchen?: number;
+  /** Konto-Suchprofile mit gesetzten Präferenzen (seit 18.08.2026 gematcht). */
+  gepruefteProfile?: number;
   mails?: number;
   details?: { email: string; objekte: string[] }[];
 }
@@ -58,6 +60,65 @@ export function matchQuery(estates: Estate[], query: string): Estate[] {
     r = filterByRadius(r, umkreisOrt, km, readCenter(sp));
   }
   return r;
+}
+
+/**
+ * Suchprofil aus /konto (profiles.preferences) — seit 18.08.2026 ans Matching
+ * angeschlossen (Fall Alex: Profil „Objektart Haus" gespeichert, nie eine Mail
+ * bekommen — das Profil versprach Benachrichtigungen, war aber an NICHTS
+ * angebunden; nur Portal-Suchaufträge lösten Mails aus).
+ */
+interface ProfilPrefs {
+  rolle?: string;
+  objektarten?: string[];
+  regionen?: string[];
+  preisMax?: string;
+  zimmerMin?: string;
+}
+
+/** Profil-Labels → Portal-Kategorien (OBJEKTARTEN in profile-form.tsx). */
+const OBJEKTART_SLUG: Record<string, string> = {
+  Wohnung: "wohnung",
+  Haus: "haus",
+  "Grundstück": "grundstueck",
+  Gewerbe: "gewerbe",
+};
+
+/** „800.000" → 800000; „1.500.000+" = nach oben offen → null (kein Limit). */
+function parseProfilPreisMax(s?: string): number | null {
+  if (!s || s.includes("+")) return null;
+  const n = parseInt(s.replace(/\D/g, ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Profil-Präferenzen gegen einen Objekt-Pool matchen. Bewusst NUR
+ * Kaufobjekte: das Profil fragt „Budget bis (€)" — gegen eine Kaltmiete
+ * verglichen wäre jeder Mietpreis „im Budget". Mietinteressenten speichern
+ * ihre Suche im Portal (Suchauftrag), der beides sauber trennt.
+ *
+ * Ohne jedes Kriterium (weder Objektart noch Region gewählt) wird NICHT
+ * gematcht — sonst bekäme ein leeres Profil jeden Neuzugang (Spam-Schutz).
+ * Leere Regionen bei gewählter Objektart heißen dagegen bewusst „überall":
+ * genau der Fall, in dem die Umkreis-Falle exakter Ort-Suchaufträge entfällt.
+ */
+export function matchProfil(estates: Estate[], p: ProfilPrefs): Estate[] {
+  if (p.rolle === "verkauf") return [];
+  const arten = (p.objektarten ?? []).map((a) => OBJEKTART_SLUG[a]).filter(Boolean);
+  const regionen = (p.regionen ?? []).map((r) => r.trim().toLowerCase()).filter(Boolean);
+  if (arten.length === 0 && regionen.length === 0) return [];
+  const preisMax = parseProfilPreisMax(p.preisMax);
+  const zimmerMin = parseInt(p.zimmerMin ?? "", 10) || null;
+  return estates.filter((e) => {
+    if (e.marketingType !== "kauf") return false;
+    if (arten.length > 0 && !arten.includes(e.category)) return false;
+    if (regionen.length > 0 && !regionen.includes(e.city.trim().toLowerCase())) return false;
+    if (zimmerMin != null && !(e.rooms != null && e.rooms >= zimmerMin)) return false;
+    // Preis unbekannt („auf Anfrage") passiert den Budget-Filter bewusst —
+    // lieber ein relevanter Treffer mit Preis auf Anfrage als gar keiner.
+    if (preisMax != null && e.price != null && e.price > 0 && e.price > preisMax) return false;
+    return true;
+  });
 }
 
 const eurOrLabel = (e: Estate) =>
@@ -166,6 +227,25 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
     byUser.set(s.user_id as string, m);
   }
 
+  // Suchprofile aus /konto zusätzlich matchen (seit 18.08.2026) — dieselbe
+  // Nutzer-Vereinigung + derselbe matching_sent-Dedupe: Wer Suchauftrag UND
+  // Profil hat, bekommt trotzdem nur EINE Mail je Objekt.
+  const profRes = await supabaseServer
+    .from("profiles")
+    .select("id,email,preferences")
+    .not("preferences", "is", null);
+  if (profRes.error) return { ok: false, error: `profiles: ${profRes.error.message}` };
+  const profile = profRes.data ?? [];
+  const emailByUser = new Map<string, string>();
+  for (const p of profile) {
+    if (p.email) emailByUser.set(p.id as string, p.email as string);
+    const treffer = matchProfil(neue, (p.preferences ?? {}) as ProfilPrefs);
+    if (treffer.length === 0) continue;
+    const m = byUser.get(p.id as string) ?? new Map<string, Estate>();
+    for (const e of treffer) m.set(e.id, e);
+    byUser.set(p.id as string, m);
+  }
+
   const details: { email: string; objekte: string[] }[] = [];
   let mails = 0;
 
@@ -180,7 +260,9 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
     const zuSenden = [...matchMap.values()].filter((e) => !already.has(e.id));
     if (zuSenden.length === 0) continue;
 
-    const email = await emailForUser(userId);
+    // profiles.email spart den Admin-Lookup; Fallback für reine Suchauftrag-
+    // Nutzer ohne Profilzeile bleibt die Auth-Admin-API.
+    const email = emailByUser.get(userId) ?? (await emailForUser(userId));
     if (!email) continue;
 
     details.push({ email, objekte: zuSenden.map((e) => e.title) });
@@ -202,6 +284,7 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
     aktiveObjekte: aktive.length,
     neueObjekte: neue.length,
     gepruefteSuchen: searches.length,
+    gepruefteProfile: profile.length,
     mails,
     details,
   };
