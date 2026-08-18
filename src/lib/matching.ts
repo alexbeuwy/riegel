@@ -25,6 +25,7 @@ import { filterByRadius, readCenter, readRadiusKm } from "@/components/portal/um
 import { supabaseServer } from "@/lib/supabase-server";
 import { sendMail, emailLayout, emailTargets } from "@/lib/email";
 import { formatEUR } from "@/lib/format";
+import { BEISPIEL_TILGUNG_PROZENT, holeBaufiZins, monatsRate, type BaufiZins } from "@/lib/baufi-zins";
 import type { Estate } from "@/lib/mock-estates";
 
 export interface MatchingSummary {
@@ -124,24 +125,73 @@ export function matchProfil(estates: Estate[], p: ProfilPrefs): Estate[] {
 const eurOrLabel = (e: Estate) =>
   e.price != null && e.price > 0 ? `${formatEUR(e.price)} · ${e.priceLabel}` : "Preis auf Anfrage";
 
-/** E-Mail-sichere Objektkarte (Tabelle, Inline-Styles, absolute URLs). */
-function estateCard(e: Estate, base: string): string {
+/**
+ * E-Mail-sichere Objektkarte (Tabelle, Inline-Styles, absolute URLs) —
+ * Redesign 18.08.2026 (Wunsch Alex, „Niveau der PDF-Reportings"): großes
+ * Hero-Bild, bis zu 4 Innen-Thumbnails horizontal darunter, Fakten-Spalten
+ * im Report-Stil (VERSAL-Labels + fette Werte), Preis prominent in RIEGEL-
+ * Blau und bei Kaufobjekten eine Monatsraten-Beispielrechnung zum aktuellen
+ * amtlichen Effektivzins (s. baufi-zins.ts).
+ */
+function estateCard(e: Estate, base: string, zins?: BaufiZins | null): string {
   const href = `${base}/immobilien/${e.slug}`;
-  const img = e.images[0]
+  const hero = e.images[0]
     ? `<a href="${href}"><img src="${e.images[0]}" width="536" alt="" style="display:block;width:100%;height:auto;border:0;border-radius:12px 12px 0 0;"></a>`
     : "";
-  const facts = [
-    e.livingArea ? `${e.livingArea} m² Wohnfläche` : null,
-    e.rooms ? `${e.rooms} Zimmer` : null,
-    [e.postcode, e.city].filter(Boolean).join(" "),
-  ]
+  // Bis zu 4 weitere Bilder (Innenbereich) als horizontale Reihe — feste
+  // Zellbreiten, damit Outlook nicht umbricht; 4 Spalten à 131 px + Lücken.
+  const thumbs = e.images.slice(1, 5);
+  const thumbRow =
+    thumbs.length > 0
+      ? `<tr><td style="padding:4px 0 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${thumbs
+          .map(
+            (src, i) =>
+              `<td width="${Math.floor(536 / thumbs.length)}" style="${i > 0 ? "padding-left:4px;" : ""}"><a href="${href}"><img src="${src}" width="${Math.floor(536 / thumbs.length) - (i > 0 ? 4 : 0)}" alt="" style="display:block;width:100%;height:auto;border:0;"></a></td>`,
+          )
+          .join("")}</tr></table></td></tr>`
+      : "";
+  const ortszeile = [[e.postcode, e.city].filter(Boolean).join(" "), e.district, e.objectType]
     .filter(Boolean)
     .join(" &middot; ");
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #e4e8f0;border-radius:12px;">
-<tr><td>${img}</td></tr>
-<tr><td style="padding:16px 18px 6px;"><a href="${href}" style="color:#141724;font-size:16px;font-weight:700;text-decoration:none;line-height:1.4;">${e.title}</a></td></tr>
-<tr><td style="padding:0 18px;color:#6b7590;font-size:13px;line-height:1.6;">${facts}</td></tr>
-<tr><td style="padding:8px 18px 16px;color:#015cff;font-size:15px;font-weight:700;">${eurOrLabel(e)}</td></tr>
+  // Fakten-Spalten im Report-Stil: nur belegte Werte, max. 4 Spalten.
+  const fakten: { label: string; wert: string }[] = [];
+  if (e.livingArea) fakten.push({ label: "Wohnfl&auml;che", wert: `${e.livingArea} m&sup2;` });
+  if (e.rooms) fakten.push({ label: "Zimmer", wert: String(e.rooms) });
+  if (e.plotArea) fakten.push({ label: "Grundst&uuml;ck", wert: `${e.plotArea} m&sup2;` });
+  if (e.energy.energyClass) fakten.push({ label: "Energie", wert: e.energy.energyClass });
+  if (fakten.length < 4 && e.energy.year) fakten.push({ label: "Baujahr", wert: String(e.energy.year) });
+  const faktenRow =
+    fakten.length > 0
+      ? `<tr><td style="padding:14px 18px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${fakten
+          .slice(0, 4)
+          .map(
+            (f, i) =>
+              `<td style="${i > 0 ? "border-left:1px solid #dbe5fa;padding-left:14px;" : ""}${i < fakten.length - 1 ? "padding-right:14px;" : ""}"><div style="color:#8a90a3;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">${f.label}</div><div style="margin-top:3px;color:#141724;font-size:15px;font-weight:700;">${f.wert}</div></td>`,
+          )
+          .join("")}</tr></table></td></tr>`
+      : "";
+  // Bis zu 3 Ausstattungs-Highlights — mehr „interessante Facts" ohne Wand aus Text.
+  const highlights = (e.features ?? []).slice(0, 3).join(" &middot; ");
+  // Monatsraten-Einordnung nur beim Kaufobjekt mit bekanntem Preis: klassische
+  // Annuität zum aktuellen amtlichen Effektivzins. Bewusst als „Einordnung"
+  // mit vollem Kleingedruckten — kein Finanzierungsangebot (PAngV).
+  const rate =
+    zins && e.marketingType === "kauf" && e.price != null && e.price > 0
+      ? `<tr><td style="padding:14px 18px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3ff;border-radius:12px;"><tr><td style="padding:14px 16px;">
+<div style="color:#141724;font-size:15px;font-weight:700;">&asymp; ${formatEUR(monatsRate(e.price, zins.prozent))} monatliche Rate<span style="color:#6b7590;">*</span></div>
+<div style="margin-top:4px;color:#6b7590;font-size:11.5px;line-height:1.55;">*Unverbindliche Beispielrechnung, kein Finanzierungsangebot: ${zins.prozent.toString().replace(".", ",")} % effektiver Jahreszins (Wohnungsbaukredite mit &uuml;ber 10 Jahren Zinsbindung, ${zins.quelle}${zins.periode !== "Richtwert" ? `, Stand ${zins.periode}` : ""}) und ${BEISPIEL_TILGUNG_PROZENT} % anf&auml;nglicher Tilgung bei Finanzierung des vollen Kaufpreises, ohne Kaufnebenkosten. Ihre Kondition h&auml;ngt von Eigenkapital und Bonit&auml;t ab.</div>
+</td></tr></table></td></tr>`
+      : "";
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 22px;border:1px solid #e4e8f0;border-radius:12px;">
+<tr><td>${hero}</td></tr>
+${thumbRow}
+<tr><td style="padding:16px 18px 0;"><a href="${href}" style="color:#141724;font-size:17px;font-weight:700;text-decoration:none;line-height:1.35;">${e.title}</a></td></tr>
+<tr><td style="padding:4px 18px 0;color:#6b7590;font-size:13px;line-height:1.6;">${ortszeile}</td></tr>
+${faktenRow}
+<tr><td style="padding:12px 18px 0;color:#015cff;font-size:19px;font-weight:800;">${eurOrLabel(e)}</td></tr>
+${highlights ? `<tr><td style="padding:6px 18px 0;color:#6b7590;font-size:13px;line-height:1.6;">${highlights}</td></tr>` : ""}
+${rate}
+<tr><td style="padding:14px 18px 18px;"><a href="${href}" style="display:inline-block;background:#015cff;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 18px;border-radius:999px;">Objekt ansehen&nbsp;&rarr;</a></td></tr>
 </table>`;
 }
 
@@ -150,7 +200,7 @@ function estateCard(e: Estate, base: string): string {
  * scripts/preview-matching-mail.mts dieselbe Mail als Preview verschicken
  * kann (etabliertes Muster wie beim Report).
  */
-export function buildMatchingMail(zuSenden: Estate[]): { subject: string; html: string } {
+export function buildMatchingMail(zuSenden: Estate[], zins?: BaufiZins | null): { subject: string; html: string } {
   const base = emailTargets.ASSET_BASE;
   const mehrzahl = zuSenden.length > 1;
   return {
@@ -161,7 +211,7 @@ export function buildMatchingMail(zuSenden: Estate[]): { subject: string; html: 
       heading: mehrzahl ? `${zuSenden.length} neue Objekte für Ihre Suche` : "Neues Objekt für Ihre Suche",
       intro:
         "Zu Ihrem Suchauftrag ist soeben etwas Passendes online gegangen. Schnell sein lohnt sich: gute Objekte sind in unserer Region oft nach wenigen Tagen vergeben.",
-      bodyHtml: zuSenden.map((e) => estateCard(e, base)).join(""),
+      bodyHtml: zuSenden.map((e) => estateCard(e, base, zins)).join(""),
       ctaLabel: "Alle Objekte im Portal ansehen",
       ctaHref: `${base}/immobilien`,
     }),
@@ -249,6 +299,10 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
   const details: { email: string; objekte: string[] }[] = [];
   let mails = 0;
 
+  // Aktuellen Baufi-Effektivzins EINMAL je Lauf holen (nur wenn überhaupt
+  // Mails anstehen) — speist die Monatsraten-Beispielrechnung der Objektkarten.
+  const zins = byUser.size > 0 ? await holeBaufiZins() : null;
+
   for (const [userId, matchMap] of byUser) {
     // Doppelversand-Schutz: je Nutzer+Objekt nur einmal, über Läufe hinweg.
     const sentRes = await supabaseServer
@@ -267,7 +321,7 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
 
     details.push({ email, objekte: zuSenden.map((e) => e.title) });
     if (!opts?.dry) {
-      const { subject, html } = buildMatchingMail(zuSenden);
+      const { subject, html } = buildMatchingMail(zuSenden, zins);
       const res = await sendMail({ to: email, subject, html });
       if (!res.ok) continue; // Versandfehler: nicht als gesendet loggen, nächster Lauf versucht es erneut
       const { error } = await supabaseServer

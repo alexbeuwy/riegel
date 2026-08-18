@@ -7,6 +7,7 @@
  */
 import { fetchOnOfficeEstates } from "../src/lib/onoffice";
 import { buildMatchingMail, matchQuery } from "../src/lib/matching";
+import { holeBaufiZins } from "../src/lib/baufi-zins";
 import { sendMail } from "../src/lib/email";
 
 const estates = (await fetchOnOfficeEstates()) ?? [];
@@ -24,6 +25,6 @@ if (auswahl.length === 0) {
 }
 console.log("Preview-Objekte:", auswahl.map((e) => `${e.title} (${e.city})`));
 
-const { subject, html } = buildMatchingMail(auswahl);
+const { subject, html } = buildMatchingMail(auswahl, await holeBaufiZins());
 const res = await sendMail({ to: "alex@beuwy.com", subject: `[PREVIEW] ${subject}`, html });
 console.log(res.ok ? "Preview-Mail an alex@beuwy.com versendet." : `Versand fehlgeschlagen: ${res.error}`);

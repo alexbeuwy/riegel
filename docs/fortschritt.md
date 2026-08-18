@@ -1130,3 +1130,20 @@ Ort-Suchaufträge (Aylins „Haus · Speyer") feuern fast nie — Häuser kommen
   entfernt → nächster 6:00-UTC-Lauf verschickt echte Mails an die passenden Profile
   (alex@beuwy.com + 1 echter Interessent mit passendem Profil). matchProfil vorab gegen
   alle 7 echten Profil-Datensätze verifiziert (Skript im Scratchpad).
+
+## Update — Matching-Mail auf Report-Niveau + amtlicher Baufi-Zins (18.08.2026, Auftrag Alex) ✅
+
+- **Objektkarte neu** (`estateCard` in matching.ts): großes Hero-Bild + bis zu 4
+  Innen-Thumbnails horizontal, Fakten-Spalten im Report-Stil (VERSAL-Label + fetter
+  Wert: Wohnfläche/Zimmer/Grundstück/Energie/Baujahr), Ortszeile mit Stadtteil +
+  Objekttyp, bis zu 3 Ausstattungs-Highlights, Preis groß in RIEGEL-Blau,
+  „Objekt ansehen →"-Pill je Karte.
+- **Monatsraten-Einordnung bei Kaufobjekten** (`src/lib/baufi-zins.ts`): klassische
+  Annuität (Effektivzins + 2 % Tilgung, 100 % Kaufpreis) mit LIVE-Zins aus der
+  **EZB/Bundesbank MFI-Zinsstatistik** (Serie MIR M.DE.B.A2C.P.R.A.2250.EUR.N —
+  Wohnungsbaukredite priv. Haushalte, Zinsbindung > 10 J., Neugeschäft; verifiziert:
+  3,98 % Stand 2026-06). Ein Abruf je Cron-Lauf, Plausibilitätsfenster 1–8 %,
+  Fallback-Richtwert 3,8 % mit ehrlicher „Richtwert"-Kennzeichnung. Volles
+  Kleingedrucktes in der Mail (unverbindliche Beispielrechnung, kein
+  Finanzierungsangebot — PAngV-bewusst formuliert).
+- `scripts/preview-matching-mail.mts` zieht denselben Live-Zins.
