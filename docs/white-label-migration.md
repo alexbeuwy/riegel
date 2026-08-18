@@ -57,10 +57,11 @@ sie nicht sinnvoll deployen:
    `BUNNY_STORAGE_ZONE`, `BUNNY_STORAGE_HOST`, `BUNNY_STORAGE_ACCESS_KEY`.
 5. **Vercel-Projekt** mit der Makler-Domain als **Primary Domain** (treibt canonical,
    og:url, sitemap, robots — s. `site.url`). Region `fra1` bleibt für DE.
-6. **BORIS-Abdeckung prüfen** (Bundesland-abhängig!): `boris.ts` deckt **nur RLP +
-   Hessen** ab. BW/Bayern/… → amtlicher Bodenrichtwert fehlt, Rechner fällt auf
-   Modellwerte zurück. Ggf. neuen Landesdienst anbinden (Muster: Hessen-WFS in
-   `boris.ts`) oder bewusst ohne „amtlich"-Badge fahren. Siehe `docs/preisatlas-research.md`.
+6. **BORIS-Abdeckung prüfen** (Bundesland-abhängig!): `boris.ts` deckt seit 18.08.2026
+   **10 Länder aktiv** ab (RLP, HE, NRW, NI, HB, HH, BB, SN, TH, ST, MV; Berlin
+   vorbereitet/deaktiviert). Nur **BW/Bayern/SH/Saarland** → Modellwerte ohne
+   „amtlich"-Badge (Lizenz-/Kostenlage, s. §7 und `docs/preisatlas-research.md` §6).
+   Nach jedem Klon: `scripts/boris-live-check.mts` laufen lassen.
 7. **RLP-VBORIS-Nutzungsbestätigung** (nur falls Region RLP): laut Code-Kommentar
    (`boris.ts:21`) läuft die schriftliche kommerzielle Freigabe des LVermGeo noch —
    klären, ob sie an RIEGEL oder an beuwy als Betreiber gebunden ist.
