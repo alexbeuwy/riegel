@@ -1103,7 +1103,7 @@ Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion`
   aus und startet die Analyse automatisch — landet ohne Tipparbeit direkt auf der
   Ergebnis-Seite (inkl. Satellit, BORIS, Report-Block). Presets: `DEMO_PRESETS`
   in `calculator.tsx`.
-- **Test-Links im /intern → Übersicht** (oben): Wohnung / Haus / Mehrfamilienhaus,
-  öffnen in neuem Tab.
+- **Test-Links im /intern → Conversion-Tab** (dezent ganz unten, Korrektur Alex:
+  nicht prominent im Dashboard): Wohnung / Haus / Mehrfamilienhaus, öffnen in neuem Tab.
 - **Kein Statistik-Müll:** `track.ts` ignoriert alle Events, wenn `?demo=` in der URL
   steht — Tests verfälschen die Funnel-/Heatmap-Zahlen im Conversion-Tab nicht.
