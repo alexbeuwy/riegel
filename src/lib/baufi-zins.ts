@@ -36,14 +36,36 @@ interface ZinsQuelle {
 }
 
 /**
- * ECB Data Portal, MFI-Zinsstatistik Deutschland: Kredite an private Haushalte
- * für Hauskauf, anfängliche Zinsbindung über 10 Jahre, Neugeschäft,
- * effektiver Jahreszinssatz (AAR). Offene API ohne Key; CSV-Format.
+ * Beide Quellen liefern dieselbe Serie (Bundesbank erhebt, meldet an EZB):
+ * Effektivzins besicherter Wohnungsbaukredite an private Haushalte,
+ * anfängliche Zinsbindung ÜBER 10 Jahre, Neugeschäft — Bundesbank-Zeitreihe
+ * SUD161, die klassische Baufi-Kennzahl. Live verifiziert 18.08.2026: beide
+ * Quellen identisch 3,82 % für 2026-06 (vorläufig). Primär die Bundesbank
+ * (Primärquelle), EZB Data Portal als unabhängiger technischer Fallback.
+ * Beide offen, ohne Key; Quellenangabe genügt.
  */
 const ZINS_QUELLEN: ZinsQuelle[] = [
   {
-    name: "EZB/Bundesbank MFI-Zinsstatistik",
-    url: "https://data-api.ecb.europa.eu/service/data/MIR/M.DE.B.A2C.P.R.A.2250.EUR.N?lastNObservations=1&format=csvdata",
+    name: "Deutsche Bundesbank, MFI-Zinsstatistik (SUD161)",
+    url: "https://api.statistiken.bundesbank.de/rest/data/BBIM1/M.DE.B.A2CC.P.R.A.2250.EUR.N?format=csv",
+    parse: (body) => {
+      // CSV mit ';'-Trennung und DEZIMAL-KOMMA; nach den Metadaten-Zeilen
+      // folgen Datenzeilen "YYYY-MM;3,82;[Flag]" — letzte nicht-leere zählt.
+      const zeilen = body.trim().split("\n");
+      for (let i = zeilen.length - 1; i >= 0; i--) {
+        const teile = zeilen[i].split(";");
+        if (teile.length >= 2 && /^\d{4}-\d{2}$/.test(teile[0].trim())) {
+          const prozent = parseFloat(teile[1].trim().replace(",", "."));
+          if (Number.isFinite(prozent)) return { periode: teile[0].trim(), prozent };
+          // Aktuellster Monat kann noch leer sein — dann die Zeile davor.
+        }
+      }
+      return null;
+    },
+  },
+  {
+    name: "EZB Data Portal, MFI-Zinsstatistik",
+    url: "https://data-api.ecb.europa.eu/service/data/MIR/M.DE.B.A2CC.P.R.A.2250.EUR.N?lastNObservations=1&format=csvdata",
     parse: (body) => {
       // csvdata: Kopfzeile + eine Datenzeile; Spalten TIME_PERIOD und OBS_VALUE.
       const zeilen = body.trim().split("\n");

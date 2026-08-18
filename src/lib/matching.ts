@@ -135,18 +135,21 @@ const eurOrLabel = (e: Estate) =>
  */
 function estateCard(e: Estate, base: string, zins?: BaufiZins | null): string {
   const href = `${base}/immobilien/${e.slug}`;
+  // Hero flach im Querformat halten (Wunsch Alex): Höhen-Deckel 320 px +
+  // object-fit:cover — moderne Clients (Apple Mail, Gmail) croppen sauber,
+  // Outlook ignoriert object-fit und zeigt das natürliche Seitenverhältnis.
   const hero = e.images[0]
-    ? `<a href="${href}"><img src="${e.images[0]}" width="536" alt="" style="display:block;width:100%;height:auto;border:0;border-radius:12px 12px 0 0;"></a>`
+    ? `<a href="${href}"><img src="${e.images[0]}" width="536" height="320" alt="" style="display:block;width:100%;height:320px;object-fit:cover;border:0;border-radius:12px 12px 0 0;"></a>`
     : "";
   // Bis zu 4 weitere Bilder (Innenbereich) als horizontale Reihe — feste
-  // Zellbreiten, damit Outlook nicht umbricht; 4 Spalten à 131 px + Lücken.
+  // Zellbreiten, damit Outlook nicht umbricht; einheitliche 76-px-Höhe.
   const thumbs = e.images.slice(1, 5);
   const thumbRow =
     thumbs.length > 0
       ? `<tr><td style="padding:4px 0 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${thumbs
           .map(
             (src, i) =>
-              `<td width="${Math.floor(536 / thumbs.length)}" style="${i > 0 ? "padding-left:4px;" : ""}"><a href="${href}"><img src="${src}" width="${Math.floor(536 / thumbs.length) - (i > 0 ? 4 : 0)}" alt="" style="display:block;width:100%;height:auto;border:0;"></a></td>`,
+              `<td width="${Math.floor(536 / thumbs.length)}" style="${i > 0 ? "padding-left:4px;" : ""}"><a href="${href}"><img src="${src}" width="${Math.floor(536 / thumbs.length) - (i > 0 ? 4 : 0)}" height="76" alt="" style="display:block;width:100%;height:76px;object-fit:cover;border:0;"></a></td>`,
           )
           .join("")}</tr></table></td></tr>`
       : "";
@@ -196,13 +199,60 @@ ${rate}
 }
 
 /**
+ * Bis zu `n` „ähnliche Objekte" aus dem aktiven Bestand — Cross-Sell-Sektion
+ * unter den Treffer-Karten (Wunsch Alex 18.08.2026). Ähnlichkeit bewusst
+ * simpel und erklärbar: gleiche Vermarktungsart ist Pflicht, dann zählen
+ * gleiche Kategorie, gleicher Ort und Preisnähe (±40 %) — Objekte ohne Foto
+ * fallen raus (die Mini-Karte lebt vom Bild).
+ */
+export function aehnlicheObjekte(pool: Estate[], zuSenden: Estate[], n = 3): Estate[] {
+  const gesendetIds = new Set(zuSenden.map((e) => e.id));
+  const ref = zuSenden[0];
+  if (!ref) return [];
+  const refPreis = ref.price ?? null;
+  const bewertet = pool
+    .filter((e) => !gesendetIds.has(e.id) && e.status === "aktiv" && e.images.length > 0 && e.marketingType === ref.marketingType)
+    .map((e) => {
+      let score = 0;
+      if (e.category === ref.category) score += 3;
+      if (e.city.trim().toLowerCase() === ref.city.trim().toLowerCase()) score += 2;
+      if (refPreis != null && e.price != null && e.price > 0 && Math.abs(e.price - refPreis) / refPreis <= 0.4) score += 1;
+      return { e, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  return bewertet.slice(0, n).map((x) => x.e);
+}
+
+/** Kompakte Mini-Karte (Thumb links, Titel/Ort/Preis rechts) für „ähnliche Objekte". */
+function miniCard(e: Estate, base: string): string {
+  const href = `${base}/immobilien/${e.slug}`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #e4e8f0;border-radius:10px;"><tr>
+<td width="150" style="padding:0;"><a href="${href}"><img src="${e.images[0]}" width="150" height="100" alt="" style="display:block;width:150px;height:100px;object-fit:cover;border:0;border-radius:10px 0 0 10px;"></a></td>
+<td style="padding:10px 14px;vertical-align:top;">
+<a href="${href}" style="display:block;color:#141724;font-size:13.5px;font-weight:700;text-decoration:none;line-height:1.35;">${e.title}</a>
+<div style="margin-top:2px;color:#6b7590;font-size:12px;">${[[e.postcode, e.city].filter(Boolean).join(" "), e.livingArea ? `${e.livingArea} m&sup2;` : null, e.rooms ? `${e.rooms} Zi.` : null].filter(Boolean).join(" &middot; ")}</div>
+<div style="margin-top:4px;color:#015cff;font-size:13.5px;font-weight:800;">${eurOrLabel(e)}</div>
+</td></tr></table>`;
+}
+
+/**
  * Betreff + HTML der Matching-Mail — separat exportiert, damit
  * scripts/preview-matching-mail.mts dieselbe Mail als Preview verschicken
  * kann (etabliertes Muster wie beim Report).
  */
-export function buildMatchingMail(zuSenden: Estate[], zins?: BaufiZins | null): { subject: string; html: string } {
+export function buildMatchingMail(
+  zuSenden: Estate[],
+  zins?: BaufiZins | null,
+  aehnliche?: Estate[],
+): { subject: string; html: string } {
   const base = emailTargets.ASSET_BASE;
   const mehrzahl = zuSenden.length > 1;
+  const aehnlichHtml =
+    aehnliche && aehnliche.length > 0
+      ? `<div style="margin:26px 0 10px;color:#8a90a3;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Das k&ouml;nnte Sie auch interessieren</div>${aehnliche
+          .map((e) => miniCard(e, base))
+          .join("")}`
+      : "";
   return {
     subject: mehrzahl
       ? `${zuSenden.length} neue Objekte passend zu Ihrem Suchauftrag`
@@ -211,7 +261,7 @@ export function buildMatchingMail(zuSenden: Estate[], zins?: BaufiZins | null): 
       heading: mehrzahl ? `${zuSenden.length} neue Objekte für Ihre Suche` : "Neues Objekt für Ihre Suche",
       intro:
         "Zu Ihrem Suchauftrag ist soeben etwas Passendes online gegangen. Schnell sein lohnt sich: gute Objekte sind in unserer Region oft nach wenigen Tagen vergeben.",
-      bodyHtml: zuSenden.map((e) => estateCard(e, base, zins)).join(""),
+      bodyHtml: zuSenden.map((e) => estateCard(e, base, zins)).join("") + aehnlichHtml,
       ctaLabel: "Alle Objekte im Portal ansehen",
       ctaHref: `${base}/immobilien`,
     }),
@@ -321,7 +371,7 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
 
     details.push({ email, objekte: zuSenden.map((e) => e.title) });
     if (!opts?.dry) {
-      const { subject, html } = buildMatchingMail(zuSenden, zins);
+      const { subject, html } = buildMatchingMail(zuSenden, zins, aehnlicheObjekte(aktive, zuSenden));
       const res = await sendMail({ to: email, subject, html });
       if (!res.ok) continue; // Versandfehler: nicht als gesendet loggen, nächster Lauf versucht es erneut
       const { error } = await supabaseServer

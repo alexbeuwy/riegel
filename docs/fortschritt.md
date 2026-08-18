@@ -1147,3 +1147,15 @@ Ort-Suchaufträge (Aylins „Haus · Speyer") feuern fast nie — Häuser kommen
   Kleingedrucktes in der Mail (unverbindliche Beispielrechnung, kein
   Finanzierungsangebot — PAngV-bewusst formuliert).
 - `scripts/preview-matching-mail.mts` zieht denselben Live-Zins.
+
+## Update — Matching-Mail Runde 2: Bundesbank-Primärquelle, flacher Hero, ähnliche Objekte (18.08.2026) ✅
+
+- **Zins-Primärquelle jetzt Deutsche Bundesbank** (BBIM1 / SUD161: besicherte
+  Wohnungsbaukredite, Zinsbindung > 10 J., Neugeschäft — 3,82 % Stand 2026-06,
+  live verifiziert; präziser als die vorher genutzte unbesicherte Sammelserie 3,98 %).
+  EZB Data Portal als unabhängiger Fallback (gleiche Serie, A2CC), danach Richtwert.
+- **Hero im Querformat gedeckelt** (320 px + object-fit:cover; Thumbnails 76 px) —
+  Outlook fällt aufs natürliche Format zurück.
+- **„Das könnte Sie auch interessieren":** bis zu 3 ähnliche Objekte aus dem aktiven
+  Bestand als Mini-Karten (Thumb + Titel/Ort/Preis). Ähnlichkeit erklärbar simpel:
+  gleiche Vermarktungsart Pflicht, dann Kategorie > Ort > Preisnähe ±40 %.
