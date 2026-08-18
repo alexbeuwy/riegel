@@ -2165,11 +2165,15 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   // Feld für die natürliche Person hinter der Firma (nur legalName/recht.firma
   // als Firmierung) — die rote Liste (CLAUDE.md, Playbook §5) verbietet,
   // Namen echter Personen zu erfinden oder herzuleiten. Bei Bedarf müsste
-  // site.ts (nicht meine Datei) um ein Feld wie recht.inhaber erweitert werden.
+  // Inhaberin/Register kommen inzwischen zentral aus site.recht (18.08.2026).
   let yl = y;
   const line = (s: string, x: number, yy: number, size = 9.5, font = ctx.reg, color: Color = MUTED) => t(s, x, yy, size, font, color);
   line("ANBIETER", M, yl, 9, ctx.bold, ACCENT_SOFT); yl -= 16;
   line(site.recht.firma, M, yl, 11, ctx.bold, FG); yl -= 15;
+  // Inhaberin aus site.recht (Impressum-Freigabe Alex 18.08.2026) — beim
+  // White-Label-Klon trägt der neue Makler hier seine eigene Person ein.
+  line(`Inhaberin: ${site.recht.inhaberin}`, M, yl); yl -= 13;
+  line(`${site.recht.registergericht}, ${site.recht.registernummer}`, M, yl); yl -= 16;
   for (const ort of site.locations) {
     line(`${ort.street}, ${ort.zip} ${ort.city}`, M, yl); yl -= 13;
     line(`Tel. ${ort.phone}`, M, yl); yl -= 16;

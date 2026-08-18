@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { site } from "@/lib/site";
 import { sendMail, emailLayout, emailRows } from "@/lib/email";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
     html: emailLayout({
       heading: `Danke, ${esc(name.split(" ")[0]) || "schön"}!`,
       intro:
-        "Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages. Bei dringenden Anliegen erreichen Sie uns unter 06232 100 10 10.",
+        "Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages. Bei dringenden Anliegen erreichen Sie uns unter " + site.phone + ".",
       bodyHtml: message
         ? `<p style="margin:8px 0 6px;color:#6b7590;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#5a6072;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>`
         : "",

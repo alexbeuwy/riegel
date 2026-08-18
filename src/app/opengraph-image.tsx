@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { site } from "@/lib/site";
 import { RIEGEL_LOGO_DATAURI } from "@/lib/og-assets";
 
 /**
@@ -31,7 +32,7 @@ export default async function Image() {
           <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -2, lineHeight: 1.12, color: "#f4f3f0" }}>
             Regionale Expertise.
           </div>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -2, lineHeight: 1.12, color: "#015CFF" }}>
+          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -2, lineHeight: 1.12, color: site.brandColor }}>
             Alles andere ist Fast Food.
           </div>
         </div>

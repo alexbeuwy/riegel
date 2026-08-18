@@ -49,6 +49,9 @@ export const site = {
     firma: "Riegel Immobilien e.K.",
     registergericht: "Amtsgericht Ludwigshafen am Rhein",
     registernummer: "HRA 51804 Sp",
+    /** Natürliche Person hinter dem e.K. (Impressum-Angabe, Freigabe Alex
+     *  18.08.2026) — erscheint u. a. auf der PDF-Anbieterseite. */
+    inhaberin: "Sylwia Riegel",
   },
   /**
    * Markenfarbe für Kontexte OHNE CSS-Zugriff (Mail-HTML, PDF, OG-Bilder,

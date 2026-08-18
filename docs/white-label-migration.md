@@ -257,6 +257,11 @@ Neue Infrastruktur, die jeder Klon mitbekommt (18.08.2026): CI-Workflow
 
 ---
 
+**Neu seit 18.08.2026:** `ONOFFICE_EXPOSE_TEMPLATES` (kommagetrennte OnOffice-Template-
+URNs für den Exposé-Download — Fallback sind RIEGELs URNs, beim Klon zwingend setzen,
+sonst liefert der Exposé-Download still 503) und `NEXT_PUBLIC_BUNNY_CDN_HOST` (Pull-Zone-
+Host; speist `site.cdnHost` UND next.config.ts remotePatterns — build-time!).
+
 ## 5. Die rote Liste — NIEMALS kopieren
 
 Diese Angaben sind rechtlich/faktisch fremd. Übernahme = Wettbewerbsverstoß,

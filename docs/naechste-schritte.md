@@ -6,6 +6,11 @@ nachgeprüft). Jede Zahl unten ist in diesem Lauf gemessen, nicht geschätzt.
 
 ---
 
+> **STATUS-UPDATE 18.08.2026 (Abend):** Wellen 1–4 sind UMGESETZT und deployt
+> (Details: fortschritt.md „Großoffensive Wellen 1–4"). Offen aus diesem Plan:
+> Backtest-BRW-Anreicherung (§3.3 — braucht OnOffice-Credentials + Geocoding-Lauf),
+> Supabase-Trennung von saadi_* (§4.6, organisatorisch), Masterplan P1–P3.
+
 ## 1. Ausgangslage in Zahlen
 
 **Lead-Volumen (Supabase, Stand 18.08. 19:00 UTC)**

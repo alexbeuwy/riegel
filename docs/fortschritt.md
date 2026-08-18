@@ -1184,3 +1184,47 @@ Ort-Suchaufträge (Aylins „Haus · Speyer") feuern fast nie — Häuser kommen
   rechnet +7,1 % über der belegten GAA-Zeile (genau 1 Stadt betroffen, aber strukturelle
   Falle); 5 von 8 REGIONS sind unkalibriert, bekommen aber den vollen Konfidenzbonus;
   0 CI-Workflows; `matching_seen`/`matching_sent` fehlen als Migration.
+
+## Update — Großoffensive Wellen 1–4 (18.08.2026, Fable-5-Orchestrierung, 9 Leaves + 2 Finder) ✅
+
+Orchestriert mit unlazy-Disziplin: 5 Umsetzungs-Leaves parallel (disjunkte Datei-Sets),
+2 Folge-Leaves, 2 Finder; Orchestrator hat alle Gates selbst nachgefahren.
+
+**Welle 1 — vor dem ersten Matching-Versand:**
+- One-Click-Abmeldung: `/api/abmelden` (HMAC über CRON_SECRET, GET+POST für
+  List-Unsubscribe-One-Click), Abmeldelink in der Matching-Mail, `List-Unsubscribe`-Header;
+  Abmelde-Flag überlebt das Profil-Speichern (rohePrefs-Merge in profile-form).
+- §37a-HGB-Zeile im Mail-Footer + PDF-Anbieterseite aus `site.recht` (Freigabe Alex,
+  Quelle Impressum: e.K., Amtsgericht LU, HRA 51804 Sp, Inhaberin).
+- matching_seen wird erst NACH erfolgreicher Verarbeitung geschrieben (commitBaseline) —
+  ein Teilfehler kostet keine Tages-Objekte mehr; Migration `…matching_tabellen.sql`.
+
+**Welle 2 — Rechner-Conversion (7 Fixes):** inputMode=decimal (11 Felder),
+Adress-Fallback „Mit Ort/PLZ fortfahren" (Ortszentrum als Näherung, sichtbar markiert),
+Enter → erster Vorschlag, sessionStorage-Persistenz (30 min TTL, URL-Prefill hat Vorrang)
++ Zurück-Geste navigiert Schritte statt Seite zu verlassen, „Angaben anpassen" im
+Ergebnis, Client-Mindestwerte = Server-Bounds, unparsebare Eingaben melden statt
+verschlucken.
+
+**Welle 3 — Engine-Ehrlichkeit:** Karlsruhe-Verdeckungsbug (GAA-Basis statt
+Faktor-Tabelle: 3.347 €/m² @ 70 % statt 3.694 @ 64), kalibriert-Flag je Region
+(+8 Konfidenz nur noch für Speyer/LU/Schifferstadt, ehrlicher Annahmen-Hinweis sonst),
+Datenstand-Wächter `kalibrier-alter-check.mts` (KALIBRIER_STAND/MARKT_STAND_DATUM).
+Dazu die zwei präventiv gefundenen „Manne-Fälle": WE-4→5-Cliff geglättet (auslaufender
+Vergleichswert-Boden bis 8 WE: −37,7 % → −9,5 %) und MFH-Miet-Tippfehler-Kappung
+(2,5× Marktmiete; 500k-Fehleingabe: 7,6 Mio → 828k mit Klartext-Hinweis).
+Battery: 47 Checks grün (F21–F24c neu).
+
+**Welle 4 — Betrieb/White-Label:** CI-Workflow (Lint+tsc+Battery+Build), repo-weites
+Lint auf 0 Fehler gebracht, `/api/health` + System-Kachel im /intern, Matching-Cron
+meldet Fehler/Versand per Mail, INTERN_EMAILS fail-loud in Produktion, Mock-Objekte
+in Produktion abgeschaltet (leerer Bestand statt Fake-Listings), Hardcode-Sweep:
+`site.brandColor`/`site.cdnHost`/`site.phone`/`site.recht` ersetzen ~240 Literale
+(Farbe/CDN/Telefon/PDF-Anbieterseite/Demo-Adresse/Domain-Checks/JSON-LD-Koordinaten,
+OnOffice-Exposé-Templates → Env `ONOFFICE_EXPOSE_TEMPLATES`, Boilerplate-Filter mit
+Wortgrenze aus site.name). Rest-Ausnahmen dokumentiert (photos.ts Zirkular-Import,
+globals.css als Web-Farbquelle, Rechtstexte).
+
+**Analytics-UX:** Klicks-nach-Bereich-Balken mit sprechenden Namen über der Heatmap,
+Heatmap-Overlay auf echtem Seiten-Screenshot (`public/intern/rechner-referenz.jpg`,
+lokal geschossen), Reset-Button mit Inline-Bestätigung (`action=reset`).
