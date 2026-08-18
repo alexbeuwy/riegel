@@ -36,6 +36,19 @@ export interface MarktOrt {
 /** Stand der Marktdaten — an Seite/JSON-LD durchreichen statt `new Date()`. */
 export const MARKT_STAND = "Q3 2026";
 
+/**
+ * Derselbe Stand als ISO-Datum (Quartalsbeginn) — MIT MARKT_STAND ZUSAMMEN
+ * NACHZIEHEN, beide Werte müssen dasselbe Quartal meinen.
+ *
+ * Warum doppelt: „Q3 2026" ist der Anzeigetext für Kunden, aber nichts, womit
+ * ein Skript rechnen kann. scripts/kalibrier-alter-check.mts importiert dieses
+ * Datum und schlägt Alarm, sobald der Preisatlas gegenüber dem laufenden
+ * Quartal veraltet (ab 2 Quartalen Warnung, ab 3 harter Fehler) — ein stiller,
+ * ein Jahr alter „Stand"-Hinweis ist schlimmer als gar keiner, weil er
+ * Aktualität behauptet.
+ */
+export const MARKT_STAND_DATUM = "2026-07-01";
+
 export const PREIS_DISCLAIMER =
   "Modellwerte und Spannen basieren auf regionalen Richtwerten sowie eigener Marktbeobachtung, sind keine Verkehrswertermittlung nach § 194 BauGB — der Bodenrichtwert ist ein Bodenwert, kein Objektpreis.";
 

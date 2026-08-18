@@ -205,6 +205,14 @@ export function ProfileForm() {
   }, []);
 
   // Laden: aus Supabase, Fallback localStorage.
+  // rohePrefs: die UNVERÄNDERTE preferences-JSON aus der DB. Beim Speichern
+  // wird sie als Basis gespreadet, denn `preferences` ist EINE jsonb-Spalte —
+  // ein Upsert ersetzt sie komplett. Ohne das Merge würde z. B. das
+  // Abmelde-Flag `benachrichtigung:false` (gesetzt von /api/abmelden) beim
+  // nächsten „Suchprofil speichern" still gelöscht und der Nutzer wieder
+  // angemeldet — genau die Sorte Vertrauensbruch, die Abmahnungen provoziert.
+  const rohePrefs = useRef<Record<string, unknown>>({});
+
   useEffect(() => {
     let done = false;
     (async () => {
@@ -219,6 +227,7 @@ export function ProfileForm() {
           .eq("id", user.id)
           .maybeSingle();
         if (data?.preferences && !done) {
+          rohePrefs.current = data.preferences as Record<string, unknown>;
           setP((cur) => ({ ...cur, ...(data.preferences as Partial<Prefs>), earlyAccess: data.early_access ?? cur.earlyAccess }));
         }
       }
@@ -246,7 +255,10 @@ export function ProfileForm() {
         {
           id: user.id,
           email: user.email,
+          // Unbekannte Felder (z. B. `benachrichtigung` aus /api/abmelden)
+          // ÜBERLEBEN das Speichern — s. rohePrefs-Kommentar oben.
           preferences: {
+            ...rohePrefs.current,
             rolle: p.rolle,
             objektarten: p.objektarten,
             regionen: p.regionen,

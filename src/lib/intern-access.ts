@@ -24,14 +24,36 @@ import { INTERN_INVITED_KEY } from "@/lib/site-settings-keys";
 /** Feste E-Mail-Allowlist (lowercase). Default: Sissy + Alex. Überschreibbar
  *  via INTERN_EMAILS (kommagetrennt) — dann gilt ausschließlich die Env-Liste.
  *  Diese Adressen sind aus der /intern-Nutzerverwaltung heraus NICHT entfernbar
- *  oder löschbar (s. api/intern/users/route.ts). */
+ *  oder löschbar (s. api/intern/users/route.ts).
+ *
+ *  WICHTIG (White-Label-Schutz): Der Sissy/Alex-Default ist nur für RIEGEL/
+ *  lokale Entwicklung gedacht. Ohne gesetztes INTERN_EMAILS würde er in einer
+ *  geklonten Makler-Instanz stillschweigend Fremden (Sissy/Alex) Zugriff auf
+ *  deren /intern-Dashboard geben — s. docs/white-label-migration.md §5
+ *  ("rote Liste") und §4. In Produktion (NODE_ENV=production) greift der
+ *  Default darum NICHT mehr: fehlt INTERN_EMAILS dort, bleibt die Allowlist
+ *  leer (niemand kommt per Session-Mail rein) statt fremder Zugriff — der
+ *  Passwort-Weg (ADMIN_PASSWORD) bleibt davon unberührt. In Dev/Preview bleibt
+ *  der Komfort-Default bestehen, damit lokale Entwicklung ohne Env-Setup
+ *  weiterläuft. Der Fehler wird laut protokolliert, damit ein „vergessenes"
+ *  INTERN_EMAILS beim Go-Live sofort auffällt statt erst, wenn niemand mehr
+ *  reinkommt (oder — im schlimmeren Fall — jemand Fremdes reinkommt). */
 export function internFixedEmails(): Set<string> {
   const fromEnv = (process.env.INTERN_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+  if (fromEnv.length) return new Set(fromEnv);
+
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      "[intern-access] INTERN_EMAILS nicht gesetzt — Session-Login deaktiviert (White-Label-Schutz).",
+    );
+    return new Set();
+  }
+
   const defaults = ["sissy.riegel@riegel-immobilien.de", "alex@beuwy.com"];
-  return new Set(fromEnv.length ? fromEnv : defaults);
+  return new Set(defaults);
 }
 
 /** Dynamisch über /intern eingeladene E-Mail-Adressen (site_settings-Tabelle,

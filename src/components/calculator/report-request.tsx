@@ -41,11 +41,20 @@ export function ReportRequest({
   f,
   result,
   onReset,
+  onAnpassen,
+  onGesendet,
   borisLoading = false,
 }: {
   f: ReportSource;
   result: ValuationResult;
   onReset: () => void;
+  /** Zurück ins Formular (Eckdaten), OHNE Reset — die Angaben bleiben stehen.
+   * Der sanfte Ausweg neben „Neue Bewertung": wer nur die Wohnfläche
+   * korrigieren will, musste bisher alles neu eintippen. */
+  onAnpassen?: () => void;
+  /** Nach erfolgreichem Versand: der Calculator verwirft seinen gespeicherten
+   * Formularstand (sessionStorage) — der Lead ist raus, der Entwurf erledigt. */
+  onGesendet?: () => void;
   /** Amtlicher Bodenrichtwert lädt noch (s. calculator.tsx) — der Server
    * rechnet beim Versand ohnehin serverseitig mit dem amtlichen Wert nach
    * (gegen Manipulation), daher blockt der Button den Versand, solange die
@@ -200,6 +209,7 @@ export function ReportRequest({
     }
     setBusy(false);
     setDone(true);
+    onGesendet?.();
     burstConfetti();
   }
 
@@ -363,6 +373,19 @@ export function ReportRequest({
               <Icon name="doc" size={17} />
               Report als PDF anfordern
             </button>
+            {/* Dezenter Ausweg NEBEN dem vollen Reset: „Neue Bewertung" wirft
+                alles weg, „Angaben anpassen" bringt nur zurück zu den
+                Eckdaten. Bewusst nur hier (vor dem Versand) — nach gesendetem
+                Report wäre ein Zurück ins Formular sinnlos. */}
+            {onAnpassen && (
+              <button
+                type="button"
+                onClick={onAnpassen}
+                className="press rounded-full border border-border px-6 py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                Angaben anpassen
+              </button>
+            )}
             <button type="button" onClick={onReset} className="press rounded-full border border-border px-6 py-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
               Neue Bewertung
             </button>

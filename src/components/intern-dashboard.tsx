@@ -558,6 +558,26 @@ export function InternDashboard() {
   const [convTage, setConvTage] = useState<7 | 30>(7);
   const [convBusy, setConvBusy] = useState(false);
   const [convError, setConvError] = useState<string | null>(null);
+  // Daten-Reset (Betreiber-Wunsch: "nur reale Zahlen"): kein window.confirm,
+  // sondern eine Inline-Bestätigung (Muster: deleteArm bei Konten, nur mit
+  // eigenem Zustand statt Zwei-Klick-Fenster, da hier zwei sichtbare Knöpfe
+  // "Ja/Abbrechen" die Sicherheitsabfrage klarer machen als ein Re-Klick).
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  // System-Status-Kachel (Übersicht, ganz unten): Kontrakt mit dem Leaf, das
+  // /api/health baut — s. SystemStatusKachel weiter unten für die Form.
+  const [health, setHealth] = useState<{
+    ok: boolean;
+    onoffice: { source: string; objekte: number };
+    supabase: boolean;
+    resend: boolean;
+    ts: string;
+  } | null>(null);
+  const [healthBusy, setHealthBusy] = useState(false);
+  const [healthFailed, setHealthFailed] = useState(false);
 
   const [heroImages, setHeroImages] = useState<BunnyImage[] | null>(null);
   const [heroCurrent, setHeroCurrent] = useState<string>("");
@@ -650,6 +670,9 @@ export function InternDashboard() {
       setObjekte(json.objekte ?? []);
       setAccounts(json.accounts ?? []);
       setBearbeitung(json.bearbeitung ?? {});
+      // Übersicht ist der Start-Tab (kein Tab-Klick, der das Lazy-Load sonst
+      // auslösen würde, s. TABS-onClick) — System-Status also gleich mitladen.
+      if (!health && !healthBusy) loadHealth();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
@@ -904,6 +927,50 @@ export function InternDashboard() {
       setConvError(e instanceof Error ? e.message : "Fehler");
     } finally {
       setConvBusy(false);
+    }
+  }
+
+  /** Setzt ALLE Conversion-Messdaten unwiderruflich zurück (Betreiber-Wunsch
+   *  18.08.2026: nach Testklicks/Demo-Läufen "nur reale Zahlen" sehen). Kein
+   *  Backup — anonyme Zähldaten, der Sinn ist ein sauberer Messstart. Lädt
+   *  die Auswertung danach neu, damit sofort der leere Zustand erscheint. */
+  async function resetConversion() {
+    setResetBusy(true);
+    setResetError(null);
+    setResetMsg(null);
+    try {
+      const res = await fetch("/api/intern/conversion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, action: "reset" }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setResetConfirm(false);
+      setResetMsg(`${json.geloescht ?? 0} Ereignisse gelöscht — Messung startet neu.`);
+      await loadConversion(convTage);
+    } catch (e) {
+      setResetError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
+  /** System-Status für die Übersicht-Kachel: /api/health baut ein anderer
+   *  Leaf parallel (Kontrakt s. State-Deklaration oben). Fail-soft: ein
+   *  Fetch-Fehler zeigt nur einen neutralen Hinweis, kein Blockierzustand. */
+  async function loadHealth() {
+    setHealthBusy(true);
+    setHealthFailed(false);
+    try {
+      const res = await fetch("/api/health");
+      if (!res.ok) throw new Error("Fehler");
+      const json = await res.json();
+      setHealth(json);
+    } catch {
+      setHealthFailed(true);
+    } finally {
+      setHealthBusy(false);
     }
   }
 
@@ -1241,6 +1308,10 @@ export function InternDashboard() {
                   if (t.key === "konten" && !usersLoaded) loadUsers();
                   // Conversion-Zahlen genauso: erst beim ersten Öffnen holen.
                   if (t.key === "conversion" && !conv && !convBusy) loadConversion(convTage);
+                  // System-Status ebenso lazy — meist schon durch load() gefüllt
+                  // (Übersicht ist Start-Tab), dieser Zweig greift nur, falls das
+                  // noch nicht geklappt hat (z. B. Fetch war noch nicht fertig).
+                  if (t.key === "overview" && !health && !healthBusy) loadHealth();
                 }}
                 className={`relative -mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm transition-colors ${
                   on ? "text-fg" : "text-muted hover:text-fg"
@@ -1351,6 +1422,15 @@ export function InternDashboard() {
                   {data.leads.length === 0 && <div className="px-4 py-8 text-center text-sm text-muted">Noch keine Anfragen.</div>}
                 </div>
               </div>
+            </div>
+
+            {/* System-Status: bewusst LETZTE Sektion, ganz unten — ein
+                Diagnose-Hinweis für Alex, nicht das Erste, was Sissy sieht. */}
+            <div>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
+                <Icon name="bolt" size={16} className="text-accent" /> System
+              </h2>
+              <SystemStatusKachel health={health} busy={healthBusy} failed={healthFailed} />
             </div>
           </div>
         )}

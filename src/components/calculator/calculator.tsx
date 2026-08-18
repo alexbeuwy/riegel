@@ -222,6 +222,130 @@ const EMPTY: FormState = {
   kernsaniert: false,
 };
 
+/**
+ * Formular-Persistenz im sessionStorage.
+ *
+ * WARUM: Der Rechner ist der wichtigste Lead-Kanal, und Schritt 3 kostet echte
+ * Tipparbeit. Ein versehentlicher Reload, ein Klick auf „Datenschutz" oder ein
+ * Zurück-Wisch auf dem Handy löschte bisher ALLES — der Lead war weg. session-
+ * Storage (nicht localStorage) ist bewusst gewählt: die Daten überleben genau
+ * den Tab/Besuch und verschwinden danach von selbst (Datenschutz-Sparsamkeit,
+ * dieselbe Linie wie das cookielose Tracking in lib/track.ts).
+ */
+const SPEICHER_KEY = "riegel:rechner";
+/** Älteres bleibt liegen: Nach einer halben Stunde ist die Sitzung inhaltlich
+ *  eine andere — dann lieber sauber leer starten als mit fremden Zahlen. */
+const SPEICHER_MAX_MS = 30 * 60 * 1000;
+
+interface GespeicherterStand {
+  ts: number;
+  step: number;
+  f: FormState;
+  /** s. ortNaeherung im Calculator — Badge „Ortszentrum als Näherung". */
+  ortNaeherung?: boolean;
+}
+
+/** Interner Demo-Einstieg (?demo=…): dort ist der Direktsprung gewollt, also
+ *  weder Persistenz noch abgefangene Zurück-Geste (s. DEMO_PRESETS). */
+function istDemo(): boolean {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo");
+}
+
+function standLoeschen(): void {
+  try {
+    sessionStorage.removeItem(SPEICHER_KEY);
+  } catch {
+    /* fail-soft: Private-Mode / gesperrter Storage darf den Rechner nie stören */
+  }
+}
+
+function standLaden(): GespeicherterStand | null {
+  try {
+    const roh = sessionStorage.getItem(SPEICHER_KEY);
+    if (!roh) return null;
+    const snap = JSON.parse(roh) as GespeicherterStand;
+    if (!snap?.f || typeof snap.ts !== "number" || Date.now() - snap.ts > SPEICHER_MAX_MS) {
+      standLoeschen();
+      return null;
+    }
+    // Defensiv gegen alte/kaputte Stände: fehlende Felder aus EMPTY auffüllen,
+    // damit ein späterer Feld-Zusatz keinen Uralt-Stand zum Absturz bringt.
+    return { ...snap, step: Math.min(2, Math.max(0, snap.step | 0)), f: { ...EMPTY, ...snap.f } };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Optionale Zahlenfelder, die bisher LAUTLOS verworfen wurden: parseDeZahl
+ * liefert bei „ca. 1998er Bau" oder „vier" undefined, startAnalysis rechnete
+ * dann einfach ohne das Feld weiter — der Eigentümer hat es angegeben und
+ * wundert sich später über den Wert. Geprüft wird nur, was zur aktuellen
+ * Objektart auch SICHTBAR ist: sonst blockiert ein Feld die Weiterfahrt, das
+ * gar nicht mehr auf dem Bildschirm steht (Fall: Hausgeld getippt, danach auf
+ * „Haus" gewechselt).
+ */
+const ZAHLFELDER: {
+  key: keyof FormState;
+  label: string;
+  beispiel: string;
+  sichtbar: (f: FormState) => boolean;
+}[] = [
+  { key: "baujahr", label: "Baujahr", beispiel: "1998", sichtbar: (f) => f.objektart !== "grundstueck" },
+  {
+    key: "zimmer",
+    label: "Zimmer",
+    beispiel: "3,5",
+    sichtbar: (f) => f.objektart === "wohnung" || f.objektart === "haus" || f.objektart === "mehrfamilienhaus",
+  },
+  {
+    key: "badezimmer",
+    label: "Badezimmer",
+    beispiel: "1,5",
+    sichtbar: (f) => f.objektart !== "gewerbe" && f.objektart !== "grundstueck",
+  },
+  { key: "hausgeld", label: "Hausgeld pro Monat", beispiel: "320", sichtbar: (f) => f.objektart === "wohnung" },
+  {
+    key: "jahresnettokaltmiete",
+    label: "Jahresnettokaltmiete",
+    beispiel: "48000",
+    sichtbar: (f) => f.objektart === "mehrfamilienhaus" && f.vermietungsstand !== "leer",
+  },
+  { key: "wohneinheiten", label: "Wohneinheiten", beispiel: "6", sichtbar: (f) => f.objektart === "mehrfamilienhaus" },
+  { key: "gewerbeeinheiten", label: "Gewerbeeinheiten", beispiel: "1", sichtbar: (f) => f.objektart === "mehrfamilienhaus" },
+  {
+    key: "leerstehendeWohnflaeche",
+    label: "Leerstehende Wohnfläche",
+    beispiel: "120",
+    sichtbar: (f) => f.objektart === "mehrfamilienhaus" && f.vermietungsstand === "teilweise",
+  },
+  { key: "hallenflaeche", label: "Hallen-/Lagerfläche", beispiel: "400", sichtbar: (f) => f.objektart === "gewerbe" },
+  { key: "mischWohnflaeche", label: "Wohnfläche im Objekt", beispiel: "160", sichtbar: (f) => f.objektart === "gewerbe" },
+];
+
+/**
+ * Reduzierte Such-Queries für den Ortszentrum-Fallback (s. ortFallback).
+ * Reihenfolge = Trefferchance: erst PLZ + Ort (der zuverlässigste Anker),
+ * dann das letzte / die letzten beiden Komma-Segmente, zuletzt die Eingabe
+ * ohne Hausnummer. Photon findet „Kirchgasse 3b" in einem 400-Seelen-Ortsteil
+ * oft nicht, „67435 Neustadt" praktisch immer.
+ */
+function ortKandidaten(roh: string): string[] {
+  const segmente = roh
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const out: string[] = [];
+  const plzOrt = roh.match(/\b\d{5}\b[^,]*/);
+  if (plzOrt) out.push(plzOrt[0].trim());
+  if (segmente.length >= 1) out.push(segmente[segmente.length - 1]);
+  if (segmente.length >= 2) out.push(segmente.slice(-2).join(", "));
+  // Hausnummer am Ende eines Segments abschneiden („Wormser Str. 13" → „Wormser Str.").
+  const ohneNr = segmente.map((t) => t.replace(/\s*\d+\s*[a-z]?$/i, "").trim()).filter(Boolean);
+  if (ohneNr.length) out.push(ohneNr.join(", "));
+  return [...new Set(out)].filter((s) => s.trim().length >= 3);
+}
+
 // "building"-Icon aus components/icon.tsx (Pfaddaten 1:1 übernommen, keine
 // neue Glyph erfunden) — dieser Auswahl-Button rendert sein <svg> selbst
 // (eigene Strichstärke 1.25 für die größere Kachel), daher kein <Icon />.
@@ -568,6 +692,9 @@ export function Calculator() {
   const statsAbort = useRef<AbortController | null>(null);
   // Für den Override-Merge, sobald amtlicher Wert / echte Abschlüsse eintreffen.
   const lastInputRef = useRef<ValuationInput | null>(null);
+  // Adresse kam über den Ortszentrum-Fallback (s. ortFallback): muss sichtbar
+  // bleiben, damit niemand glaubt, seine exakte Hausnummer sei erkannt worden.
+  const [ortNaeherung, setOrtNaeherung] = useState(false);
 
   useEffect(() => () => {
     borisAbort.current?.abort();
@@ -595,6 +722,9 @@ export function Calculator() {
   const demoStart = useRef(false);
 
   // Adresse aus der URL übernehmen (Hero-Schnelleinstieg → direkt mit Satellit).
+  // Danach — und NUR wenn die URL nichts vorgibt — den gespeicherten Stand aus
+  // dem sessionStorage wiederherstellen: ein frischer Hero-Einstieg mit neuer
+  // Adresse darf nie von einem alten Formularstand überschrieben werden.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     // Interner Demo-Einstieg (s. DEMO_PRESETS): komplettes Objekt + Autostart.
@@ -619,25 +749,60 @@ export function Calculator() {
         city: p.get("city") || ortAusLabel(label),
         postcode: p.get("plz") || "",
       };
-       
+
       setF((s) => ({ ...s, address: geo, addressQuery: label }));
       // Bewusst KEIN Sprung auf den Standort-Schritt: die Objektart ist mit
       // "wohnung" vorbelegt, ein Überspringen würde ein über den Hero
       // eingegebenes Haus stillschweigend als Wohnung bewerten. Der Nutzer
       // startet also weiter bei der Objektart, die Adresse ist bereits
       // hinterlegt und wird auf diesem Schritt sichtbar bestätigt.
-    } else {
-      // Hero-Fallback (Enter vor geladenen Vorschlägen): Query übernehmen,
-      // die Autocomplete-Suche läuft hier direkt weiter.
-      const query = p.get("query") || "";
-      if (query) setF((s) => ({ ...s, addressQuery: query }));
+      return;
     }
+    // Hero-Fallback (Enter vor geladenen Vorschlägen): Query übernehmen,
+    // die Autocomplete-Suche läuft hier direkt weiter.
+    const query = p.get("query") || "";
+    if (query) {
+      setF((s) => ({ ...s, addressQuery: query }));
+      return;
+    }
+    const snap = standLaden();
+    if (!snap) return;
+    // Bewusst NUR der Formularstand (Schritt + Eingaben + Adresse), NIE eine
+    // laufende Analyse oder ein fertiges Ergebnis: „analyzing" wäre nach dem
+    // Reload eine eingefrorene Animation, und ein wiederhergestelltes Ergebnis
+    // müsste ohne Bodenrichtwert-/Marktstats-Abgleich neu geraten werden. Wer
+    // sein Ergebnis zurückwill, klickt einmal auf „Bewertung berechnen" —
+    // sämtliche Angaben stehen dafür schon im Formular.
+    setF(snap.f);
+    setStep(snap.step);
+    setOrtNaeherung(Boolean(snap.ortNaeherung));
   }, []);
+
+  // Gespiegelt wird debounced (~400 ms), damit nicht jeder Tastendruck in den
+  // Storage schreibt. Demo-Aufrufe bleiben außen vor (s. istDemo).
+  useEffect(() => {
+    if (istDemo()) return;
+    const t = setTimeout(() => {
+      try {
+        const snap: GespeicherterStand = { ts: Date.now(), step, f, ortNaeherung };
+        sessionStorage.setItem(SPEICHER_KEY, JSON.stringify(snap));
+      } catch {
+        /* fail-soft: voller/gesperrter Storage darf den Rechner nie stören */
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [f, step, ortNaeherung]);
 
   // Adress-Autocomplete
   const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  /** Query, für die zuletzt eine Suche ABGESCHLOSSEN wurde — nur so lässt sich
+   *  „nichts gefunden" von „noch nicht gesucht" unterscheiden (beides ist
+   *  searching=false + leere Vorschläge). */
+  const [letzteSuche, setLetzteSuche] = useState("");
+  const [fallbackBusy, setFallbackBusy] = useState(false);
+  const [fallbackFehler, setFallbackFehler] = useState(false);
 
   // Fokus-Management: bei NUTZER-Schrittwechsel zur neuen Überschrift springen
   // (nicht beim Initial-Mount / URL-Prefill → kein Fokus-Klau beim Laden).
@@ -689,6 +854,7 @@ export function Calculator() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Debounce-Reset bei zu kurzer Query
       setSuggestions([]);
       setActiveIdx(-1);
+      setLetzteSuche("");
       return;
     }
     const ctrl = new AbortController();
@@ -698,6 +864,7 @@ export function Calculator() {
       setSuggestions(res);
       setActiveIdx(-1);
       setSearching(false);
+      setLetzteSuche(q.trim());
     }, 350);
     return () => {
       clearTimeout(t);
@@ -705,10 +872,98 @@ export function Calculator() {
     };
   }, [f.addressQuery, f.address]);
 
+  /**
+   * Zurück-Geste (Browser-Zurück / Wisch-Geste auf dem Handy) fängt der
+   * Rechner selbst ab, statt den Nutzer mitten im Trichter von der Seite zu
+   * werfen. Modell: eine „Tiefe" (Schritt 0–2, Analyse/Ergebnis = 3). Nur beim
+   * Vorwärtsgehen wird ein History-Eintrag gelegt — jedes Zurück verbraucht
+   * genau einen, deshalb kann die History nicht endlos wachsen. Auf Schritt 0
+   * gibt es keinen eigenen Eintrag mehr: „Zurück" verlässt die Seite dann ganz
+   * normal (popstate feuert dabei gar nicht erst).
+   */
+  const tiefeRef = useRef(0);
+  useEffect(() => {
+    if (istDemo()) return; // Demo springt bewusst direkt ans Ende
+    const tiefe = phase === "form" ? step : 3;
+    if (tiefe > tiefeRef.current) window.history.pushState({ rechnerTiefe: tiefe }, "");
+    tiefeRef.current = tiefe;
+  }, [phase, step]);
+
+  useEffect(() => {
+    if (istDemo()) return;
+    const onPop = () => {
+      // Aus Analyse/Ergebnis führt „Zurück" zurück ins Formular (Eckdaten) —
+      // KEIN neues Tracking-Event: der Trichter zählt Vorwärtsschritte.
+      if (phase !== "form") {
+        userNav.current = true;
+        setPhase("form");
+        setStep(2);
+        tiefeRef.current = 2;
+        return;
+      }
+      if (step > 0) {
+        userNav.current = true;
+        setError(null);
+        setStep(step - 1);
+        tiefeRef.current = step - 1;
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [phase, step]);
+
+  /**
+   * Sackgassen-Ausweg im Standort-Schritt: Photon (OSM) kennt längst nicht
+   * jede Hausnummer — kleine Neubaugebiete und Ortsteile fehlen regelmäßig.
+   * Bisher endete die Bewertung genau dort, weil ohne bestätigten Vorschlag
+   * kein „Weiter" möglich ist. Wir suchen deshalb gestaffelt nach dem ORT
+   * (s. ortKandidaten): dessen Zentrum reicht für Satellitenbild und die
+   * Bodenrichtwert-Näherung völlig aus. Fail-soft — wirft nie.
+   */
+  async function ortFallback() {
+    const roh = f.addressQuery.trim();
+    if (!roh || fallbackBusy) return;
+    setFallbackBusy(true);
+    setFallbackFehler(false);
+    let treffer: GeoResult | null = null;
+    try {
+      for (const q of ortKandidaten(roh)) {
+        const res = await searchAddress(q);
+        const mitOrt = res.find((r) => r.city);
+        if (mitOrt) {
+          treffer = mitOrt;
+          break;
+        }
+      }
+    } catch {
+      /* fail-soft: unten greift der Hinweis mit der Telefonnummer */
+    }
+    setFallbackBusy(false);
+    if (!treffer) {
+      setFallbackFehler(true);
+      return;
+    }
+    const gefunden = treffer;
+    setF((s) => ({ ...s, address: gefunden, addressQuery: gefunden.label }));
+    setOrtNaeherung(true);
+    setSuggestions([]);
+    setActiveIdx(-1);
+    setError(null);
+  }
+
   function validateStep(s: number): string | null {
     if (s === 0 && !f.objektart) return "Bitte eine Objektart wählen.";
     if (s === 1 && !f.address) return "Bitte eine Adresse aus den Vorschlägen wählen.";
     if (s === 2) {
+      // Zuerst die tippfehler-anfälligen Zahlenfelder: eine konkrete Meldung
+      // („Baujahr: bitte als Zahl angeben") ist hilfreicher als das stille
+      // Verwerfen des Werts in startAnalysis (s. ZAHLFELDER).
+      for (const z of ZAHLFELDER) {
+        if (!z.sichtbar(f)) continue;
+        const roh = String(f[z.key] ?? "");
+        if (roh.trim() && parseDeZahl(roh) == null)
+          return `${z.label}: bitte als Zahl angeben, z. B. ${z.beispiel}.`;
+      }
       if (f.objektart === "grundstueck" && !f.grundflaeche) return "Bitte die Grundstücksfläche angeben.";
       // Mehrfamilienhaus: Ertragswert-Ansatz braucht die Jahresnettokaltmiete
       // statt der Wohnfläche (die bleibt hier optional, nur für den €/m²-Wert).
@@ -741,10 +996,18 @@ export function Calculator() {
       // Komma-/Format-Eingaben sind ok (parseDeZahl), aber komplett
       // unlesbare Werte sauber abfangen statt still ohne Preis zu enden
       // (Kundenfall Manfred: "32,35" ergab vorher NaN und kein Ergebnis).
-      if (f.wohnflaeche && parseDeZahl(f.wohnflaeche) == null)
+      const flaechenName = f.objektart === "gewerbe" ? "Nutzflächen" : "Wohnflächen";
+      const wfl = parseDeZahl(f.wohnflaeche);
+      if (f.wohnflaeche && wfl == null)
         return "Bitte die Wohnfläche als Zahl angeben (z. B. 120 oder 92,5).";
-      if (f.grundflaeche && parseDeZahl(f.grundflaeche) == null)
+      const gfl = parseDeZahl(f.grundflaeche);
+      if (f.grundflaeche && gfl == null)
         return "Bitte die Grundstücksfläche als Zahl angeben (z. B. 450).";
+      // Mindestwerte spiegeln die Server-Grenzen aus /api/report (bounded(…,
+      // 10, …) bzw. bounded(…, 20, …)) — sonst läuft der Rechner durch und
+      // erst der Report-Versand scheitert, wenn der Lead schon getippt hat.
+      if (wfl != null && wfl < 10) return `Bitte prüfen: ${flaechenName} unter 10 m² können wir nicht bewerten.`;
+      if (gfl != null && gfl < 20) return "Bitte prüfen: Grundstücksflächen unter 20 m² können wir nicht bewerten.";
       // Gewerbe-/Mischobjekt: Hallen- und Wohnanteil sind Teilflächen der
       // Nutzfläche — zusammen dürfen sie diese nicht übersteigen, sonst wäre
       // die Bürofläche negativ (die Engine würde still klemmen und der
@@ -911,14 +1174,42 @@ export function Calculator() {
     setResult(null);
     setError(null);
     setSuggestions([]);
+    setOrtNaeherung(false);
+    setFallbackFehler(false);
+    setLetzteSuche("");
     setPhase("form");
+    // Gespeicherten Stand mitnehmen: „Neue Bewertung" heißt neu, nicht
+    // „gleiches Objekt nach dem nächsten Reload wieder da".
+    standLoeschen();
+    tiefeRef.current = 0;
+  }
+
+  /** „Angaben anpassen" aus dem Ergebnis: zurück zu den Eckdaten, OHNE Reset —
+   *  das Ergebnis bleibt erhalten und wird beim nächsten „Bewertung berechnen"
+   *  neu gerechnet. Bewusst kein eigenes Tracking-Event (s. popstate). */
+  function angabenAnpassen() {
+    userNav.current = true;
+    setError(null);
+    setPhase("form");
+    setStep(2);
+    tiefeRef.current = 2;
   }
 
   if (phase === "analyzing") return <Analyzing f={f} result={result} revealed={revealed} boris={boris} sectionRef={resultRef} />;
   // mid<=0-Guard: sollte durch validateStep nicht mehr vorkommen, fängt aber
   // ungültige/negative Eingaben ab, statt ein "0 €"-Ergebnis als gültig zu zeigen.
   if (phase === "result" && result && result.mid > 0)
-    return <Result f={f} result={result} onReset={reset} boris={boris} sectionRef={resultRef} />;
+    return (
+      <Result
+        f={f}
+        result={result}
+        onReset={reset}
+        onAnpassen={angabenAnpassen}
+        onGesendet={standLoeschen}
+        boris={boris}
+        sectionRef={resultRef}
+      />
+    );
 
   const currentNode = step + 1; // Knoten 0 „Rechner aufrufen" ist mit dem Öffnen erledigt
   const pct = PROGRESS_PCT[step] ?? PROGRESS_PCT[0];
@@ -1058,6 +1349,8 @@ export function Calculator() {
                 onChange={(e) => {
                   set("addressQuery", e.target.value);
                   if (f.address) set("address", null);
+                  setOrtNaeherung(false);
+                  setFallbackFehler(false);
                 }}
                 placeholder="Straße, Hausnummer, Ort eingeben…"
                 autoComplete="off"
@@ -1080,6 +1373,19 @@ export function Calculator() {
                     const s = suggestions[activeIdx];
                     set("address", s);
                     set("addressQuery", s.label);
+                    setOrtNaeherung(false);
+                    setSuggestions([]);
+                    setActiveIdx(-1);
+                  } else if (e.key === "Enter" && activeIdx < 0) {
+                    // Ohne Pfeiltasten-Auswahl gilt der erste Vorschlag als
+                    // gemeint: Enter ist die natürliche Geste nach dem Tippen —
+                    // vorher passierte schlicht nichts, und die Adresse blieb
+                    // unbestätigt (= „Weiter" verweigert den Dienst).
+                    e.preventDefault();
+                    const s = suggestions[0];
+                    set("address", s);
+                    set("addressQuery", s.label);
+                    setOrtNaeherung(false);
                     setSuggestions([]);
                     setActiveIdx(-1);
                   } else if (e.key === "Escape") {
@@ -1109,6 +1415,7 @@ export function Calculator() {
                         onClick={() => {
                           set("address", s);
                           set("addressQuery", s.label);
+                          setOrtNaeherung(false);
                           setSuggestions([]);
                           setActiveIdx(-1);
                         }}
@@ -1123,15 +1430,56 @@ export function Calculator() {
                 </ul>
               )}
             </div>
+            {/* Sackgassen-Ausweg: Suche gelaufen, nichts gefunden — statt den
+                Nutzer hier verhungern zu lassen, bieten wir das Ortszentrum an
+                (s. ortFallback). Erscheint nur, wenn wirklich für GENAU diese
+                Eingabe gesucht wurde und noch keine Adresse bestätigt ist. */}
+            {!f.address &&
+              !searching &&
+              suggestions.length === 0 &&
+              f.addressQuery.trim().length >= 3 &&
+              letzteSuche === f.addressQuery.trim() && (
+                <div className="rounded-xl border border-border bg-surface-2/50 px-4 py-3.5 text-sm">
+                  {fallbackFehler ? (
+                    <p className="text-muted">
+                      Bitte Schreibweise prüfen — oder rufen Sie uns an:{" "}
+                      <a href="tel:+4962321001010" className="text-accent hover:underline">
+                        06232 100 10 10
+                      </a>
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="min-w-0 text-muted">
+                        Adresse nicht dabei? Kein Problem — wir rechnen mit dem Ortszentrum.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={ortFallback}
+                        disabled={fallbackBusy}
+                        className="press shrink-0 rounded-full border border-accent/50 px-4 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-60"
+                      >
+                        {fallbackBusy ? "sucht Ort …" : "Mit Ort/PLZ fortfahren"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             {f.address && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-accent">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-accent">
                   <span className="t-success-check" data-state="in" aria-hidden>
                     <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                       <path d="m5 12 4 4 10-10" />
                     </svg>
                   </span>{" "}
                   Adresse bestätigt
+                  {/* Ehrlichkeits-Zusatz: sonst hält der Eigentümer das
+                      Ortszentrum für seine exakt erkannte Hausnummer. */}
+                  {ortNaeherung && (
+                    <span className="whitespace-nowrap rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                      Ortszentrum als Näherung
+                    </span>
+                  )}
                 </div>
                 <div className="relative h-52 overflow-hidden rounded-xl border border-border">
                   <MapConsentGate>
@@ -1629,12 +1977,18 @@ function Result({
   f,
   result,
   onReset,
+  onAnpassen,
+  onGesendet,
   boris,
   sectionRef,
 }: {
   f: FormState;
   result: ValuationResult;
   onReset: () => void;
+  /** Zurück zu den Eckdaten, ohne die Eingaben zu verlieren (s. Calculator). */
+  onAnpassen: () => void;
+  /** Report erfolgreich versendet → gespeicherten Formularstand verwerfen. */
+  onGesendet: () => void;
   boris: BorisState;
   /** Derselbe Ref wie in Analyzing — der Slot bleibt beim Phasenwechsel
    * gleich, daher wird hier NICHT erneut gescrollt (s. Calculator). */
@@ -1888,7 +2242,14 @@ function Result({
             annahmen[] der Engine bleiben erhalten und erscheinen weiter im
             PDF (Preis-Zusammensetzungs-Seite) — dort stören sie keinen CTA. */}
 
-        <ReportRequest f={f} result={result} onReset={onReset} borisLoading={boris.loading} />
+        <ReportRequest
+          f={f}
+          result={result}
+          onReset={onReset}
+          onAnpassen={onAnpassen}
+          onGesendet={onGesendet}
+          borisLoading={boris.loading}
+        />
 
         <p className="mt-6 text-center text-xs text-faint">
           Unverbindliche, datenbasierte Schätzung — kein Verkehrswertgutachten i. S. d. § 194 BauGB.

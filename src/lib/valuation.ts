@@ -325,17 +325,49 @@ export interface ValuationResult {
 // eigene Fallzahl im Pool (n < 20) — Modellwerte, bewusst unverändert.
 // Neu kalibrieren: preisanalyse-onoffice.mts (gibt den fertigen Vorschlag
 // samt Übernahme-Regeln aus; braucht OnOffice-Credentials).
-const REGIONS: Record<string, { wohnung: number; haus: number; gewerbe: number; boden: number }> = {
-  speyer: { wohnung: 3450, haus: 3100, gewerbe: 2450, boden: 590 },
-  ludwigshafen: { wohnung: 2750, haus: 2250, gewerbe: 1950, boden: 430 },
-  schifferstadt: { wohnung: 3200, haus: 2500, gewerbe: 1900, boden: 410 },
-  frankenthal: { wohnung: 3050, haus: 2900, gewerbe: 1850, boden: 415 },
-  neustadt: { wohnung: 3550, haus: 3400, gewerbe: 2050, boden: 490 },
-  mannheim: { wohnung: 3800, haus: 3600, gewerbe: 2550, boden: 570 },
-  heidelberg: { wohnung: 5000, haus: 4700, gewerbe: 3050, boden: 860 },
-  vorderpfalz: { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 390 },
+//
+// DATUM DIESES KALIBRIERSTANDS: s. KALIBRIER_STAND unten — beim nächsten Lauf
+// MIT nachziehen, scripts/kalibrier-alter-check.mts liest die Konstante.
+interface Region {
+  wohnung: number;
+  haus: number;
+  gewerbe: number;
+  boden: number;
+  /**
+   * KALIBRIER-EHRLICHKEIT (18.08.2026): true NUR für Orte, deren Basiswerte
+   * aus ECHTEN eigenen OnOffice-Abschlüssen stammen (n >= 20, s. Regeln oben).
+   * Alle anderen REGIONS-Einträge sind Markteinschätzungen — sie sahen für
+   * die Engine bisher genauso „bekannt" aus wie die drei kalibrierten Orte
+   * und bekamen denselben Konfidenz-Bonus (+8) sowie die Unterdrückung des
+   * Kernregion-Hinweises. Ein Modellwert für Heidelberg ist aber nicht
+   * dieselbe Datenlage wie 79 gezählte Speyerer Wohnungsverkäufe; das Flag
+   * trennt beides (s. confidence + annahmen in estimateValue).
+   */
+  kalibriert: boolean;
+}
+const REGIONS: Record<string, Region> = {
+  speyer: { wohnung: 3450, haus: 3100, gewerbe: 2450, boden: 590, kalibriert: true },
+  ludwigshafen: { wohnung: 2750, haus: 2250, gewerbe: 1950, boden: 430, kalibriert: true },
+  schifferstadt: { wohnung: 3200, haus: 2500, gewerbe: 1900, boden: 410, kalibriert: true },
+  frankenthal: { wohnung: 3050, haus: 2900, gewerbe: 1850, boden: 415, kalibriert: false },
+  neustadt: { wohnung: 3550, haus: 3400, gewerbe: 2050, boden: 490, kalibriert: false },
+  mannheim: { wohnung: 3800, haus: 3600, gewerbe: 2550, boden: 570, kalibriert: false },
+  heidelberg: { wohnung: 5000, haus: 4700, gewerbe: 3050, boden: 860, kalibriert: false },
+  vorderpfalz: { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 390, kalibriert: false },
 };
-const DEFAULT_REGION = { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 400 };
+const DEFAULT_REGION: Region = { wohnung: 3350, haus: 3200, gewerbe: 1900, boden: 400, kalibriert: false };
+
+/**
+ * Datum des letzten Kalibrierlaufs gegen echte OnOffice-Abschlüsse (s.
+ * REGIONS-Kommentar oben). BEIM NÄCHSTEN KALIBRIERLAUF AKTUALISIEREN!
+ *
+ * Maschinenlesbar als Konstante statt als Kommentar-Datum, weil
+ * scripts/kalibrier-alter-check.mts sie importiert und Alarm schlägt, sobald
+ * die Basiswerte veralten (ab 6 Monaten Warnung, ab 9 Monaten harter Fehler).
+ * Ein stiller, ein Jahr alter Basiswert ist der teuerste Fehler dieser Engine:
+ * er sieht im Report genauso selbstbewusst aus wie ein frischer.
+ */
+export const KALIBRIER_STAND = "2026-08-11";
 
 /**
  * BRW-ABLEITUNG (Fall Bad Vilbel, 12.08.2026) — Basiswerte für Orte, die
@@ -744,9 +776,33 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // Stadt-Median die bessere Information ist als ein aus dem Bodenrichtwert
   // abgeleiteter Modellwert; kennt die Tabelle den Ort nicht, übernimmt die
   // Ableitung unten.
-  const stadtNiveau = fallbackOrt ? stadtNiveauFuerOrt(ortName) : null;
+  //
+  // NICHT MEHR AN fallbackOrt GEKOPPELT (18.08.2026, Fall Karlsruhe): Steht
+  // ein Ort in BEIDEN Tabellen, gewann bisher die schwächere — Karlsruhe hat
+  // sowohl einen groben Multiplikator (stadt-faktor.ts 1,19 auf den
+  // Vorderpfalz-Default) als auch belegte ABSOLUTE Werte aus den amtlichen
+  // Transaktionen des Gutachterausschusses (stadt-niveau.ts: 4.000 Wohnung /
+  // 3.450 Haus). Weil der Faktor-Treffer fallbackOrt auf false setzte, wurde
+  // das Stadt-Niveau nie geladen und ein Karlsruher Haus rechnete mit
+  // 3.200 × 1,19 = 3.808 statt mit den belegten 3.450 — verifizierte
+  // Überbewertung von +7,1 %. Ein absoluter, quellenbelegter Stadtwert ist
+  // IMMER die bessere Information als ein Multiplikator auf eine fremde
+  // Regionsbasis; nur eigene Abschlüsse (REGIONS) stehen noch darüber.
+  const stadtNiveau = !bekannteRegion ? stadtNiveauFuerOrt(ortName) : null;
   /** true, sobald das Stadt-Niveau tatsächlich in den Wert eingeht. */
   let stadtNiveauGenutzt = false;
+  /**
+   * Dorf-/Kleinstadt-Faktor (stadt-faktor.ts), EINMAL für alle Zweige.
+   *
+   * KEINE DOPPELZÄHLUNG: Der Faktor ist ein Multiplikator auf eine FREMDE
+   * Basis (Vorderpfalz-Default) und ersetzt damit dieselbe Information, die
+   * ein Stadt-Niveau-Treffer bereits absolut liefert — bei Wohnung/Haus über
+   * die Basis selbst, bei Gewerbe/Grundstück über den modellierten
+   * Stadt-Boden (s. `boden` unten, der in Staffel und Mikrolage einfließt).
+   * Deshalb: Stadt-Niveau ODER Orts-Faktor, nie beides (Fall Karlsruhe —
+   * 3.200 × 1,19 × … statt der belegten 3.450er-Basis).
+   */
+  const ortsFaktor = bekannteRegion || stadtNiveau ? 1 : ortsFaktorTabelle;
   // Ohne amtlichen BRW liefert der modellierte Stadt-Boden die Grundlage für
   // Grundstücks-Staffel/Mikrolage — ein echter BORIS-Wert geht immer vor.
   if (stadtNiveau && opts?.bodenrichtwert == null) boden = stadtNiveau.boden;
@@ -910,13 +966,11 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
         : brwAbleitung
           ? 1
           : Math.min(bekannteRegion ? 1.06 : 1.15, Math.max(0.72, Math.sqrt(boden / r.boden)));
-      // Gleicher Orts-Faktor wie im Haus-Zweig (Dorf-Dämpfung, s. stadt-faktor.ts).
-      const ortsFaktorMfh = bekannteRegion ? 1 : ortsFaktorTabelle;
       const anrechnung = input.grundflaeche
         ? grundstuecksStaffel(input.grundflaeche, boden, "haus")
         : undefined;
       const vergleichswert =
-        wf * hausBasisMfh * MFH_KLEIN_GEBAEUDE_FAKTOR * ortsFaktorMfh * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
+        wf * hausBasisMfh * MFH_KLEIN_GEBAEUDE_FAKTOR * ortsFaktor * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
         (anrechnung?.wert ?? 0);
       if (vergleichswert > mid) {
         annahmen.push(
@@ -970,7 +1024,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // (z. B. Altbau im Weindorf: Modell +100 % über dem realen Preis).
     // Kernstädte tragen ihre Lage bereits in der kalibrierten Basis (Faktor 1);
     // unbekannte Orte bleiben neutral, dort korrigiert der amtliche BRW.
-    const ortsFaktor = bekannteRegion ? 1 : ortsFaktorTabelle;
+    // (Der Faktor selbst ist oben einmal bestimmt — inkl. Stadt-Niveau-Vorrang.)
     // Mikrolagen-Faktor: der amtliche Bodenrichtwert (falls via opts geliefert)
     // ist der beste verfügbare Indikator dafür, ob die konkrete Lage über oder
     // unter dem regionalen Modellniveau liegt — gerade für Dörfer, die auf
@@ -1092,6 +1146,18 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     );
   }
 
+  // BEKANNT IST NICHT KALIBRIERT (18.08.2026): Frankenthal, Neustadt,
+  // Mannheim, Heidelberg und der Vorderpfalz-Sammel-Fallback haben zwar einen
+  // eigenen REGIONS-Eintrag, dahinter stehen aber Markteinschätzungen und
+  // keine gezählten eigenen Abschlüsse (n < 20 im Pool). Das gehört genauso
+  // offen in den Report wie die Fallback-Hinweise darüber — sonst liest sich
+  // ein Heidelberger Modellwert wie ein an Verkäufen geerdeter Speyerer Wert.
+  if (bekannteRegion && !r.kalibriert) {
+    annahmen.push(
+      `Basiswerte für ${ortName} sind Markteinschätzungen, noch nicht an eigenen Verkäufen kalibriert — die Vor-Ort-Bewertung präzisiert das Ergebnis.`,
+    );
+  }
+
   const round = (n: number) => Math.round(n / 1000) * 1000;
   const pct = (x: number) => Math.round((x - 1) * 100);
 
@@ -1207,7 +1273,15 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // rentYieldPct: regionales Renditemodell (s. regionalRentYieldPct).
   const comparables = s?.n ?? 0;
   let confidence = 62;
-  if (bekannteRegion) confidence += 8;
+  // KALIBRIERT ODER NUR BEKANNT (18.08.2026): Der +8-Bonus stand bisher für
+  // jeden REGIONS-Eintrag — auch für Heidelberg oder Mannheim, deren
+  // Basiswerte reine Markteinschätzungen sind (n < 20 im eigenen Pool, s.
+  // REGIONS-Kommentar). Damit war die Konfidenz für einen Modellwert exakt so
+  // hoch wie für einen an 79 echten Verkäufen kalibrierten Speyerer Wert. Nur
+  // +3 für die unkalibrierten: eine eigene, regional recherchierte Basis ist
+  // messbar besser als der Default (Ortsniveau, Bodenwert, Mietniveau stimmen
+  // grob), aber sie ist eben nicht an eigenen Abschlüssen geerdet.
+  if (bekannteRegion) confidence += r.kalibriert ? 8 : 3;
   if (opts?.bodenrichtwert != null) confidence += 8;
   confidence += Math.min(12, comparables);
   if (input.energieklasse) confidence += 3;

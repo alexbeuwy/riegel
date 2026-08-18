@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let b: { password?: string; accessToken?: string; zeitraum?: number | string };
+  let b: { password?: string; accessToken?: string; zeitraum?: number | string; action?: string };
   try {
     b = await req.json();
   } catch {
@@ -63,11 +63,6 @@ export async function POST(req: Request) {
   const auth = await verifyInternAccess({ password: b.password, accessToken: b.accessToken });
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-  // Nur 7 oder 30 Tage — alles andere fällt auf 7 zurück (kein freier
-  // Zeitraum, damit die Abfrage berechenbar klein bleibt).
-  const tage = Number(b.zeitraum) === 30 ? 30 : 7;
-  const seit = new Date(Date.now() - tage * 86_400_000).toISOString();
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
@@ -76,6 +71,35 @@ export async function POST(req: Request) {
   }
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+
+  // Daten-Reset (Betreiber-Wunsch 18.08.2026: nach Testklicks/Demo-Läufen
+  // "nur reale Zahlen" sehen). Bewusst KEIN Backup vor dem Löschen — die
+  // Tabelle enthält ausschließlich anonyme Zähldaten (keine Personenbezüge,
+  // s. Kommentar am ConvData-Typ im Dashboard), und der ganze Sinn des Resets
+  // ist ein sauberer Messstart. Zuerst zählen (für die Erfolgsmeldung im
+  // Dashboard), dann löschen — Supabase verlangt bei delete() einen Filter,
+  // ".not('id','is',null)" trifft daher jede Zeile.
+  if (b.action === "reset") {
+    const { count, error: countError } = await admin
+      .from("rechner_events")
+      .select("id", { count: "exact", head: true });
+    if (countError) {
+      // Tabelle fehlt vermutlich noch (Migration nicht eingespielt) — das ist
+      // hier kein Fehlerfall, es gibt schlicht nichts zu löschen.
+      return NextResponse.json({ ok: true, geloescht: 0 });
+    }
+    const { error: delError } = await admin.from("rechner_events").delete().not("id", "is", null);
+    if (delError) {
+      console.error("[intern-conversion] Reset fehlgeschlagen:", delError.message);
+      return NextResponse.json({ ok: false, error: "Zurücksetzen fehlgeschlagen." }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, geloescht: count ?? 0 });
+  }
+
+  // Nur 7 oder 30 Tage — alles andere fällt auf 7 zurück (kein freier
+  // Zeitraum, damit die Abfrage berechenbar klein bleibt).
+  const tage = Number(b.zeitraum) === 30 ? 30 : 7;
+  const seit = new Date(Date.now() - tage * 86_400_000).toISOString();
 
   const [funnelRes, klickRes] = await Promise.all([
     // Alles außer Klicks in einem Rutsch — inklusive created_at für die

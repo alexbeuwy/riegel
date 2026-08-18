@@ -654,6 +654,131 @@ console.log(
 );
 console.log(`Details F15c: mid ${nf.format(f15k.mid)} €, Deckel p75 ${nf.format(f15k.plausibilisierung?.p75Qm ?? 0)} €/m² (n=${f15k.plausibilisierung?.n}), Modell davor ${nf.format(f15k.plausibilisierung?.modellMid ?? 0)} €`);
 
+/* F21 — Der Karlsruhe-Fall (18.08.2026): Ein Ort, der in BEIDEN Orts-Tabellen
+ * steht, muss über die STÄRKERE laufen. Karlsruhe hat einen groben
+ * Multiplikator (stadt-faktor.ts 1,19) UND belegte absolute Werte aus den
+ * amtlichen Transaktionen des Gutachterausschusses (stadt-niveau.ts:
+ * 4.000 Wohnung / 3.450 Haus / 650 Boden). Bis zum Fix gewann der Faktor,
+ * weil der Stadt-Niveau-Hook an `fallbackOrt` hing (das ein Faktor-Treffer
+ * auf false setzt): 3.200 Vorderpfalz-Default × 1,19 = 3.808 €/m² Basis
+ * statt der belegten 3.450 — verifizierte Überbewertung von +7,1 %,
+ * Konfidenz 64 auf einen Wert, hinter dem eine amtliche Quelle steht. */
+const f21 = run({
+  objektart: "haus",
+  ort: "Karlsruhe",
+  wohnflaeche: 140,
+  grundflaeche: 400,
+  baujahr: 1995,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+// Basis 3.450 (GAA-Transaktionen) × 0,97 Baujahr = 3.347 €/m² Gebäude.
+// Vorher: 3.694 €/m² (3.200 × 1,19 × 0,97).
+check("F21 EFH Karlsruhe 140/400 Bj. 1995 (Stadt-Niveau schlägt Stadt-Faktor)", f21.pricePerSqm ?? 0, 3_250, 3_450, "€/m²");
+// mid steigt trotz gesunkener Gebäudebasis leicht (613 → 625 Tsd.): der
+// Bodenanteil rechnet jetzt mit dem modellierten Karlsruher Stadt-Boden
+// (650 €/m²) statt mit dem Vorderpfalz-Default (400) — 400 m² × 0,6 × 650.
+check("F21 mid", f21.mid, 600_000, 650_000);
+check("F21 Konfidenz (Stadt-Niveau: 70–82, vorher 64)", f21.confidence, 70, 82, "%");
+if (f21.bodenrichtwert !== 650) {
+  failures++;
+  console.log(`❌ F21: Stadt-Boden muss den Regions-Default ersetzen (${f21.bodenrichtwert} statt 650 €/m²)`);
+}
+// KEINE DOPPELZÄHLUNG: Der Stadt-Faktor 1,19 darf NICHT zusätzlich auf die
+// Stadt-Niveau-Basis wirken — pricePerSqm muss exakt Basis × Baujahr sein.
+if (f21.pricePerSqm !== Math.round(3450 * 0.97)) {
+  failures++;
+  console.log(
+    `❌ F21: Doppelzählung Stadt-Faktor × Stadt-Niveau — ${f21.pricePerSqm} statt ${Math.round(3450 * 0.97)} €/m²`,
+  );
+}
+// Der Kernregion-Hinweis darf NICHT erscheinen (die Basis ist quellenbelegt),
+// stattdessen der Stadt-Niveau-Hinweis.
+if (f21.annahmen.some((a) => a.includes("ohne lokale Kalibrierung"))) {
+  failures++;
+  console.log(`❌ F21: „Modellwert ohne lokale Kalibrierung" darf bei Stadt-Niveau-Treffer nicht erscheinen`);
+}
+if (!f21.annahmen.some((a) => a.includes("veröffentlichtes Marktniveau"))) {
+  failures++;
+  console.log(`❌ F21: Stadt-Niveau-Annahme fehlt (${JSON.stringify(f21.annahmen)})`);
+}
+
+/* F21b — GEGENPROBE zum Karlsruhe-Fix: Ein reiner STADT_FAKTOR-Ort OHNE
+ * Stadt-Niveau-Eintrag (Landau, Faktor 1,05) muss exakt wie vorher rechnen.
+ * Werte VOR der Änderung gemessen und hier als harter Anker eingefroren —
+ * die Entkopplung des Stadt-Niveau-Hooks darf die Dorf-/Kleinstadt-Tabelle
+ * nicht anfassen. */
+const f21b = run({
+  objektart: "haus",
+  ort: "Landau",
+  wohnflaeche: 140,
+  grundflaeche: 400,
+  baujahr: 1995,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+// 3.200 Default × 1,05 Ortsfaktor × 0,97 Baujahr = 3.259 €/m².
+check("F21b EFH Landau 140/400 (reiner Stadt-Faktor, Anker exakt)", f21b.mid, 552_000, 552_000);
+if (f21b.pricePerSqm !== 3259 || f21b.confidence !== 64 || f21b.annahmen.length !== 0) {
+  failures++;
+  console.log(
+    `❌ F21b: Stadt-Faktor-Ort ohne Stadt-Niveau bewegt sich (${f21b.pricePerSqm} €/m², Konfidenz ${f21b.confidence}, ${f21b.annahmen.length} Annahmen — erwartet 3.259 / 64 / 0)`,
+  );
+}
+
+/* F22 — KALIBRIER-EHRLICHKEIT (18.08.2026): Mannheim hat einen eigenen
+ * REGIONS-Eintrag, aber dahinter steht eine Markteinschätzung (n < 20 im
+ * eigenen Verkauft-Pool), kein gezählter Abschluss. Bis zum Fix bekam der
+ * Fall denselben Konfidenz-Bonus (+8) wie das an 79 echten Verkäufen
+ * kalibrierte Speyer und keinerlei Hinweis darauf. Jetzt: +3 statt +8 und
+ * ein ehrlicher Annahmen-Satz. */
+const f22mannheim = run({
+  objektart: "wohnung",
+  ort: "Mannheim",
+  wohnflaeche: 90,
+  baujahr: 2005,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+const f22speyer = run({
+  objektart: "wohnung",
+  ort: "Speyer",
+  wohnflaeche: 90,
+  baujahr: 2005,
+  zustand: "gepflegt",
+  qualitaet: "normal",
+  ausstattung: [],
+});
+if (!(f22mannheim.confidence < f22speyer.confidence)) {
+  failures++;
+  console.log(
+    `❌ F22: unkalibrierte Region muss unter der kalibrierten liegen (Mannheim ${f22mannheim.confidence} % vs. Speyer ${f22speyer.confidence} %)`,
+  );
+} else {
+  console.log(
+    `✅ F22 Konfidenz Mannheim (Modellwert) ${f22mannheim.confidence} % < Speyer (kalibriert) ${f22speyer.confidence} %`,
+  );
+}
+if (!f22mannheim.annahmen.some((a) => a.includes("noch nicht an eigenen Verkäufen kalibriert"))) {
+  failures++;
+  console.log(`❌ F22: Kalibrier-Hinweis fehlt bei unkalibrierter Region (${JSON.stringify(f22mannheim.annahmen)})`);
+}
+// Gegenprobe: der kalibrierte Ort darf den Hinweis NICHT bekommen.
+if (f22speyer.annahmen.length !== 0) {
+  failures++;
+  console.log(`❌ F22: kalibrierte Region darf keinen Kalibrier-Hinweis tragen (${JSON.stringify(f22speyer.annahmen)})`);
+}
+// Der Wert selbst bleibt unberührt — geändert hat sich nur die Ehrlichkeit
+// über die Datenlage, nicht die Rechnung.
+check("F22 Wohnung Mannheim 90 m² (Wert unverändert, Anker exakt)", f22mannheim.mid, 376_000, 376_000);
+
+console.log(
+  `Details F21: mid ${nf.format(f21.mid)} € (${nf.format(f21.pricePerSqm ?? 0)} €/m² Gebäude, Boden ${f21.bodenrichtwert} €/m²), Konfidenz ${f21.confidence} % — vorher 613.000 € / 3.694 €/m² / 64 %`,
+);
+
 if (failures > 0) {
   console.error(`\n${failures} Prüfung(en) fehlgeschlagen.`);
   process.exit(1);
