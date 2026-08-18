@@ -1054,3 +1054,19 @@ Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion`
   (Browser-Buttons zentrieren Text; lange Adressen wirkten beim Umbruch zentriert).
 - **Verifiziert:** Tracking läuft Ende-zu-Ende live (erste `rechner_events` 12:22 Uhr,
   Migration ist im RIEGEL-Supabase eingespielt).
+
+## Update — Visual 04 im Report-CTA + Beam-/Headline-Feinschliff (18.08.2026, Auftrag Alex) ✅
+
+- **Visual 04 eingebaut** (`PDF Report Visuals/pdf-report-visual-04-clean.webp`,
+  BunnyCDN): 3D-Seitenfächer des Reports auf Markenblau, zentriert zwischen Intro und
+  Nutzen-Liste im Report-CTA-Block; ruhige Float-Idle-Animation (reduced-motion-gated),
+  Hover-Glow + Zoom, Klick öffnet das Formular (zählt als CTA-Quelle im Funnel).
+- **CTA-Glow entsperrt:** `.t-collapse-inner` clippt per `overflow:hidden` — der Beam
+  wirkte „in einer Box eingesperrt", beim Rattle war die Maske sichtbar. Fix: Innen-
+  Padding als Glow-Raum (px-8 pb-8 pt-4) im Button-Container.
+- **Headline „Persönlicher Marktwert-Report" jetzt weiß** (statt Akzentblau).
+- **Oranges PDF-Badge:** Text bold + eigene orange Beam-Kontur (`.badge-beam-orange`,
+  bewusst dezenter als der CTA-Beam — Hierarchie bleibt).
+- **Bunny-Zugang für Agent-Sessions:** Read-only-Storage-Key mit Alex' Freigabe in
+  `docs/bunny-cdn.md` dokumentiert (kann nur listen/lesen; Schreib-Key bleibt nur in
+  .env.local/Vercel; bei Klonen NICHT mitkopieren).

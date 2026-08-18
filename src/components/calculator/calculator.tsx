@@ -1596,12 +1596,12 @@ function Result({
                   track("report_form_geoeffnet", { quelle: "badge" });
                   window.dispatchEvent(new CustomEvent("riegel:report-oeffnen"));
                 }}
-                className="press inline-flex max-w-full items-center gap-2 rounded-full border border-amber-400/45 bg-amber-400/10 py-1.5 pl-1.5 pr-3 text-left transition-colors hover:border-amber-300/80 hover:bg-amber-400/15"
+                className="press badge-beam-orange inline-flex max-w-full items-center gap-2 rounded-full border border-amber-400/45 bg-amber-400/10 py-1.5 pl-1.5 pr-3 text-left transition-colors hover:border-amber-300/80 hover:bg-amber-400/15"
               >
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
                   <Icon name="printer" size={14} />
                 </span>
-                <span className="min-w-0 text-[0.62rem] font-medium uppercase tracking-[0.06em] text-amber-300 sm:text-[0.7rem]">
+                <span className="min-w-0 text-[0.62rem] font-bold uppercase tracking-[0.06em] text-amber-300 sm:text-[0.7rem]">
                   Präzisere Infos &amp; Daten im kostenlosen Report-PDF (Druckversion)
                 </span>
                 <Icon name="chevronDown" size={14} className="pdf-pfeil shrink-0 text-amber-300" />

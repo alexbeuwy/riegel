@@ -254,12 +254,13 @@ export function ReportRequest({
           Ihr nächster Schritt
         </div>
         {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
-            AKIRA-Headline in hellem Akzentblau, animierter Auftritt beim
-            Viewport-Eintritt (.report-headline in globals.css). */}
+            AKIRA-Headline, animierter Auftritt beim Viewport-Eintritt
+            (.report-headline in globals.css). Weiß statt Akzentblau
+            (Korrektur Alex 18.08.2026). */}
         <h3
           ref={headRef}
           data-in={headIn ? "1" : undefined}
-          className="report-headline akira mx-auto mt-3 max-w-xl text-2xl leading-[0.95] text-accent-strong sm:text-4xl"
+          className="report-headline akira mx-auto mt-3 max-w-xl text-2xl leading-[0.95] text-white sm:text-4xl"
         >
           Persönlicher Marktwert&#8209;Report
         </h3>
@@ -269,6 +270,29 @@ export function ReportRequest({
           unverbindlich, direkt per E-Mail.
         </p>
       </div>
+
+      {/* Visual 04 (Alex' Favorit, BunnyCDN „PDF Report Visuals"): der Report
+          als greifbares Produkt — 3D-Seitenfächer auf Markenblau. Klick wirkt
+          wie der CTA (gleiche Quelle im Funnel, es IST der CTA-Block). */}
+      <button
+        type="button"
+        aria-label="Report als PDF anfordern"
+        onClick={() => {
+          track("report_form_geoeffnet", { quelle: "cta" });
+          setOpen(true);
+        }}
+        className="press report-visual-float group mx-auto mt-6 block w-full max-w-[300px] overflow-hidden rounded-2xl border border-accent/40 transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(1,92,255,0.35)] sm:max-w-[340px]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- feste CDN-Grafik, next/image bringt hier nur Remote-Overhead */}
+        <img
+          src="https://riegel.b-cdn.net/PDF%20Report%20Visuals/pdf-report-visual-04-clean.webp"
+          alt="Vorschau: Ihr persönlicher Marktwert-Report als PDF — mehrseitige Analyse mit Preis-Faktoren, Vergleichsobjekten und Lage-Einschätzung"
+          width={928}
+          height={1152}
+          loading="lazy"
+          className="block h-auto w-full transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+      </button>
 
       {/* Psychologischer Nutzen-Block: WARUM sich das Ausfüllen lohnt — bleibt
           immer sichtbar, auch wenn das Formular offen ist (kein Wegklappen von
@@ -304,9 +328,13 @@ export function ReportRequest({
 
       {/* Beide Zustände bleiben gemountet und wechseln über .t-collapse
           (grid-template-rows 0fr → 1fr) — kein abruptes Auf-/Zuklappen. */}
-      <div className="mt-6">
+      <div className="mt-3">
         <div className={`t-collapse ${!open ? "is-open" : ""}`}>
-          <div className="t-collapse-inner flex flex-wrap items-center justify-center gap-3">
+          {/* Großzügiges Innen-Padding als GLOW-RAUM: .t-collapse-inner clippt
+              per overflow:hidden — ohne Puffer wird die cta-beam-Aura an der
+              Box-Kante abgeschnitten und das Rattle zeigt die Maske
+              (Feedback Alex 18.08.2026: „wie in einer Box eingesperrt"). */}
+          <div className="t-collapse-inner flex flex-wrap items-center justify-center gap-3 px-8 pb-8 pt-4">
             <button
               type="button"
               onClick={() => {

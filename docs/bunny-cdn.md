@@ -17,6 +17,23 @@ Bilder/Reels für die Website, das Pitchdeck und den Report liegen auf **BunnyCD
 > Für die Website werden ausschließlich die **öffentlichen** `riegel.b-cdn.net`-URLs verwendet
 > (kein Key nötig). In `next.config.ts` ist `riegel.b-cdn.net` als `images.remotePatterns` erlaubt.
 
+### Read-only-Key für Agent-Sessions (Freigabe Alex, 18.08.2026)
+
+Damit Claude-Sessions den Storage **listen/lesen** können, ohne jedes Mal nach Zugängen zu
+fragen, steht hier bewusst das **Read-only-Passwort** der Storage-Zone (Alex' explizite
+Entscheidung — es kann nichts schreiben/löschen, und alle Dateien sind über den Pull-Zone-Host
+ohnehin öffentlich abrufbar; nur das Listing ist sonst nicht möglich). Der Schreib-Key bleibt
+weiterhin **ausschließlich** in `.env.local`/Vercel.
+
+```
+# Nur LESEN/LISTEN (kein Upload/Delete möglich):
+curl -H "AccessKey: afe5399e-76e7-4518-bc59d83b6fd7-105a-4df0" \
+  "https://storage.bunnycdn.com/riegel-immobilien/<ordner>/"
+```
+
+Bei einem White-Label-Klon: eigener Storage + eigene Keys, dieser Abschnitt wird NICHT
+mitkopiert (s. `white-label-migration.md` §5 rote Liste).
+
 ## Asset hochladen
 
 ```bash
@@ -28,6 +45,9 @@ Danach die Datei einfach in `src/lib/photos.ts` referenzieren (oder direkt per U
 
 ## Aktuelle Assets (Auswahl)
 
+- `PDF Report Visuals/pdf-report-visual-04-clean.webp` — 3D-Seitenfächer des Reports auf
+  Markenblau (Alex' Favorit) — eingebaut im Report-CTA (`report-request.tsx`); Varianten
+  01 (stapel), 02 (Serif), 03 (clean) + `Marktwertbericht-2026-3x4.webp` liegen daneben.
 - `RIEGEL_Rechner-Hero.webp` — Hero /rechner (Makler am Rechner, Wert-Anzeige)
 - `RIEGEL_Broschuere_Portrait_01.webp` — Porträt (Verkaufen-Hero)
 - `RIEGEL_Home-Analyse-1..3.webp` — Beratung/Bewertung vor Ort
