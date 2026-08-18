@@ -13,6 +13,9 @@ import {
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyInternAccess } from "@/lib/intern-access";
 import { site } from "@/lib/site";
+import { getEstateData } from "@/lib/estates";
+import { aehnlicheObjekte, buildMatchingMail } from "@/lib/matching";
+import { holeBaufiZins } from "@/lib/baufi-zins";
 
 /**
  * Dev-/Redaktions-Werkzeug: rendert die transaktionalen RIEGEL-Mails im
@@ -187,13 +190,36 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
   }
 }
 
-const TYPES = ["contact", "confirm", "booking", "inquiry", "report"] as const;
+const TYPES = ["contact", "confirm", "booking", "inquiry", "report", "matching"] as const;
+
+/**
+ * Matching-Mail-Vorschau mit ECHTEN Objektdaten (18.08.2026, Wunsch Alex:
+ * „Preview mit echten Objektdaten und Fotos zum Weiterleiten an Sissy und
+ * Manne"): jüngstes aktives Kauf-Objekt mit genug Fotos als Treffer, dazu
+ * ähnliche Objekte und der echte Bundesbank-Zins — exakt die Mail, die der
+ * Matching-Cron verschickt. Async (OnOffice + Zins-Abruf), deshalb separat
+ * von buildVariant().
+ */
+async function buildMatchingVariant(): Promise<{ subject: string; html: string } | null> {
+  const { estates, source } = await getEstateData();
+  if (source !== "onoffice") return null;
+  const aktive = estates.filter((e) => e.status === "aktiv");
+  const kandidat =
+    aktive
+      .filter((e) => e.marketingType === "kauf" && e.images.length >= 4)
+      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))[0] ??
+    aktive.find((e) => e.images.length > 0);
+  if (!kandidat) return null;
+  const zins = await holeBaufiZins();
+  return buildMatchingMail([kandidat], zins, aehnlicheObjekte(aktive, [kandidat]));
+}
 const TYPE_LABEL: Record<(typeof TYPES)[number], string> = {
   contact: "Kontaktformular · Benachrichtigung an RIEGEL",
   confirm: "Kontaktformular · Bestätigung an den Absender",
   booking: "Terminbuchung · Benachrichtigung an RIEGEL",
   inquiry: "Objektanfrage · Kunden-Mail mit CTA-Button (neu)",
   report: "Marktwert-Report · Kunden-Mail (Wert-Hero, Kennzahlen, CTA)",
+  matching: "Suchauftrag-Matching · Kunden-Mail mit ECHTEN Objektdaten (Hero, Thumbnails, Monatsrate, ähnliche Objekte)",
 };
 
 /** Übersichtsseite, wenn kein/unbekannter type angegeben ist. */
@@ -219,7 +245,7 @@ export async function GET(req: Request) {
   const send = url.searchParams.get("send") === "1";
   const to = url.searchParams.get("to") ?? "";
 
-  const variant = buildVariant(type);
+  const variant = type === "matching" ? await buildMatchingVariant() : buildVariant(type);
 
   // Test-Versand-Pfad: ruft sendMail() wirklich auf — ruft mit gesetztem
   // RESEND_API_KEY echte Mails über RIEGELs verifizierte Domain aus.
