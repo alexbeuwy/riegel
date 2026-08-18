@@ -35,7 +35,9 @@ klebt es hart im Code (Refactor-Schuld)?*
   `src/lib/report-assets/*`.
 - **OnOffice:** `src/lib/onoffice.ts` (+ `docs/onoffice-integration.md`).
 - **Bewertungs-/Marktengine:** `src/lib/valuation.ts` + `src/lib/marktdaten.ts`
-  (⚠️ Region-Basiswerte in **beiden** synchron halten) + `src/lib/geo-taxonomy.ts`;
+  (⚠️ Region-Basiswerte in **beiden** synchron halten) + `src/lib/geo-taxonomy.ts` +
+  `src/lib/stadt-faktor.ts` (27 Orts-Faktoren) + `src/lib/stadt-niveau.ts` (20 Städte,
+  amtlich/recherchiert — beide region-spezifisch, s. Playbook §7);
   Laufzeit-Anker an echten Abschlüssen: `src/lib/verkauft-stats.ts` + `/api/marktstats`.
   Regressionsschutz: `scripts/valuation-battery.mts` nach jeder Engine-Änderung laufen lassen.
 - **Recht:** `src/app/{impressum,datenschutz,widerruf}/page.tsx`.

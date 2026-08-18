@@ -779,6 +779,121 @@ console.log(
   `Details F21: mid ${nf.format(f21.mid)} € (${nf.format(f21.pricePerSqm ?? 0)} €/m² Gebäude, Boden ${f21.bodenrichtwert} €/m²), Konfidenz ${f21.confidence} % — vorher 613.000 € / 3.694 €/m² / 64 %`,
 );
 
+/* F23 — DER WOHNEINHEITEN-CLIFF (QA-Lauf 18.08.2026): Identisches Objekt,
+ * einmal mit 4 und einmal mit 5 Wohneinheiten. Vor dem Fix schaltete der
+ * harte Cutoff `we > 4` den Vergleichswert-Anker schlagartig ab:
+ * 938.000 € → 584.000 €, also −354.000 € bzw. −37,7 % für EINE Einheit mehr.
+ * Seit dem Fix läuft der Anker als Untergrenze linear aus (s.
+ * mfhAnkerGewicht) — der Übergang ist stetig und monoton fallend. */
+const f23basis = {
+  objektart: "mehrfamilienhaus" as const,
+  ort: "Speyer",
+  wohnflaeche: 400,
+  grundflaeche: 600,
+  baujahr: 1970,
+  zustand: "gepflegt" as const,
+  qualitaet: "normal" as const,
+  jahresnettokaltmiete: 38_400,
+  vermietungsstand: "vermietet" as const,
+  ausstattung: [] as string[],
+};
+const f23_4 = run({ ...f23basis, wohneinheiten: 4 });
+const f23_5 = run({ ...f23basis, wohneinheiten: 5 });
+const f23_6 = run({ ...f23basis, wohneinheiten: 6 });
+const f23_8 = run({ ...f23basis, wohneinheiten: 8 });
+// (a) HARTER ANKER: Der 1–4-WE-Pfad ist an echten MFH-Abschlüssen kalibriert
+// und wurde VOR der Änderung gemessen — er darf sich um keinen Euro bewegen.
+check("F23 MFH Speyer 400 m², 4 WE (Vergleichswert-Anker, Anker exakt)", f23_4.mid, 938_000, 938_000);
+// (b) Kein Cliff mehr: der Sprung von 4 auf 5 WE bleibt unter 12 % (war 37,7 %).
+const f23Sprung = (f23_4.mid - f23_5.mid) / f23_4.mid;
+if (f23Sprung > 0.12) {
+  failures++;
+  console.log(
+    `❌ F23 Cliff: 4 → 5 WE fällt um ${(f23Sprung * 100).toFixed(1)} % (${nf.format(f23_4.mid)} → ${nf.format(f23_5.mid)} €), erlaubt sind 12 %`,
+  );
+} else {
+  console.log(
+    `✅ F23 Cliff entschärft: 4 → 5 WE nur −${(f23Sprung * 100).toFixed(1)} % (${nf.format(f23_4.mid)} → ${nf.format(f23_5.mid)} €), vorher −37,7 %`,
+  );
+}
+// (c) MONOTONIE: Mehr Einheiten auf gleicher Fläche dürfen nie MEHR wert
+// sein — der Anker läuft aus, also fallend oder gleich.
+if (!(f23_4.mid >= f23_5.mid && f23_5.mid >= f23_6.mid && f23_6.mid >= f23_8.mid)) {
+  failures++;
+  console.log(
+    `❌ F23 Monotonie verletzt: 4 WE ${nf.format(f23_4.mid)} / 5 WE ${nf.format(f23_5.mid)} / 6 WE ${nf.format(f23_6.mid)} / 8 WE ${nf.format(f23_8.mid)} €`,
+  );
+} else {
+  console.log(
+    `✅ F23 Monotonie: ${nf.format(f23_4.mid)} ≥ ${nf.format(f23_5.mid)} ≥ ${nf.format(f23_6.mid)} ≥ ${nf.format(f23_8.mid)} € (4/5/6/8 WE)`,
+  );
+}
+// Ab 8 WE ist das Gewicht 0 — der reine Ertragswert wie vor dem Fix.
+check("F23 MFH Speyer 400 m², 8 WE (reiner Ertragswert, Anker exakt)", f23_8.mid, 584_000, 584_000);
+// In der Übergangszone bleibt der Ertragswert die Herleitung (Vervielfältiger
+// und Miet-Ansatz müssen sichtbar bleiben), plus Hinweis auf den Anker-Anteil.
+if (f23_5.vervielfaeltiger === undefined || f23_5.mietAnsatz === undefined) {
+  failures++;
+  console.log("❌ F23: in der Übergangszone müssen Vervielfältiger und Miet-Ansatz erhalten bleiben");
+}
+if (!f23_5.annahmen.some((a) => a.includes("als Untergrenze angerechnet"))) {
+  failures++;
+  console.log(`❌ F23: Hinweis auf den auslaufenden Anker fehlt (${JSON.stringify(f23_5.annahmen)})`);
+}
+
+/* F24 — MIET-TIPPFEHLER (QA-Lauf 18.08.2026): 200 m² MFH in Speyer mit
+ * vertippten 500.000 € Jahresnettokaltmiete ergaben 7.600.000 € — der
+ * p75-Deckel gilt nur für Wohnung/Haus, beim MFH schlug die Miete
+ * ungebremst durch den Vervielfältiger. 10 WE bewusst gewählt: dort greift
+ * der Vergleichswert-Anker nicht mehr, geprüft wird also der reine
+ * Ertragswert-Pfad. */
+const f24basis = {
+  objektart: "mehrfamilienhaus" as const,
+  ort: "Speyer",
+  wohnflaeche: 200,
+  grundflaeche: 600,
+  baujahr: 1970,
+  zustand: "gepflegt" as const,
+  qualitaet: "normal" as const,
+  vermietungsstand: "vermietet" as const,
+  wohneinheiten: 10,
+  ausstattung: [] as string[],
+};
+const f24 = run({ ...f24basis, jahresnettokaltmiete: 500_000 });
+// Kappe: Speyer-Marktmiete 9,08 €/m² × 2,5 = 22,70 €/m² → 54.480 €/Jahr.
+check("F24 MFH Speyer 200 m², Tippfehler-Miete 500.000 € (gekappt)", f24.mid, 0, 1_500_000);
+if (!f24.annahmen.some((a) => a.includes("gekappt"))) {
+  failures++;
+  console.log(`❌ F24: Kappungs-Hinweis fehlt (${JSON.stringify(f24.annahmen)})`);
+}
+if (f24.mietAnsatz?.istMieteAngegeben !== 500_000) {
+  failures++;
+  console.log(`❌ F24: mietAnsatz muss die angegebene Miete sichtbar machen (${JSON.stringify(f24.mietAnsatz)})`);
+}
+// GEGENPROBE: plausible Miete bleibt unangetastet — Anker VOR der Änderung
+// gemessen. Ohne diese Probe wäre die Kappe ein stiller Preisdrücker.
+const f24ok = run({ ...f24basis, jahresnettokaltmiete: 30_000 });
+check("F24b plausible Miete 30.000 € (unverändert, Anker exakt)", f24ok.mid, 456_000, 456_000);
+if (f24ok.annahmen.some((a) => a.includes("gekappt")) || f24ok.mietAnsatz?.istMiete !== 30_000) {
+  failures++;
+  console.log(`❌ F24b: plausible Miete darf nicht gekappt werden (${JSON.stringify(f24ok.mietAnsatz)})`);
+}
+// Echte Premium-Miete (F17c: 13,89 €/m² bei LU-Markt 7,24 = 1,9×) muss die
+// Kappe ebenfalls passieren — sie ist ein Tippfehler-Fangnetz, kein Deckel.
+if (f17c.mietAnsatz?.istMiete !== 40_000) {
+  failures++;
+  console.log(`❌ F24c: Premium-Miete (1,9× Markt) wurde fälschlich gekappt (${JSON.stringify(f17c.mietAnsatz)})`);
+} else {
+  console.log("✅ F24c Premium-Miete 1,9× Markt (F17c) bleibt unangetastet");
+}
+
+console.log(
+  `Details F23: 4 WE ${nf.format(f23_4.mid)} € / 5 WE ${nf.format(f23_5.mid)} € / 6 WE ${nf.format(f23_6.mid)} € / 8 WE ${nf.format(f23_8.mid)} € — vorher 938.000 / 584.000 / 584.000 / 584.000`,
+);
+console.log(
+  `Details F24: Tippfehler-Miete ${nf.format(f24.mid)} € (vorher 7.600.000 €), angesetzte Miete ${nf.format(f24.mietAnsatz?.istMiete ?? 0)} € statt ${nf.format(f24.mietAnsatz?.istMieteAngegeben ?? 0)} €`,
+);
+
 if (failures > 0) {
   console.error(`\n${failures} Prüfung(en) fehlgeschlagen.`);
   process.exit(1);

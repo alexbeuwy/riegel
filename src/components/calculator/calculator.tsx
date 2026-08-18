@@ -885,7 +885,10 @@ export function Calculator() {
   useEffect(() => {
     if (istDemo()) return; // Demo springt bewusst direkt ans Ende
     const tiefe = phase === "form" ? step : 3;
-    if (tiefe > tiefeRef.current) window.history.pushState({ rechnerTiefe: tiefe }, "");
+    // Je übersprungener Ebene ein Eintrag (relevant beim wiederhergestellten
+    // Stand, der direkt auf Schritt 2 startet): sonst führt der zweite
+    // Zurück-Druck aus der Seite heraus, statt auf Schritt 0 zu landen.
+    for (let d = tiefeRef.current + 1; d <= tiefe; d++) window.history.pushState({ rechnerTiefe: d }, "");
     tiefeRef.current = tiefe;
   }, [phase, step]);
 

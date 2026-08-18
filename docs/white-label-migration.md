@@ -122,8 +122,8 @@ Impressum, Datenschutz, Widerruf — komplett aus den echten Daten des neuen Mak
 
 | Was | Ort | Fix |
 |---|---|---|
-| **Akzentfarbe `#015cff`** ~32× dupliziert (Mail, PDF, OG, Shader, Confetti, Spiel, Karten-Pins) | `email.ts`, `report-pdf.ts` (als `rgb(0.004,0.361,1.0)`), `og-assets.ts`, `wave-shader.tsx`, `confetti.ts`, `components/game/*`, `location-map.tsx`, `portal-map.tsx` | `site.brandColor` (Hex + rgb) einführen; nur `globals.css` hat aktuell das zentrale `--color-accent`. Mail/PDF/OG haben **keinen** CSS-Zugriff → brauchen die Konstante. |
-| **CDN-Host `riegel.b-cdn.net`** an ≥3 Stellen hartcodiert | `next.config.ts:16` (build-time, **Code-Änderung nötig**, kein reiner Env-Wechsel!), `photos.ts:5`, `experten.ts:18`, `bunny.ts`-Fallback | Aus `process.env.BUNNY_CDN_HOST` ableiten. Ohne den next.config-Fix schlägt `next/image` für den neuen Host mit 400 fehl. |
+| **Akzentfarbe `#015cff`** — nachgemessen 18.08.2026: **36 Treffer in 16 Dateien** (zusätzlich zu den unten gelisteten: `api/intern/users/route.ts`, `api/report/route.ts`, `lib/matching.ts`) | `email.ts`, `report-pdf.ts` (als `rgb(0.004,0.361,1.0)`), `og-assets.ts`, `wave-shader.tsx`, `confetti.ts`, `components/game/*`, `location-map.tsx`, `portal-map.tsx` | `site.brandColor` (Hex + rgb) einführen; nur `globals.css` hat aktuell das zentrale `--color-accent`. Mail/PDF/OG haben **keinen** CSS-Zugriff → brauchen die Konstante. |
+| **CDN-Host `riegel.b-cdn.net`** — nachgemessen 18.08.2026: **152 Treffer in 12 Dateien** (zusätzlich: `award-highlight.tsx`, `awards-grid.tsx`, `team-bereiche.tsx`, `calculator/report-request.tsx` (Report-Visual), `reels-grid.tsx`) | `next.config.ts:16` (build-time, **Code-Änderung nötig**, kein reiner Env-Wechsel!), `photos.ts:5`, `experten.ts:18`, `bunny.ts`-Fallback | Aus `process.env.BUNNY_CDN_HOST` ableiten. Ohne den next.config-Fix schlägt `next/image` für den neuen Host mit 400 fehl. |
 | **Logo-Dateinamen** hartcodiert | `email.ts:93` (`/email-logo-riegel-dark.png`), `og-assets.ts` (Base64!), `public/logo-riegel-*.svg` | Logo-Pfade als `site.ts`-Feld; oder gleiche Dateinamen beibehalten (Ersetzen statt Umbenennen). OG-Logo ist Base64 im Code → nach Logo-Tausch **manuell** neu erzeugen (kein Build-Skript!). |
 | **Mail-Fußzeile** Adresse/Telefon als String | `email.ts:214` | Aus `site.locations[0]` rendern. |
 | **PDF-Cover-Wortmarke „RIEGEL"** | `report-pdf.ts:250-251` (setTitle/Author), Header jede Seite, `:424` Footer | ⚠️ Position/Breite ist für **6 Zeichen** „RIEGEL" berechnet (`textWidthSpaced`) — ein anders langer Name **verschiebt das Layout**. Nicht nur String tauschen, sondern Positionierung dynamisch machen. |
@@ -207,6 +207,35 @@ Impressum, Datenschutz, Widerruf — komplett aus den echten Daten des neuen Mak
   (Regex entfernt RIEGEL-Werbe-Boilerplate — greift bei fremder Boilerplate nicht).
 
 ---
+
+### 3.2a Nachmessung + neue Touchpoints (18.08.2026, W1-Sweep)
+
+Systematischer grep-Sweep — die Tabelle oben listete je Kategorie nur die Hauptdateien.
+Gemessene Ist-Stände: `b-cdn.net` 152×/12 Dateien, `#015cff` 36×/16 Dateien,
+Telefonnummer `06232` **48×/11 Dateien** (u. a. `report-pdf.ts`-Footer, `auth.tsx`-
+Fehlermeldungen, `calculator/report-request.tsx` — obwohl `site.phone` existiert).
+Zusätzliche, vorher undokumentierte Touchpoints:
+
+| Fund | Ort | Migration |
+|---|---|---|
+| **PDF-Anbieterseite hartkodiert** (Inhaberin Sylwia Riegel, Adresse, Tel., Domain) | `report-pdf.ts` `drawLegal()` ~2137–2154 | Aus `site.recht`/`site.locations` speisen — rote Liste! |
+| **JSON-LD-Personen + Geo-Koordinaten** | `layout.tsx:96–121` | Personen optional aus site.ts (leer = weglassen), Koordinaten aus `site.locations[i].geo` |
+| **OnOffice-Exposé-Template-URNs** („Exposé Riegel neu 2026") | `onoffice.ts:814–817` | → Env `ONOFFICE_EXPOSE_TEMPLATES` (kommagetrennt); sonst ist der Exposé-Download bei Makler #2 ab Tag 1 still tot (503) |
+| **Mock-Objekte in Produktion** bei nie erfolgreichem OnOffice-Abruf | `estates.ts:56–65` | Klon-Go-Live-Falle: Seite zeigt RIEGEL-Fake-Bestand statt Fehlerzustand |
+| **Formular-Platzhalter Speyer/67346** | `buyer-details.ts:34–35` | aus `site.locations[0]` |
+| **Büro-Domain-Check `@riegel-immobilien.de`** (Testläufe ≠ CRM-Lead) | `api/report/route.ts:521`, `intern-dashboard.tsx` | aus site-Domain ableiten |
+| **Boilerplate-Filter `/riegel/i`** in Objekttexten | `onoffice.ts:341–344` | aus `site.name` ableiten (False-Positive: „Fensterriegel"!) |
+| **Demo-Preset-Adresse Speyer** (`?demo=`) | `calculator.tsx` `DEMO_ADRESSE` | aus `site.locations[0]` |
+| **Region-Kalibriertabellen** | `stadt-faktor.ts` (27 Orte), `stadt-niveau.ts` (20 Städte) | pro Region neu erheben oder leeren — fehlten bisher KOMPLETT im Playbook |
+| **Kalibrier-Stände maschinenlesbar** | `valuation.ts` `KALIBRIER_STAND`, `marktdaten.ts` `MARKT_STAND_DATUM` + Wächter `scripts/kalibrier-alter-check.mts` | beim Klon nach Erst-Kalibrierung setzen; Wächter in CI |
+| **Alt-/aria-Texte mit „RIEGEL"** (11 kundensichtbare) | `page.tsx`, `verkaufen/page.tsx`, `award-highlight.tsx` | eigene Prüfliste in Phase D: alle `alt=`/`aria-label` greppen |
+| **`docs/email-templates/` ist VERALTET** (Duplikat mit RIEGEL-Hardcodes) | — | nicht verwenden; kanonisch ist `docs/supabase-mails/` (generiert) |
+
+Neue Infrastruktur, die jeder Klon mitbekommt (18.08.2026): CI-Workflow
+`.github/workflows/ci.yml` (Lint+tsc+Battery+Build vor jedem main-Deploy), `/api/health`
+(+ System-Kachel im /intern), Matching-Alarm-Mail bei Cron-Fehlern/-Versand,
+`/api/abmelden` (One-Click-Unsubscribe, HMAC über `CRON_SECRET`), Migration
+`20260818200000_matching_tabellen.sql`, `INTERN_EMAILS`-fail-loud in Produktion.
 
 ## 4. Env-Variablen — Referenz & Stille Fallen
 
@@ -297,6 +326,11 @@ Persönlichkeitsrechts-/Markenverletzung oder Irreführung.
   `docs/preisatlas-research.md` §6; Live-Regressionscheck: `scripts/boris-live-check.mts`.
 - **Marktdaten** (`marktdaten.ts`/`valuation.ts`): Basiswerte und Faktoren sind für die
   Rhein-Neckar-Region kalibriert — für eine neue Region komplett neu erheben.
+- **Orts-Tabellen** `src/lib/stadt-faktor.ts` (27 Pfalz/Rhein-Neckar-Ortsfaktoren) und
+  `src/lib/stadt-niveau.ts` (20 Großstadt-Basiswerte mit Quellen): speisen Preisatlas UND
+  Engine. Beim Klon in andere Regionen: Faktor-Tabelle neu erheben oder leeren (leer =
+  neutral 1,0), Stadt-Niveau-Tabelle kann bundesweit bleiben, altert aber
+  (`kalibrier-alter-check.mts` warnt).
 
 ---
 

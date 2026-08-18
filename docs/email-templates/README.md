@@ -1,3 +1,9 @@
+> ⚠️ **VERALTET — NICHT VERWENDEN.** Kanonisch sind die generierten Templates in
+> `docs/supabase-mails/` (Skript `scripts/gen-supabase-mails.mts`, Anleitung in
+> `docs/supabase-auth-mail.md`). Dieser Ordner bleibt nur als Referenz früherer
+> Entwürfe stehen (RIEGEL-Hardcodes, veraltete Site-URL). Beim White-Label-Klon
+> ignorieren. (18.08.2026)
+
 # RIEGEL E-Mail-Templates (Supabase Auth)
 
 High-End, dark, markenkonform (RIEGEL-Blau #015CFF). Table-basiertes HTML mit

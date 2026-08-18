@@ -225,8 +225,13 @@ export interface FlaechenAufteilung {
  * angesetzte marktübliche Miete für leerstehende Flächen.
  */
 export interface MietAnsatz {
-  /** Tatsächlich erzielte Jahresnettokaltmiete (0 bei Vollleerstand). */
+  /** Tatsächlich erzielte Jahresnettokaltmiete (0 bei Vollleerstand) —
+   * NACH der Plausibilitäts-Kappung (s. MIET_PLAUSI_FAKTOR). */
   istMiete: number;
+  /** Nur gesetzt, wenn die Ist-Miete gekappt wurde: der ursprünglich
+   * ANGEGEBENE Wert. UI/PDF können damit den Eingriff sichtbar machen,
+   * ohne den Annahmen-Text parsen zu müssen (Transparenz-Doktrin). */
+  istMieteAngegeben?: number;
   /** Für leerstehende Flächen angesetzte marktübliche Jahresmiete. */
   marktmieteGeschaetzt: number;
   /** Dabei angesetzte Monatsmiete je m² (Neuvermietungsniveau). */
@@ -519,6 +524,16 @@ function flaechenFaktor(objektart: Objektart, wohnflaeche?: number): number {
  * 6,50 €/m², dort gedeckelt bei −12 %: mehr gibt die Heuristik nicht her,
  * extreme Fälle (Sonderumlagen, Sanierungsstau der WEG) gehören in den
  * Vor-Ort-Termin, nicht in ein Online-Modell.
+ *
+ * BEWUSSTE NICHT-ÄNDERUNG (QA-Lauf 18.08.2026): Der QA-Lauf hat notiert,
+ * dass die Kappe schon bei 6,50 €/m² greift und ein Hausgeld von 12 €/m²
+ * denselben Abschlag bekommt wie eines von 6,50 €/m². Das bleibt bewusst so:
+ * Solche Werte sind fast nie laufende Bewirtschaftungskosten, sondern eine
+ * umgelegte Sonderumlage oder ein Sanierungsbeschluss — beides kennt das
+ * Modell nicht (Höhe, Restlaufzeit, was damit saniert wird). Linear
+ * weiterrechnen hieße, eine einmalige Zahlung dauerhaft zu kapitalisieren.
+ * Lieber mild abwerten und im Vor-Ort-Termin richtig aufklären als
+ * falsch-präzise zu wirken.
  */
 const HAUSGELD_NORMAL_M2 = 3.5;
 const HAUSGELD_KAPPE_M2 = 6.5;
@@ -627,12 +642,71 @@ function marktmieteM2(basisWohnung: number, zustand: Zustand, qualitaet: Qualita
  * Pool-Medianen kalibriert: nach Abzug des typischen Bodenanteils liegt der
  * MFH-Gebäudewert bei ~0,61 (Speyer) bis ~0,73 (LU) des Eigenheim-Niveaus —
  * 0,65 bewusst am unteren Rand („lieber kleiner nennen"). Der Ertragswert
- * bleibt maßgeblich für 5+ WE und immer dann, wenn er höher liegt (voll
- * vermietet mit starker Ist-Miete). Leerstand ist im Vergleichswert bewusst
- * KEIN Abschlag: für den Eigennutzer-Käufer ist „bezugsfrei" ein Vorteil.
+ * bleibt maßgeblich für große Zinshäuser und immer dann, wenn er höher liegt
+ * (voll vermietet mit starker Ist-Miete). Leerstand ist im Vergleichswert
+ * bewusst KEIN Abschlag: für den Eigennutzer-Käufer ist „bezugsfrei" ein
+ * Vorteil.
  */
 const MFH_KLEIN_MAX_WE = 4;
 const MFH_KLEIN_GEBAEUDE_FAKTOR = 0.65;
+
+/**
+ * AUSLAUFENDER ANKER statt hartem Cutoff (QA-Lauf 18.08.2026, ~1.600
+ * Prüfrechnungen): Bis zum Fix schaltete `we > MFH_KLEIN_MAX_WE` den
+ * Vergleichswert-Anker schlagartig ab. Gemessener Cliff am identischen
+ * Objekt (MFH Speyer, 400 m², Bj. 1970, JNKM 38.400, 600 m² Grund):
+ * 4 WE = 938.000 €, 5 WE = 584.000 € — EINE Wohneinheit mehr kostete
+ * 354.000 € bzw. −37,7 %. Für den Eigentümer ist das nicht erklärbar, und
+ * es ist auch fachlich falsch: die Eigennutzer-Nachfrage, die den Anker
+ * begründet, verschwindet nicht zwischen 4 und 5 Einheiten, sie dünnt aus.
+ *
+ * Deshalb wirkt der Vergleichswert ab 5 WE als UNTERGRENZE mit linear
+ * auslaufendem Gewicht (8 − WE) / 4 — 5 WE = 75 %, 6 WE = 50 %, 7 WE = 25 %,
+ * ab 8 WE = 0 %:
+ *
+ *   boden = ertragswert + gewicht × max(0, vergleichswert − ertragswert)
+ *
+ * Bei WE ≤ 4 ist gewicht = 1, damit ist `boden` exakt das bisherige
+ * Maximum aus beiden Ansätzen — der kalibrierte 1–4-WE-Pfad (Fall Manfred,
+ * Fixture F17) bewegt sich um KEINEN Euro. Ab 8 WE ist gewicht = 0, also
+ * reiner Ertragswert wie bisher (Fixture F17b). Dazwischen ist der Übergang
+ * stetig und monoton fallend: mehr Einheiten auf gleicher Fläche können nie
+ * mehr wert sein.
+ *
+ * Die Obergrenze 8 ist bewusst gesetzt, nicht gemessen: Ab etwa acht
+ * Einheiten ist der Käuferkreis rein renditegetrieben (der eigene
+ * Verkauft-Pool enthält für diese Größenklasse zu wenige Fälle für eine
+ * echte Kalibrierung). Sobald der Pool trägt, gehört diese Zahl an die
+ * Daten angepasst — s. docs/rechner-masterplan.md.
+ */
+const MFH_ANKER_AUSLAUF_WE = 8;
+function mfhAnkerGewicht(we: number): number {
+  if (we < 1) return 0;
+  if (we <= MFH_KLEIN_MAX_WE) return 1;
+  if (we >= MFH_ANKER_AUSLAUF_WE) return 0;
+  return (MFH_ANKER_AUSLAUF_WE - we) / (MFH_ANKER_AUSLAUF_WE - MFH_KLEIN_MAX_WE);
+}
+
+/**
+ * PLAUSIBILITÄTS-KAPPE FÜR DIE IST-MIETE (QA-Lauf 18.08.2026): Beim
+ * Mehrfamilienhaus geht die eingegebene Jahresnettokaltmiete UNGEBREMST
+ * durch den Vervielfältiger — der p75-Deckel an echten Abschlüssen greift
+ * nur für Wohnung/Haus (`flaechenObjekt`). Gemessen: 200 m² MFH in Speyer
+ * mit vertippten 500.000 € Jahresmiete (statt Monats- oder 50.000er-Miete)
+ * ergaben 7,6 Mio. € ohne jede Erdung — die Zahl geht so in Report und PDF.
+ *
+ * Deshalb wird die effektive Ist-Miete je m²/Monat (bezogen auf die
+ * VERMIETETE Fläche) gegen dieselbe regionale Marktmiete geprüft, die schon
+ * den Leerstands-Ansatz speist (marktmieteM2) und beim Überschreiten des
+ * 2,5-fachen darauf gekappt.
+ *
+ * 2,5 ist bewusst großzügig: Echte Premium- und Gewerbemieten in einem
+ * Wohnhaus liegen real bei 1,5–2× Marktniveau (Fixture F17c: 1,9×) und
+ * müssen unangetastet bleiben — die Kappe ist ein Tippfehler-Fangnetz, kein
+ * Bewertungsinstrument. Ohne Wohnflächen-Angabe gibt es keinen €/m²-Bezug
+ * und damit auch keine Kappung (Fixture F4 bleibt exakt).
+ */
+const MIET_PLAUSI_FAKTOR = 2.5;
 
 /**
  * Maximaler Abschlag bei Vollleerstand (%). Begründung: der Käufer bekommt ab
@@ -826,6 +900,16 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   // Leitungen, Fenster, Heizung): „neuwertig" gilt bei Baujahren vor 1995 nur
   // noch MIT Kernsanierungs-Angabe, sonst wird wie „gepflegt" gerechnet —
   // sichtbar gemacht über `annahmen`, nicht stillschweigend.
+  //
+  // BEWUSSTE NICHT-ÄNDERUNG (QA-Lauf 18.08.2026): `kernsaniert` schaltet nur
+  // diese Erdung (und die Energie-Annahme unten) frei, es hebt den
+  // baujahrFactor NICHT an — ein kernsanierter 1960er rechnet weiter mit 0,90.
+  // Das bleibt so: Eine „fiktive Baujahr-Neubewertung" (Kernsanierung ≈ Bj.
+  // X) wäre eine echte Kalibrier-Frage, und im eigenen Verkauft-Pool ist die
+  // Kernsanierung gar nicht erfasst — der Aufschlag wäre frei erfunden. Der
+  // Effekt fehlt nicht ganz: Zustand „neuwertig" wirkt mit Kernsanierung ja
+  // gerade voll. Nachziehen erst, wenn Daten dazu vorliegen
+  // (s. docs/rechner-masterplan.md).
   const altbau = (input.baujahr ?? 9999) < 1995;
   const flaechenObjekt = input.objektart === "wohnung" || input.objektart === "haus";
   let zustandEffektiv: Zustand = input.zustand;
@@ -901,7 +985,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     // ab. Ohne Angabe ist der Stand "vermietet" — dann ist leerM2 = 0, der
     // Abschlag 0 und die Rechnung identisch zu vorher (Regression F4).
     const stand = input.vermietungsstand ?? "vermietet";
-    const istMiete = Math.max(0, input.jahresnettokaltmiete ?? 0);
+    const istMieteAngabe = Math.max(0, input.jahresnettokaltmiete ?? 0);
     const wf = Math.max(0, input.wohnflaeche ?? 0);
     const leerM2 =
       stand === "leer"
@@ -910,6 +994,21 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
           ? Math.min(wf, Math.max(0, input.leerstehendeWohnflaeche ?? 0))
           : 0;
     const mm2 = marktmieteM2(r.wohnung, input.zustand, input.qualitaet);
+
+    // Tippfehler-Fangnetz vor dem Ertragswert (s. MIET_PLAUSI_FAKTOR):
+    // Die Ist-Miete bezieht sich auf die VERMIETETE Fläche, nicht auf die
+    // Gesamtfläche — sonst würde ein Teilleerstand die Miete rechnerisch
+    // verwässern und die Kappe zu spät greifen.
+    const vermieteteM2 = Math.max(0, wf - leerM2);
+    const istM2 = vermieteteM2 > 0 ? istMieteAngabe / vermieteteM2 / 12 : 0;
+    const kappeM2 = mm2 * MIET_PLAUSI_FAKTOR;
+    const mieteGekappt = istM2 > kappeM2;
+    const istMiete = mieteGekappt ? Math.round(kappeM2 * vermieteteM2 * 12) : istMieteAngabe;
+    if (mieteGekappt) {
+      annahmen.push(
+        `Angegebene Miete von ${istM2.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/m²/Monat liegt weit über dem Marktniveau von ${mm2.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/m²/Monat — für die Bewertung auf ${kappeM2.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/m²/Monat (${istMiete.toLocaleString("de-DE")} € im Jahr) gekappt. Prüfen Sie die Jahresnettokaltmiete (häufig: Monats- statt Jahresmiete oder Zahlendreher).`,
+      );
+    }
     const marktmieteGeschaetzt = Math.round(leerM2 * mm2 * 12);
     const leerstandAnteil = wf > 0 ? Math.min(1, leerM2 / wf) : 0;
     const abschlagPct = Math.round(leerstandAnteil * LEERSTAND_ABSCHLAG_MAX_PCT * 10) / 10;
@@ -940,6 +1039,7 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     mid = ansatzMiete * vervielfaeltiger * (1 - abschlagPct / 100);
     mietAnsatz = {
       istMiete,
+      ...(mieteGekappt ? { istMieteAngegeben: istMieteAngabe } : {}),
       marktmieteGeschaetzt,
       marktmieteM2: mm2,
       leerstandM2: Math.round(leerM2),
@@ -949,11 +1049,14 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
     };
     pricePerSqm = wf ? Math.round(mid / wf) : undefined;
 
-    // Kleines MFH (1–4 WE): Vergleichswert-Anker gegen die Ertragswert-Falle
-    // (Begründung + Kalibrierung s. MFH_KLEIN_*-Kommentar oben) — gleiche
-    // Faktorkette wie beim Haus, gleiche Grundstücks-Staffel, Maximum gewinnt.
+    // Vergleichswert-Anker gegen die Ertragswert-Falle (Begründung +
+    // Kalibrierung s. MFH_KLEIN_*-Kommentar oben) — gleiche Faktorkette wie
+    // beim Haus, gleiche Grundstücks-Staffel. Bei 1–4 WE voll (Maximum
+    // gewinnt), bei 5–7 WE als auslaufende UNTERGRENZE, ab 8 WE gar nicht
+    // (s. mfhAnkerGewicht — der Cliff-Fix vom 18.08.2026).
     const we = input.wohneinheiten ?? 0;
-    if (we >= 1 && we <= MFH_KLEIN_MAX_WE && wf > 0) {
+    const ankerGewicht = mfhAnkerGewicht(we);
+    if (ankerGewicht > 0 && wf > 0) {
       // Wie im Haus-Zweig: Stadt-Niveau (Schicht 1) vor BRW-Ableitung
       // (Schicht 3); in beiden Fällen steckt die Lage schon in der Basis,
       // der Mikrolage-Faktor entfällt bzw. wirkt nur als Mikro-Korrektur
@@ -972,24 +1075,44 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
       const vergleichswert =
         wf * hausBasisMfh * MFH_KLEIN_GEBAEUDE_FAKTOR * ortsFaktor * zf * bf * qf * ef * ausstFaktor * lageFaktorMfh +
         (anrechnung?.wert ?? 0);
-      if (vergleichswert > mid) {
-        annahmen.push(
-          `Mehrfamilienhaus mit ${we} Wohneinheiten: bewertet im Vergleichswert-Ansatz wie ein Wohnhaus — Käufer kleiner Mehrfamilienhäuser sind meist Eigennutzer und zahlen Wohnhaus-Niveau (kalibriert an 57 echten Mehrfamilienhaus-Verkäufen). Der reine Ertragswert läge bei ${(Math.round(mid / 1000) * 1000).toLocaleString("de-DE")} € und unterschätzt ein kleines Mehrfamilienhaus mit Grundstück deutlich.`,
-        );
-        mid = vergleichswert;
-        // Nur wenn der Vergleichswert auch gewinnt, geht die Stadt-/
-        // abgeleitete Basis wirklich in den Preis ein (der Ertragswert-Zweig
-        // rechnet weiter über Miete × Vervielfältiger).
+      // Der Boden: bei vollem Gewicht exakt max(Ertragswert, Vergleichswert)
+      // wie bisher, bei ausgelaufenem Gewicht der anteilige Weg dorthin.
+      const ertragswert = mid;
+      const ankerBoden = ertragswert + ankerGewicht * Math.max(0, vergleichswert - ertragswert);
+      if (ankerBoden > mid) {
+        if (ankerGewicht >= 1) {
+          // UNVERÄNDERTER 1–4-WE-PFAD (Fall Manfred, Fixture F17): voller
+          // Ansatz-Wechsel inkl. Anzeige-Umstellung.
+          annahmen.push(
+            `Mehrfamilienhaus mit ${we} Wohneinheiten: bewertet im Vergleichswert-Ansatz wie ein Wohnhaus — Käufer kleiner Mehrfamilienhäuser sind meist Eigennutzer und zahlen Wohnhaus-Niveau (kalibriert an 57 echten Mehrfamilienhaus-Verkäufen). Der reine Ertragswert läge bei ${(Math.round(mid / 1000) * 1000).toLocaleString("de-DE")} € und unterschätzt ein kleines Mehrfamilienhaus mit Grundstück deutlich.`,
+          );
+          mid = vergleichswert;
+          pricePerSqm = Math.round(mid / wf);
+          grundstuecksAnrechnung = anrechnung;
+          // Ertragswert-Anzeigen zurücknehmen: PDF und Rechner sollen die
+          // Faktor-Zerlegung zeigen, keine Miet-Herleitung, die nicht mehr
+          // aufs Ergebnis führt.
+          vervielfaeltiger = undefined;
+          mietAnsatz = undefined;
+          mfhVergleichswert = true;
+        } else {
+          // ÜBERGANGSZONE (5–7 WE): Der Ertragswert BLEIBT die Herleitung —
+          // Vervielfältiger und Miet-Ansatz bleiben deshalb bewusst stehen,
+          // der Anker hebt nur an. Auch grundstuecksAnrechnung bleibt leer:
+          // der Wert ist eine Mischung, keine saubere Zerlegung in Gebäude
+          // plus Boden, und eine ausgewiesene Grundstückszeile würde eine
+          // Genauigkeit behaupten, die hier nicht da ist.
+          annahmen.push(
+            `Mehrfamilienhaus mit ${we} Wohneinheiten: Der reine Ertragswert läge bei ${(Math.round(ertragswert / 1000) * 1000).toLocaleString("de-DE")} €. Da bei dieser Größe neben Kapitalanlegern noch Eigennutzer als Käufer auftreten, wird der Wohnhaus-Vergleichswert (${(Math.round(vergleichswert / 1000) * 1000).toLocaleString("de-DE")} €) noch zu ${Math.round(ankerGewicht * 100)} % als Untergrenze angerechnet — dieser Anteil läuft bis 8 Wohneinheiten aus, ab dann zählt allein der Ertrag.`,
+          );
+          mid = ankerBoden;
+          pricePerSqm = Math.round(mid / wf);
+        }
+        // Nur wenn der Anker auch greift, geht die Stadt-/abgeleitete Basis
+        // wirklich in den Preis ein (der reine Ertragswert-Zweig rechnet
+        // weiter über Miete × Vervielfältiger).
         if (stadtNiveau) stadtNiveauGenutzt = true;
         else if (brwAbleitung) brwBasisGenutzt = true;
-        pricePerSqm = Math.round(mid / wf);
-        grundstuecksAnrechnung = anrechnung;
-        // Ertragswert-Anzeigen zurücknehmen: PDF und Rechner sollen die
-        // Faktor-Zerlegung zeigen, keine Miet-Herleitung, die nicht mehr
-        // aufs Ergebnis führt.
-        vervielfaeltiger = undefined;
-        mietAnsatz = undefined;
-        mfhVergleichswert = true;
       }
     }
   } else {
