@@ -1583,11 +1583,11 @@ function Result({
               </span>
             </div>
 
-            {/* Zweiter Anker Richtung PDF (Wunsch Alex 18.08.2026): das
-                EINZIGE warme Element im Ergebnis — springt dadurch ins Auge.
-                Klick wirkt wie „Report anfordern": öffnet und scrollt zum
-                Formular (CustomEvent, ReportRequest hört darauf). Bewusst
-                CSS statt Three.js: ein Pfeil-Loop braucht keine 3D-Engine. */}
+            {/* Zweiter Anker Richtung PDF (Wunsch Alex 18.08.2026, seit
+                Feedback-Runde 2 als VOLLWERTIGER Button statt Badge — soll
+                als primärer CTA wirken): das EINZIGE warme Element im
+                Ergebnis. Klick wirkt wie „Report anfordern": öffnet und
+                scrollt zum Formular (CustomEvent, ReportRequest hört darauf). */}
             <div className="mt-3">
               <button
                 type="button"
@@ -1596,15 +1596,15 @@ function Result({
                   track("report_form_geoeffnet", { quelle: "badge" });
                   window.dispatchEvent(new CustomEvent("riegel:report-oeffnen"));
                 }}
-                className="press badge-beam-orange inline-flex max-w-full items-center gap-2 rounded-full border border-amber-400/45 bg-amber-400/10 py-1.5 pl-1.5 pr-3 text-left transition-colors hover:border-amber-300/80 hover:bg-amber-400/15"
+                className="press badge-beam-orange inline-flex max-w-full items-center gap-2.5 rounded-full bg-amber-400 py-2.5 pl-3 pr-4 text-left transition-colors hover:bg-amber-300"
               >
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black/15 text-[#221604]">
                   <Icon name="printer" size={14} />
                 </span>
-                <span className="min-w-0 text-[0.62rem] font-bold uppercase tracking-[0.06em] text-amber-300 sm:text-[0.7rem]">
+                <span className="min-w-0 text-[0.62rem] font-bold uppercase tracking-[0.06em] text-[#221604] sm:text-[0.72rem]">
                   Präzisere Infos &amp; Daten im kostenlosen Report-PDF (Druckversion)
                 </span>
-                <Icon name="chevronDown" size={14} className="pdf-pfeil shrink-0 text-amber-300" />
+                <Icon name="chevronDown" size={15} className="pdf-pfeil shrink-0 text-[#221604]" />
               </button>
             </div>
 

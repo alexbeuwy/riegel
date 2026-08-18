@@ -1070,3 +1070,13 @@ Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion`
 - **Bunny-Zugang für Agent-Sessions:** Read-only-Storage-Key mit Alex' Freigabe in
   `docs/bunny-cdn.md` dokumentiert (kann nur listen/lesen; Schreib-Key bleibt nur in
   .env.local/Vercel; bei Klonen NICHT mitkopieren).
+
+## Update — Report-Block 2-spaltig, Visual kompakt, Badge → Button (18.08.2026, Runde 2) ✅
+
+- **Weniger Scroll:** Report-CTA-Block jetzt `max-w-4xl` mit 2 Spalten ab md (Text links,
+  Visual 250 px rechts, vertikal zentriert) — das zentrierte 340px-Visual hatte die
+  Scroll-Strecke zum CTA verdoppelt. Mobil bleibt das Visual klein (180 px).
+- **Visual rein dekorativ:** Klick öffnet NICHT mehr das Formular (unerwünschtes
+  „dauerhaft ausgeklappt").
+- **Oranges PDF-Badge ist jetzt ein vollwertiger Button** (amber-Fläche, dunkler Bold-Text,
+  Beam) — primärer CTA-Charakter im Ergebnis.

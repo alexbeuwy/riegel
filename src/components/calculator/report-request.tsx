@@ -247,84 +247,81 @@ export function ReportRequest({
     "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
 
   return (
-    <div ref={rootRef} data-track-bereich="report-formular" className="mx-auto mt-10 max-w-2xl rounded-2xl border border-accent/30 bg-surface p-6 sm:p-8">
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-2 text-sm text-accent-strong">
-          <Icon name="doc" size={18} />
-          Ihr nächster Schritt
+    <div ref={rootRef} data-track-bereich="report-formular" className="mx-auto mt-10 max-w-4xl rounded-2xl border border-accent/30 bg-surface p-6 sm:p-8">
+      {/* 2-Spalten-Layout ab md (Feedback Alex 18.08.2026, Runde 2): Text
+          links, Visual rechts — der Container hatte seitlich Luft, und das
+          zentrierte 340px-Visual hat die Scroll-Strecke zum CTA verdoppelt.
+          Auf Mobil bleibt das Visual klein (180 px), damit der CTA nah bleibt. */}
+      <div className="grid items-center gap-x-8 gap-y-5 md:grid-cols-[minmax(0,1fr)_250px]">
+        <div className="text-center md:text-left">
+          <div className="flex items-center justify-center gap-2 text-sm text-accent-strong md:justify-start">
+            <Icon name="doc" size={18} />
+            Ihr nächster Schritt
+          </div>
+          {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
+              AKIRA-Headline in Weiß, animierter Auftritt beim Viewport-
+              Eintritt (.report-headline in globals.css). */}
+          <h3
+            ref={headRef}
+            data-in={headIn ? "1" : undefined}
+            className="report-headline akira mx-auto mt-3 max-w-xl text-2xl leading-[0.95] text-white sm:text-4xl md:mx-0"
+          >
+            Persönlicher Marktwert&#8209;Report
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted md:mx-0">
+            Diese Sofort-Einschätzung ist nur der Anfang. Der vollständige Report zeigt,{" "}
+            <strong className="text-fg">worauf es beim Preis wirklich ankommt</strong> — kostenlos,
+            unverbindlich, direkt per E-Mail.
+          </p>
+
+          {/* Psychologischer Nutzen-Block: WARUM sich das Ausfüllen lohnt — bleibt
+              immer sichtbar, auch wenn das Formular offen ist (kein Wegklappen von
+              Vertrauens-Argumenten genau dann, wenn sie am meisten wirken). */}
+          <ul className="mx-auto mt-5 grid max-w-md gap-2.5 text-left text-sm text-fg/90 md:mx-0">
+            <li className="flex items-start gap-2.5">
+              <Icon name="chart" size={16} className="mt-0.5 shrink-0 text-accent" />
+              Alle Preis-Faktoren im Detail — was Ihren Wert erhöht und was ihn senkt
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Icon name="pin" size={16} className="mt-0.5 shrink-0 text-accent" />
+              Satellitenbild &amp; Lage-Einschätzung Ihrer genauen Adresse
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Icon name="users" size={16} className="mt-0.5 shrink-0 text-accent" />
+              Persönliche Einschätzung von RIEGEL vor Ort — kein anonymer Algorithmus
+            </li>
+          </ul>
+
+          <div className="mx-auto mt-4 flex max-w-md items-start gap-3 rounded-xl border border-border bg-bg/60 p-4 text-left md:mx-0">
+            <Icon name="shield" size={18} className="mt-0.5 shrink-0 text-accent" />
+            <p className="text-sm text-muted">
+              <strong className="text-fg">Der häufigste Fehler beim Verkauf:</strong> ein falsch
+              angesetzter Preis — zu hoch schreckt Interessenten ab, zu niedrig verschenkt Geld.
+              Der Report hilft, ihn von Anfang an richtig zu treffen.
+            </p>
+          </div>
+
+          <p className="mx-auto mt-3 max-w-md text-center text-xs text-faint md:mx-0 md:text-left">
+            <Icon name="lock" size={12} className="mb-0.5 mr-1 inline" />
+            Ihre Daten bleiben exklusiv bei RIEGEL — keine Weitergabe an andere Makler oder Portale.
+          </p>
         </div>
-        {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
-            AKIRA-Headline, animierter Auftritt beim Viewport-Eintritt
-            (.report-headline in globals.css). Weiß statt Akzentblau
-            (Korrektur Alex 18.08.2026). */}
-        <h3
-          ref={headRef}
-          data-in={headIn ? "1" : undefined}
-          className="report-headline akira mx-auto mt-3 max-w-xl text-2xl leading-[0.95] text-white sm:text-4xl"
-        >
-          Persönlicher Marktwert&#8209;Report
-        </h3>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-          Diese Sofort-Einschätzung ist nur der Anfang. Der vollständige Report zeigt,{" "}
-          <strong className="text-fg">worauf es beim Preis wirklich ankommt</strong> — kostenlos,
-          unverbindlich, direkt per E-Mail.
-        </p>
+
+        {/* Visual 04 (Alex' Favorit, BunnyCDN „PDF Report Visuals"): der Report
+            als greifbares Produkt — rein dekorativ, KEIN Klick-Ziel (das
+            versehentliche Dauer-Aufklappen des Formulars war unerwünscht). */}
+        <div className="report-visual-float mx-auto w-full max-w-[180px] overflow-hidden rounded-2xl border border-accent/40 md:max-w-none" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element -- feste CDN-Grafik, next/image bringt hier nur Remote-Overhead */}
+          <img
+            src="https://riegel.b-cdn.net/PDF%20Report%20Visuals/pdf-report-visual-04-clean.webp"
+            alt=""
+            width={928}
+            height={1152}
+            loading="lazy"
+            className="block h-auto w-full"
+          />
+        </div>
       </div>
-
-      {/* Visual 04 (Alex' Favorit, BunnyCDN „PDF Report Visuals"): der Report
-          als greifbares Produkt — 3D-Seitenfächer auf Markenblau. Klick wirkt
-          wie der CTA (gleiche Quelle im Funnel, es IST der CTA-Block). */}
-      <button
-        type="button"
-        aria-label="Report als PDF anfordern"
-        onClick={() => {
-          track("report_form_geoeffnet", { quelle: "cta" });
-          setOpen(true);
-        }}
-        className="press report-visual-float group mx-auto mt-6 block w-full max-w-[300px] overflow-hidden rounded-2xl border border-accent/40 transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(1,92,255,0.35)] sm:max-w-[340px]"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- feste CDN-Grafik, next/image bringt hier nur Remote-Overhead */}
-        <img
-          src="https://riegel.b-cdn.net/PDF%20Report%20Visuals/pdf-report-visual-04-clean.webp"
-          alt="Vorschau: Ihr persönlicher Marktwert-Report als PDF — mehrseitige Analyse mit Preis-Faktoren, Vergleichsobjekten und Lage-Einschätzung"
-          width={928}
-          height={1152}
-          loading="lazy"
-          className="block h-auto w-full transition-transform duration-500 group-hover:scale-[1.03]"
-        />
-      </button>
-
-      {/* Psychologischer Nutzen-Block: WARUM sich das Ausfüllen lohnt — bleibt
-          immer sichtbar, auch wenn das Formular offen ist (kein Wegklappen von
-          Vertrauens-Argumenten genau dann, wenn sie am meisten wirken). */}
-      <ul className="mx-auto mt-6 grid max-w-md gap-2.5 text-left text-sm text-fg/90">
-        <li className="flex items-start gap-2.5">
-          <Icon name="chart" size={16} className="mt-0.5 shrink-0 text-accent" />
-          Alle Preis-Faktoren im Detail — was Ihren Wert erhöht und was ihn senkt
-        </li>
-        <li className="flex items-start gap-2.5">
-          <Icon name="pin" size={16} className="mt-0.5 shrink-0 text-accent" />
-          Satellitenbild &amp; Lage-Einschätzung Ihrer genauen Adresse
-        </li>
-        <li className="flex items-start gap-2.5">
-          <Icon name="users" size={16} className="mt-0.5 shrink-0 text-accent" />
-          Persönliche Einschätzung von RIEGEL vor Ort — kein anonymer Algorithmus
-        </li>
-      </ul>
-
-      <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-xl border border-border bg-bg/60 p-4 text-left">
-        <Icon name="shield" size={18} className="mt-0.5 shrink-0 text-accent" />
-        <p className="text-sm text-muted">
-          <strong className="text-fg">Der häufigste Fehler beim Verkauf:</strong> ein falsch
-          angesetzter Preis — zu hoch schreckt Interessenten ab, zu niedrig verschenkt Geld.
-          Der Report hilft, ihn von Anfang an richtig zu treffen.
-        </p>
-      </div>
-
-      <p className="mx-auto mt-4 max-w-md text-center text-xs text-faint">
-        <Icon name="lock" size={12} className="mb-0.5 mr-1 inline" />
-        Ihre Daten bleiben exklusiv bei RIEGEL — keine Weitergabe an andere Makler oder Portale.
-      </p>
 
       {/* Beide Zustände bleiben gemountet und wechseln über .t-collapse
           (grid-template-rows 0fr → 1fr) — kein abruptes Auf-/Zuklappen. */}
