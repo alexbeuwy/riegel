@@ -265,6 +265,35 @@ weiterhin keine Bodenrichtwerte; BORIS-BW bleibt reiner Viewer. Sauberer Weg: sc
 Nutzungszusage von ZGG-BW/LGL-BW einholen (Kontakt s. oben) — die Provider-Architektur nimmt
 einen dritten Dienst dann ohne Umbau auf.
 
+
+### §6-Nachtrag 18.08.2026 — BORIS-Ausbau auf 11 Länder (10 aktiv + Berlin vorbereitet)
+
+Per unlazy-Orchestrierung (3 Recherche-Leaves mit Live-curl-Beweisen + 1
+Implementierungs-Leaf, Gates in der Session-Ablage) wurden alle 16 Länder geprüft:
+
+- **NEU AKTIV (9):** NRW (WMS→GeoJSON, dl-de/zero), Niedersachsen + Bremen
+  (LGLN-WFS, EPSG:4326 direkt, Alias `borishb_wfs` ohne Jahrgangs-Pfadpflege;
+  Bremerhaven im selben Dienst), Hamburg (WFS, Punkt-Intersects wird ignoriert →
+  ~10-m-Polygon nötig), Brandenburg (WFS, zweistufiger Geometrie/Wert-Join),
+  Sachsen (WMS, GetFeatureInfo NUR auf dem Gruppen-Layer), Thüringen (WFS, alle
+  Stichtage in einer Antwort), Sachsen-Anhalt (ArcGIS-REST/JSON), MV (WFS,
+  Innenstädte im FeatureType `sanierungsgebiet`, nicht `wohnbauflaeche`).
+  Alle Lizenzen dl-de/by-2.0 bzw. dl-de/zero bzw. CC BY 4.0 — kommerzielle
+  Nutzung erlaubt, wörtliche Quellenvermerke in `BORIS_QUELLEN`.
+- **VORBEREITET:** Berlin (`fetchBerlin()` implementiert, deaktiviert — Endpoint
+  `gdi.berlin.de/services/wfs/brw2026` + dl-de/zero belegt, Dienst war während
+  der gesamten Verifikation in Wartung; Freischalt-Schritte im Code).
+- **ABGELEHNT:** Schleswig-Holstein (Lizenz verbietet permanentes Einbinden in
+  Webanwendungen), Saarland (Nutzungsbedingungen verbieten gewerbliche Nutzung).
+  BW/Bayern unverändert (schriftliche Zusage nötig / kostenpflichtig).
+
+**Fachlicher Kernbefund für ALLE Provider:** Thüringen lieferte für eine
+Jena-Koordinate `1 €/m² Grünland` — ohne Bauland-Filter wäre das als „amtlich"
+in Bewertungen gelaufen. Alle neuen Provider verwerfen Nicht-Bauland-Zonen und
+liefern lieber `null` (Rechner fällt dann auf den Modellwert zurück).
+Dauerhafter Regressionsschutz: `scripts/boris-live-check.mts` (je Land eine
+Spec-Koordinate live, nach jedem boris.ts-Change + vor Releases laufen lassen).
+
 ---
 
 ## 7. Quellen-Strategie „200 km um Speyer" (11.08.2026, Frage Alex)

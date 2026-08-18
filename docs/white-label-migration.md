@@ -279,11 +279,13 @@ Persönlichkeitsrechts-/Markenverletzung oder Irreführung.
 
 ## 7. Region-Abhängigkeiten (nicht überall verfügbar)
 
-- **Amtliche Bodenrichtwerte** (`boris.ts`): nur **RLP** (VBORIS-WMS) + **Hessen**
-  (BORIS-WFS). Andere Bundesländer → Modellwerte, kein „amtlich"-Badge. BW hat **keinen**
-  frei lizenzierten Dienst (Befund in `docs/preisatlas-research.md`); Anbindung nur mit
-  schriftlicher ZGG-BW-Zusage. Ein Makler außerhalb RLP/HE braucht hier eine bewusste
-  Entscheidung.
+- **Amtliche Bodenrichtwerte** (`boris.ts`): seit 18.08.2026 **10 Länder aktiv**
+  (RLP, Hessen, NRW, Niedersachsen, Bremen, Hamburg, Brandenburg, Sachsen, Thüringen,
+  Sachsen-Anhalt, MV) + Berlin vorbereitet/deaktiviert — Abdeckung ~80 % der Bevölkerung.
+  Verbleibende Lücken: **BW** (nur mit schriftlicher ZGG-BW-Zusage), **Bayern**
+  (kostenpflichtig), **SH/Saarland** (Lizenz verbietet Einbindung/gewerbliche Nutzung) —
+  dort Modellwerte ohne „amtlich"-Badge. Details + Quellenvermerke:
+  `docs/preisatlas-research.md` §6; Live-Regressionscheck: `scripts/boris-live-check.mts`.
 - **Marktdaten** (`marktdaten.ts`/`valuation.ts`): Basiswerte und Faktoren sind für die
   Rhein-Neckar-Region kalibriert — für eine neue Region komplett neu erheben.
 

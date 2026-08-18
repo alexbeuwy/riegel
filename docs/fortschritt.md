@@ -981,3 +981,24 @@ Zuliefer-Kette.
 **Regressionsschutz:** F19d = der exakte Live-Fall (ort leer, Label „Bad Vilbel, 61118")
 → 4.171 €/m². Lehre fürs Playbook: Engine-Tests prüfen die Engine — die ZULIEFER-Kette
 (Geocoder → URL → Formular → API) braucht eigene Fixtures.
+
+## Update — BORIS-Ausbau: 10 Bundesländer aktiv (18.08.2026, Auftrag Alex) ✅
+
+Per unlazy-Orchestrierung (3 Sonnet-Recherche-Leaves mit curl-Beweispflicht, 1
+Opus-Implementierungs-Leaf, Orchestrator hat alle Checks selbst nachgefahren):
+
+- **9 neue Länder live** in `boris.ts`: NRW (Köln 3.550 €/m²), Niedersachsen (Hannover
+  750), Bremen (820, inkl. Bremerhaven), Hamburg (1.515), Brandenburg (Potsdam 1.800),
+  Sachsen (Dresden 630), Thüringen (Erfurt 2.700), Sachsen-Anhalt (Magdeburg 1.100),
+  MV (Rostock 500) — jede Zahl aus echter Live-Punktabfrage. Dispatcher mit
+  Länder-BBox-Vorauswahl; RLP/Hessen bit-identisch (gegen HEAD gemessen); wörtliche
+  Pflicht-Quellenvermerke in `BORIS_QUELLEN` (Badge + PDF). Berlin: implementiert,
+  deaktiviert (Landesdienst in Wartung; Freischalt-Anleitung bei `fetchBerlin()`).
+- **Bauland-Filter als Sicherheitsgewinn:** Thüringen lieferte testweise „1 €/m²
+  Grünland" — alle neuen Provider verwerfen Nicht-Bauland und liefern lieber null.
+- **Doppelwirkung:** Jede neue Zone speist „amtlich"-Badge UND die BRW-Basis-Ableitung
+  der Engine — der Rechner wird damit in ~80 % Deutschlands (nach Einwohnern)
+  amtlich gestützt statt Modell-blind. SH/Saarland lizenzbedingt abgelehnt (kein
+  BW-Risiko Nr. 2), BW/Bayern unverändert.
+- **Dauer-Werkzeug:** `scripts/boris-live-check.mts` (9 Länder je Spec-Koordinate,
+  Exit 1 bei Ausfall) — Pflicht nach jedem boris.ts-Change und vor Releases.
