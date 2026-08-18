@@ -1321,3 +1321,48 @@
   }
   .cockpit-auf { animation: cockpit-auf var(--duration-fast) var(--ease-smooth-out); }
 }
+
+
+/* ── Rechner-Conversion-Paket (18.08.2026, Wunsch Alex) ─────────────────
+   Energie-Pin, PDF-Badge-Pfeil, Report-Headline-Reveal, CTA-Beam + Rattle.
+   Alles Bewegte steckt im no-preference-Block — reduced-motion sieht die
+   Elemente sofort und ruhig. */
+.energie-pin {
+  transition: left 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Weiße Beam-Kontur um den wichtigsten Button der Seite (Report-CTA). */
+.cta-beam {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.85),
+    0 0 22px rgba(255, 255, 255, 0.28),
+    0 0 44px rgba(1, 92, 255, 0.35);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pdf-pfeil {
+    animation: pdf-pfeil 2.4s ease-in-out infinite;
+  }
+  @keyframes pdf-pfeil {
+    0%, 100% { transform: translateY(0); opacity: 0.7; }
+    55% { transform: translateY(5px); opacity: 1; }
+  }
+  .report-headline {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 650ms ease, transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .report-headline[data-in="1"] {
+    opacity: 1;
+    transform: none;
+  }
+  /* Gelegentliches Aufmerksamkeits-Rattle (JS togglet die Klasse zufällig). */
+  .cta-rattle {
+    animation: cta-rattle 600ms ease-in-out;
+  }
+  @keyframes cta-rattle {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(-1.6deg) translateX(-1px); }
+    40% { transform: rotate(1.4deg) translateX(1px); }
+    60% { transform: rotate(-1deg); }
+    80% { transform: rotate(0.8deg); }
+  }
+}

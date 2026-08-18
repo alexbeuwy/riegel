@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { burstConfetti } from "@/lib/confetti";
+import { track } from "@/lib/track";
 import type { GeoResult } from "@/lib/geocode";
 import type { ValuationResult, Objektart, Zustand, Qualitaet, Vermietungsstand } from "@/lib/valuation";
 
@@ -63,6 +64,60 @@ export function ReportRequest({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [delivered, setDelivered] = useState(false);
+  // Headline-Reveal beim Viewport-Eintritt (Wunsch Alex 18.08.2026: der
+  // Report-Block ist DAS Highlight, die Headline darf auftreten).
+  const headRef = useRef<HTMLHeadingElement>(null);
+  const [headIn, setHeadIn] = useState(false);
+  // Gelegentliches Aufmerksamkeits-Rattle des CTA (transitions-dev-Geist:
+  // klein, selten, reduced-motion-gated — kein Dauerzappeln).
+  const [rattle, setRattle] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = headRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setHeadIn(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (open || done) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let t: ReturnType<typeof setTimeout>;
+    let aus: ReturnType<typeof setTimeout>;
+    const plan = () => {
+      t = setTimeout(() => {
+        setRattle(true);
+        aus = setTimeout(() => setRattle(false), 650);
+        plan();
+      }, 6000 + Math.random() * 9000);
+    };
+    plan();
+    return () => {
+      clearTimeout(t);
+      clearTimeout(aus);
+    };
+  }, [open, done]);
+
+  // Das orange PDF-Badge im Ergebnis öffnet das Formular aus der Ferne —
+  // gleicher Effekt wie ein Klick auf den CTA, plus Scroll hierher.
+  useEffect(() => {
+    const auf = () => {
+      setOpen(true);
+      setTimeout(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    };
+    window.addEventListener("riegel:report-oeffnen", auf);
+    return () => window.removeEventListener("riegel:report-oeffnen", auf);
+  }, []);
 
   const fail = (m: string) => {
     setError(m);
@@ -129,6 +184,7 @@ export function ReportRequest({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.ok === false) throw new Error("send failed");
+      track("report_angefordert");
       setDelivered(Boolean(data?.delivered));
     } catch {
       // KEINE Schein-Bestätigung: der Lead würde RIEGEL sonst nie erreichen.
@@ -191,12 +247,22 @@ export function ReportRequest({
     "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
 
   return (
-    <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-accent/30 bg-surface p-6 sm:p-8">
+    <div ref={rootRef} data-track-bereich="report-formular" className="mx-auto mt-10 max-w-2xl rounded-2xl border border-accent/30 bg-surface p-6 sm:p-8">
       <div className="text-center">
-        <div className="flex items-center justify-center gap-2 text-sm text-accent">
+        <div className="flex items-center justify-center gap-2 text-sm text-accent-strong">
           <Icon name="doc" size={18} />
-          Persönlicher Marktwert-Report
+          Ihr nächster Schritt
         </div>
+        {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
+            AKIRA-Headline in hellem Akzentblau, animierter Auftritt beim
+            Viewport-Eintritt (.report-headline in globals.css). */}
+        <h3
+          ref={headRef}
+          data-in={headIn ? "1" : undefined}
+          className="report-headline akira mx-auto mt-3 max-w-xl text-2xl leading-[0.95] text-accent-strong sm:text-4xl"
+        >
+          Persönlicher Marktwert&#8209;Report
+        </h3>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted">
           Diese Sofort-Einschätzung ist nur der Anfang. Der vollständige Report zeigt,{" "}
           <strong className="text-fg">worauf es beim Preis wirklich ankommt</strong> — kostenlos,
@@ -243,8 +309,11 @@ export function ReportRequest({
           <div className="t-collapse-inner flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
-              onClick={() => setOpen(true)}
-              className="press inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+              onClick={() => {
+                track("report_form_geoeffnet", { quelle: "cta" });
+                setOpen(true);
+              }}
+              className={`press cta-beam ${rattle ? "cta-rattle" : ""} inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover`}
             >
               <Icon name="doc" size={17} />
               Report als PDF anfordern

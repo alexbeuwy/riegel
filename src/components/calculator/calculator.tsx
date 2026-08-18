@@ -7,6 +7,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { MapConsentGate } from "@/components/consent";
 import { formatEUR } from "@/lib/format";
 import { ortAusLabel, searchAddress, type GeoResult } from "@/lib/geocode";
+import { track, trackKlick } from "@/lib/track";
 import {
   estimateValue,
   AUSSTATTUNG_HAUS,
@@ -39,6 +40,39 @@ const LocationMap = dynamic(
 
 type Phase = "form" | "analyzing" | "result";
 const ENERGIE = ["A+", "A", "B", "C", "D", "E", "F", "G", "H"];
+
+/**
+ * Klassische Energieausweis-Farbskala (Grün → Rot) mit gleitendem Pin-Rahmen
+ * auf der gewählten Klasse (Wunsch Alex 18.08.2026). Das Select daneben
+ * bleibt das zugängliche Steuerelement — der Strahl ist reine Visualisierung
+ * (aria-hidden), deshalb dürfen die Buchstaben im Strahl klein sein.
+ */
+const ENERGIE_FARBEN = ["#0a8f3c", "#2fa23a", "#7cb52e", "#c8c421", "#e8b31d", "#e88f1d", "#e2661b", "#d8401e", "#c22323"];
+
+function EnergieStrahl({ wert }: { wert: string }) {
+  const idx = ENERGIE.indexOf(wert);
+  return (
+    <div className="relative flex-1" aria-hidden>
+      <div className="flex h-9 overflow-hidden rounded-lg">
+        {ENERGIE.map((k, i) => (
+          <span
+            key={k}
+            className="flex flex-1 items-center justify-center text-[0.6rem] font-semibold text-black/70 transition-opacity duration-300"
+            style={{ backgroundColor: ENERGIE_FARBEN[i], opacity: idx === -1 ? 0.5 : idx === i ? 1 : 0.35 }}
+          >
+            {k}
+          </span>
+        ))}
+      </div>
+      {idx >= 0 && (
+        <span
+          className="energie-pin absolute -top-1 bottom-[-4px] rounded-md border-2 border-fg shadow-[0_0_10px_rgba(0,0,0,0.55)]"
+          style={{ left: `calc(${(idx / ENERGIE.length) * 100}% + 1px)`, width: `calc(${100 / ENERGIE.length}% - 2px)` }}
+        />
+      )}
+    </div>
+  );
+}
 // Vier Fortschritts-Knoten: „Rechner aufrufen" gilt mit dem Öffnen bereits
 // als erledigt (psychologischer Vorsprung) — die drei Formularschritte folgen.
 const STEP_NODES = ["Rechner aufrufen", "Objektart", "Standort", "Eckdaten"];
@@ -238,7 +272,7 @@ const SOURCES: { label: string; sub: string; value: (r: ValuationResult, f: Form
           <span key={`${b.brw}-${b.zone}`} className="t-num-d">
             {`${b.brw} €/m²${b.zone ? ` · Zone ${b.zone}` : ""}`}
           </span>
-          <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+          <span className="whitespace-nowrap rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
             {borisPriceRelevant(f.objektart) ? "amtlich" : "amtlich · informativ"}
           </span>
         </span>
@@ -435,10 +469,13 @@ function betragTeile(s: string): [string, string] {
   return i === -1 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)];
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** wichtig = Hauptfeld: kräftigere Kontur + hellere Beschriftung — optionale
+ *  Felder behalten die bisherige, dezentere Optik (Wunsch Alex 18.08.2026:
+ *  Pflicht und Kür müssen auf einen Blick unterscheidbar sein). */
+function Field({ label, children, wichtig }: { label: string; children: React.ReactNode; wichtig?: boolean }) {
   return (
     <label className="block space-y-2">
-      <span className="text-sm text-muted">{label}</span>
+      <span className={`text-sm ${wichtig ? "font-medium text-fg" : "text-muted"}`}>{label}</span>
       {children}
     </label>
   );
@@ -446,6 +483,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const inputCls =
   "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
+/** Hauptfeld-Variante: sichtbarere Kontur (s. Field.wichtig). */
+const inputClsWichtig = inputCls.replace("border-border", "border-fg/30");
 
 export function Calculator() {
   const [phase, setPhase] = useState<Phase>("form");
@@ -456,6 +495,9 @@ export function Calculator() {
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [boris, setBoris] = useState<BorisState>(BORIS_EMPTY);
+  // Aufklapper „Präzisere Kalkulation gewünscht?" — Conversion-Regel: nie
+  // mehr als 5–6 Felder gleichzeitig sichtbar (Wunsch Alex 18.08.2026).
+  const [mehrDetails, setMehrDetails] = useState(false);
   // Echte Orts-Abschlüsse (Aggregate aus /api/marktstats, OnOffice-Pool) —
   // Plausibilitäts-Deckel + ehrliche Vergleichszahl (s. valuation.ts).
   const [stats, setStats] = useState<OrtsStats | null>(null);
@@ -780,7 +822,9 @@ export function Calculator() {
   const pct = PROGRESS_PCT[step] ?? PROGRESS_PCT[0];
 
   return (
-    <div className="mx-auto max-w-3xl">
+    // onClickCapture: anonyme 5-%-Raster-Klicks für die Conversion-Heatmap in
+    // /intern (s. lib/track.ts — bewusst ohne Nutzer-Wiedererkennung).
+    <div className="mx-auto max-w-3xl" data-track-bereich="formular" onClickCapture={trackKlick}>
       <div className="mb-8">
         <div className="mb-3 flex items-center justify-between gap-3 text-xs">
           <span className="uppercase tracking-[0.2em] text-faint">Schritt {currentNode + 1} von 4</span>
@@ -860,11 +904,12 @@ export function Calculator() {
                     // Objektart-Wechsel setzt die Ausstattung zurück: Wohn- und
                     // Gewerbe-Merkmale sind zwei verschiedene Listen, sonst
                     // bliebe „Balkon" an einer Halle ausgewählt.
-                    onClick={() =>
+                    onClick={() => {
+                      track("rechner_start");
                       setF((s) =>
                         s.objektart === o.key ? s : { ...s, objektart: o.key, ausstattung: [] },
-                      )
-                    }
+                      );
+                    }}
                     className={`group press relative flex flex-col items-center justify-center gap-2.5 overflow-hidden rounded-xl border p-4 text-center transition-[border-color,background-color,transform] duration-300 ${
                       selected
                         ? "glow-select-on border-accent bg-surface-2"
@@ -1083,12 +1128,16 @@ export function Calculator() {
               </div>
             )}
 
+            {/* CONVERSION-REGEL (18.08.2026, Alex): nie mehr als 5–6 Felder
+                gleichzeitig sichtbar — alles Optionale wandert in den
+                „Präzisere Kalkulation"-Aufklapper darunter. Sichtbar bleibt je
+                Objektart nur, was Pflicht ist oder den Wert stark treibt. */}
             <div className="grid gap-4 sm:grid-cols-2">
               {f.objektart !== "grundstueck" && (
                 // Bei Gewerbe heißt die Fläche Nutzfläche, nicht Wohnfläche.
-                <Field label={f.objektart === "gewerbe" ? "Nutzfläche gesamt (m²)" : "Wohnfläche (m²)"}>
+                <Field wichtig label={f.objektart === "gewerbe" ? "Nutzfläche gesamt (m²)" : "Wohnfläche (m²)"}>
                   <input
-                    className={inputCls}
+                    className={inputClsWichtig}
                     inputMode="numeric"
                     value={f.wohnflaeche}
                     onChange={(e) => set("wohnflaeche", e.target.value)}
@@ -1096,9 +1145,11 @@ export function Calculator() {
                   />
                 </Field>
               )}
-              {f.objektart !== "wohnung" && (
-                <Field label="Grundstücksfläche (m²)">
-                  <input className={inputCls} inputMode="numeric" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
+              {/* Grundstück: bei Haus/Gewerbe/Grundstück Haupt-Werttreiber und
+                  sichtbar — beim MFH optional (wandert in den Aufklapper). */}
+              {(f.objektart === "haus" || f.objektart === "gewerbe" || f.objektart === "grundstueck") && (
+                <Field wichtig label="Grundstücksfläche (m²)">
+                  <input className={inputClsWichtig} inputMode="numeric" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
                 </Field>
               )}
               {f.objektart === "mehrfamilienhaus" && (
@@ -1107,9 +1158,9 @@ export function Calculator() {
                       Leerstand braucht der Eigentümer KEINE Miete zu erfinden,
                       dann setzen wir für die leeren Flächen selbst eine
                       marktübliche Miete an (Rückfrage Manfred). */}
-                  <Field label="Vermietungsstand">
+                  <Field wichtig label="Vermietungsstand">
                     <select
-                      className={inputCls}
+                      className={inputClsWichtig}
                       value={f.vermietungsstand}
                       onChange={(e) => set("vermietungsstand", e.target.value as Vermietungsstand)}
                     >
@@ -1120,6 +1171,7 @@ export function Calculator() {
                   </Field>
                   {f.vermietungsstand !== "leer" && (
                     <Field
+                      wichtig
                       label={
                         f.vermietungsstand === "teilweise"
                           ? "Aktuelle Jahresnettokaltmiete (€/Jahr)"
@@ -1127,7 +1179,7 @@ export function Calculator() {
                       }
                     >
                       <input
-                        className={inputCls}
+                        className={inputClsWichtig}
                         inputMode="numeric"
                         value={f.jahresnettokaltmiete}
                         onChange={(e) => set("jahresnettokaltmiete", e.target.value)}
@@ -1136,9 +1188,9 @@ export function Calculator() {
                     </Field>
                   )}
                   {f.vermietungsstand === "teilweise" && (
-                    <Field label="Davon leerstehende Wohnfläche (m²)">
+                    <Field wichtig label="Davon leerstehende Wohnfläche (m²)">
                       <input
-                        className={inputCls}
+                        className={inputClsWichtig}
                         inputMode="numeric"
                         value={f.leerstehendeWohnflaeche}
                         onChange={(e) => set("leerstehendeWohnflaeche", e.target.value)}
@@ -1146,22 +1198,15 @@ export function Calculator() {
                       />
                     </Field>
                   )}
-                  <Field label="Wohneinheiten">
+                  {/* 1–4 Einheiten schalten den Vergleichswert-Anker der Engine
+                      frei — deshalb Hauptfeld, nicht Kür (s. valuation.ts). */}
+                  <Field wichtig label="Wohneinheiten">
                     <input
-                      className={inputCls}
+                      className={inputClsWichtig}
                       inputMode="numeric"
                       value={f.wohneinheiten}
                       onChange={(e) => set("wohneinheiten", e.target.value)}
                       placeholder="z. B. 6"
-                    />
-                  </Field>
-                  <Field label="Gewerbeeinheiten (optional)">
-                    <input
-                      className={inputCls}
-                      inputMode="numeric"
-                      value={f.gewerbeeinheiten}
-                      onChange={(e) => set("gewerbeeinheiten", e.target.value)}
-                      placeholder="z. B. 1"
                     />
                   </Field>
                 </>
@@ -1173,18 +1218,18 @@ export function Calculator() {
                   Büro/Praxis ergibt sich als Rest. */}
               {f.objektart === "gewerbe" && (
                 <>
-                  <Field label="Davon Hallen-/Lagerfläche (m²)">
+                  <Field wichtig label="Davon Hallen-/Lagerfläche (m²)">
                     <input
-                      className={inputCls}
+                      className={inputClsWichtig}
                       inputMode="numeric"
                       value={f.hallenflaeche}
                       onChange={(e) => set("hallenflaeche", e.target.value)}
                       placeholder="z. B. 400"
                     />
                   </Field>
-                  <Field label="Davon Wohnfläche (m²) — falls Wohnungen im Objekt">
+                  <Field wichtig label="Davon Wohnfläche (m²) — falls Wohnungen im Objekt">
                     <input
-                      className={inputCls}
+                      className={inputClsWichtig}
                       inputMode="numeric"
                       value={f.mischWohnflaeche}
                       onChange={(e) => set("mischWohnflaeche", e.target.value)}
@@ -1193,72 +1238,33 @@ export function Calculator() {
                   </Field>
                 </>
               )}
-              {f.objektart !== "grundstueck" && f.objektart !== "gewerbe" && (
-                <>
-                  <Field label="Zimmer">
-                    <input className={inputCls} inputMode="numeric" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 4" />
-                  </Field>
-                  <Field label="Badezimmer">
-                    <input className={inputCls} inputMode="numeric" value={f.badezimmer} onChange={(e) => set("badezimmer", e.target.value)} placeholder="z. B. 2" />
-                  </Field>
-                </>
+              {/* Zimmer: bei Wohnung/Haus Haupt-Angabe; beim MFH fachlich
+                  kaum ausschlaggebend → dort optional im Aufklapper
+                  (Wunsch Alex 18.08.2026). */}
+              {(f.objektart === "wohnung" || f.objektart === "haus") && (
+                <Field wichtig label="Zimmer">
+                  <input className={inputClsWichtig} inputMode="numeric" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 4" />
+                </Field>
               )}
               {f.objektart !== "grundstueck" && (
                 <>
-                  <Field label="Baujahr">
-                    <input className={inputCls} inputMode="numeric" value={f.baujahr} onChange={(e) => set("baujahr", e.target.value)} placeholder="z. B. 1998" />
+                  <Field wichtig label="Baujahr">
+                    <input className={inputClsWichtig} inputMode="numeric" value={f.baujahr} onChange={(e) => set("baujahr", e.target.value)} placeholder="z. B. 1998" />
                   </Field>
-                  <Field label="Zustand">
-                    <select className={inputCls} value={f.zustand} onChange={(e) => set("zustand", e.target.value as Zustand)}>
+                  <Field wichtig label="Zustand">
+                    <select className={inputClsWichtig} value={f.zustand} onChange={(e) => set("zustand", e.target.value as Zustand)}>
                       <option value="neuwertig">Neuwertig / saniert</option>
                       <option value="gepflegt">Gepflegt</option>
                       <option value="renovierungsbeduerftig">Renovierungsbedürftig</option>
                     </select>
                   </Field>
-                  <Field label="Ausstattungsqualität">
-                    <select className={inputCls} value={f.qualitaet} onChange={(e) => set("qualitaet", e.target.value as Qualitaet)}>
-                      {QUALITAETEN.map((q) => (
-                        <option key={q.key} value={q.key}>{q.label}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  {/* Energieeffizienzklassen A+ bis H gelten nach Anlage 10 GEG
-                      ausschließlich für WOHNgebäude. Nichtwohngebäude bekommen
-                      im Energieausweis keine Klasse, sondern Vergleichswerte —
-                      das Feld wird bei Gewerbe daher nicht angeboten. */}
-                  {f.objektart !== "gewerbe" && (
-                    <Field label="Energieeffizienzklasse">
-                      <select className={inputCls} value={f.energieklasse} onChange={(e) => set("energieklasse", e.target.value)}>
-                        <option value="">unbekannt</option>
-                        {ENERGIE.map((k) => (
-                          <option key={k} value={k}>{k}</option>
-                        ))}
-                      </select>
-                    </Field>
-                  )}
-                  {/* Hausgeld nur bei der Eigentumswohnung: realer Preisdrücker
-                      (Käufer rechnen die monatliche Dauerlast gegen), den das
-                      Modell ohne diese Angabe nicht sehen kann — Fall Manfred
-                      „Landauer Warte": 700 €/Monat bei 105 m². */}
-                  {f.objektart === "wohnung" && (
-                    <Field label="Hausgeld pro Monat (€, optional)">
-                      <input
-                        className={inputCls}
-                        inputMode="numeric"
-                        value={f.hausgeld}
-                        onChange={(e) => set("hausgeld", e.target.value)}
-                        placeholder="z. B. 320"
-                      />
-                    </Field>
-                  )}
                 </>
               )}
             </div>
+
             {/* „Neuwertig" heißt bei Altbaujahren nur MIT Kernsanierung
-                neuwertig — sonst wertet die Engine wie „gepflegt"
-                (transparent im Ergebnis ausgewiesen, s. valuation.ts). Der
-                Schalter erscheint deshalb genau dann, wenn er die Rechnung
-                ändern kann. */}
+                neuwertig — der Schalter gehört deshalb DIREKT unter den
+                sichtbaren Zustand, nicht in die Kür (er ändert die Rechnung). */}
             {(f.objektart === "wohnung" || f.objektart === "haus") && f.zustand === "neuwertig" && (
               <label className="press flex w-full cursor-pointer items-start gap-3 rounded-xl border border-border p-3.5 transition-colors hover:border-accent/50 hover:bg-surface-2/60">
                 <input
@@ -1276,23 +1282,110 @@ export function Calculator() {
                 </span>
               </label>
             )}
+
+            {/* Aufklapper für alles Optionale — beim reinen Grundstück gibt es
+                keine Kür-Felder, dann entfällt der Button komplett. */}
             {f.objektart !== "grundstueck" && (
-              <div className="space-y-3">
-                <span className="text-sm text-muted">Ausstattung</span>
-                <div className="flex flex-wrap gap-2">
-                  {ausstattungListe(f.objektart).map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      aria-pressed={f.ausstattung.includes(a)}
-                      onClick={() => toggleAusst(a)}
-                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                        f.ausstattung.includes(a) ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
-                      }`}
-                    >
-                      {a}
-                    </button>
-                  ))}
+              <div data-track-bereich="praezisere-kalkulation">
+                <button
+                  type="button"
+                  aria-expanded={mehrDetails}
+                  onClick={() => setMehrDetails((v) => !v)}
+                  className="press flex w-full items-center justify-between rounded-xl border border-border px-4 py-3.5 transition-colors hover:border-accent/50 hover:bg-surface-2/60"
+                >
+                  <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
+                    <Icon name="sparkle" size={16} className="text-accent-strong" />
+                    Präzisere Kalkulation gewünscht?
+                    <span className="hidden text-xs font-normal text-faint sm:inline">optional — verfeinert das Ergebnis</span>
+                  </span>
+                  <Icon name="chevronDown" size={16} className={`shrink-0 text-muted transition-transform duration-300 ${mehrDetails ? "rotate-180" : ""}`} />
+                </button>
+                <div className={`t-collapse ${mehrDetails ? "is-open" : ""}`}>
+                  <div className="t-collapse-inner">
+                    <div className="grid gap-4 pt-4 sm:grid-cols-2">
+                      {f.objektart === "mehrfamilienhaus" && (
+                        <>
+                          <Field label="Grundstücksfläche (m²)">
+                            <input className={inputCls} inputMode="numeric" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
+                          </Field>
+                          <Field label="Gewerbeeinheiten">
+                            <input
+                              className={inputCls}
+                              inputMode="numeric"
+                              value={f.gewerbeeinheiten}
+                              onChange={(e) => set("gewerbeeinheiten", e.target.value)}
+                              placeholder="z. B. 1"
+                            />
+                          </Field>
+                          <Field label="Zimmer gesamt">
+                            <input className={inputCls} inputMode="numeric" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 12" />
+                          </Field>
+                        </>
+                      )}
+                      {f.objektart !== "gewerbe" && (
+                        <Field label="Badezimmer">
+                          <input className={inputCls} inputMode="numeric" value={f.badezimmer} onChange={(e) => set("badezimmer", e.target.value)} placeholder="z. B. 2" />
+                        </Field>
+                      )}
+                      <Field label="Ausstattungsqualität">
+                        <select className={inputCls} value={f.qualitaet} onChange={(e) => set("qualitaet", e.target.value as Qualitaet)}>
+                          {QUALITAETEN.map((q) => (
+                            <option key={q.key} value={q.key}>{q.label}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      {/* Hausgeld nur bei der Eigentumswohnung: realer Preisdrücker
+                          (Fall Manfred „Landauer Warte": 700 €/Monat bei 105 m²). */}
+                      {f.objektart === "wohnung" && (
+                        <Field label="Hausgeld pro Monat (€)">
+                          <input
+                            className={inputCls}
+                            inputMode="numeric"
+                            value={f.hausgeld}
+                            onChange={(e) => set("hausgeld", e.target.value)}
+                            placeholder="z. B. 320"
+                          />
+                        </Field>
+                      )}
+                      {/* Energieeffizienzklassen A+ bis H gelten nach Anlage 10 GEG
+                          ausschließlich für WOHNgebäude — bei Gewerbe entfällt das
+                          Feld. Mini-Select + Farbstrahl mit gleitendem Pin
+                          (Wunsch Alex 18.08.2026). */}
+                      {f.objektart !== "gewerbe" && (
+                        <div className="sm:col-span-2">
+                          <Field label="Energieeffizienzklasse">
+                            <div className="flex items-center gap-3">
+                              <select className={`${inputCls} w-24 shrink-0`} value={f.energieklasse} onChange={(e) => set("energieklasse", e.target.value)}>
+                                <option value="">–</option>
+                                {ENERGIE.map((k) => (
+                                  <option key={k} value={k}>{k}</option>
+                                ))}
+                              </select>
+                              <EnergieStrahl wert={f.energieklasse} />
+                            </div>
+                          </Field>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      <span className="text-sm text-muted">Ausstattung</span>
+                      <div className="flex flex-wrap gap-2">
+                        {ausstattungListe(f.objektart).map((a) => (
+                          <button
+                            key={a}
+                            type="button"
+                            aria-pressed={f.ausstattung.includes(a)}
+                            onClick={() => toggleAusst(a)}
+                            className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                              f.ausstattung.includes(a) ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
+                            }`}
+                          >
+                            {a}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1446,7 +1539,7 @@ function Result({
   const tiles = statTiles(result);
 
   return (
-    <div ref={sectionRef} className="overflow-hidden rounded-2xl border border-border">
+    <div ref={sectionRef} className="overflow-hidden rounded-2xl border border-border" data-track-bereich="ergebnis" onClickCapture={trackKlick}>
       {/* Satelliten-Ansicht + Adresse */}
       {f.address && (
         <div className="relative h-64 w-full sm:h-80">
@@ -1454,7 +1547,10 @@ function Result({
             <LocationMap lat={f.address.lat} lng={f.address.lng} zoom={18} />
           </MapConsentGate>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg via-bg/70 to-transparent p-6">
-            <div className="text-xs uppercase tracking-[0.25em] text-accent">Bewertete Immobilie</div>
+            {/* accent-strong statt Voll-Blau: auf dem Satellitenfoto war das dunkle
+                Akzentblau kaum lesbar (Hinweis Alex 18.08.2026) — die helle
+                Tönung ist im Design-System genau für Text auf Dunkel gedacht. */}
+            <div className="text-xs uppercase tracking-[0.25em] text-accent-strong drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">Bewertete Immobilie</div>
             <div className="mt-1 text-lg font-semibold text-fg">{f.address.label}</div>
           </div>
         </div>
@@ -1478,6 +1574,31 @@ function Result({
               <span className="whitespace-nowrap text-[0.6rem] font-medium uppercase tracking-[0.1em] text-accent-strong sm:text-[0.7rem] sm:tracking-[0.2em]">
                 Geschätzter Marktwert
               </span>
+            </div>
+
+            {/* Zweiter Anker Richtung PDF (Wunsch Alex 18.08.2026): das
+                EINZIGE warme Element im Ergebnis — springt dadurch ins Auge.
+                Klick wirkt wie „Report anfordern": öffnet und scrollt zum
+                Formular (CustomEvent, ReportRequest hört darauf). Bewusst
+                CSS statt Three.js: ein Pfeil-Loop braucht keine 3D-Engine. */}
+            <div className="mt-3">
+              <button
+                type="button"
+                data-track-bereich="pdf-badge"
+                onClick={() => {
+                  track("report_form_geoeffnet", { quelle: "badge" });
+                  window.dispatchEvent(new CustomEvent("riegel:report-oeffnen"));
+                }}
+                className="press inline-flex max-w-full items-center gap-2 rounded-full border border-amber-400/45 bg-amber-400/10 py-1.5 pl-1.5 pr-3 text-left transition-colors hover:border-amber-300/80 hover:bg-amber-400/15"
+              >
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
+                  <Icon name="printer" size={14} />
+                </span>
+                <span className="min-w-0 text-[0.62rem] font-medium uppercase tracking-[0.06em] text-amber-300 sm:text-[0.7rem]">
+                  Präzisere Infos &amp; Daten im kostenlosen Report-PDF (Druckversion)
+                </span>
+                <Icon name="chevronDown" size={14} className="pdf-pfeil shrink-0 text-amber-300" />
+              </button>
             </div>
 
             {/* Wert-Plakette (s. .wert-plakette in globals.css). --wert-len ist
@@ -1523,7 +1644,7 @@ function Result({
                 <span key={`${b.brw}-${b.zone}`} className="t-num-d">
                   Bodenrichtwert {b.brw} €/m²{b.zone ? ` · Zone ${b.zone}` : ""}
                 </span>
-                <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                <span className="whitespace-nowrap rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
                   {/* Quellen-Name je Landesdienst (RLP/Hessen); Alt-Antworten
                       ohne quelle-Feld fallen auf RLP zurück. */}
                   {`${borisPriceRelevant(f.objektart) ? "amtlich" : "informativ"} · ${b.quelle === "HE" ? "BORIS Hessen" : "BORIS-RLP"}`}
@@ -1581,7 +1702,7 @@ function Result({
                     : "Jahresnettokaltmiete"}{" "}
                   × {nfDE.format(result.vervielfaeltiger)}
                 </span>
-                <span className="rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+                <span className="whitespace-nowrap rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
                   heuristische Schätzung
                 </span>
               </div>
@@ -1644,23 +1765,11 @@ function Result({
           </div>
         )}
 
-        {/* Modell-Annahmen offen ausweisen (Erwartungsmanagement): der
-            Eigentümer soll HIER schon sehen, warum das Modell z. B. seine
-            „neuwertig"-Angabe erdet oder am realen Abschlussniveau deckelt —
-            nicht erst im Vor-Ort-Termin (Fall Manfred „Landauer Warte"). */}
-        {result.annahmen.length > 0 && (
-          <div className="mx-auto mt-6 max-w-3xl rounded-xl border border-border bg-surface p-4">
-            <div className="mb-2 text-sm text-muted">So hat das Modell Ihre Angaben eingeordnet</div>
-            <ul className="space-y-1.5">
-              {result.annahmen.map((a) => (
-                <li key={a} className="flex gap-2 text-sm leading-snug text-muted">
-                  <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent-strong" />
-                  <span>{a}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Die Annahmen-Box („So hat das Modell Ihre Angaben eingeordnet")
+            stand hier bis 18.08.2026 — auf Wunsch Alex entfernt: sie schob den
+            Report-CTA nach unten und brachte im Web keinen Mehrwert. Die
+            annahmen[] der Engine bleiben erhalten und erscheinen weiter im
+            PDF (Preis-Zusammensetzungs-Seite) — dort stören sie keinen CTA. */}
 
         <ReportRequest f={f} result={result} onReset={onReset} borisLoading={boris.loading} />
 

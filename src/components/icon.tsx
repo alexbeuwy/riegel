@@ -28,6 +28,7 @@ export type IconName =
   | "arrowUpRight"
   | "arrowLeft"
   | "chevronDown"
+  | "printer"
   | "close"
   | "check"
   | "bolt"
@@ -120,6 +121,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
   bed: <path d="M3 18v-6h13a4 4 0 0 1 4 4v2M3 18v-2M21 18v-2M3 12V7M7 10h2a2 2 0 0 1 2 2" />,
   bath: (
     <path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3ZM6 12V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2M7 19l-1 2M18 19l1 2" />
+  ),
+  printer: (
+    <>
+      <path d="M6.5 8V3.5h11V8" />
+      <path d="M6.5 17.5h-2a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h15a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <path d="M7 14.5h10v6H7z" />
+    </>
   ),
   car: (
     <path d="M5 16v2M19 16v2M4 16v-3l2-5a2 2 0 0 1 1.9-1.3h8.2A2 2 0 0 1 18 8l2 5v3H4ZM4 13h16M7.5 16h.01M16.5 16h.01" />
