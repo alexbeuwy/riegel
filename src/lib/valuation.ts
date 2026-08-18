@@ -1112,16 +1112,28 @@ export function estimateValue(input: ValuationInput, opts?: EstimateOptions): Va
   const DECKEL_MIN_N = 8;
   const s = opts?.ortsStats;
   const wf = input.wohnflaeche ?? 0;
-  if (s && s.n >= DECKEL_MIN_N && flaechenObjekt && wf > 0 && mid / wf > s.p75Qm) {
+  // NEUBAU-AUSNAHME (18.08.2026, Fall Alex Max-Bill-Straße LU): Der Verkauft-
+  // Pool ist Altbau-dominiert (verkauft-stats kennt kein Baujahr) — sein p75
+  // ist damit KEINE Obergrenze für junge Substanz. Eine 2022er-Wohnung wurde
+  // auf 2.931 €/m² (p75 aus 39 gemischten LU-Verkäufen) gekappt, real liegt
+  // LU-Neubau deutlich darüber. Für Baujahr >= 2000 hebt derselbe Baujahr-
+  // Faktor, der den Modellwert anhebt (1,10/1,20, backtest-belegt n=69),
+  // auch die Deckel-Grenze an: Der Deckel erdet weiter am Ort, misst Neubau
+  // aber nicht am Bestands-Mix.
+  const deckelBf = (input.baujahr ?? 0) >= 2000 ? baujahrFactor(input.baujahr) : 1;
+  const deckelQm = s ? s.p75Qm * deckelBf : 0;
+  if (s && s.n >= DECKEL_MIN_N && flaechenObjekt && wf > 0 && mid / wf > deckelQm) {
     const rawMid = mid;
-    plausibilisierung = { n: s.n, p75Qm: Math.round(s.p75Qm), modellMid: round(rawMid) };
-    deckelFaktor = (s.p75Qm * wf) / rawMid;
-    mid = s.p75Qm * wf;
+    plausibilisierung = { n: s.n, p75Qm: Math.round(deckelQm), modellMid: round(rawMid) };
+    deckelFaktor = (deckelQm * wf) / rawMid;
+    mid = deckelQm * wf;
     // Bei der Wohnung IST mid/Fläche der ausgewiesene €/m² — nachziehen.
     // Beim Haus bleibt pricePerSqm der Gebäudeanteil (mid enthält Boden).
-    if (input.objektart === "wohnung") pricePerSqm = Math.round(s.p75Qm);
+    if (input.objektart === "wohnung") pricePerSqm = Math.round(deckelQm);
     annahmen.push(
-      `Modellwert an der Realität geerdet: ${s.n} echte Verkäufe in ${ortName} (OnOffice) erzielten bis ${Math.round(s.p75Qm).toLocaleString("de-DE")} €/m² im oberen Viertel — der Report bleibt innerhalb dieses belegten Niveaus.`,
+      deckelBf > 1
+        ? `Modellwert an der Realität geerdet: ${s.n} echte Verkäufe in ${ortName} (OnOffice) erzielten bis ${Math.round(s.p75Qm).toLocaleString("de-DE")} €/m² im oberen Viertel — für Ihr Baujahr ${input.baujahr} wurde diese Grenze um den Neubau-Aufschlag angehoben, da der Vergleichspool überwiegend ältere Objekte enthält.`
+        : `Modellwert an der Realität geerdet: ${s.n} echte Verkäufe in ${ortName} (OnOffice) erzielten bis ${Math.round(s.p75Qm).toLocaleString("de-DE")} €/m² im oberen Viertel — der Report bleibt innerhalb dieses belegten Niveaus.`,
     );
   }
 

@@ -1546,7 +1546,7 @@ export function InternDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => openAkte(email)}
-                                    className="press text-accent hover:underline"
+                                    className="press break-all text-left text-accent hover:underline"
                                   >
                                     {email}
                                   </button>
@@ -1696,7 +1696,7 @@ export function InternDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => openAkte(email)}
-                                    className="press text-accent hover:underline"
+                                    className="press break-all text-left text-accent hover:underline"
                                   >
                                     {email}
                                   </button>

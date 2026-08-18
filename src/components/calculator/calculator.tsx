@@ -1283,6 +1283,31 @@ export function Calculator() {
               </label>
             )}
 
+            {/* Ausstattung bleibt SICHTBAR (Korrektur Alex 18.08.2026): die
+                Bubbles tragen spürbar zum Wert bei und kosten als Ein-Klick-
+                Chips kaum Aufmerksamkeit — in die Kür gehören nur Felder, die
+                Tipparbeit verlangen. */}
+            {f.objektart !== "grundstueck" && (
+              <div className="space-y-3">
+                <span className="text-sm text-muted">Ausstattung</span>
+                <div className="flex flex-wrap gap-2">
+                  {ausstattungListe(f.objektart).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      aria-pressed={f.ausstattung.includes(a)}
+                      onClick={() => toggleAusst(a)}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        f.ausstattung.includes(a) ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
+                      }`}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Aufklapper für alles Optionale — beim reinen Grundstück gibt es
                 keine Kür-Felder, dann entfällt der Button komplett. */}
             {f.objektart !== "grundstueck" && (
@@ -1366,24 +1391,6 @@ export function Calculator() {
                           </Field>
                         </div>
                       )}
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      <span className="text-sm text-muted">Ausstattung</span>
-                      <div className="flex flex-wrap gap-2">
-                        {ausstattungListe(f.objektart).map((a) => (
-                          <button
-                            key={a}
-                            type="button"
-                            aria-pressed={f.ausstattung.includes(a)}
-                            onClick={() => toggleAusst(a)}
-                            className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                              f.ausstattung.includes(a) ? "border-accent text-accent" : "border-border text-muted hover:text-fg"
-                            }`}
-                          >
-                            {a}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 </div>

@@ -616,6 +616,32 @@ const f19d = run(
 );
 check("F19d leeres city-Feld, Ort aus Label (Live-Fall)", f19d.pricePerSqm ?? 0, 4_000, 4_400, "€/m²");
 
+/* F20 — Neubau vs. Altbau-Deckel (der Max-Bill-Straße-Fall, 18.08.2026):
+ * Wohnung Ludwigshafen Bj. 2022 wurde live auf 2.931 €/m² gekappt — das p75
+ * der 39 LU-Verkäufe, die aber Bestands-Mix sind (verkauft-stats kennt kein
+ * Baujahr). Seit dem Fix hebt der Baujahr-Faktor (1,2 ab Bj. 2015) die
+ * Deckel-Grenze mit an: Neubau erdet weiter am Ort, aber nicht am Altbau. */
+const luStats = { n: 39, medianQm: 2_600, p75Qm: 2_931 };
+const f20 = run(
+  { objektart: "wohnung", ort: "Ludwigshafen", wohnflaeche: 82, baujahr: 2022, zustand: "neuwertig", qualitaet: "normal", ausstattung: ["Balkon / Terrasse", "Aufzug"] },
+  { bodenrichtwert: 895, ortsStats: luStats },
+);
+// Grenze 2.931 × 1,2 = 3.517 €/m² — deutlich über den 2.931 vom Live-Fall.
+check("F20 Wohnung LU Bj. 2022 (Deckel um Neubau-Faktor angehoben)", f20.pricePerSqm ?? 0, 3_400, 3_650, "€/m²");
+check("F20 mid", f20.mid, 275_000, 300_000);
+// Gegenprobe: dieselbe Wohnung als Bj. 1990 bleibt am unveränderten p75 —
+// die Ausnahme gilt NUR für junge Baujahre, sonst wäre der Deckel wirkungslos.
+const f20alt = run(
+  { objektart: "wohnung", ort: "Ludwigshafen", wohnflaeche: 82, baujahr: 1990, zustand: "neuwertig", qualitaet: "normal", ausstattung: ["Balkon / Terrasse", "Aufzug"] },
+  { bodenrichtwert: 895, ortsStats: luStats },
+);
+if ((f20alt.pricePerSqm ?? 0) > 2_931) {
+  failures++;
+  console.log(`❌ F20b Bj.-1990-Gegenprobe: ${nf.format(f20alt.pricePerSqm ?? 0)} €/m² über dem unveränderten p75-Deckel (2.931)`);
+} else {
+  console.log(`✅ F20b Bj.-1990-Gegenprobe: ${nf.format(f20alt.pricePerSqm ?? 0)} €/m² ≤ p75 2.931`);
+}
+
 console.log(
   `Details F18: mid ${nf.format(f18.mid)} € (${nf.format(f18.pricePerSqm ?? 0)} €/m²), Basis aus BRW 650 → ${nf.format(f18basis.wohnung)} €/m² Wohnung / ${nf.format(f18basis.haus)} €/m² Haus, Konfidenz ${f18.confidence} % (ohne BRW: ${nf.format(f18b.pricePerSqm ?? 0)} €/m², ${f18b.confidence} %)`,
 );

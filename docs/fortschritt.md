@@ -1038,3 +1038,19 @@ Opus-Grunt, Orchestrator hat alle Checks nachgefahren):
   7/30-Tage-Umschalter; Leerzustand solange Migration/Daten fehlen.
 
 Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion` ƒ) grün.
+
+## Update — Neubau-Deckel-Fix + Feinschliff Conversion-Runde (18.08.2026, Feedback Alex) ✅
+
+- **Engine, Fall Max-Bill-Straße LU (Bj. 2022 → 2.931 €/m²):** Der p75-Deckel maß Neubau
+  am Altbau-Mix (verkauft-stats kennt kein Baujahr). Für Baujahr ≥ 2000 hebt jetzt der
+  Baujahr-Faktor (1,10/1,20) die Deckel-Grenze mit an — der Live-Fall rechnet 3.517 €/m²
+  / 288.000 € statt 240.000 €. Annahmen-Text erklärt die Anhebung. Battery: F20 (exakter
+  Live-Fall) + F20b (Bj.-1990-Gegenprobe: Deckel unverändert). Hinweis: Backtest in dieser
+  Session nicht neu gefahren (keine OnOffice-Creds im Container) — bei nächster Gelegenheit
+  `scripts/backtest-engine.mts` laufen lassen.
+- **Rechner-UI:** Ausstattungs-Bubbles wieder SICHTBAR (nur Tipp-Felder bleiben im
+  „Präzisere Kalkulation"-Aufklapper) — Korrektur auf Alex' Feedback.
+- **/intern:** E-Mail-Buttons in Reports-/Anfragen-Tabellen linksbündig + break-all
+  (Browser-Buttons zentrieren Text; lange Adressen wirkten beim Umbruch zentriert).
+- **Verifiziert:** Tracking läuft Ende-zu-Ende live (erste `rechner_events` 12:22 Uhr,
+  Migration ist im RIEGEL-Supabase eingespielt).
