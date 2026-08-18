@@ -14,6 +14,12 @@ import {
   type LeadQuelle,
   type LeadStatus,
 } from "@/lib/lead-bearbeitung";
+import { site } from "@/lib/site";
+
+// Büro-Domain für die "intern erfasst"-Erkennung unten — aus site.url
+// abgeleitet statt hart verdrahtet, damit ein Klon automatisch die Domain
+// des neuen Maklers prüft.
+const BUERO_DOMAIN = `@${new URL(site.url).hostname}`;
 
 interface ReportRow {
   id: string;
@@ -1775,7 +1781,7 @@ export function InternDashboard() {
                                   {/* Bueroadresse = im Kundengespraech von RIEGEL selbst erfasst
                                       (11 von 23 Reports laufen so, gemessen 03.08.) — sichtbar
                                       kennzeichnen, damit die Liste lesbar bleibt. */}
-                                  {email.toLowerCase().endsWith("@riegel-immobilien.de") && (
+                                  {email.toLowerCase().endsWith(BUERO_DOMAIN) && (
                                     <span
                                       title="Mit der Bueroadresse erstellt, vermutlich im Kundengespraech erfasst"
                                       className="rounded-full border border-border px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide text-faint"
@@ -1925,7 +1931,7 @@ export function InternDashboard() {
                                   {/* Bueroadresse = im Kundengespraech von RIEGEL selbst erfasst
                                       (11 von 23 Reports laufen so, gemessen 03.08.) — sichtbar
                                       kennzeichnen, damit die Liste lesbar bleibt. */}
-                                  {email.toLowerCase().endsWith("@riegel-immobilien.de") && (
+                                  {email.toLowerCase().endsWith(BUERO_DOMAIN) && (
                                     <span
                                       title="Mit der Bueroadresse erstellt, vermutlich im Kundengespraech erfasst"
                                       className="rounded-full border border-border px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide text-faint"

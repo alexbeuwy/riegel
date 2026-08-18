@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Reveal } from "@/components/reveal";
+import { site } from "@/lib/site";
 
 export type Mitarbeitend = {
   name: string;
@@ -351,7 +352,7 @@ export function TeamBereiche({ leute }: { leute: Mitarbeitend[] }) {
                 Auf schmalen Schirmen genau eine Kachelbreite. */}
             <div className="mt-8 max-w-[calc(50%-0.625rem)] lg:max-w-none">
               <ReelLoop
-                src="https://riegel.b-cdn.net/Carina-Einfamilienhaus.mp4"
+                src={`https://${site.cdnHost}/Carina-Einfamilienhaus.mp4`}
                 caption="Einfamilienhaus"
                 tag="mit Carina aus dem Team"
               />

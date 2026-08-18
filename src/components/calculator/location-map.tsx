@@ -3,6 +3,14 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { site } from "@/lib/site";
+
+// Markenfarbe als "r, g, b"-Triplet für die rgba()-Glow-Schatten unten —
+// hier reicht das simple Hex-Parsing (kein CSS-Zugriff im Canvas/Marker-DOM).
+const BRAND_HEX = site.brandColor.replace("#", "");
+const BRAND_RGB = [0, 2, 4]
+  .map((i) => parseInt(BRAND_HEX.slice(i, i + 2), 16))
+  .join(", ");
 
 // Satelliten-Ansicht via Esri World Imagery (kostenlos, kein Key).
 const SAT_STYLE = {
@@ -35,7 +43,7 @@ export function LocationMap({ lat, lng, zoom = 17 }: { lat: number; lng: number;
 
     const el = document.createElement("div");
     el.style.cssText =
-      "width:18px;height:18px;border-radius:9999px;background:#015cff;border:3px solid #fff;box-shadow:0 0 0 6px rgba(1,92,255,0.35),0 2px 8px rgba(0,0,0,0.5);";
+      `width:18px;height:18px;border-radius:9999px;background:${site.brandColor};border:3px solid #fff;box-shadow:0 0 0 6px rgba(${BRAND_RGB},0.35),0 2px 8px rgba(0,0,0,0.5);`;
     new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
     mapRef.current = map;
     return () => {

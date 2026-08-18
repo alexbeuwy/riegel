@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Container } from "@/components/container";
+import { site } from "@/lib/site";
 
 /**
  * Echte Auszeichnungs-/Mitgliedschafts-Siegel — Original-Grafiken von der
@@ -20,9 +21,9 @@ interface Award {
 }
 
 const AWARDS: Award[] = [
-  // Neu (2026) + Regionslogo, von BunnyCDN (riegel.b-cdn.net):
-  { key: "gold-2026", src: "https://riegel.b-cdn.net/2026_Gold_Badge_transparent_container@3x.png", alt: "Gold-Auszeichnung 2026", width: 120, height: 120, unoptimized: true },
-  { key: "mrn", src: "https://riegel.b-cdn.net/Logo_MRN.svg", alt: "Metropolregion Rhein-Neckar", width: 140, height: 105, unoptimized: true },
+  // Neu (2026) + Regionslogo, von BunnyCDN (site.cdnHost):
+  { key: "gold-2026", src: `https://${site.cdnHost}/2026_Gold_Badge_transparent_container@3x.png`, alt: "Gold-Auszeichnung 2026", width: 120, height: 120, unoptimized: true },
+  { key: "mrn", src: `https://${site.cdnHost}/Logo_MRN.svg`, alt: "Metropolregion Rhein-Neckar", width: 140, height: 105, unoptimized: true },
   { key: "bvfi", src: "/images/badges/bvfi-siegel.svg", alt: "Mitglied im BVFI — Bundesverband für die Immobilienwirtschaft", width: 130, height: 130 },
   { key: "immoscout-experte", src: "/images/badges/immoscout-experte-seit-2009.svg", alt: "ImmoScout24 Experte — seit 2009", width: 110, height: 110 },
   { key: "ida", src: "/images/badges/ida-siegel-2022.png", alt: "Immobiliendienstleister Award (IDA) 2022", width: 110, height: 110 },

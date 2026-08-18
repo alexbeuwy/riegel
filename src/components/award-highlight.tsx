@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Container } from "@/components/container";
 import { Icon } from "@/components/icon";
+import { site } from "@/lib/site";
 
 /** ImmoAward 2025 — echte Auszeichnung als Trust-Element. */
 export function AwardHighlight() {
@@ -41,11 +42,11 @@ export function AwardHighlight() {
           </div>
           {/* Zwei echte Hochkant-Fotos (Christoph & Alex RIEGEL) statt Platzhalter —
               als Diptychon nebeneinander, füllen die Bildspalte. Von BunnyCDN
-              (riegel.b-cdn.net, in next.config als remotePattern erlaubt). */}
+              (site.cdnHost, in next.config als remotePattern erlaubt). */}
           <div className="relative order-1 grid min-h-[340px] grid-cols-2 gap-1 overflow-hidden lg:order-2 lg:min-h-full">
             {[
-              "https://riegel.b-cdn.net/ImmoAward_F-103.jpg",
-              "https://riegel.b-cdn.net/ImmoAward_F-40%281%29.jpg",
+              `https://${site.cdnHost}/ImmoAward_F-103.jpg`,
+              `https://${site.cdnHost}/ImmoAward_F-40%281%29.jpg`,
             ].map((src) => (
               <div key={src} className="relative">
                 <Image

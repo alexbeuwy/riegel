@@ -32,6 +32,7 @@ import { marktortByOrt, type MarktOrt } from "@/lib/marktdaten";
 import type { Bodenrichtwert } from "@/lib/boris";
 import { ReportRequest } from "@/components/calculator/report-request";
 import { parseDeZahl } from "@/lib/parse-de-zahl";
+import { site } from "@/lib/site";
 
 const LocationMap = dynamic(
   () => import("@/components/calculator/location-map").then((m) => m.LocationMap),
@@ -89,6 +90,10 @@ const BORIS_EMPTY: BorisState = { loading: false, data: null, attribution: null 
 
 const nfDE = new Intl.NumberFormat("de-DE");
 
+// tel:-Ableitung aus site.phone (führende 0 → Landesvorwahl +49) — eigene
+// Mini-Konstante statt Cross-Import aus report-request.tsx.
+const TEL_HREF = `+49${site.phone.replace(/\D/g, "").replace(/^0/, "")}`;
+
 /**
  * Demo-Modus für interne Live-Tests (Wunsch Alex 18.08.2026: „damit ich die
  * Endseite testen kann, ohne alles 100 Mal einzutippen"): /rechner?demo=wohnung
@@ -98,10 +103,16 @@ const nfDE = new Intl.NumberFormat("de-DE");
  * ignoriert Demo-Aufrufe (s. track.ts), damit Tests die Funnel-Zahlen im
  * /intern-Conversion-Tab nicht verfälschen. Links dazu: /intern → Übersicht.
  */
+const DEMO_STANDORT = site.locations[0];
 const DEMO_ADRESSE: GeoResult = {
-  label: "Maximilianstraße 100, 67346 Speyer",
-  city: "Speyer",
-  postcode: "67346",
+  label: `${DEMO_STANDORT.street}, ${DEMO_STANDORT.zip} ${DEMO_STANDORT.city}`,
+  city: DEMO_STANDORT.city,
+  postcode: DEMO_STANDORT.zip,
+  // WHITE-LABEL: site.locations führt (noch) keine Geo-Koordinaten (siehe
+  // Playbook §3.1) — Fallback bleiben die echten Speyer-Koordinaten der
+  // Hauptfiliale. Bei einer Umbrandung MÜSSEN diese durch die Koordinaten
+  // der neuen ersten Filiale ersetzt werden, sonst zeigt der Demo-Modus auf
+  // Speyer, obwohl Adresse/PLZ/Stadt schon zum neuen Makler gehören.
   lat: 49.31797,
   lng: 8.43705,
 };
@@ -1449,8 +1460,8 @@ export function Calculator() {
                   {fallbackFehler ? (
                     <p className="text-muted">
                       Bitte Schreibweise prüfen — oder rufen Sie uns an:{" "}
-                      <a href="tel:+4962321001010" className="text-accent hover:underline">
-                        06232 100 10 10
+                      <a href={`tel:${TEL_HREF}`} className="text-accent hover:underline">
+                        {site.phone}
                       </a>
                     </p>
                   ) : (

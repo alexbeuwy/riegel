@@ -7,6 +7,11 @@ import { burstConfetti } from "@/lib/confetti";
 import { track } from "@/lib/track";
 import type { GeoResult } from "@/lib/geocode";
 import type { ValuationResult, Objektart, Zustand, Qualitaet, Vermietungsstand } from "@/lib/valuation";
+import { site } from "@/lib/site";
+
+// tel:-Ableitung aus site.phone (führende 0 → Landesvorwahl +49) — dieselbe
+// Nummer wird unten als lesbares Label UND als Klick-Link gebraucht.
+const TEL_HREF = `+49${site.phone.replace(/\D/g, "").replace(/^0/, "")}`;
 
 /** Subset von FormState, das in den Report einfließt. */
 export interface ReportSource {
@@ -205,7 +210,7 @@ export function ReportRequest({
         localStorage.setItem(key, JSON.stringify(cur));
       } catch {}
       setBusy(false);
-      return fail("Senden fehlgeschlagen — bitte erneut versuchen oder rufen Sie uns direkt an: 06232 100 10 10.");
+      return fail(`Senden fehlgeschlagen — bitte erneut versuchen oder rufen Sie uns direkt an: ${site.phone}.`);
     }
     setBusy(false);
     setDone(true);
@@ -343,7 +348,7 @@ export function ReportRequest({
         <div className="report-visual-float mx-auto w-full max-w-[180px] overflow-hidden rounded-2xl border border-accent/40 md:max-w-none" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element -- feste CDN-Grafik, next/image bringt hier nur Remote-Overhead */}
           <img
-            src="https://riegel.b-cdn.net/PDF%20Report%20Visuals/pdf-report-visual-04-clean.webp"
+            src={`https://${site.cdnHost}/PDF%20Report%20Visuals/pdf-report-visual-04-clean.webp`}
             alt=""
             width={928}
             height={1152}
@@ -448,8 +453,8 @@ export function ReportRequest({
 
       <p className="mt-5 text-center text-xs text-muted">
         Lieber direkt sprechen?{" "}
-        <a href="tel:+4962321001010" className="text-accent hover:underline">
-          06232 100 10 10
+        <a href={`tel:${TEL_HREF}`} className="text-accent hover:underline">
+          {site.phone}
         </a>{" "}
         ·{" "}
         <Link href="/termin" className="text-accent hover:underline">

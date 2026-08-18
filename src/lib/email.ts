@@ -1,6 +1,16 @@
 import { Resend } from "resend";
 import { site } from "./site";
 
+// White-Label: alle Mail-HTML-Templates dieser Datei tragen die Markenfarbe
+// als Inline-Style (kein CSS-Var-Zugriff in E-Mails möglich) — ausschließlich
+// über diese Konstante, NIE als literales Hex, damit eine Umbrandung
+// (Playbook §3.1) nur site.ts anfassen muss.
+const ACCENT = site.brandColor;
+// Für den §37a-HGB-Footer (Adresse/Telefon in Geschäftsbriefen): erster
+// Standort in site.locations ist die Hauptadresse (Konvention wie im übrigen
+// Code, s. site.ts-Reihenfolge Speyer vor Ludwigshafen).
+const HAUPTSTANDORT = site.locations[0];
+
 /**
  * Transaktions-E-Mails via Resend (serverseitig). Aktiv, sobald RESEND_API_KEY
  * gesetzt ist. Ohne Key wird nichts versendet (kein Crash) — Daten bleiben dann
@@ -117,7 +127,7 @@ const LOGO_URL = `${EMAIL_ASSET_BASE}/email-logo-riegel-dark.png`;
  *    Bild-Ladezustand. So wirkt die Mail nie "leer", auch ganz ohne Bilder,
  *    und nie doppelt/kaputt, wenn das Bild fehlschlägt.
  * 3) Redesign auf helles Karten-Layout (weiße Karte auf pastelligem
- *    Blaugrau-Hintergrund, RIEGEL-Blau #015cff als einziger Farbakzent): dafür
+ *    Blaugrau-Hintergrund, RIEGEL-Blau (site.brandColor) als einziger Farbakzent): dafür
  *    jetzt die DUNKLE Logo-Variante (statt der alten weißen), da Weiß-auf-
  *    Weiß unsichtbar wäre. `color-scheme: light` im <head> ist ein Hinweis an
  *    Clients, die ihn respektieren (Apple Mail, iOS/Android-Mail-Apps,
@@ -166,13 +176,13 @@ function ctaButton(label: string, href: string): string {
     .replace(/>/g, "&gt;");
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 4px;"><tr><td>
 <!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:46px;v-text-anchor:middle;width:280px;" arcsize="50%" stroke="f" fillcolor="#015cff">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeHref}" style="height:46px;v-text-anchor:middle;width:280px;" arcsize="50%" stroke="f" fillcolor="${ACCENT}">
 <w:anchorlock/>
 <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;">${label}</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<a href="${safeHref}" style="background:#015cff;border-radius:999px;color:#ffffff;display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:14px 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${label}</a>
+<a href="${safeHref}" style="background:${ACCENT};border-radius:999px;color:#ffffff;display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:14px 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${label}</a>
 <!--<![endif]-->
 </td></tr></table>`;
 }
@@ -180,7 +190,7 @@ function ctaButton(label: string, href: string): string {
 /**
  * Heller, markenkonformer RIEGEL-Mail-Rahmen (email-safe, Inline-Styles):
  * weiße Karte mit großen Radien auf pastelligem Blaugrau-Hintergrund,
- * RIEGEL-Blau (#015cff) als einziger Farbakzent — bewusst kein Pink/Grün.
+ * RIEGEL-Blau (site.brandColor) als einziger Farbakzent — bewusst kein Pink/Grün.
  *
  * Neue Parameter (optional, Default-Verhalten für bestehende Aufrufer aus
  * booking/contact/report unverändert):
@@ -203,7 +213,7 @@ export function emailLayout(opts: {
 }): string {
   const cta = opts.ctaLabel && opts.ctaHref ? ctaButton(opts.ctaLabel, opts.ctaHref) : "";
   const badge = opts.badge
-    ? `<div style="margin:0 0 14px;"><span style="display:inline-block;background:#eef3ff;border:1px solid #c6d8fb;border-radius:999px;padding:6px 14px;color:#015cff;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">${opts.badge}</span></div>`
+    ? `<div style="margin:0 0 14px;"><span style="display:inline-block;background:#eef3ff;border:1px solid #c6d8fb;border-radius:999px;padding:6px 14px;color:${ACCENT};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">${opts.badge}</span></div>`
     : "";
   return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f7;">
@@ -218,12 +228,12 @@ export function emailLayout(opts: {
 <div style="color:#141724;font-size:17px;font-weight:800;letter-spacing:3px;line-height:1;">RIEGEL<span style="color:#6b7590;font-weight:400;">&nbsp;IMMOBILIEN</span></div>
 <![endif]-->
 </td></tr>
-<tr><td style="padding:14px 32px 24px;border-bottom:1px solid #e4e8f0;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:#015cff;border-radius:2px;">&nbsp;</div></td></tr>
+<tr><td style="padding:14px 32px 24px;border-bottom:1px solid #e4e8f0;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:${ACCENT};border-radius:2px;">&nbsp;</div></td></tr>
 <tr><td style="padding:34px 32px 8px;">${badge}<h1 style="margin:0 0 14px;color:#141724;font-family:${HEADING_FONT};font-size:28px;font-weight:800;line-height:1.16;letter-spacing:-0.02em;">${opts.heading}</h1>${
     opts.intro ? `<p style="margin:0 0 18px;color:#5a6072;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
   }${opts.bodyHtml ?? ""}${cta}${opts.belowCta ?? ""}</td></tr>
 <tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;">
-<p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">RIEGEL Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p>
+<p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">${site.name} &middot; ${HAUPTSTANDORT.street}, ${HAUPTSTANDORT.zip} ${HAUPTSTANDORT.city} &middot; ${site.phone}</p>
 <!-- §37a HGB: Pflichtangaben (Firma/Registergericht/-nummer) in Geschäftsbriefen — auch E-Mails. Zentral in site.recht, s. dortigen Kommentar zur roten Liste. -->
 <p style="margin:4px 0 0;color:#8a90a3;font-size:11px;line-height:1.6;">${site.recht.firma} &middot; ${site.recht.registergericht}, ${site.recht.registernummer}</p>
 </td></tr>
@@ -262,14 +272,14 @@ export function emailRows(rows: { label: string; value: string }[]): string {
 /** Report-Headline mit „als PDF-Anhang"-Akzent (HTML, wird als heading übergeben). */
 export const REPORT_HEADING_HTML =
   `Ihr persönlicher Marktwert-Report` +
-  `<span style="display:block;margin-top:8px;color:#015cff;font-size:16px;font-weight:700;letter-spacing:-0.01em;">als PDF-Anhang</span>`;
+  `<span style="display:block;margin-top:8px;color:${ACCENT};font-size:16px;font-weight:700;letter-spacing:-0.01em;">als PDF-Anhang</span>`;
 
 /** Wert-Hero: der große geschätzte Marktwert samt Spanne — der Aufhänger. */
 export function reportValueHero(v: { mid: number; low: number; high: number; perSqm?: number }): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 16px;background:#eef3ff;border:1px solid #dbe5fa;border-radius:16px;">
 <tr><td style="padding:22px 24px;text-align:center;">
 <div style="color:#6b7590;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
-<div style="color:#015cff;font-family:${HEADING_FONT};font-size:40px;font-weight:800;letter-spacing:-0.02em;margin:8px 0 4px;">${eur0(v.mid)}</div>
+<div style="color:${ACCENT};font-family:${HEADING_FONT};font-size:40px;font-weight:800;letter-spacing:-0.02em;margin:8px 0 4px;">${eur0(v.mid)}</div>
 <div style="color:#5a6072;font-size:14px;">Spanne ${eur0(v.low)} – ${eur0(v.high)}${v.perSqm ? ` · ${eur0(v.perSqm)}/m²` : ""}</div>
 </td></tr></table>`;
 }
