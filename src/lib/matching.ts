@@ -25,6 +25,7 @@ import { filterEstates, parseFilters } from "@/lib/portal-filter";
 import { filterByRadius, readCenter, readRadiusKm } from "@/components/portal/umkreis";
 import { supabaseServer } from "@/lib/supabase-server";
 import { sendMail, emailLayout, emailTargets } from "@/lib/email";
+import { site } from "@/lib/site";
 import { formatEUR } from "@/lib/format";
 import { BEISPIEL_TILGUNG_PROZENT, holeBaufiZins, monatsRate, type BaufiZins } from "@/lib/baufi-zins";
 import type { Estate } from "@/lib/mock-estates";
@@ -199,10 +200,10 @@ ${thumbRow}
 <tr><td style="padding:16px 18px 0;"><a href="${href}" style="color:#141724;font-size:17px;font-weight:700;text-decoration:none;line-height:1.35;">${e.title}</a></td></tr>
 <tr><td style="padding:4px 18px 0;color:#6b7590;font-size:13px;line-height:1.6;">${ortszeile}</td></tr>
 ${faktenRow}
-<tr><td style="padding:12px 18px 0;color:#015cff;font-size:19px;font-weight:800;">${eurOrLabel(e)}</td></tr>
+<tr><td style="padding:12px 18px 0;color:${site.brandColor};font-size:19px;font-weight:800;">${eurOrLabel(e)}</td></tr>
 ${highlights ? `<tr><td style="padding:6px 18px 0;color:#6b7590;font-size:13px;line-height:1.6;">${highlights}</td></tr>` : ""}
 ${rate}
-<tr><td style="padding:14px 18px 18px;"><a href="${href}" style="display:inline-block;background:#015cff;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 18px;border-radius:999px;">Objekt ansehen&nbsp;&rarr;</a></td></tr>
+<tr><td style="padding:14px 18px 18px;"><a href="${href}" style="display:inline-block;background:${site.brandColor};color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;padding:9px 18px;border-radius:999px;">Objekt ansehen&nbsp;&rarr;</a></td></tr>
 </table>`;
 }
 
@@ -239,7 +240,7 @@ function miniCard(e: Estate, base: string): string {
 <td style="padding:10px 14px;vertical-align:top;">
 <a href="${href}" style="display:block;color:#141724;font-size:13.5px;font-weight:700;text-decoration:none;line-height:1.35;">${e.title}</a>
 <div style="margin-top:2px;color:#6b7590;font-size:12px;">${[[e.postcode, e.city].filter(Boolean).join(" "), e.livingArea ? `${e.livingArea} m&sup2;` : null, e.rooms ? `${e.rooms} Zi.` : null].filter(Boolean).join(" &middot; ")}</div>
-<div style="margin-top:4px;color:#015cff;font-size:13.5px;font-weight:800;">${eurOrLabel(e)}</div>
+<div style="margin-top:4px;color:${site.brandColor};font-size:13.5px;font-weight:800;">${eurOrLabel(e)}</div>
 </td></tr></table>`;
 }
 

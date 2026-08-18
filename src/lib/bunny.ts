@@ -4,13 +4,18 @@
  * BUNNY_STORAGE_ZONE, BUNNY_STORAGE_ACCESS_KEY, optional BUNNY_STORAGE_HOST,
  * BUNNY_CDN_HOST (siehe scripts/bunny-upload.mjs — dieselben Namen).
  */
+import { site } from "@/lib/site";
+
 const IMAGE_EXT = /\.(webp|jpe?g|png|avif)$/i;
 
 function bunnyEnv() {
   const zone = process.env.BUNNY_STORAGE_ZONE;
   const key = process.env.BUNNY_STORAGE_ACCESS_KEY;
   const host = process.env.BUNNY_STORAGE_HOST || "storage.bunnycdn.com";
-  const cdn = process.env.BUNNY_CDN_HOST || "riegel.b-cdn.net";
+  // BUNNY_CDN_HOST bleibt als EIGENE, server-only Override-Variable erhalten
+  // (Konvention mit scripts/bunny-upload.mjs) — der Fallback kommt aber aus
+  // site.cdnHost statt einer zweiten hartkodierten Kopie des Literals.
+  const cdn = process.env.BUNNY_CDN_HOST || site.cdnHost;
   if (!zone || !key) return null;
   return { zone, key, host, cdn };
 }
@@ -60,7 +65,7 @@ export async function uploadBunnyImage(file: File): Promise<BunnyImage> {
 
 /** Prüft, ob eine URL auf unsere eigene Bunny-CDN-Domain zeigt (gegen beliebige Fremd-URLs als „Hero-Bild"). */
 export function isOwnCdnUrl(url: string): boolean {
-  const cdn = process.env.BUNNY_CDN_HOST || "riegel.b-cdn.net";
+  const cdn = process.env.BUNNY_CDN_HOST || site.cdnHost;
   try {
     return new URL(url).hostname === cdn;
   } catch {

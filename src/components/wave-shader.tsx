@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { site } from "@/lib/site";
 
 /**
- * „wavy blue" Fragment-Shader (nach Shadertoy lfsBzB), eingefärbt in RIEGEL-Blau (#015CFF).
- * Läuft als WebGL-Fullscreen-Quad hinter einer CTA-Box. Fallback: CSS-Gradient.
- * Respektiert prefers-reduced-motion (rendert ein statisches Bild, keine Animation).
+ * „wavy blue" Fragment-Shader (nach Shadertoy lfsBzB), eingefärbt in der
+ * Markenfarbe (site.brandColor). Läuft als WebGL-Fullscreen-Quad hinter
+ * einer CTA-Box. Fallback: CSS-Gradient. Respektiert prefers-reduced-motion
+ * (rendert ein statisches Bild, keine Animation).
+ *
+ * FRAG ist ein normaler JS-Template-String (kein separates .glsl-Asset) —
+ * die Umrechnung nach site.brandColor ist hier deshalb trivial machbar und
+ * NICHT bloß ein Kommentar: brandColorRgb liegt schon 0–1-normiert vor
+ * (dieselbe Normalform, die pdf-lib für den PDF-Report nutzt).
  */
+const BG_VEC3 = `${site.brandColorRgb.r.toFixed(4)}, ${site.brandColorRgb.g.toFixed(4)}, ${site.brandColorRgb.b.toFixed(4)}`;
+
 const FRAG = `
 precision highp float;
 uniform vec2 iResolution;
@@ -31,7 +40,7 @@ void main() {
   uv.y += osc * sin((iTime * speed) + uv.x * 5.0);
   uv.y = fract(uv.y * s);
 
-  vec3 bg = vec3(0.004, 0.361, 1.0); // RIEGEL Blau #015CFF
+  vec3 bg = vec3(${BG_VEC3}); // aus site.brandColor zur Laufzeit erzeugt (s. o.)
   vec3 fg = vec3(0.043, 0.043, 0.055); // Near-Black wie Seiten-Hintergrund
 
   float mask = smoothstep(0.4, 1.55, uv.y);
@@ -130,7 +139,12 @@ export function WaveShader({ className = "" }: { className?: string }) {
     <canvas
       ref={canvasRef}
       aria-hidden
-      className={`absolute inset-0 h-full w-full bg-[#015cff] ${className}`}
+      // Kein Tailwind-Arbitrary-Value (bg-[#…]) mehr: die JIT-Klassenerkennung
+      // braucht einen literalen String im Quellcode, site.brandColor ist aber
+      // erst zur Laufzeit bekannt — deshalb hier bewusst per Inline-Style
+      // (Fallback-Hintergrund, bevor WebGL zeichnet).
+      style={{ backgroundColor: site.brandColor }}
+      className={`absolute inset-0 h-full w-full ${className}`}
     />
   );
 }

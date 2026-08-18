@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { site } from "@/lib/site";
 
 /**
  * Makler-Schild vor dem Haus — zwei Varianten:
@@ -54,7 +55,7 @@ function getSignAssets(variant: SignVariant): SignAssets {
   ctx.textBaseline = "middle";
 
   if (variant === "verkauft") {
-    ctx.fillStyle = "#015cff";
+    ctx.fillStyle = site.brandColor;
     ctx.fillRect(0, 0, 512, 288);
     ctx.letterSpacing = "6px";
     fitText(ctx, "VERKAUFT", 110, 452);

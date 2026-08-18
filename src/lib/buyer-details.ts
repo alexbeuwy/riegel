@@ -8,6 +8,12 @@
  * Bewusst ohne Supabase-Import, damit sowohl Client (Formulare) als auch
  * Server-Route dieselbe Definition/Prüfung teilen.
  */
+import { site } from "@/lib/site";
+
+// Platzhalter-Beispiele für PLZ/Ort aus dem Hauptstandort (site.locations[0])
+// statt hartkodiert — White-Label, Playbook §3.1.
+const HAUPTSTANDORT = site.locations[0];
+
 export interface BuyerDetails {
   firstName: string;
   lastName: string;
@@ -31,8 +37,8 @@ export const BUYER_FIELDS: {
   { key: "lastName", label: "Nachname", autoComplete: "family-name", placeholder: "Mustermann" },
   { key: "phone", label: "Telefon", autoComplete: "tel", placeholder: "0170 1234567", wide: true },
   { key: "street", label: "Straße & Hausnr.", autoComplete: "street-address", placeholder: "Musterstraße 1", wide: true },
-  { key: "zip", label: "PLZ", autoComplete: "postal-code", placeholder: "67346" },
-  { key: "city", label: "Ort", autoComplete: "address-level2", placeholder: "Speyer" },
+  { key: "zip", label: "PLZ", autoComplete: "postal-code", placeholder: HAUPTSTANDORT.zip },
+  { key: "city", label: "Ort", autoComplete: "address-level2", placeholder: HAUPTSTANDORT.city },
 ];
 
 export const EMPTY_BUYER: BuyerDetails = {

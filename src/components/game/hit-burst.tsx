@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { site } from "@/lib/site";
 
 /**
  * Trümmer-Burst beim "Verkauf": kleine Würfel fliegen vom Dach radial weg,
@@ -24,9 +25,9 @@ const FADE_START = 0.55;
 const dummy = new THREE.Object3D();
 const scratchColor = new THREE.Color();
 
-// Bewusst gemischt statt einfarbig: Blau-Töne als "RIEGEL-Funken", Surface-2
+// Bewusst gemischt statt einfarbig: Markenfarbe als "Funken", Surface-2
 // als dunkle Bruchstücke — bleibt im Design-System statt Konfetti-bunt.
-const DEBRIS_COLORS = ["#015cff", "#1c1c21", "#6aa1ff"];
+const DEBRIS_COLORS = [site.brandColor, "#1c1c21", "#6aa1ff"];
 
 interface DebrisData {
   count: number;

@@ -50,6 +50,17 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// WHITE-LABEL: Geo-Koordinaten je Standort — gehören eigentlich nach
+// site.locations (Playbook §3.1), site.ts darf hier aber nicht angefasst
+// werden. Reihenfolge/Länge MUSS zu site.locations passen; ein Klon mit
+// abweichender Standort-Reihenfolge muss diese Map mitziehen, sonst zeigt
+// ein Standort auf die falschen Koordinaten (vorher: Array-Index-Ternary
+// i === 0 ? … : …, das bei einem dritten Standort schweigend falsch würde).
+const STANDORT_KOORDINATEN: ReadonlyArray<{ lat: number; lng: number }> = [
+  { lat: 49.3199, lng: 8.4313 }, // Speyer
+  { lat: 49.4806, lng: 8.4453 }, // Ludwigshafen
+];
+
 const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "RealEstateAgent",
@@ -94,8 +105,8 @@ const orgJsonLd = {
     telephone: l.phone,
     geo: {
       "@type": "GeoCoordinates",
-      latitude: i === 0 ? 49.3199 : 49.4806,
-      longitude: i === 0 ? 8.4313 : 8.4453,
+      latitude: STANDORT_KOORDINATEN[i]?.lat,
+      longitude: STANDORT_KOORDINATEN[i]?.lng,
     },
   })),
   // Bewertungsprofile als Entity-Verknüpfung (sameAs) — bewusst KEIN aggregateRating-
@@ -109,7 +120,13 @@ const orgJsonLd = {
     site.socials.linkedin,
     ...TRUST_PLATFORMS.map((p) => p.url),
   ].filter(Boolean),
+  // ══════════════════ ROTE LISTE — White-Label-Touchpoint ══════════════════
   // Echte Personen mit Rolle/Entität (E-E-A-T) — Klarnamen aus /ueber-uns.
+  // Für RIEGEL korrekt und gewollt (E-E-A-T-Signal), aber **credential**:
+  // beim Klon für einen anderen Makler NICHT einfach stehen lassen — entweder
+  // durch die echten Personen des neuen Maklers ersetzen oder den ganzen
+  // founder/employee-Block entfernen (KEINE Personen erfinden/übernehmen).
+  // Details: docs/white-label-migration.md §5.
   founder: [
     // Ohne „Gründer" (Vorgabe Manfred) — die Rolle muss auch in den
     // strukturierten Daten stimmen, Google zeigt sie in den Suchergebnissen.
@@ -120,6 +137,7 @@ const orgJsonLd = {
     { "@type": "Person", name: "Sissy RIEGEL", jobTitle: "Marketing" },
     { "@type": "Person", name: "Christoph RIEGEL", jobTitle: "Verkauf" },
   ],
+  // ═══════════════════════════════════════════════════════════════════════
 };
 
 export default function RootLayout({

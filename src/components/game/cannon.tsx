@@ -3,6 +3,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { site } from "@/lib/site";
 
 /**
  * Stilisiertes Geschütz unten mittig im Bild. Kein Kind der Kamera, sondern
@@ -151,10 +152,10 @@ export function Cannon({
               <boxGeometry args={[0.28, 0.26, 0.34]} />
               <meshStandardMaterial color="#1c1c21" roughness={0.6} metalness={0.35} />
             </mesh>
-            {/* Emissive-Ring an der Mündung — RIEGEL-Blau als einziger Farbakzent */}
+            {/* Emissive-Ring an der Mündung — Markenfarbe als einziger Farbakzent */}
             <mesh position={[0, 0, -BARREL_LEN + 0.06]}>
               <torusGeometry args={[0.1, 0.022, 8, 20]} />
-              <meshStandardMaterial color="#015cff" emissive="#015cff" emissiveIntensity={2} roughness={0.3} />
+              <meshStandardMaterial color={site.brandColor} emissive={site.brandColor} emissiveIntensity={2} roughness={0.3} />
             </mesh>
             {/* Mündungsblitz — rein emissiv, kein PointLight (Performance) */}
             <mesh ref={flashRef} position={[0, 0, -BARREL_LEN - 0.08]} visible={false}>

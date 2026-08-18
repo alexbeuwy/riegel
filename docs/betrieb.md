@@ -21,8 +21,9 @@ Querverweise: [architecture.md](./architecture.md) · [bunny-cdn.md](./bunny-cdn
 | `BUNNY_STORAGE_HOST` | Storage-Endpoint; Default `storage.bunnycdn.com` | Optional (Default ok) | `.env.local` |
 | `BUNNY_STORAGE_ACCESS_KEY` | **Schreib-/Lösch-Schlüssel** der Storage-Zone | Nur fürs Upload-Script | **nur lokal** `.env.local`, nie ins Repo |
 | `BUNNY_CDN_HOST` | Öffentlicher CDN-Host; Default `riegel.b-cdn.net` | Optional (Default ok) | `.env.local` |
-| `ONOFFICE_TOKEN` | **Secret.** OnOffice-API-Zugang für Live-Objekte im Portal `/immobilien` (`src/lib/onoffice.ts`) | Optional — ohne Token/Secret liefert das Portal automatisch die Mock-Objekte (`mock-estates.ts`), kein Crash | Vercel (alle Environments) + lokal `.env.local`, **server-only, nie `NEXT_PUBLIC_`** |
+| `ONOFFICE_TOKEN` | **Secret.** OnOffice-API-Zugang für Live-Objekte im Portal `/immobilien` (`src/lib/onoffice.ts`) | Optional — ohne Token/Secret liefert `getEstateData()` (`src/lib/estates.ts`) in **Produktion** eine leere Objektliste (kein Crash, aber auch keine erfundenen Angebote); nur in **Entwicklung** (`NODE_ENV!=="production"`) greift der Mock-Fallback (`mock-estates.ts`) | Vercel (alle Environments) + lokal `.env.local`, **server-only, nie `NEXT_PUBLIC_`** |
 | `ONOFFICE_SECRET` | **Secret.** HMAC-Signatur-Key zum obigen Token (siehe [onoffice-integration.md](./onoffice-integration.md) §1) | wie oben | Vercel (alle Environments) + lokal `.env.local`, server-only |
+| `ONOFFICE_EXPOSE_TEMPLATES` | PDF-Exposé-Template-URNs für `pdf:get` (`src/lib/onoffice.ts`, `fetchExposePdf`), kommagetrennt, Reihenfolge = Versuchsreihenfolge (neuestes zuerst) | Optional — Template-Namen sind pro OnOffice-Account individuell; ohne Env greift der RIEGEL-Fallback (`Exposé Riegel neu 2026`, `Exposé Riegel`). **Bei jeder White-Label-Migration prüfen**, welche Template-Namen der neue Account unter `templates:get {type:"pdf"}` liefert | Vercel (alle Environments), optional lokal `.env.local` |
 
 **Zukunft (noch nicht im Code):** `ONOFFICE_WEBHOOK_SECRET` — für die geplante
 Webhook-basierte Revalidierung (siehe [onoffice-integration.md](./onoffice-integration.md) §5).

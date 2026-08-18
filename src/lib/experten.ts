@@ -1,5 +1,6 @@
 import type { IconName } from "@/components/icon";
 import { photos } from "@/lib/photos";
+import { site } from "@/lib/site";
 
 /**
  * „Die Experten für [Objektart]" — verkäufergerichtete Spezialisierungs-Seiten
@@ -12,10 +13,12 @@ import { photos } from "@/lib/photos";
  * BunnyCDN-Assets, die (noch) nicht in photos.ts gemappt sind — hier lokal
  * referenziert, damit diese Seite ohne Änderung an photos.ts auskommt.
  * Existenz aller drei Dateien am 2026-07-20 per HTTP 200 verifiziert.
+ * Host über site.cdnHost (kein zirkulärer Import hier — anders als photos.ts
+ * wird diese Datei nicht von site.ts importiert, s. Kommentar dort).
  */
 import weitereSeitenJson from "@/content/experten-seiten.json";
 
-const CDN = "https://riegel.b-cdn.net";
+const CDN = `https://${site.cdnHost}`;
 const fotoHausLightrays = `${CDN}/Riegel-Haus-lightrays.webp`;
 const fotoModelFrau = `${CDN}/Model-Frau-In-Wohnung.webp`;
 const fotoPaarVorHaus = `${CDN}/Paar-vor-Haus-schaut-auf-Smartphone.webp`;

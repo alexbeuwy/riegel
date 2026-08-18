@@ -1,8 +1,18 @@
 /**
- * Zentrale Foto-Assets (RIEGEL-Originale, gehostet auf BunnyCDN: riegel.b-cdn.net).
- * Neue Assets einfach dort hochladen und hier referenzieren.
+ * Zentrale Foto-Assets (RIEGEL-Originale, gehostet auf BunnyCDN).
+ *
+ * ACHTUNG White-Label (Playbook §3.1): Der Host sollte hier eigentlich aus
+ * `site.cdnHost` kommen (single source of truth) — das geht an dieser Stelle
+ * NICHT: site.ts importiert selbst `photos` (für die Mega-Menü-Bildkarte
+ * "Alle Spezialgebiete", `image: photos.hausLightrays`). Ein Reimport von
+ * site.ts hier würde einen zirkulären Modul-Import erzeugen; empirisch
+ * geprüft (Node/ESM), beide Seiten werfen dabei zuverlässig
+ * "ReferenceError: Cannot access '…' before initialization", unabhängig von
+ * der Lade-Reihenfolge. Deshalb bewusst dieselbe Env-Variable + derselbe
+ * Fallback-Wert wie site.cdnHost, aber lokal ausgewertet statt importiert.
+ * Bei einer Umbrandung MUSS dieser Fallback synchron zu site.ts bleiben.
  */
-const CDN = "https://riegel.b-cdn.net";
+const CDN = `https://${process.env.NEXT_PUBLIC_BUNNY_CDN_HOST || "riegel.b-cdn.net"}`;
 
 export const photos = {
   /** Portrait/Editorial — Model-Mann in Wohnung (Startseiten-Hero; Subjekt rechts,

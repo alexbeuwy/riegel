@@ -93,7 +93,7 @@ function valueHero(mid: number, low: number, high: number, perSqm: number | unde
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;background:#eef3ff;border:1px solid #dbe5fa;border-radius:16px;">
 <tr><td style="padding:22px 24px;text-align:center;">
 <div style="color:#6b7590;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Geschätzter Marktwert</div>
-<div style="color:#015cff;font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(mid)}</div>
+<div style="color:${site.brandColor};font-size:40px;font-weight:800;letter-spacing:0.5px;margin:8px 0 4px;">${eur(mid)}</div>
 <div style="color:#5a6072;font-size:14px;">Spanne ${eur(low)} – ${eur(high)}${perSqm ? ` · ${eur(perSqm)}/m²` : ""}</div>
 </td></tr></table>`;
 }
@@ -317,7 +317,7 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
   // Aus site.url zusammengesetzt statt hartkodiert, damit ein künftiger
   // Domain- oder Schemawechsel automatisch mitzieht (Ziel bleibt unverändert).
   const ctaBtn = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 4px;"><tr>
-<td style="border-radius:999px;background:#015cff;"><a href="${site.url}/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
+<td style="border-radius:999px;background:${site.brandColor};"><a href="${site.url}/termin" style="display:inline-block;padding:12px 26px;color:#fff;font-size:14px;font-weight:600;text-decoration:none;">Vor-Ort-Bewertung vereinbaren</a></td>
 </tr></table>`;
 
   // Luftbild (Esri, wie im Rechner) + echte OnOffice-Vergleichsobjekte parallel
@@ -513,12 +513,15 @@ Für einen belastbaren Verkaufspreis erstellt RIEGEL Immobilien eine kostenlose,
   // Automatische CRM-Uebergabe (Freigabe Alex, 04.08.2026): Wer einen
   // PDF-Report anfordert, hat Namen und E-Mail dagelassen und ist damit ein
   // qualifizierter Kontakt — der landet ohne Handarbeit als Adressdatensatz
-  // in OnOffice. Ausgenommen sind die Bueroadressen (@riegel-immobilien.de):
-  // rund die Haelfte der Reports erfasst RIEGEL selbst im Kundengespraech,
-  // eine Automatik wuerde das CRM mit den eigenen Testlaeufen fluten.
-  // Doppelte Anfragen derselben Adresse faengt OnOffice ueber checkDuplicate
-  // selbst ab. Fail-soft: ein CRM-Fehler kostet nie den Report.
-  if (!email.trim().toLowerCase().endsWith("@riegel-immobilien.de")) {
+  // in OnOffice. Ausgenommen sind die Bueroadressen (@<eigene-Domain>): rund
+  // die Haelfte der Reports erfasst RIEGEL selbst im Kundengespraech, eine
+  // Automatik wuerde das CRM mit den eigenen Testlaeufen fluten. Domain aus
+  // site.url statt hartkodiert (White-Label: jeder Makler hat eine andere
+  // Hauptdomain, s. Playbook §3.1). Doppelte Anfragen derselben Adresse
+  // faengt OnOffice ueber checkDuplicate selbst ab. Fail-soft: ein CRM-Fehler
+  // kostet nie den Report.
+  const eigeneDomain = new URL(site.url).hostname;
+  if (!email.trim().toLowerCase().endsWith(`@${eigeneDomain}`)) {
     const teile = name.trim().split(/\s+/);
     const onofficeId = await createOnOfficeAddress({
       vorname: teile.length > 1 ? teile.slice(0, -1).join(" ") : undefined,

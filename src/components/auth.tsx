@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase";
+import { site } from "@/lib/site";
 
 interface AuthState {
   enabled: boolean;
@@ -59,7 +60,7 @@ export function authFehlerText(roh: string): string {
 
   // Versand-Deckel: nicht der Nutzer hat etwas falsch gemacht, sondern wir.
   if (m.includes("rate limit") || m.includes("too many requests") || m.includes("over_email_send_rate_limit"))
-    return "Wir konnten die Bestätigungsmail gerade nicht verschicken. Bitte versuchen Sie es in ein paar Minuten erneut oder rufen Sie uns an: 06232 1001010.";
+    return `Wir konnten die Bestätigungsmail gerade nicht verschicken. Bitte versuchen Sie es in ein paar Minuten erneut oder rufen Sie uns an: ${site.phone}.`;
   // Eigene Sperre pro Adresse ("… only request this after 47 seconds")
   if (m.includes("for security purposes")) {
     const sek = roh.match(/(\d+)\s*second/i)?.[1];
@@ -78,12 +79,12 @@ export function authFehlerText(roh: string): string {
   if (m.includes("invalid format") || m.includes("email_address_invalid") || m.includes("unable to validate email"))
     return "Diese E-Mail-Adresse sieht nicht gültig aus.";
   if (m.includes("signups not allowed"))
-    return "Die Registrierung ist derzeit deaktiviert. Bitte melden Sie sich telefonisch: 06232 1001010.";
+    return `Die Registrierung ist derzeit deaktiviert. Bitte melden Sie sich telefonisch: ${site.phone}.`;
   if (m.includes("failed to fetch") || m.includes("networkerror"))
     return "Keine Verbindung zum Server. Bitte prüfen Sie Ihre Internetverbindung.";
 
   console.error("[auth] unübersetzte Meldung:", roh);
-  return "Das hat leider nicht geklappt. Bitte versuchen Sie es erneut oder rufen Sie uns an: 06232 1001010.";
+  return `Das hat leider nicht geklappt. Bitte versuchen Sie es erneut oder rufen Sie uns an: ${site.phone}.`;
 }
 
 /** null bleibt null — nur echte Fehlertexte werden übersetzt. */

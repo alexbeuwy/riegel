@@ -1,12 +1,17 @@
+import { site } from "@/lib/site";
+
 /**
- * Konfetti-Burst ohne Abhängigkeit (WAAPI). RIEGEL-Farben.
+ * Konfetti-Burst ohne Abhängigkeit (WAAPI). Markenfarben (Ausnahme vom
+ * L5a/L5b-Dateisplit: liegt in lib/, gehört aber zur Web-UI-Farbwelt).
  * Respektiert prefers-reduced-motion. Client-only.
  */
 export function burstConfetti(count = 90) {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  const COLORS = ["#015cff", "#6aa1ff", "#ffffff", "#9ec5ff", "#cfe0ff"];
+  // Erster Ton = exakte Markenfarbe, die übrigen sind von Hand abgestufte
+  // Aufhellungen davon (site.ts liefert nur die eine Basisfarbe).
+  const COLORS = [site.brandColor, "#6aa1ff", "#ffffff", "#9ec5ff", "#cfe0ff"];
   const layer = document.createElement("div");
   layer.setAttribute("aria-hidden", "true");
   layer.style.cssText =

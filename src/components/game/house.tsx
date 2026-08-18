@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { GameHouse } from "@/lib/game-houses";
 import { SoldSign } from "@/components/game/sold-sign";
 import { HitBurst } from "@/components/game/hit-burst";
+import { site } from "@/lib/site";
 
 /**
  * Stilisiertes "Würfel-Haus" — bewusst blockig/low-poly statt realistisch.
@@ -129,7 +130,7 @@ export function House({
           <meshStandardMaterial
             ref={bodyMatRef}
             color={kk ? "#232327" : "#1c1c21"}
-            emissive="#015cff"
+            emissive={site.brandColor}
             emissiveIntensity={sold ? 2 : 0}
             roughness={kk ? 0.9 : 0.7}
           />
@@ -140,8 +141,8 @@ export function House({
           userData={{ houseId: house.id }}
         >
           <coneGeometry args={[1.65, roofHeight, 4]} />
-          {/* Nach dem Treffer wird auch das Konkurrenz-Dach RIEGEL-blau — übernommen. */}
-          <meshStandardMaterial color={kk && !sold ? "#3a3a41" : "#015cff"} roughness={0.4} />
+          {/* Nach dem Treffer wird auch das Konkurrenz-Dach in Markenfarbe — übernommen. */}
+          <meshStandardMaterial color={kk && !sold ? "#3a3a41" : site.brandColor} roughness={0.4} />
         </mesh>
         {/* Fenster-Glow — zwei Seiten, damit aus mehreren Anflugwinkeln etwas zu sehen ist */}
         <mesh position={[0, bodyHeight * 0.55, 1.06]} userData={{ houseId: house.id }}>

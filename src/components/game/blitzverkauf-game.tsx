@@ -11,6 +11,13 @@ import { useAuth } from "@/components/auth";
 import { Leaderboard } from "@/components/game/leaderboard";
 import type { LeaderboardEntry } from "@/lib/game-leaderboard";
 import type { FireRequest } from "@/components/game/game-canvas";
+import { site } from "@/lib/site";
+
+// "r, g, b"-Triplet der Markenfarbe für den Box-Shadow unten. Tailwinds JIT
+// braucht dafür einen literalen Klassenstring im Quellcode (kein ${...} in
+// shadow-[...]), deshalb hier bewusst als Inline-Style statt Utility-Klasse.
+const BRAND_HEX = site.brandColor.replace("#", "");
+const BRAND_RGB = [0, 2, 4].map((i) => parseInt(BRAND_HEX.slice(i, i + 2), 16)).join(", ");
 
 const DURATION_SEC = 45;
 // Combo: Folge-Treffer innerhalb dieses Fensters erhöhen den Multiplikator.
@@ -585,7 +592,7 @@ export function BlitzverkaufGame() {
           dann einfach mit dem Inhalt und die normale Seite scrollt. */}
       <div
         ref={containerRef}
-        className={`relative w-full overflow-hidden rounded-3xl border border-border bg-bg shadow-[0_30px_60px_-30px_rgba(1,92,255,0.35)] ${
+        className={`relative w-full overflow-hidden rounded-3xl border border-border bg-bg ${
           phase === "over" ? "" : "aspect-[3/4] sm:aspect-video"
         }`}
         onPointerMove={(e) => {
@@ -595,7 +602,11 @@ export function BlitzverkaufGame() {
         }}
         onPointerDown={(e) => markTouch(e.pointerType)}
         onClick={(e) => phase === "playing" && fire(e.clientX, e.clientY)}
-        style={{ cursor: phase === "playing" && !isTouch ? "none" : "default", touchAction: "manipulation" }}
+        style={{
+          cursor: phase === "playing" && !isTouch ? "none" : "default",
+          touchAction: "manipulation",
+          boxShadow: `0 30px 60px -30px rgba(${BRAND_RGB}, 0.35)`,
+        }}
       >
         {/* Canvas nur während Countdown/Spiel — im Over-Screen (opak verdeckt) würde
             frameloop="always" die Szene sonst unsichtbar mit ~60 fps weiterrendern

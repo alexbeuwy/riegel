@@ -80,7 +80,7 @@ if (!process.env.EMAIL_FROM && process.env.NODE_ENV === "production") {
  * zwar Mail an, ihr MX zeigt aber auf Resends Eingang, nicht auf ein Postfach
  * bei RIEGEL — eine Antwort dorthin liefe ins Leere.
  */
-const TO = process.env.EMAIL_TO || "info@riegel-immobilien.de";
+const TO = process.env.EMAIL_TO || site.email;
 
 // Absolute Basis-URL für Assets in Mails — E-Mail-Clients laden nie relative
 // Pfade, das Logo bräuchte sonst eine volle URL pro Client-Render. site.ts hat
@@ -313,7 +313,12 @@ export function reportMiniFacts(rows: { label: string; value: string }[]): strin
  */
 export function reportPdfTeaser(): string {
   const bars = [22, 34, 28, 44, 38, 52, 46, 60];
-  const barColors = ["#015cff", "#1f6bff", "#3d7dff", "#5f93ff", "#82abff", "#a6c3ff", "#c4d7fb", "#dbe6fb"];
+  // Erster Balken = echte Markenfarbe (zentral); die restlichen 7 sind von Hand
+  // aufgehellte Zwischentöne für den Fade-Effekt — kein CSS-Var-Zugriff in
+  // E-Mails, pdf-lib-artiges color-mix() gibt es hier nicht, deshalb bleiben
+  // diese Ableger als Literale stehen (Refactor-Kandidat bei Umbrandung, s.
+  // Playbook §3.1: neue Marke bräuchte eine eigene Aufhellungs-Reihe).
+  const barColors = [ACCENT, "#1f6bff", "#3d7dff", "#5f93ff", "#82abff", "#a6c3ff", "#c4d7fb", "#dbe6fb"];
   const chart = bars
     .map(
       (h, i) =>
@@ -346,7 +351,7 @@ export function reportPdfTeaser(): string {
  */
 export function reportPdfCallout(): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 4px;background:#141724;border-radius:16px;"><tr><td style="padding:26px 24px;text-align:center;">
-<div style="width:44px;height:44px;line-height:44px;border-radius:999px;background:#015cff;color:#ffffff;font-size:22px;font-weight:700;margin:0 auto 14px;text-align:center;">&#8595;</div>
+<div style="width:44px;height:44px;line-height:44px;border-radius:999px;background:${ACCENT};color:#ffffff;font-size:22px;font-weight:700;margin:0 auto 14px;text-align:center;">&#8595;</div>
 <div style="color:#ffffff;font-family:${HEADING_FONT};font-size:19px;font-weight:800;letter-spacing:-0.02em;line-height:1.3;">Alle Informationen im Detail im PDF</div>
 <div style="color:#9aa3b8;font-size:13px;line-height:1.6;margin-top:8px;">Öffnen Sie den <strong style="color:#c4d3ff;">PDF-Anhang</strong> dieser E-Mail — mit Lagekarte, Werttreibern, Vergleichsobjekten und der vollständigen Aufstellung.</div>
 </td></tr></table>`;

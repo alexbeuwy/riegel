@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { site } from "@/lib/site";
 
 /**
  * Würfel-Projektil der Kanone. Bewusst KEINE Physik-Engine: Hit/Miss ist beim
@@ -116,8 +117,8 @@ export function Projectile({
       <mesh ref={cubeRef} geometry={CUBE_GEO} position={start}>
         <meshStandardMaterial
           ref={cubeMatRef}
-          color="#015cff"
-          emissive="#015cff"
+          color={site.brandColor}
+          emissive={site.brandColor}
           emissiveIntensity={0.55}
           roughness={0.35}
           metalness={0.2}

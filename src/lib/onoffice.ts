@@ -14,6 +14,7 @@
 import { createHmac } from "node:crypto";
 import { inflateSync } from "node:zlib";
 import type { Estate, EstateStatus, ObjectCategory, MarketingType, GeoPoint, EnergyCertificate, Provision } from "@/lib/mock-estates";
+import { site } from "@/lib/site";
 
 /** true, wenn Token+Secret gesetzt sind — Aufrufer können damit z. B. Status-Banner steuern. */
 export const isOnOfficeEnabled = Boolean(process.env.ONOFFICE_TOKEN && process.env.ONOFFICE_SECRET);
@@ -341,7 +342,23 @@ function extractTextFeatures(text: string, existingLabels: string[] = []): { chi
 // RIEGEL APP, kostenlos im APP Store herunterladen........................"
 // oder "........Immer aktuell mit der RIEGEL APP, kostenlos im APP Store
 // herunterladen........." (QA-Samples Id 419/6037/7683).
-const APP_PROMO_KEYWORDS = [/riegel/i, /\bapp\b/i, /herunterladen/i];
+//
+// Markenwort aus site.name statt hartkodiert "riegel" (White-Label, Playbook
+// §3.1) — NUR das erste Wort ("RIEGEL" aus "RIEGEL Immobilien"), weil genau
+// dieses kurze Markenwort im echten Werbetext steht ("RIEGEL APP"); der volle
+// Firmenname stünde da nie. Regex-escaped, falls ein künftiger Markenname
+// Sonderzeichen enthält.
+//
+// Mit Wortgrenzen (\b…\b) statt der alten freien /riegel/i: ein bloßes
+// Teilstring-Match würde sonst z. B. "Fensterriegel" in einer echten
+// Objektbeschreibung (Fenster-/Türbeschläge) fälschlich als App-Werbung
+// erkennen — "Fensterriegel" enthält "riegel" als Teilstring, aber ohne
+// Wortgrenze DAVOR (das "r" von "riegel" folgt direkt auf das "e" von
+// "Fenster", keine Wortgrenze zwischen zwei Buchstaben). \b vor dem
+// escapten Markenwort verlangt eine echte Wortgrenze und schließt diesen
+// False-Positive-Fall sauber aus.
+const MARKENWORT_ESCAPED = site.name.split(" ")[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const APP_PROMO_KEYWORDS = [new RegExp(`\\b${MARKENWORT_ESCAPED}\\b`, "i"), /\bapp\b/i, /herunterladen/i];
 
 function isAppPromoParagraph(paragraph: string): boolean {
   return APP_PROMO_KEYWORDS.every((re) => re.test(paragraph));
@@ -812,10 +829,19 @@ async function fetchEstateImages(ids: string[]): Promise<Map<string, string[]>> 
 // Live verifiziert (09.07.2026): templates:get {type:"pdf"} liefert u. a.
 // "Exposé Riegel neu 2026" und "Exposé Riegel"; pdf:get antwortet mit
 // base64(zlib(PDF)). Reihenfolge: neuestes Template zuerst, Fallback altes.
-const EXPOSE_TEMPLATES = [
-  "urn:onoffice-de-ns:smart:2.5:pdf:expose:lang:Exposé Riegel neu 2026",
-  "urn:onoffice-de-ns:smart:2.5:pdf:expose:lang:Exposé Riegel",
-];
+//
+// White-Label (Playbook §3.1): Template-URNs sind pro OnOffice-Account
+// individuell benannt (Template-Namen wählt der Makler selbst im CRM) — eine
+// neue Instanz hat andere Template-Namen, deshalb per Env überschreibbar
+// (kommagetrennt, Reihenfolge = Versuchsreihenfolge). Fallback = RIEGELs
+// bisherige URNs, damit die Live-Instanz ohne gesetzte Env unverändert
+// weiterläuft.
+const EXPOSE_TEMPLATES = process.env.ONOFFICE_EXPOSE_TEMPLATES
+  ? process.env.ONOFFICE_EXPOSE_TEMPLATES.split(",").map((s) => s.trim()).filter(Boolean)
+  : [
+      "urn:onoffice-de-ns:smart:2.5:pdf:expose:lang:Exposé Riegel neu 2026",
+      "urn:onoffice-de-ns:smart:2.5:pdf:expose:lang:Exposé Riegel",
+    ];
 
 interface OnOfficePdfData {
   records?: { elements?: { type?: string; document?: string } }[];
@@ -1021,7 +1047,8 @@ export async function fetchLiveTickerCounts(): Promise<{
 /**
  * Liefert alle aktiven/veröffentlichten Objekte aus OnOffice, gemappt auf das
  * Estate-Modell. `null` bedeutet: nicht konfiguriert, API-/Netzwerkfehler oder
- * 0 sichtbare Objekte — der Aufrufer fällt dann auf `mockEstates` zurück.
+ * 0 sichtbare Objekte — der Aufrufer fällt dann in der Entwicklung auf
+ * `mockEstates` zurück, in Produktion auf eine leere Liste (s. estates.ts).
  */
 export async function fetchOnOfficeEstates(): Promise<Estate[] | null> {
   if (!isOnOfficeEnabled) return null;

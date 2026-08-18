@@ -60,7 +60,22 @@ export const getEstateData = cache(async (): Promise<EstateData> => {
     // Liegt bereits ein (ggf. abgelaufener) Live-Eintrag im Cache, liefert
     // unstable_cache den weiterhin aus — hier landen wir nur, wenn es noch
     // NIE einen erfolgreichen Abruf gab und der aktuelle auch scheitert.
-    return { estates: mockEstates, source: "mock" };
+    //
+    // PRODUKTION: Die erfundenen Mock-Objekte dürfen einem echten Website-
+    // Besucher NIEMALS als scheinbar reale Angebote angezeigt werden (roter
+    // Fall: fiktive Immobilien mit erfundenen Preisen/Adressen wären
+    // irreführend). Das source-Feld bleibt bewusst "mock" (nicht ein neuer
+    // Wert wie "leer") — Konsumenten wie app/page.tsx und
+    // app/immobilien/(liste)/page.tsx prüfen ausschließlich `source==="mock"`
+    // bzw. `source!=="onoffice"` für den "Beispieldaten"-Hinweisbanner und
+    // liegen außerhalb dieses Dateiumfangs (Leaf L5a); ein dritter
+    // EstateSource-Wert hätte dort ohne begleitende Anpassung ein falsches
+    // (weil auf "mock" ausgelegtes) Banner gezeigt oder gar keins. Mit einem
+    // LEEREN Array zeigt das bestehende Banner weiterhin korrekt an, dass hier
+    // keine echten Live-Daten stehen — nur eben ohne erfundene Listings.
+    // ENTWICKLUNG: volle Mock-Fixtures, damit UI/Layout ohne OnOffice-Zugang
+    // getestet werden können.
+    return { estates: process.env.NODE_ENV === "production" ? [] : mockEstates, source: "mock" };
   }
 });
 

@@ -59,7 +59,7 @@ async function saveInvited(admin: SupabaseClient, list: string[]): Promise<void>
  * Einladungs-Mail: ausführlich, damit auch ohne Vorwissen klar ist, wie der
  * Zugang funktioniert (Konto unter genau dieser Adresse, kein separates
  * Passwort) und was im Portal steckt. Aufbau/Optik wie scripts/report-manfred.mts
- * (Titel in #141724, Fließtext in #5a6072, Links im RIEGEL-Blau #015cff).
+ * (Titel in #141724, Fließtext in #5a6072, Links im RIEGEL-Blau site.brandColor).
  */
 function inviteMailHtml(email: string): string {
   const section = (title: string, html: string) =>
@@ -77,8 +77,8 @@ function inviteMailHtml(email: string): string {
     section(
       "So kommen Sie rein",
       `<ol style="margin:6px 0 0;padding-left:20px;color:#5a6072;font-size:14px;line-height:1.7;">
-        <li>Unter <a href="${site.url}/konto" style="color:#015cff;text-decoration:none;">${domain}/konto</a> ein Konto mit genau dieser E-Mail-Adresse anlegen (oder anmelden, falls dort schon eines besteht).</li>
-        <li>Danach <a href="${site.url}/intern" style="color:#015cff;text-decoration:none;">${domain}/intern</a> öffnen. Ein zusätzliches Passwort ist nicht nötig, die Freischaltung hängt an der E-Mail-Adresse.</li>
+        <li>Unter <a href="${site.url}/konto" style="color:${site.brandColor};text-decoration:none;">${domain}/konto</a> ein Konto mit genau dieser E-Mail-Adresse anlegen (oder anmelden, falls dort schon eines besteht).</li>
+        <li>Danach <a href="${site.url}/intern" style="color:${site.brandColor};text-decoration:none;">${domain}/intern</a> öffnen. Ein zusätzliches Passwort ist nicht nötig, die Freischaltung hängt an der E-Mail-Adresse.</li>
       </ol>`,
     ) +
     section(
@@ -94,7 +94,7 @@ function inviteMailHtml(email: string): string {
       </ul>`,
     ) +
     `<p style="margin:0 0 18px;color:#5a6072;font-size:14px;line-height:1.6;">
-      <span style="color:#141724;font-weight:700;">Wohin gehen Leads und Daten:</span> Jede Bewertungs-, Kontakt- und Terminanfrage geht per E-Mail an info@riegel-immobilien.de und wird zusätzlich in der geschützten RIEGEL-Datenbank gespeichert. Die Kundschaft erhält ihren Marktwert-Report als PDF per E-Mail. Website-Feedback bleibt rein intern.
+      <span style="color:#141724;font-weight:700;">Wohin gehen Leads und Daten:</span> Jede Bewertungs-, Kontakt- und Terminanfrage geht per E-Mail an ${site.email} und wird zusätzlich in der geschützten RIEGEL-Datenbank gespeichert. Die Kundschaft erhält ihren Marktwert-Report als PDF per E-Mail. Website-Feedback bleibt rein intern.
     </p>
     <p style="margin:0;color:#5a6072;font-size:14px;line-height:1.6;">
       <span style="color:#141724;font-weight:700;">Vertraulichkeit:</span> Es handelt sich um personenbezogene Kundendaten. Bitte den Zugang nicht weitergeben und Auswertungen nur intern verwenden.

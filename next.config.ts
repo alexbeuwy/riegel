@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+// White-Label (Playbook §3.1): derselbe Env-Name/Fallback wie site.cdnHost in
+// src/lib/site.ts — next.config.ts kann site.ts aber nicht importieren (läuft
+// außerhalb der App-Modulauflösung, vor dem eigentlichen Next-Build), daher
+// hier bewusst dieselbe process.env-Auswertung dupliziert statt eines Imports.
+// Build-time ok: next.config.ts wird nur beim Start/Build ausgewertet, ein
+// späterer Laufzeit-Wechsel der Env-Variable würde einen Rebuild brauchen.
+const BUNNY_CDN_HOST = process.env.NEXT_PUBLIC_BUNNY_CDN_HOST || "riegel.b-cdn.net";
+
 const nextConfig: NextConfig = {
   images: {
     // Nur WebP: AVIF-Encoding ist beim ersten (uncachten) Transform um ein
@@ -13,7 +21,7 @@ const nextConfig: NextConfig = {
     // 31 Tage Cache sind daher sicher.
     minimumCacheTTL: 2678400,
     remotePatterns: [
-      { protocol: "https", hostname: "riegel.b-cdn.net" },
+      { protocol: "https", hostname: BUNNY_CDN_HOST },
       // Objektfotos aus OnOffice (estatepictures) — Subdomain je nach Mandant.
       // "**" = beliebig tiefe Subdomains; deckt sich mit dem Host-Filter in
       // onoffice.ts (fetchEstateImages), der Fremd-Hosts vorab verwirft.

@@ -19,6 +19,7 @@ import { PAAR_REPORT_JPG_B64, BROSCHUERE_JPG_B64, BERATUNG_JPG_B64, LADEN_JPG_B6
 import { BORIS_QUELLEN, type BorisQuelle } from "@/lib/boris";
 import type { ReportContext } from "@/lib/report-context";
 import type { ReportVergleichsObjekt } from "@/lib/report-objekte";
+import { site } from "@/lib/site";
 
 /**
  * Mehrseitiger RIEGEL-Marktwert-Report als PDF — als echtes Dokument aufgebaut,
@@ -146,9 +147,17 @@ const BORDER = rgb(0.902, 0.91, 0.937);
 const FG = rgb(0.063, 0.075, 0.125);
 const MUTED = rgb(0.337, 0.357, 0.431);
 const FAINT = rgb(0.573, 0.588, 0.651);
-const ACCENT = rgb(0.004, 0.361, 1);
+// Echte Markenfarbe (site.brandColorRgb, 0–1-Normalform für pdf-lib) — NICHT
+// hartkodiert, weil eine Umbrandung (Playbook §3.1) diesen Wert sonst hier UND
+// in site.ts pflegen müsste. Die drei folgenden Ableger (ACCENT_SOFT,
+// BORDER_GLOW weiter unten, CHIP_FILL) sind von Hand abgetönte/aufgehellte
+// Varianten für Print-Kontraste — pdf-lib kennt kein color-mix(), deshalb
+// bleiben sie als eigene Literale stehen (Refactor-Kandidat bei Umbrandung:
+// eine neue Marke bräuchte ihre eigene Abtönungs-Reihe).
+const ACCENT = rgb(site.brandColorRgb.r, site.brandColorRgb.g, site.brandColorRgb.b);
 /** Für kleinen Text/feine Akzente auf Weiß: etwas tieferes Blau als ACCENT —
- * das helle Web-Blau (0.416, 0.631, 1) wäre auf Papier zu blass. */
+ * das helle Web-Blau (0.416, 0.631, 1) wäre auf Papier zu blass. Abgeleiteter
+ * Ton, NICHT die Markenfarbe selbst — bleibt Literal (s. Kommentar oben). */
 const ACCENT_SOFT = rgb(0.008, 0.302, 0.82);
 /** Schrift AUF vollblauen Flächen: reines Weiß und ein helles Eisblau für
  * Zweitzeilen/Labels — die Umkehrung von FG/MUTED für die blauen Bänder. */
@@ -161,6 +170,15 @@ const NEG = rgb(0.851, 0.275, 0.243);
  * Tönt alle glowPanel-Kacheln (Formel-Boxen, Referenzobjekte …) dezent
  * Richtung Akzentblau statt neutral grau. */
 const BORDER_GLOW = rgb(0.78, 0.843, 0.973);
+
+// Fußzeile auf jeder Report-Seite: Firma + alle Standort-Adressen aus site.ts
+// statt hartkodiert, damit eine Umbrandung (Playbook §3.1, weitere Standorte)
+// nur site.locations pflegen muss.
+const FOOTER_ADRESSZEILE = `${site.recht.firma} · ${site.locations.map((l) => `${l.street}, ${l.zip} ${l.city}`).join(" · ")}`;
+// Hauptstandort (Konvention: erster Eintrag in site.locations, s. email.ts).
+const HAUPTSTANDORT = site.locations[0];
+// Domain ohne Protokoll für die Kurzform im gedruckten Report (z. B. "<domain>/termin").
+const SITE_HOST = new URL(site.url).hostname;
 
 const A4: [number, number] = [595.28, 841.89];
 const M = 48;
@@ -427,7 +445,7 @@ function header(ctx: Ctx, page: PDFPage, w: number, h: number, kicker: string) {
 function footer(ctx: Ctx, page: PDFPage, w: number, pageNo: number, total: number) {
   const t = mkText(page);
   page.drawLine({ start: { x: M, y: 54 }, end: { x: w - M, y: 54 }, thickness: 0.5, color: BORDER });
-  t("RIEGEL Immobilien e.K. · Wormser Straße 13, 67346 Speyer · Kaiser-Wilhelm-Straße 16, 67059 Ludwigshafen", M, 40, 7.5, ctx.reg, FAINT);
+  t(FOOTER_ADRESSZEILE, M, 40, 7.5, ctx.reg, FAINT);
   textRight(page, `${pageNo} / ${total}`, w - M, 40, 7.5, ctx.reg, FAINT);
 }
 function heading(ctx: Ctx, page: PDFPage, s: string, x: number, y: number, size = 15) {
@@ -1837,7 +1855,10 @@ function drawReferenzobjekte(ctx: Ctx, d: ReportData, fotos: (PDFImage | null)[]
   // Speyer füllen — nur, wenn noch spürbar Platz bis zum Footer ist.
   // Passt zur Seitenaussage: der Beleg "vor Ort" als Bild.
   if (y - 90 > bandFloor) {
-    visualBand(ctx, page, ctx.laden, M, y, contentW, Math.min(240, y - bandFloor), "Unser Büro in Speyer, Wormser Straße 13.", 0.62, true);
+    // ctx.laden zeigt bewusst das Ladenlokal des ERSTEN Standorts (Speyer) —
+    // Bild-Asset bleibt fest verdrahtet (s. Ctx-Kommentar/report-assets), nur
+    // der Bildtext kommt aus site.locations[0].
+    visualBand(ctx, page, ctx.laden, M, y, contentW, Math.min(240, y - bandFloor), `Unser Büro in ${HAUPTSTANDORT.city}, ${HAUPTSTANDORT.street}.`, 0.62, true);
   }
 
   footer(ctx, page, w, pageNo, total);
@@ -2012,7 +2033,7 @@ function drawMarketing(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: num
   // abgeschnitten wird — eine gekappte Objektadresse wirkt schlampig.
   const ctaSize = fitFontSize(ctx.bold, ctaLine, w - 2 * M - 40, 12.5, 10.5);
   t(ellipsize(ctaLine, ctx.bold, ctaSize, w - 2 * M - 40), M + 20, y - 47, ctaSize, ctx.bold, ON_ACCENT);
-  t("Kostenlose Vor-Ort-Bewertung: riegel-immobilien.de/termin   ·   06232 100 10 10", M + 20, y - 67, 9.5, ctx.reg, ON_ACCENT_MUTED);
+  t(`Kostenlose Vor-Ort-Bewertung: ${SITE_HOST}/termin   ·   ${site.phone}`, M + 20, y - 67, 9.5, ctx.reg, ON_ACCENT_MUTED);
   y -= ctaH + 28;
 
   // Diese Seite hat unter der CTA reichlich Weißraum — mit dem Büro-Band
@@ -2134,24 +2155,29 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   const t = mkText(page);
   let y = header(ctx, page, w, h, "ANBIETER & RECHTLICHES");
 
-  heading(ctx, page, "RIEGEL Immobilien", M, y, 16);
+  heading(ctx, page, site.name, M, y, 16);
   y -= 22;
 
   const colW = (w - 2 * M - 24) / 2;
-  // Anbieter-Block (links)
+  // Anbieter-Block (links) — Firma/Adressen/Telefon/Mail/Domain zentral aus
+  // site.ts (White-Label, s. Playbook §3.1). Die Inhaberin-Zeile ("Inhaberin:
+  // Sylwia RIEGEL", bisher hartkodiert) fällt bewusst weg: site.ts hat KEIN
+  // Feld für die natürliche Person hinter der Firma (nur legalName/recht.firma
+  // als Firmierung) — die rote Liste (CLAUDE.md, Playbook §5) verbietet,
+  // Namen echter Personen zu erfinden oder herzuleiten. Bei Bedarf müsste
+  // site.ts (nicht meine Datei) um ein Feld wie recht.inhaber erweitert werden.
   let yl = y;
   const line = (s: string, x: number, yy: number, size = 9.5, font = ctx.reg, color: Color = MUTED) => t(s, x, yy, size, font, color);
   line("ANBIETER", M, yl, 9, ctx.bold, ACCENT_SOFT); yl -= 16;
-  line("RIEGEL Immobilien e.K.", M, yl, 11, ctx.bold, FG); yl -= 15;
-  line("Inhaberin: Sylwia RIEGEL", M, yl); yl -= 14;
-  line("Wormser Straße 13, 67346 Speyer", M, yl); yl -= 13;
-  line("Tel. 06232 100 10 10", M, yl); yl -= 16;
-  line("Kaiser-Wilhelm-Straße 16, 67059 Ludwigshafen", M, yl); yl -= 13;
-  line("Tel. 0621 5200 8800", M, yl); yl -= 16;
-  line("info@riegel-immobilien.de", M, yl, 9.5, ctx.reg, ACCENT_SOFT); yl -= 13;
-  line("www.riegel-immobilien.de", M, yl, 9.5, ctx.reg, ACCENT_SOFT); yl -= 18;
+  line(site.recht.firma, M, yl, 11, ctx.bold, FG); yl -= 15;
+  for (const ort of site.locations) {
+    line(`${ort.street}, ${ort.zip} ${ort.city}`, M, yl); yl -= 13;
+    line(`Tel. ${ort.phone}`, M, yl); yl -= 16;
+  }
+  line(site.email, M, yl, 9.5, ctx.reg, ACCENT_SOFT); yl -= 13;
+  line(`www.${SITE_HOST}`, M, yl, 9.5, ctx.reg, ACCENT_SOFT); yl -= 18;
   line("USt-IdNr. & Registereintrag: siehe Impressum unter", M, yl, 8.5, ctx.reg, FAINT); yl -= 11;
-  line("riegel-immobilien.de/impressum", M, yl, 8.5, ctx.reg, FAINT);
+  line(`${SITE_HOST}/impressum`, M, yl, 8.5, ctx.reg, FAINT);
 
   // Auszeichnung-Block (rechts)
   let yr = y;
@@ -2173,7 +2199,7 @@ function drawLegal(ctx: Ctx, d: ReportData, objektTitle: string, pageNo: number,
   y -= 16;
   const disc = [
     "Dieser Marktwert-Report ist eine unverbindliche, datenbasierte Sofort-Einschätzung und stellt KEIN Verkehrswertgutachten im Sinne des § 194 BauGB und keine Rechts-, Steuer- oder Finanzierungsberatung dar. Die Berechnung beruht auf amtlichen Bodenrichtwerten, regionalen Vergleichsdaten und Erfahrungswerten; tatsächlich erzielbare Preise können — abhängig von Objektzustand, Ausstattung, Markt- und Verhandlungslage — abweichen. Eine Haftung für die Richtigkeit und Vollständigkeit der Angaben ist ausgeschlossen.",
-    "Das dargestellte Luftbild stammt aus Esri World Imagery (u. a. Maxar) und dient ausschließlich der Veranschaulichung der Lage. Die atmosphärischen Bildwelten dieses Reports sind mithilfe künstlicher Intelligenz erstellt und am jeweiligen Bild mit „KI-visualisiert“ gekennzeichnet (Art. 50 Verordnung (EU) 2024/1689); Team-, Auszeichnungs- und Objektfotos sind echte Aufnahmen. Die im Report verarbeiteten Angaben wurden von Ihnen über den Online-Rechner bereitgestellt und werden gemäß unserer Datenschutzerklärung (riegel-immobilien.de/datenschutz) ausschließlich zur Bearbeitung Ihrer Anfrage verwendet. Sie können der Verarbeitung jederzeit widersprechen.",
+    `Das dargestellte Luftbild stammt aus Esri World Imagery (u. a. Maxar) und dient ausschließlich der Veranschaulichung der Lage. Die atmosphärischen Bildwelten dieses Reports sind mithilfe künstlicher Intelligenz erstellt und am jeweiligen Bild mit „KI-visualisiert“ gekennzeichnet (Art. 50 Verordnung (EU) 2024/1689); Team-, Auszeichnungs- und Objektfotos sind echte Aufnahmen. Die im Report verarbeiteten Angaben wurden von Ihnen über den Online-Rechner bereitgestellt und werden gemäß unserer Datenschutzerklärung (${SITE_HOST}/datenschutz) ausschließlich zur Bearbeitung Ihrer Anfrage verwendet. Sie können der Verarbeitung jederzeit widersprechen.`,
   ];
   if (d.bodenrichtwert) {
     const stichtag = d.bodenrichtwert.stichtag ? `, Stichtag ${d.bodenrichtwert.stichtag}` : "";

@@ -102,7 +102,7 @@ function buildVariant(type: string): { subject: string; html: string } | null {
         html: emailLayout({
           heading: `Danke, ${esc(LEAD.name.split(" ")[0])}!`,
           intro:
-            "Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages. Bei dringenden Anliegen erreichen Sie uns unter 06232 100 10 10.",
+            `Ihre Nachricht ist bei uns angekommen. Wir melden uns in der Regel innerhalb eines Werktages. Bei dringenden Anliegen erreichen Sie uns unter ${site.phone}.`,
           bodyHtml: `<p style="margin:8px 0 6px;color:#6b7590;font-size:13px;">Ihre Nachricht</p><p style="margin:0;color:#5a6072;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(LEAD.message)}</p>`,
         }),
       };

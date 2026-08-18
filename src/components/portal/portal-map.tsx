@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Estate } from "@/lib/mock-estates";
 import { formatPinLabel, formatPrice, pinIconSvg } from "@/lib/format";
+import { site } from "@/lib/site";
 
 // Freier dunkler Vektor-Style (CARTO dark-matter, kein API-Key).
 // DSGVO: externer Tile-Call → vor Go-Live hinter Consent-Tool.
@@ -264,20 +265,20 @@ export function PortalMap({
         source: SOURCE_ID,
         filter: ["has", "point_count"],
         paint: {
-          "circle-color": "#015CFF",
+          "circle-color": site.brandColor,
           "circle-opacity": 0.28,
           "circle-blur": 0.75,
           "circle-radius": ["step", ["get", "point_count"], 28, 10, 34, 25, 42],
         },
       });
-      // Cluster-Kreis im RIEGEL-Akzent, weiße Zahl obendrauf.
+      // Cluster-Kreis in der Markenfarbe, weiße Zahl obendrauf.
       map.addLayer({
         id: CLUSTER_LAYER,
         type: "circle",
         source: SOURCE_ID,
         filter: ["has", "point_count"],
         paint: {
-          "circle-color": "#015CFF",
+          "circle-color": site.brandColor,
           "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 25, 25],
           "circle-stroke-width": 2,
           "circle-stroke-color": "rgba(11, 11, 13, 0.92)",
