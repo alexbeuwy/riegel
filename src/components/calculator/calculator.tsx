@@ -769,8 +769,15 @@ export function Calculator() {
     setError(null);
     if (step < 2) {
       userNav.current = true;
+      // Funnel-Messung: der ABGESCHLOSSENE Schritt zählt (1-basiert), nicht
+      // der neu betretene — sonst zeigt der /intern-Trichter „Schritt 1" für
+      // Leute, die nur die Objektart angeklickt haben.
+      track("rechner_step", { step: step + 1 });
       setStep(step + 1);
-    } else startAnalysis();
+    } else {
+      track("rechner_step", { step: 3 });
+      startAnalysis();
+    }
   }
 
   function startAnalysis() {
@@ -813,6 +820,7 @@ export function Calculator() {
     lastInputRef.current = input;
     setResult(estimateValue(input));
     setRevealed(0);
+    track("rechner_analyse");
     setPhase("analyzing");
 
     // Echte Orts-Abschlüsse (OnOffice-Aggregate) parallel laden — gleiche
@@ -877,7 +885,13 @@ export function Calculator() {
       i += 1;
       setRevealed(i);
       if (i < SOURCES.length) timers.push(setTimeout(tick, stepMs));
-      else timers.push(setTimeout(() => setPhase("result"), reduce ? 200 : 900));
+      else
+        timers.push(
+          setTimeout(() => {
+            track("rechner_ergebnis");
+            setPhase("result");
+          }, reduce ? 200 : 900),
+        );
     };
     timers.push(setTimeout(tick, reduce ? 80 : 400));
     return () => timers.forEach(clearTimeout);
