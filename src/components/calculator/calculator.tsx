@@ -1602,7 +1602,7 @@ function Result({
                   <Icon name="printer" size={14} />
                 </span>
                 <span className="min-w-0 text-[0.62rem] font-bold uppercase tracking-[0.06em] text-[#221604] sm:text-[0.72rem]">
-                  Präzisere Infos &amp; Daten im kostenlosen Report-PDF (Druckversion)
+                  Präzisere Infos &amp; Daten im kostenlosen Report-PDF
                 </span>
                 <Icon name="chevronDown" size={15} className="pdf-pfeil shrink-0 text-[#221604]" />
               </button>

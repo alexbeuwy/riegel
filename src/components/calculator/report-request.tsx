@@ -248,60 +248,80 @@ export function ReportRequest({
 
   return (
     <div ref={rootRef} data-track-bereich="report-formular" className="mx-auto mt-10 max-w-4xl rounded-2xl border border-accent/30 bg-surface p-6 sm:p-8">
-      {/* 2-Spalten-Layout ab md (Feedback Alex 18.08.2026, Runde 2): Text
-          links, Visual rechts — der Container hatte seitlich Luft, und das
-          zentrierte 340px-Visual hat die Scroll-Strecke zum CTA verdoppelt.
-          Auf Mobil bleibt das Visual klein (180 px), damit der CTA nah bleibt. */}
-      <div className="grid items-center gap-x-8 gap-y-5 md:grid-cols-[minmax(0,1fr)_250px]">
+      {/* Kopf über die volle Breite, DANN 2 Spalten (Feedback Alex 18.08.2026,
+          Runde 3): das Visual hing vorher vertikal zentriert „halb in der
+          Headline". Jetzt: Eyebrow + Headline oben, darunter Text links /
+          Visual rechts — das Visual richtet sich an den Argumenten aus. */}
+      <div className="text-center md:text-left">
+        <div className="flex items-center justify-center gap-2 text-sm text-accent-strong md:justify-start">
+          <Icon name="doc" size={18} />
+          Ihr nächster Schritt
+        </div>
+        {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
+            AKIRA-Headline in Weiß, animierter Auftritt beim Viewport-
+            Eintritt (.report-headline in globals.css). */}
+        <h3
+          ref={headRef}
+          data-in={headIn ? "1" : undefined}
+          className="report-headline akira mx-auto mt-4 max-w-2xl text-2xl leading-[0.95] text-white sm:text-4xl md:mx-0"
+        >
+          Persönlicher Marktwert&#8209;Report
+        </h3>
+      </div>
+
+      <div className="mt-7 grid items-center gap-x-10 gap-y-6 md:grid-cols-[minmax(0,1fr)_240px]">
         <div className="text-center md:text-left">
-          <div className="flex items-center justify-center gap-2 text-sm text-accent-strong md:justify-start">
-            <Icon name="doc" size={18} />
-            Ihr nächster Schritt
-          </div>
-          {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
-              AKIRA-Headline in Weiß, animierter Auftritt beim Viewport-
-              Eintritt (.report-headline in globals.css). */}
-          <h3
-            ref={headRef}
-            data-in={headIn ? "1" : undefined}
-            className="report-headline akira mx-auto mt-3 max-w-xl text-2xl leading-[0.95] text-white sm:text-4xl md:mx-0"
-          >
-            Persönlicher Marktwert&#8209;Report
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted md:mx-0">
-            Diese Sofort-Einschätzung ist nur der Anfang. Der vollständige Report zeigt,{" "}
-            <strong className="text-fg">worauf es beim Preis wirklich ankommt</strong> — kostenlos,
-            unverbindlich, direkt per E-Mail.
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-muted md:mx-0">
+            Diese Sofort-Einschätzung ist nur der Anfang. Der vollständige Report
+            {f.address?.label ? (
+              <>
+                {" "}für{" "}
+                {/* Die exakte Adresse in Warm-Orange (Wunsch Alex): macht
+                    greifbar, dass es jetzt um GENAU diese Immobilie geht. */}
+                <span className="font-semibold text-amber-300">{f.address.label}</span>
+              </>
+            ) : null}{" "}
+            zeigt, <strong className="text-fg">worauf es beim Preis wirklich ankommt</strong> —
+            kostenlos, unverbindlich, direkt per E-Mail.
           </p>
 
           {/* Psychologischer Nutzen-Block: WARUM sich das Ausfüllen lohnt — bleibt
               immer sichtbar, auch wenn das Formular offen ist (kein Wegklappen von
               Vertrauens-Argumenten genau dann, wenn sie am meisten wirken). */}
-          <ul className="mx-auto mt-5 grid max-w-md gap-2.5 text-left text-sm text-fg/90 md:mx-0">
-            <li className="flex items-start gap-2.5">
+          <ul className="mx-auto mt-6 grid max-w-md gap-3.5 text-left text-sm leading-relaxed text-fg/90 md:mx-0">
+            <li className="flex items-start gap-3">
               <Icon name="chart" size={16} className="mt-0.5 shrink-0 text-accent" />
-              Alle Preis-Faktoren im Detail — was Ihren Wert erhöht und was ihn senkt
+              <span>
+                Alle Preis-Faktoren im Detail — was Ihren Wert erhöht, was ihn senkt und wie der
+                Marktwert von{" "}
+                <strong className="text-fg">{new Intl.NumberFormat("de-DE").format(result.mid)} €</strong>{" "}
+                zustande kommt
+              </span>
             </li>
-            <li className="flex items-start gap-2.5">
+            <li className="flex items-start gap-3">
               <Icon name="pin" size={16} className="mt-0.5 shrink-0 text-accent" />
-              Satellitenbild &amp; Lage-Einschätzung Ihrer genauen Adresse
+              <span>
+                Satellitenbild &amp; Einschätzung der genauen Mikrolage — abgeglichen mit{" "}
+                <strong className="text-fg">10 Datenquellen</strong> und über{" "}
+                <strong className="text-fg">5.000 echten Transaktionen</strong>
+              </span>
             </li>
-            <li className="flex items-start gap-2.5">
+            <li className="flex items-start gap-3">
               <Icon name="users" size={16} className="mt-0.5 shrink-0 text-accent" />
-              Persönliche Einschätzung von RIEGEL vor Ort — kein anonymer Algorithmus
+              <span>Persönliche Einschätzung von RIEGEL vor Ort — kein anonymer Algorithmus</span>
             </li>
           </ul>
 
-          <div className="mx-auto mt-4 flex max-w-md items-start gap-3 rounded-xl border border-border bg-bg/60 p-4 text-left md:mx-0">
+          <div className="mx-auto mt-6 flex max-w-md items-start gap-3 rounded-xl border border-border bg-bg/60 p-4 text-left md:mx-0">
             <Icon name="shield" size={18} className="mt-0.5 shrink-0 text-accent" />
-            <p className="text-sm text-muted">
+            <p className="text-sm leading-relaxed text-muted">
               <strong className="text-fg">Der häufigste Fehler beim Verkauf:</strong> ein falsch
               angesetzter Preis — zu hoch schreckt Interessenten ab, zu niedrig verschenkt Geld.
               Der Report hilft, ihn von Anfang an richtig zu treffen.
             </p>
           </div>
 
-          <p className="mx-auto mt-3 max-w-md text-center text-xs text-faint md:mx-0 md:text-left">
+          <p className="mx-auto mt-4 max-w-md text-center text-xs text-faint md:mx-0 md:text-left">
             <Icon name="lock" size={12} className="mb-0.5 mr-1 inline" />
             Ihre Daten bleiben exklusiv bei RIEGEL — keine Weitergabe an andere Makler oder Portale.
           </p>

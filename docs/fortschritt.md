@@ -1080,3 +1080,19 @@ Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion`
   „dauerhaft ausgeklappt").
 - **Oranges PDF-Badge ist jetzt ein vollwertiger Button** (amber-Fläche, dunkler Bold-Text,
   Beam) — primärer CTA-Charakter im Ergebnis.
+
+## Update — Report-Block Feinschliff Runde 3 (18.08.2026) ✅
+
+- **Kopf über volle Breite, dann 2 Spalten:** Visual hing vorher vertikal zentriert „halb
+  in der Headline" — jetzt Eyebrow + Headline oben, darunter Text links / Visual rechts
+  (am Argumente-Block ausgerichtet); großzügigere Abstände (mt-7 zum Grid, gap-3.5 in
+  der Nutzen-Liste, leading-relaxed).
+- **Exakte Adresse in Warm-Orange im Intro** („Der vollständige Report für {Adresse}
+  zeigt …") — macht greifbar, dass es um genau diese Immobilie geht.
+- **Argumente konkretisiert:** Bullet 1 nennt den berechneten Marktwert („… wie der
+  Marktwert von XXX.XXX € zustande kommt"), Bullet 2 die Datenbasis („10 Datenquellen,
+  über 5.000 echte Transaktionen" — BORIS-Kaufpreissammlungen + eigener Verkauft-Pool).
+- **Oranger Button:** „(Druckversion)" entfernt (kompakter).
+- **Diagnose „Farbstrahl fehlt":** Produktion verifiziert aktuell (EnergieStrahl im
+  Live-Chunk, alle neuen CSS-Klassen im Live-CSS) — Alex' offener Rechner-Tab lief als
+  SPA weiter auf altem JS. Lösung: Tab neu laden.
