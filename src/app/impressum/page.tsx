@@ -367,8 +367,8 @@ export default function ImpressumPage() {
               Hero- und Hintergrundmotive unserer Markenwelt) sowie im
               PDF-Marktwert-Report sind mithilfe künstlicher Intelligenz
               erstellt und direkt am jeweiligen Bild dezent mit
-              „KI-visualisiert" gekennzeichnet (Art.&nbsp;50 der Verordnung
-              (EU) 2024/1689, „AI Act").
+              „KI-visualisiert&quot; gekennzeichnet (Art.&nbsp;50 der Verordnung
+              (EU) 2024/1689, „AI Act&quot;).
             </p>
             <p>
               Nicht KI-generiert sind insbesondere: sämtliche Team- und

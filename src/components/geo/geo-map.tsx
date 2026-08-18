@@ -39,6 +39,7 @@ export function GeoMap({
   const didFit = useRef(false);
   const router = useRouter();
   const onHoverRef = useRef(onHover);
+  // eslint-disable-next-line react-hooks/refs -- „latest ref"-Muster (Callback für Map-Events aktuell halten, ohne die Karte neu aufzubauen); Standard-Ersatz bis useEffectEvent stabil ist.
   onHoverRef.current = onHover;
 
   // Einmalig: Karte + alle Marker aufbauen.

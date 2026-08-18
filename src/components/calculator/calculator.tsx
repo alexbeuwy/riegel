@@ -1285,7 +1285,10 @@ export function Calculator() {
                 <Icon name="pin" size={15} className="shrink-0 text-accent" />
                 <span className="min-w-0 flex-1 truncate text-sm text-muted">{f.address.label}</span>
                 <span className="shrink-0 text-xs uppercase tracking-widest text-faint">
-                  übernommen
+                  {/* Gleiche Ehrlichkeit wie im Standort-Schritt: ein per
+                      Fallback übernommener Ort darf hier nicht wie eine exakt
+                      erkannte Hausnummer aussehen (s. ortNaeherung). */}
+                  {ortNaeherung ? "Ortszentrum" : "übernommen"}
                 </span>
               </div>
             )}

@@ -50,6 +50,21 @@ export const site = {
     registergericht: "Amtsgericht Ludwigshafen am Rhein",
     registernummer: "HRA 51804 Sp",
   },
+  /**
+   * Markenfarbe für Kontexte OHNE CSS-Zugriff (Mail-HTML, PDF, OG-Bilder,
+   * Canvas/Shader) — die Web-Oberfläche nutzt weiterhin ausschließlich
+   * `--color-accent` in globals.css. Beim Umbranden BEIDE Stellen ändern
+   * (Playbook §3.1). `rgb` ist die pdf-lib-Normalform (0–1) derselben Farbe.
+   */
+  brandColor: "#015cff",
+  brandColorRgb: { r: 1 / 255, g: 92 / 255, b: 255 / 255 },
+  /**
+   * Öffentlicher CDN-Host für Bild-/Video-Assets (BunnyCDN Pull-Zone).
+   * NEXT_PUBLIC_, damit der Wert auch in Client-Komponenten zur Build-Zeit
+   * eingebettet wird; Fallback = RIEGEL-Zone. next.config.ts (remotePatterns)
+   * MUSS denselben Wert kennen — s. Playbook §3.1 (build-time!).
+   */
+  cdnHost: process.env.NEXT_PUBLIC_BUNNY_CDN_HOST || "riegel.b-cdn.net",
   tagline: "Immobilien mit regionaler Expertise",
   description:
     "RIEGEL Immobilien — Ihr Immobilienmakler in Speyer und Ludwigshafen. Verkauf, Bewertung und Beratung mit regionaler Expertise.",

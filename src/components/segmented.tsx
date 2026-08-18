@@ -56,7 +56,7 @@ export function Segmented<T extends string>({
   // Auswahlwechsel animiert.
   useLayoutEffect(() => {
     moveTo(activeIdx, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [activeIdx]);
 
   return (

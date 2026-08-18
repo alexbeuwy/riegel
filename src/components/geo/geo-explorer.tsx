@@ -149,6 +149,7 @@ export function GeoExplorer({
         </div>
 
         <div className="flex flex-wrap gap-2.5">
+          {/* eslint-disable-next-line react-hooks/static-components -- Bestands-Chip als Render-Closure über den Filter-State; stateless, Remount folgenlos. Hoisting wäre ein Refactor mit Prop-Faden — bewusst nicht im Lint-Aufräum-Schritt. */}
           <Chip k="all" label="Alle" n={items.length} />
           {categories.map((c) => (
             <Chip key={c.key} k={c.key} label={c.label} icon={c.icon} n={counts[c.key] ?? 0} />

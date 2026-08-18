@@ -24,6 +24,7 @@ export function Reveal({
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reduced-motion zeigt sofort, einmalig beim Mount (Bestandsmuster)
       setShown(true);
       return;
     }
@@ -44,6 +45,7 @@ export function Reveal({
 
   return createElement(
     as,
+    // eslint-disable-next-line react-hooks/refs -- ref wird nur als Prop an createElement durchgereicht (kein Lesen von .current im Render)
     {
       ref,
       style: { transitionDelay: `${delay}ms` },

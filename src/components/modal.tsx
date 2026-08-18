@@ -35,6 +35,7 @@ export function Modal({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Mount-Gate für die Öffnungs-Transition (Bestandsmuster)
       setMounted(true);
       const raf = requestAnimationFrame(() => setShown(true));
       return () => cancelAnimationFrame(raf);

@@ -22,6 +22,7 @@ export function HeroAddressSearch() {
 
   useEffect(() => {
     if (q.trim().length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset der Vorschläge bei zu kurzer Eingabe (Bestandsmuster, kein Kaskaden-Risiko)
       setSuggestions([]);
       setActiveIdx(-1);
       return;
