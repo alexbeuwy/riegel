@@ -1238,9 +1238,17 @@ export function Calculator() {
               {f.objektart !== "grundstueck" && (
                 // Bei Gewerbe heißt die Fläche Nutzfläche, nicht Wohnfläche.
                 <Field wichtig label={f.objektart === "gewerbe" ? "Nutzfläche gesamt (m²)" : "Wohnfläche (m²)"}>
+                  {/* inputMode="decimal" statt "numeric" überall dort, wo ein
+                      Dezimalwert legitim ist (Flächen, Zimmer wie „3,5", Bäder
+                      wie „1,5", Geldbeträge): Die reine Numerik-Tastatur von
+                      iOS/Android hat KEIN Komma — der Nutzer kann „92,5" also
+                      gar nicht eintippen, obwohl unsere eigene Fehlermeldung
+                      genau dazu einlädt („z. B. 92,5"). decimal blendet den
+                      Dezimaltrenner ein. Echte Ganzzahlfelder (Baujahr, Wohn-
+                      und Gewerbeeinheiten) behalten bewusst "numeric". */}
                   <input
                     className={inputClsWichtig}
-                    inputMode="numeric"
+                    inputMode="decimal"
                     value={f.wohnflaeche}
                     onChange={(e) => set("wohnflaeche", e.target.value)}
                     placeholder={f.objektart === "gewerbe" ? "z. B. 900" : "z. B. 120"}
@@ -1251,7 +1259,7 @@ export function Calculator() {
                   sichtbar — beim MFH optional (wandert in den Aufklapper). */}
               {(f.objektart === "haus" || f.objektart === "gewerbe" || f.objektart === "grundstueck") && (
                 <Field wichtig label="Grundstücksfläche (m²)">
-                  <input className={inputClsWichtig} inputMode="numeric" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
+                  <input className={inputClsWichtig} inputMode="decimal" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
                 </Field>
               )}
               {f.objektart === "mehrfamilienhaus" && (
@@ -1282,7 +1290,7 @@ export function Calculator() {
                     >
                       <input
                         className={inputClsWichtig}
-                        inputMode="numeric"
+                        inputMode="decimal"
                         value={f.jahresnettokaltmiete}
                         onChange={(e) => set("jahresnettokaltmiete", e.target.value)}
                         placeholder="z. B. 48000"
@@ -1293,7 +1301,7 @@ export function Calculator() {
                     <Field wichtig label="Davon leerstehende Wohnfläche (m²)">
                       <input
                         className={inputClsWichtig}
-                        inputMode="numeric"
+                        inputMode="decimal"
                         value={f.leerstehendeWohnflaeche}
                         onChange={(e) => set("leerstehendeWohnflaeche", e.target.value)}
                         placeholder="z. B. 120"
@@ -1323,7 +1331,7 @@ export function Calculator() {
                   <Field wichtig label="Davon Hallen-/Lagerfläche (m²)">
                     <input
                       className={inputClsWichtig}
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={f.hallenflaeche}
                       onChange={(e) => set("hallenflaeche", e.target.value)}
                       placeholder="z. B. 400"
@@ -1332,7 +1340,7 @@ export function Calculator() {
                   <Field wichtig label="Davon Wohnfläche (m²) — falls Wohnungen im Objekt">
                     <input
                       className={inputClsWichtig}
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={f.mischWohnflaeche}
                       onChange={(e) => set("mischWohnflaeche", e.target.value)}
                       placeholder="z. B. 160"
@@ -1345,7 +1353,7 @@ export function Calculator() {
                   (Wunsch Alex 18.08.2026). */}
               {(f.objektart === "wohnung" || f.objektart === "haus") && (
                 <Field wichtig label="Zimmer">
-                  <input className={inputClsWichtig} inputMode="numeric" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 4" />
+                  <input className={inputClsWichtig} inputMode="decimal" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 4" />
                 </Field>
               )}
               {f.objektart !== "grundstueck" && (
@@ -1433,7 +1441,7 @@ export function Calculator() {
                       {f.objektart === "mehrfamilienhaus" && (
                         <>
                           <Field label="Grundstücksfläche (m²)">
-                            <input className={inputCls} inputMode="numeric" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
+                            <input className={inputCls} inputMode="decimal" value={f.grundflaeche} onChange={(e) => set("grundflaeche", e.target.value)} placeholder="z. B. 450" />
                           </Field>
                           <Field label="Gewerbeeinheiten">
                             <input
@@ -1445,13 +1453,13 @@ export function Calculator() {
                             />
                           </Field>
                           <Field label="Zimmer gesamt">
-                            <input className={inputCls} inputMode="numeric" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 12" />
+                            <input className={inputCls} inputMode="decimal" value={f.zimmer} onChange={(e) => set("zimmer", e.target.value)} placeholder="z. B. 12" />
                           </Field>
                         </>
                       )}
                       {f.objektart !== "gewerbe" && (
                         <Field label="Badezimmer">
-                          <input className={inputCls} inputMode="numeric" value={f.badezimmer} onChange={(e) => set("badezimmer", e.target.value)} placeholder="z. B. 2" />
+                          <input className={inputCls} inputMode="decimal" value={f.badezimmer} onChange={(e) => set("badezimmer", e.target.value)} placeholder="z. B. 2" />
                         </Field>
                       )}
                       <Field label="Ausstattungsqualität">
@@ -1467,7 +1475,7 @@ export function Calculator() {
                         <Field label="Hausgeld pro Monat (€)">
                           <input
                             className={inputCls}
-                            inputMode="numeric"
+                            inputMode="decimal"
                             value={f.hausgeld}
                             onChange={(e) => set("hausgeld", e.target.value)}
                             placeholder="z. B. 320"

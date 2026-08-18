@@ -19,6 +19,7 @@
  * Fail-soft überall: fehlende Tabellen/kein Supabase/kein Resend führen zu
  * einer klaren Fehlermeldung im Summary, nie zu einem Throw in der Route.
  */
+import { createHmac } from "node:crypto";
 import { getEstateData } from "@/lib/estates";
 import { filterEstates, parseFilters } from "@/lib/portal-filter";
 import { filterByRadius, readCenter, readRadiusKm } from "@/components/portal/umkreis";
@@ -75,6 +76,10 @@ interface ProfilPrefs {
   regionen?: string[];
   preisMax?: string;
   zimmerMin?: string;
+  /** Abmelde-Flag aus /api/abmelden (One-Click-Unsubscribe der Matching-Mail,
+   *  18.08.2026): `false` = Nutzer hat aktiv abbestellt, NICHT mehr matchen.
+   *  Fehlt das Feld (alte/unbetroffene Profile), gilt weiter „an". */
+  benachrichtigung?: boolean;
 }
 
 /** Profil-Labels → Portal-Kategorien (OBJEKTARTEN in profile-form.tsx). */
@@ -105,6 +110,9 @@ function parseProfilPreisMax(s?: string): number | null {
  */
 export function matchProfil(estates: Estate[], p: ProfilPrefs): Estate[] {
   if (p.rolle === "verkauf") return [];
+  // Abmeldung über /api/abmelden gewinnt immer — kein Re-Matching, egal was
+  // sonst im Profil steht.
+  if (p.benachrichtigung === false) return [];
   const arten = (p.objektarten ?? []).map((a) => OBJEKTART_SLUG[a]).filter(Boolean);
   const regionen = (p.regionen ?? []).map((r) => r.trim().toLowerCase()).filter(Boolean);
   if (arten.length === 0 && regionen.length === 0) return [];
@@ -273,6 +281,9 @@ export function buildMatchingMail(
   zuSenden: Estate[],
   zins?: BaufiZins | null,
   aehnliche?: Estate[],
+  /** Signierter Link aus abmeldeLink(userId) — fehlt er (kein CRON_SECRET),
+   *  wird schlicht keine Abmeldezeile gerendert (fail-soft, s. abmeldeLink). */
+  abmeldeUrl?: string,
 ): { subject: string; html: string } {
   const base = emailTargets.ASSET_BASE;
   const mehrzahl = zuSenden.length > 1;
@@ -282,6 +293,12 @@ export function buildMatchingMail(
           .map((e) => miniCard(e, base))
           .join("")}`
       : "";
+  // Kleine, unaufdringliche Abmeldezeile unter dem CTA (Wunsch: One-Click-
+  // Unsubscribe UND ein sichtbarer Link im Mail-Text, nicht nur im
+  // List-Unsubscribe-Header — der ist für die meisten Nutzer unsichtbar).
+  const belowCta = abmeldeUrl
+    ? `<p style="margin:14px 0 0;color:#a3a9ba;font-size:11px;line-height:1.5;"><a href="${abmeldeUrl}" style="color:#a3a9ba;text-decoration:underline;">Diese Objekt-Benachrichtigungen abbestellen</a></p>`
+    : "";
   return {
     subject: mehrzahl
       ? `${zuSenden.length} neue Objekte passend zu Ihrem Suchauftrag`
@@ -294,8 +311,27 @@ export function buildMatchingMail(
       bodyHtml: zuSenden.map((e) => estateCard(e, base, zins)).join("") + aehnlichHtml,
       ctaLabel: "Alle Objekte im Portal ansehen",
       ctaHref: `${base}/immobilien`,
+      belowCta,
     }),
   };
+}
+
+/**
+ * Signierter Abmeldelink für /api/abmelden (One-Click-Unsubscribe der
+ * Matching-Mail, 18.08.2026). Kein eigenes Secret nötig — CRON_SECRET schützt
+ * bereits /api/matching/run und ist damit serverseitig ohnehin vorhanden.
+ * Token = HMAC-SHA256(CRON_SECRET, userId) als Hex, von /api/abmelden mit
+ * timingSafeEqual gegengeprüft (s. dort).
+ *
+ * Fail-soft: fehlt CRON_SECRET (z. B. lokale Entwicklung ohne Env), liefert
+ * die Funktion `null` — buildMatchingMail lässt den Abmeldelink dann einfach
+ * weg, statt eine kaputte URL zu verschicken.
+ */
+export function abmeldeLink(userId: string): string | null {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return null;
+  const token = createHmac("sha256", secret).update(userId).digest("hex");
+  return `${emailTargets.ASSET_BASE}/api/abmelden?u=${encodeURIComponent(userId)}&t=${token}`;
 }
 
 async function emailForUser(userId: string): Promise<string | null> {
@@ -323,20 +359,43 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
 
   const neue = aktive.filter((e) => !seen.has(e.id));
 
-  // Baseline fortschreiben — außer im dry-Modus: ein Probelauf lässt alles
-  // unangetastet und „verbraucht" den echten Lauf nicht.
-  if (!opts?.dry && neue.length > 0) {
-    const { error } = await supabaseServer
+  /**
+   * Baseline fortschreiben — bewusst NICHT hier oben, sondern erst ganz am
+   * Ende jedes Erfolgspfads aufgerufen (Fix 18.08.2026, vorher Datenverlust-
+   * Bug): stand der Upsert schon VOR Suchauftrags-/Profil-Abgleich und
+   * Versand, riss ein danach abbrechender Lauf (z. B. saved_searches- oder
+   * matching_sent-Query schlägt fehl) die Tages-Objekte für immer aus dem
+   * Matching — sie galten ab dann als „schon gesehen", ohne je gematcht oder
+   * verschickt worden zu sein. Jetzt gilt: nur ein Lauf, der bis zum Ende
+   * durchläuft, schreibt die Baseline fort. Bricht er vorher mit ok:false ab,
+   * sieht der nächste Lauf dieselben Objekte erneut als „neu" — Doppel-Mails
+   * verhindert weiterhin matching_sent (Versand ist idempotent), nur die
+   * Baseline-Fortschreibung wiederholt sich dann harmlos.
+   *
+   * Dry-Modus: kein Write, ein Probelauf lässt alles unangetastet und
+   * „verbraucht" den echten Lauf nicht.
+   */
+  const commitBaseline = async (): Promise<string | undefined> => {
+    if (opts?.dry || neue.length === 0) return undefined;
+    const { error } = await supabaseServer!
       .from("matching_seen")
       .upsert(neue.map((e) => ({ estate_id: e.id })), { onConflict: "estate_id" });
-    if (error) return { ok: false, error: `matching_seen upsert: ${error.message}` };
-  }
+    return error ? `matching_seen upsert: ${error.message}` : undefined;
+  };
 
   // Erstlauf: nur Baseline schreiben, keine Mails (sonst gilt ALLES als neu).
   if (seen.size === 0) {
+    const baselineError = await commitBaseline();
+    if (baselineError) return { ok: false, error: baselineError };
     return { ok: true, mode: "seeded", aktiveObjekte: aktive.length, neueObjekte: 0, mails: 0 };
   }
   if (neue.length === 0) {
+    // neue ist hier leer → commitBaseline ist ein No-Op; der Aufruf bleibt
+    // trotzdem stehen, damit dieser Rückgabepfad strukturell wie alle
+    // anderen aussieht (kein Sonderfall, an den man beim nächsten Umbau
+    // denken müsste).
+    const baselineError = await commitBaseline();
+    if (baselineError) return { ok: false, error: baselineError };
     return { ok: true, mode: "ran", aktiveObjekte: aktive.length, neueObjekte: 0, gepruefteSuchen: 0, mails: 0 };
   }
 
@@ -401,8 +460,28 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
 
     details.push({ email, objekte: zuSenden.map((e) => e.title) });
     if (!opts?.dry) {
-      const { subject, html } = buildMatchingMail(zuSenden, zins, aehnlicheObjekte(aktive, zuSenden));
-      const res = await sendMail({ to: email, subject, html });
+      // Abmeldelink je Nutzer (HMAC über userId, s. abmeldeLink) — `undefined`
+      // statt `null`, damit buildMatchingMail/sendMail einfach ohne Header
+      // bzw. ohne Abmeldezeile weiterlaufen (fail-soft ohne CRON_SECRET).
+      const abmeldeUrl = abmeldeLink(userId) ?? undefined;
+      const { subject, html } = buildMatchingMail(zuSenden, zins, aehnlicheObjekte(aktive, zuSenden), abmeldeUrl);
+      const res = await sendMail({
+        to: email,
+        subject,
+        html,
+        // RFC 8058 One-Click-Unsubscribe: Gmail/Outlook/Apple Mail zeigen bei
+        // gesetztem List-Unsubscribe(-Post) einen eigenen „Abbestellen"-Button
+        // im Client-UI, der die URL per POST aufruft — /api/abmelden nimmt
+        // dafür GET UND POST an (identische Logik).
+        ...(abmeldeUrl
+          ? {
+              headers: {
+                "List-Unsubscribe": `<${abmeldeUrl}>`,
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+              },
+            }
+          : {}),
+      });
       if (!res.ok) continue; // Versandfehler: nicht als gesendet loggen, nächster Lauf versucht es erneut
       const { error } = await supabaseServer
         .from("matching_sent")
@@ -411,6 +490,11 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
     }
     mails++;
   }
+
+  // Erst hier, nach vollständig durchgelaufener Versand-Schleife, die
+  // Baseline fortschreiben (s. Kommentar bei commitBaseline weiter oben).
+  const baselineError = await commitBaseline();
+  if (baselineError) return { ok: false, error: baselineError };
 
   return {
     ok: true,

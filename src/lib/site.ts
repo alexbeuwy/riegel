@@ -37,6 +37,19 @@ export const site = {
   // Branchenverzeichnissen abgleichen lässt. "RIEGEL Immobilien" bleibt der
   // Name, unter dem wir auftreten (site.name).
   legalName: "Riegel Immobilien e.K.",
+  // §37a HGB (Pflichtangaben in Geschäftsbriefen — dazu zählen auch E-Mails):
+  // Firma, Registergericht und Registernummer müssen z. B. im Mail-Footer
+  // stehen (src/lib/email.ts, emailLayout). Freigegeben von Alex am
+  // 18.08.2026, Quelle: app/impressum/page.tsx (dort zusätzlich die volle
+  // §34c-/Aufsichtsangabe, die §37a HGB nicht verlangt). Werte sind
+  // **credential** — rote Liste, siehe docs/white-label-migration.md §5: bei
+  // einer Umbrandung trägt der neue Makler seine EIGENEN Registerdaten ein,
+  // nie diese kopieren.
+  recht: {
+    firma: "Riegel Immobilien e.K.",
+    registergericht: "Amtsgericht Ludwigshafen am Rhein",
+    registernummer: "HRA 51804 Sp",
+  },
   tagline: "Immobilien mit regionaler Expertise",
   description:
     "RIEGEL Immobilien — Ihr Immobilienmakler in Speyer und Ludwigshafen. Verkauf, Bewertung und Beratung mit regionaler Expertise.",

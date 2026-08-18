@@ -185,6 +185,10 @@ function ctaButton(label: string, href: string): string {
  * Neue Parameter (optional, Default-Verhalten für bestehende Aufrufer aus
  * booking/contact/report unverändert):
  * - ctaLabel/ctaHref: rendert einen blauen Bulletproof-Button unter bodyHtml.
+ * - belowCta: kleines, unauffälliges HTML DIREKT unter dem CTA-Button, noch
+ *   innerhalb der Karte (z. B. der Abmeldelink der Matching-Mail,
+ *   „Diese Objekt-Benachrichtigungen abbestellen" — s. lib/matching.ts). Nur
+ *   dieser eine Aufrufer nutzt es bisher, andere lassen es weg.
  */
 export function emailLayout(opts: {
   heading: string;
@@ -195,6 +199,7 @@ export function emailLayout(opts: {
   /** Optionale Badge-Pille ÜBER der Headline (z. B. „Vorab-Zugriff für
    *  RIEGEL-Kunden" in der Matching-Mail) — fertiges Label, kein HTML. */
   badge?: string;
+  belowCta?: string;
 }): string {
   const cta = opts.ctaLabel && opts.ctaHref ? ctaButton(opts.ctaLabel, opts.ctaHref) : "";
   const badge = opts.badge
@@ -216,8 +221,12 @@ export function emailLayout(opts: {
 <tr><td style="padding:14px 32px 24px;border-bottom:1px solid #e4e8f0;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:#015cff;border-radius:2px;">&nbsp;</div></td></tr>
 <tr><td style="padding:34px 32px 8px;">${badge}<h1 style="margin:0 0 14px;color:#141724;font-family:${HEADING_FONT};font-size:28px;font-weight:800;line-height:1.16;letter-spacing:-0.02em;">${opts.heading}</h1>${
     opts.intro ? `<p style="margin:0 0 18px;color:#5a6072;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
-  }${opts.bodyHtml ?? ""}${cta}</td></tr>
-<tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;"><p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">RIEGEL Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>
+  }${opts.bodyHtml ?? ""}${cta}${opts.belowCta ?? ""}</td></tr>
+<tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;">
+<p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">RIEGEL Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p>
+<!-- §37a HGB: Pflichtangaben (Firma/Registergericht/-nummer) in Geschäftsbriefen — auch E-Mails. Zentral in site.recht, s. dortigen Kommentar zur roten Liste. -->
+<p style="margin:4px 0 0;color:#8a90a3;font-size:11px;line-height:1.6;">${site.recht.firma} &middot; ${site.recht.registergericht}, ${site.recht.registernummer}</p>
+</td></tr>
 </table></td></tr></table></body></html>`;
 }
 
@@ -340,6 +349,9 @@ export async function sendMail(opts: {
   html: string;
   replyTo?: string;
   attachments?: { filename: string; content: string | Buffer }[];
+  /** Zusätzliche rohe Mail-Header, an Resend durchgereicht (z. B.
+   *  List-Unsubscribe/-Post für die Matching-Mail, s. lib/matching.ts). */
+  headers?: Record<string, string>;
 }): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   if (!resend) return { ok: false, skipped: true };
   try {
@@ -351,6 +363,7 @@ export async function sendMail(opts: {
       replyTo: opts.replyTo,
       ...(opts.cc ? { cc: opts.cc } : {}),
       ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
+      ...(opts.headers ? { headers: opts.headers } : {}),
     });
     // Resend liefert ein Fehler-OBJEKT ({name, message, statusCode}) — ein
     // nacktes String(error) ergäbe nur "[object Object]" und hat beim ersten
