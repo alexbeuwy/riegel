@@ -50,6 +50,8 @@ klebt es hart im Code (Refactor-Schuld)?*
   Migrations-Workflow**: Orchestrator-Prompt (leeres Repo → neue Makler-Instanz),
   Phasenplan mit Abnahme-Kriterien, Makler-Datenblatt. Ändert man Touchpoints im
   Playbook, diese beiden mitprüfen.
+- `docs/naechste-schritte.md` — **belegte Bottleneck-Analyse + priorisierter Plan**
+  (Wellen 1–4, jede Zahl gemessen; Stand 18.08.2026). Erledigtes dort abhaken.
 - `docs/rechner-masterplan.md` — **Produkt-Roadmap der Bewertungs-Engine** („bester Rechner
   Deutschlands", Daten-Schichten, Kleine-n-Lösung, beuwy-Pool, Backtesting-KPIs).
 - `docs/onoffice-integration.md`, `docs/preisatlas-research.md` (Bodenrichtwerte RLP/HE/BW +

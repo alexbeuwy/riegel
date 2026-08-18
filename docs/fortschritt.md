@@ -1168,3 +1168,19 @@ Ort-Suchaufträge (Aylins „Haus · Speyer") feuern fast nie — Häuser kommen
 - **Badge über der Headline:** „VORAB-ZUGRIFF FÜR RIEGEL-KUNDEN · vor allen anderen
   informiert" — `emailLayout` hat dafür einen optionalen `badge`-Slot (RIEGEL-blaue
   Pille, wiederverwendbar für andere Mails).
+
+## Update — Bottleneck-Analyse + Trichter-Fix (18.08.2026, unlazy-Lauf) ✅
+
+- **Kritischer Messfehler behoben:** Der Conversion-Trichter maß seine eigene Mitte nicht —
+  `rechner_step`, `rechner_analyse` und `rechner_ergebnis` waren definiert, im Dashboard
+  ausgewertet, aber **nie ausgelöst** (nur 2 von 7 `track()`-Aufrufen existierten).
+  Zusätzlich hing `rechner_start` allein am Objektart-Klick, obwohl „Wohnung" vorbelegt ist
+  → Nenner zu klein, PDF-Quote zu hoch. Beides gefixt (627a14d, 8d45d17).
+- **Neue Doku `docs/naechste-schritte.md`:** belegte Bottleneck-Analyse über Conversion,
+  Lead-Pipeline, Engine/Daten und Betrieb/White-Label, priorisiert in vier Wellen.
+  Zeitkritisch: Welle 1 (Abmeldelink, §37a-Angaben, `matching_seen`-Reihenfolge) VOR dem
+  ersten echten Matching-Versand.
+- **Verifizierte Einzelbefunde u. a.:** Karlsruhe wird von `stadt-faktor` verdeckt und
+  rechnet +7,1 % über der belegten GAA-Zeile (genau 1 Stadt betroffen, aber strukturelle
+  Falle); 5 von 8 REGIONS sind unkalibriert, bekommen aber den vollen Konfidenzbonus;
+  0 CI-Workflows; `matching_seen`/`matching_sent` fehlen als Migration.
