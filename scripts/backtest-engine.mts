@@ -21,6 +21,45 @@
  * ein negativer Bias bei Alt-Verkäufen ist daher erwartbar und kein Fehler.
  *
  *   ONOFFICE_TOKEN=… ONOFFICE_SECRET=… npx tsx scripts/backtest-engine.mts
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * BLINDER FLECK DIESES BACKTESTS (18.08.2026): DREI UNGETESTETE MECHANISMEN
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Der Backtest rechnet OHNE Koordinaten und damit ohne amtlichen
+ * Bodenrichtwert (s. „Grenzen" oben). Genau daran hängen aber drei der
+ * wirksamsten Schichten der Engine — sie laufen in JEDEM echten Kundenfall
+ * mit, sind hier aber strukturell abgeschaltet und deshalb bis heute an
+ * keinem einzigen realen Abschluss gemessen:
+ *
+ *   1. BRW-MIKROLAGE (`lageFaktor` in estimateValue): dämpft/hebt die
+ *      Gebäudebasis mit √(BRW / Regions-Boden), geklemmt auf 0,72–1,06
+ *      (kalibrierte Region) bzw. 0,72–1,15 (Fallback-Ort). Ohne BRW ist der
+ *      Faktor konstant 1 — der Backtest misst also eine Engine, die die
+ *      Mikrolage gar nicht kennt. Ausgerechnet die Ausreißer-Liste unten
+ *      besteht überwiegend aus Lage-Effekten.
+ *   2. brwBasis() (Schicht 3): leitet für Orte außerhalb der Kernregion die
+ *      komplette Basis aus dem amtlichen Bodenrichtwert ab. Greift nur mit
+ *      BRW >= BRW_ANKER_MIN — im Backtest also nie.
+ *   3. STADT-NIVEAU (Schicht 1, stadt-niveau.ts): quellenbelegte absolute
+ *      Basiswerte für Großstädte. Läuft zwar auch ohne BRW, betrifft aber
+ *      fast nur Orte AUSSERHALB des Verkauft-Pools (der ist Vorderpfalz-
+ *      lastig) — die Stichprobe enthält kaum Fälle, an denen sie sichtbar
+ *      würde. Der Karlsruhe-Bug (Stadt-Faktor verdeckte das Stadt-Niveau,
+ *      +7,1 % Bias) wurde deshalb NICHT hier gefunden, sondern von Hand.
+ *
+ * GEPLANTE MESSSPALTE C (bewusst noch nicht implementiert): eine dritte
+ * Variante neben A (pures Modell) und B (mit p75-Deckel, leave-one-out) —
+ * „C = mit amtlichem Bodenrichtwert". Dafür muss jeder Fall zunächst
+ * geokodiert werden (Adresse aus dem OnOffice-Record → lat/lng, s.
+ * src/lib/geocode.ts) und der BRW je Punkt über src/lib/boris.ts geholt
+ * werden; beides sind fremde Dienste mit Rate-Limits, der Lauf braucht also
+ * einen Cache auf Platte und läuft Minuten statt Sekunden. Spalte C zeigt
+ * dann pro Segment MdAPE/Bias MIT Lageinformation, und die Differenz C − A
+ * ist die erste harte Zahl dazu, ob die BRW-Schichten den Fehler wirklich
+ * senken oder ihn nur verschieben. Bis dahin gilt: alle KPIs unten
+ * beschreiben die Engine OHNE Lagedaten und sind damit eher eine
+ * Untergrenze der realen Treffergenauigkeit.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 import { fetchVerkaufteReferenzen } from "../src/lib/onoffice";
 import { estimateValue, type Haustyp, type ValuationInput } from "../src/lib/valuation";

@@ -1553,7 +1553,15 @@ export function InternDashboard() {
                 </div>
 
                 <div>
+                  {/* Prominente Bereichs-Balken DIREKT ÜBER der Heatmap: sagt auch
+                      ohne Referenzbild sofort, wo geklickt wird (Betreiber-Feedback
+                      18.08.2026: "Heatmap ohne Screenshot — man rafft gar nichts"). */}
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
+                    <Icon name="pin" size={16} className="text-accent" /> Klicks nach Bereich
+                  </h3>
+                  <BereichBalken bereiche={conv.bereiche} />
+
+                  <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold text-muted">
                     <Icon name="layers" size={16} className="text-accent" /> Klick-Heatmap
                   </h3>
                   <KlickHeatmap punkte={conv.heatmap} limitErreicht={conv.klickLimitErreicht} />
@@ -1583,6 +1591,54 @@ export function InternDashboard() {
                   {d.label} ↗
                 </a>
               ))}
+            </div>
+
+            {/* Daten-Reset: dezent, gleich unter den Demo-Links (Wunsch Alex
+                18.08.2026 — "nur reale Zahlen" nach Testklicks). Kein
+                window.confirm: erster Klick öffnet eine Inline-Bestätigung
+                mit zwei Knöpfen statt eines Browser-Dialogs. */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {!resetConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetConfirm(true);
+                    setResetMsg(null);
+                    setResetError(null);
+                  }}
+                  className="press text-faint underline-offset-2 transition-colors hover:text-muted hover:underline"
+                >
+                  Messdaten zurücksetzen…
+                </button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-[#f87171]/30 bg-[#f87171]/5 px-3.5 py-2.5">
+                  <span className="text-[#f87171]">
+                    Wirklich ALLE Conversion-Messdaten löschen? Das kann nicht rückgängig gemacht werden.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={resetConversion}
+                    disabled={resetBusy}
+                    className="press shrink-0 rounded-full border border-[#f87171]/50 px-3 py-1 text-[#f87171] transition-colors hover:bg-[#f87171]/10 disabled:opacity-60"
+                  >
+                    {resetBusy ? "…" : "Ja, zurücksetzen"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetConfirm(false)}
+                    disabled={resetBusy}
+                    className="press shrink-0 rounded-full border border-border px-3 py-1 text-muted transition-colors hover:text-fg disabled:opacity-60"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              )}
+              {resetMsg && <span className="text-[#34d399]">{resetMsg}</span>}
+              {resetError && (
+                <span className="text-accent" role="alert">
+                  {resetError}
+                </span>
+              )}
             </div>
           </div>
         )}
