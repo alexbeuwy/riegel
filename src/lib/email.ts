@@ -192,8 +192,14 @@ export function emailLayout(opts: {
   bodyHtml?: string;
   ctaLabel?: string;
   ctaHref?: string;
+  /** Optionale Badge-Pille ÜBER der Headline (z. B. „Vorab-Zugriff für
+   *  RIEGEL-Kunden" in der Matching-Mail) — fertiges Label, kein HTML. */
+  badge?: string;
 }): string {
   const cta = opts.ctaLabel && opts.ctaHref ? ctaButton(opts.ctaLabel, opts.ctaHref) : "";
+  const badge = opts.badge
+    ? `<div style="margin:0 0 14px;"><span style="display:inline-block;background:#eef3ff;border:1px solid #c6d8fb;border-radius:999px;padding:6px 14px;color:#015cff;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">${opts.badge}</span></div>`
+    : "";
   return `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head>
 <body style="margin:0;padding:0;background:#eef1f7;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f7;"><tr><td align="center" style="padding:40px 16px;">
@@ -208,7 +214,7 @@ export function emailLayout(opts: {
 <![endif]-->
 </td></tr>
 <tr><td style="padding:14px 32px 24px;border-bottom:1px solid #e4e8f0;"><div style="width:56px;height:4px;line-height:4px;font-size:0;background:#015cff;border-radius:2px;">&nbsp;</div></td></tr>
-<tr><td style="padding:34px 32px 8px;"><h1 style="margin:0 0 14px;color:#141724;font-family:${HEADING_FONT};font-size:28px;font-weight:800;line-height:1.16;letter-spacing:-0.02em;">${opts.heading}</h1>${
+<tr><td style="padding:34px 32px 8px;">${badge}<h1 style="margin:0 0 14px;color:#141724;font-family:${HEADING_FONT};font-size:28px;font-weight:800;line-height:1.16;letter-spacing:-0.02em;">${opts.heading}</h1>${
     opts.intro ? `<p style="margin:0 0 18px;color:#5a6072;font-size:15px;line-height:1.6;">${opts.intro}</p>` : ""
   }${opts.bodyHtml ?? ""}${cta}</td></tr>
 <tr><td style="padding:22px 32px;border-top:1px solid #e4e8f0;"><p style="margin:0;color:#8a90a3;font-size:12px;line-height:1.6;">RIEGEL Immobilien &middot; Wormser Stra&szlig;e 13, 67346 Speyer &middot; 06232 100 10 10</p></td></tr>

@@ -1159,3 +1159,12 @@ Ort-Suchaufträge (Aylins „Haus · Speyer") feuern fast nie — Häuser kommen
 - **„Das könnte Sie auch interessieren":** bis zu 3 ähnliche Objekte aus dem aktiven
   Bestand als Mini-Karten (Thumb + Titel/Ort/Preis). Ähnlichkeit erklärbar simpel:
   gleiche Vermarktungsart Pflicht, dann Kategorie > Ort > Preisnähe ±40 %.
+
+## Update — Matching-Mail Finale: individuelle Headline + Vorab-Zugriff-Badge (18.08.2026) ✅
+
+- **Headline objektspezifisch** (`mailHeadline()`): „Neues Haus in Ludwigshafen" /
+  „Neue Wohnung in Speyer"; mehrere Treffer: „3 neue Häuser in Speyer & Ludwigshafen"
+  (gemischt/>2 Orte → „in Ihrer Region").
+- **Badge über der Headline:** „VORAB-ZUGRIFF FÜR RIEGEL-KUNDEN · vor allen anderen
+  informiert" — `emailLayout` hat dafür einen optionalen `badge`-Slot (RIEGEL-blaue
+  Pille, wiederverwendbar für andere Mails).

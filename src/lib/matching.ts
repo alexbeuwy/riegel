@@ -235,6 +235,35 @@ function miniCard(e: Estate, base: string): string {
 </td></tr></table>`;
 }
 
+/** Kategorie → „Neues Haus" / „Neue Wohnung" (Singular) bzw. Plural-Wort. */
+const KATEGORIE_MAIL: Record<string, { singular: string; plural: string }> = {
+  haus: { singular: "Neues Haus", plural: "neue Häuser" },
+  wohnung: { singular: "Neue Wohnung", plural: "neue Wohnungen" },
+  grundstueck: { singular: "Neues Grundstück", plural: "neue Grundstücke" },
+  gewerbe: { singular: "Neues Gewerbeobjekt", plural: "neue Gewerbeobjekte" },
+};
+
+/**
+ * Individuelle Headline direkt aufs Objekt (Wunsch Alex 18.08.2026):
+ * „Neues Haus in Ludwigshafen" statt generisch „Neues Objekt für Ihre Suche".
+ * Mehrere Treffer: „3 neue Häuser in Speyer & Ludwigshafen"; gemischte
+ * Kategorien oder >2 Orte fallen auf „Objekte … in Ihrer Region" zurück.
+ */
+export function mailHeadline(zuSenden: Estate[]): string {
+  const erste = zuSenden[0];
+  if (!erste) return "Neues Objekt für Ihre Suche";
+  if (zuSenden.length === 1) {
+    const k = KATEGORIE_MAIL[erste.category];
+    return `${k ? k.singular : "Neues Objekt"} in ${erste.city}`;
+  }
+  const kategorien = new Set(zuSenden.map((e) => e.category));
+  const wort =
+    kategorien.size === 1 ? (KATEGORIE_MAIL[erste.category]?.plural ?? "neue Objekte") : "neue Objekte";
+  const orte = [...new Set(zuSenden.map((e) => e.city))];
+  const wo = orte.length === 1 ? `in ${orte[0]}` : orte.length === 2 ? `in ${orte[0]} & ${orte[1]}` : "in Ihrer Region";
+  return `${zuSenden.length} ${wort} ${wo}`;
+}
+
 /**
  * Betreff + HTML der Matching-Mail — separat exportiert, damit
  * scripts/preview-matching-mail.mts dieselbe Mail als Preview verschicken
@@ -258,7 +287,8 @@ export function buildMatchingMail(
       ? `${zuSenden.length} neue Objekte passend zu Ihrem Suchauftrag`
       : `Neu online: ${zuSenden[0]?.title ?? "Ihr Suchauftrag hat einen Treffer"}`,
     html: emailLayout({
-      heading: mehrzahl ? `${zuSenden.length} neue Objekte für Ihre Suche` : "Neues Objekt für Ihre Suche",
+      heading: mailHeadline(zuSenden),
+      badge: "Vorab-Zugriff für RIEGEL-Kunden &middot; vor allen anderen informiert",
       intro:
         "Zu Ihrem Suchauftrag ist soeben etwas Passendes online gegangen. Schnell sein lohnt sich: gute Objekte sind in unserer Region oft nach wenigen Tagen vergeben.",
       bodyHtml: zuSenden.map((e) => estateCard(e, base, zins)).join("") + aehnlichHtml,
