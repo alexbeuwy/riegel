@@ -1228,3 +1228,11 @@ globals.css als Web-Farbquelle, Rechtstexte).
 **Analytics-UX:** Klicks-nach-Bereich-Balken mit sprechenden Namen über der Heatmap,
 Heatmap-Overlay auf echtem Seiten-Screenshot (`public/intern/rechner-referenz.jpg`,
 lokal geschossen), Reset-Button mit Inline-Bestätigung (`action=reset`).
+
+## Update — Skill „grilling"/„grill-me" installiert (18.08.2026, Auftrag Alex)
+
+Quelle: github.com/mattpocock/skills (skills/productivity/grilling + grill-me), unverändert
+übernommen nach `.claude/skills/` und `.agents/skills/` (Skills reisen mit dem Repo).
+Zweck: Pläne/Entscheidungen als Entscheidungsbaum runden-weise durchfragen, statt
+Annahmen still zu treffen — passt zur roten Liste (nie raten) und zu Migrations-
+Entscheidungen. `/grill-me` ist der Auslöser, `grilling` die Substanz.
