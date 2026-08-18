@@ -275,6 +275,14 @@ Persönlichkeitsrechts-/Markenverletzung oder Irreführung.
   0 Zeilen, anon-Writes = 401).
 - **`INTERN_EMAILS`, `EMAIL_FROM`, `EMAIL_TO`, `FEEDBACK_*`** vor Go-Live prüfen (§4) —
   die Code-Fallbacks führen sonst zu RIEGEL/beuwy.
+- **Conversion-Tracking mitnehmen:** Migration `…_rechner_events.sql` (Tabelle
+  `rechner_events`, RLS an + keine Policy = deny by default) bei jedem Klon mit einspielen.
+  Die App läuft auch ohne (Fail-soft: `/api/track` antwortet 204, `/intern` → Conversion-Tab
+  meldet „noch keine Daten"), aber ohne Tabelle gibt es keine Funnel-/Heatmap-Zahlen.
+  Bewusst cookielos/anonym (keine IP, kein UA, `pageload_id` nur je Seitenaufruf) — kein
+  Consent-Banner nötig; trotzdem pro Instanz kurz in der Datenschutzerklärung erwähnen.
+  Bausteine: `src/lib/track.ts` (Client), `src/app/api/track/route.ts` (Ingest),
+  `src/app/api/intern/conversion/route.ts` + Conversion-Tab in `intern-dashboard.tsx`.
 
 ---
 

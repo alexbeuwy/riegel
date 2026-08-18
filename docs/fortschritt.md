@@ -1002,3 +1002,39 @@ Opus-Implementierungs-Leaf, Orchestrator hat alle Checks selbst nachgefahren):
   BW-Risiko Nr. 2), BW/Bayern unverändert.
 - **Dauer-Werkzeug:** `scripts/boris-live-check.mts` (9 Länder je Spec-Koordinate,
   Exit 1 bei Ausfall) — Pflicht nach jedem boris.ts-Change und vor Releases.
+
+## Update — Rechner-Conversion-Paket + anonymes Funnel-Tracking (18.08.2026, Auftrag Alex) ✅
+
+Ziel: **mehr Leute, die das PDF holen.** Zwei Stränge (UI selbst, Tracking-Backend per
+Opus-Grunt, Orchestrator hat alle Checks nachgefahren):
+
+**Rechner-UI (`calculator.tsx`, `report-request.tsx`, `globals.css`, `icon.tsx`):**
+- **Nie mehr als 5–6 Felder sichtbar:** Detail-Felder (Zimmer/Bad/Qualität/Energie/
+  Hausgeld/Ausstattung, beim MFH auch Grundstück/Gewerbe) hinter Ausklapp-Button
+  „Präzisere Kalkulation gewünscht?" (`.t-collapse`); Hauptfelder optisch stärker
+  (Label `font-medium`, Kontur `border-fg/30`), optionale bewusst blasser.
+- **Energieklasse als klassischer Farbstrahl** (A+…H) mit ease-in-out-animiertem Pin
+  neben dem Mini-Dropdown.
+- **Annahmen-Box („So hat das Modell …") komplett entfernt** — Annahmen bleiben nur im
+  PDF-Report. Der Report-CTA rückt dadurch nach oben.
+- **Report-Block als Highlight:** große blaue GROSSBUCHSTABEN-Headline (Akira,
+  `text-accent-strong`), animierter Viewport-Reveal; CTA mit weißer Beam-Kontur +
+  zufälligem Rattle-Shake (6–15 s, reduced-motion-gated).
+- **Zweites (orangenes) Badge** „Präzisere Infos und Daten im kostenlosen Report-PDF
+  (Druckversion)" mit Printer-Icon + animiertem Pfeil — Klick öffnet & scrollt direkt
+  zum Report-Formular (CustomEvent `riegel:report-oeffnen`).
+- Fixes: „amtlich informativ"-Zeilenumbruch (nowrap, 3 Badges), Eyebrow „Bewertete
+  Immobilie" auf Satellit besser lesbar (`text-accent-strong` + Schatten).
+
+**Anonymes Conversion-Tracking (cookielos, ohne Consent-Banner):**
+- `src/lib/track.ts`: Funnel-Events (start → step 1–3 → analyse → ergebnis →
+  formular cta/badge → **report_angefordert**) + Klick-Heatmap (nur 5 %-Raster +
+  Bereichs-Slug), `pageloadId` nur je Seitenaufruf, sendBeacon-Batching, fail-soft.
+- `/api/track`: Allowlist + Normalisierung, Rate-Limit, immer 204; speichert KEINE
+  IP/UA/Referrer. Migration `20260818143000_rechner_events.sql` (RLS an, keine
+  Policy = deny by default; **bei jedem Klon mit einspielen**, Playbook §6).
+- `/intern` → neuer Tab **Conversion**: Funnel-Balken mit Absprung-Markierung,
+  PDF-Quote, CTA-vs.-Badge-Split, 20×20-Klick-Heatmap, Tages-Sparkline, Top-Bereiche;
+  7/30-Tage-Umschalter; Leerzustand solange Migration/Daten fehlen.
+
+Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion` ƒ) grün.

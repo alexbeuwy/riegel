@@ -98,7 +98,36 @@ interface ObjektRow {
 
 type ObjSortKey = "title" | "city" | "priceValue" | "status";
 
-type Tab = "overview" | "reports" | "leads" | "objekte" | "medien" | "feedback" | "konten";
+type Tab = "overview" | "conversion" | "reports" | "leads" | "objekte" | "medien" | "feedback" | "konten";
+
+/* ── Conversion-Tracking des Rechners (/api/intern/conversion) ────────────
+ * Anonyme Funnel-/Heatmap-Auswertung: alle Zahlen sind Seitenaufruf-Uniques
+ * (pageload_id), NICHT Personen — es gibt bewusst keine Wiedererkennung
+ * (s. src/lib/track.ts). */
+interface ConvStufe {
+  key: string;
+  label: string;
+  /** Seitenaufrufe, die diese Stufe erreicht haben. */
+  n: number;
+  /** Anteil an der Start-Stufe in Prozent (Balkenlänge). */
+  pctVomStart: number;
+  /** Konversion gegenüber der vorherigen Stufe; null bei Stufe 1. */
+  konversion: number | null;
+}
+
+interface ConvData {
+  zeitraum: number;
+  gesamt: number;
+  /** true, solange die Migration noch nicht eingespielt ist. */
+  tabelleFehlt: boolean;
+  funnel: ConvStufe[];
+  pdfQuote: number;
+  quelle: { cta: number; badge: number };
+  heatmap: { x: number; y: number; n: number; bereich: string }[];
+  bereiche: { bereich: string; n: number }[];
+  serie: { tag: string; n: number }[];
+  klickLimitErreicht: boolean;
+}
 
 /** Ein Ereignis aus der Kontakt-Akte (/api/intern/akte): Bewertung, Anfrage,
  *  Merklisten-Eintrag oder Suchauftrag einer E-Mail-Adresse, chronologisch. */
@@ -523,6 +552,13 @@ export function InternDashboard() {
   // Kontakt-Akte: Seitenpanel bei Klick auf eine E-Mail-Adresse in Reports/Anfragen.
   const [akte, setAkte] = useState<AkteState | null>(null);
 
+  // Conversion-Tab: eigener Endpoint, erst beim Öffnen des Tabs geladen
+  // (Muster wie loadUsers) — die Auswertung soll den Login nicht verzögern.
+  const [conv, setConv] = useState<ConvData | null>(null);
+  const [convTage, setConvTage] = useState<7 | 30>(7);
+  const [convBusy, setConvBusy] = useState(false);
+  const [convError, setConvError] = useState<string | null>(null);
+
   const [heroImages, setHeroImages] = useState<BunnyImage[] | null>(null);
   const [heroCurrent, setHeroCurrent] = useState<string>("");
   const [heroBusy, setHeroBusy] = useState(false);
@@ -849,6 +885,28 @@ export function InternDashboard() {
     setAkte(null);
   }
 
+  /** Conversion-Auswertung für 7 oder 30 Tage laden. Wird beim Öffnen des Tabs
+   *  und bei jedem Wechsel des Zeitraums gerufen — der Server aggregiert, hier
+   *  kommt nur noch Fertiges an. */
+  async function loadConversion(tage: 7 | 30) {
+    setConvBusy(true);
+    setConvError(null);
+    try {
+      const res = await fetch("/api/intern/conversion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, accessToken, zeitraum: tage }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
+      setConv(json as ConvData);
+    } catch (e) {
+      setConvError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setConvBusy(false);
+    }
+  }
+
   /** Feste + eingeladene Intern-Zugänge laden, einmalig bei Öffnen des
    *  Konten-Tabs (Aufruf steht bei den TABS weiter unten). */
   async function loadUsers() {
@@ -1133,6 +1191,7 @@ export function InternDashboard() {
 
   const TABS: { key: Tab; label: string; icon: IconName; n?: number }[] = [
     { key: "overview", label: "Übersicht", icon: "chart" },
+    { key: "conversion", label: "Conversion", icon: "trend" },
     { key: "reports", label: "Reports", icon: "doc", n: stats?.reports },
     { key: "leads", label: "Anfragen", icon: "calendar", n: stats?.leads },
     { key: "objekte", label: "Objekte", icon: "building", n: objekte.length },
@@ -1180,6 +1239,8 @@ export function InternDashboard() {
                   // Intern-Zugänge nur einmal nachladen (Guard über usersLoaded),
                   // damit ein erneuter Tab-Wechsel keinen Extra-Request auslöst.
                   if (t.key === "konten" && !usersLoaded) loadUsers();
+                  // Conversion-Zahlen genauso: erst beim ersten Öffnen holen.
+                  if (t.key === "conversion" && !conv && !convBusy) loadConversion(convTage);
                 }}
                 className={`relative -mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm transition-colors ${
                   on ? "text-fg" : "text-muted hover:text-fg"
@@ -1291,6 +1352,134 @@ export function InternDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Conversion: Rechner-Funnel + Klick-Heatmap ──
+            Beantwortet Alex' zwei Fragen: Wird der Rechner überhaupt
+            angefangen? Und wo verlieren wir die Leute auf dem Weg zum PDF? */}
+        {tab === "conversion" && (
+          <div className="space-y-8">
+            <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 p-6">
+              <div>
+                <h2 className="text-lg font-semibold text-fg">Rechner-Funnel</h2>
+                <p className="mt-1 max-w-2xl text-sm text-muted">
+                  Wo steigen Interessenten in den Bewertungsrechner ein — und wo springen sie ab?
+                  Gezählt werden Seitenaufrufe, nicht Personen: Das Tracking ist cookielos und
+                  erkennt niemanden wieder.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {/* Zeitraum-Umschalter: löst direkt einen neuen Serverabruf aus
+                    (die Aggregation passiert serverseitig, nicht im Browser). */}
+                <div className="inline-flex rounded-full border border-border p-0.5">
+                  {([7, 30] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setConvTage(t);
+                        loadConversion(t);
+                      }}
+                      className={`press rounded-full px-3 py-1.5 text-sm transition-colors ${
+                        convTage === t ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
+                      }`}
+                    >
+                      {t} Tage
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadConversion(convTage)}
+                  disabled={convBusy}
+                  className="press inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-fg hover:border-accent hover:text-accent disabled:opacity-60"
+                >
+                  <Icon name="search" size={15} /> {convBusy ? "Lädt …" : "Aktualisieren"}
+                </button>
+              </div>
+            </div>
+
+            {convError && (
+              <p className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-3 text-sm text-accent" role="alert">
+                {convError}
+              </p>
+            )}
+
+            {!conv && convBusy && (
+              <p className="rounded-2xl border border-border bg-surface px-4 py-10 text-center text-sm text-muted">
+                Zahlen werden geladen …
+              </p>
+            )}
+
+            {/* Leerzustand statt leerer Charts: frisch nach dem Deploy ist die
+                Tabelle noch leer — das ist kein Fehler, sondern erwartbar. */}
+            {conv && conv.gesamt === 0 && (
+              <div className="rounded-2xl border border-border bg-surface px-4 py-12 text-center">
+                <Icon name="trend" size={26} className="mx-auto text-faint" />
+                <p className="mt-3 text-sm text-fg">Noch keine Daten — Tracking läuft seit dem nächsten Deploy</p>
+                <p className="mx-auto mt-1 max-w-md text-xs text-faint">
+                  Sobald die ersten Besucher den Rechner öffnen, füllen sich Funnel, Heatmap und
+                  PDF-Kurve hier automatisch.
+                  {conv.tabelleFehlt && " (Hinweis: Die Tabelle rechner_events fehlt noch — Migration einspielen.)"}
+                </p>
+              </div>
+            )}
+
+            {conv && conv.gesamt > 0 && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard
+                    icon="doc"
+                    label="PDF-Quote"
+                    value={`${fmtPctDe(conv.pdfQuote)} %`}
+                    sub={`${conv.funnel.find((s) => s.key === "pdf")?.n ?? 0} von ${
+                      conv.funnel.find((s) => s.key === "start")?.n ?? 0
+                    } Rechner-Starts`}
+                    accent
+                  />
+                  <StatCard
+                    icon="calculator"
+                    label="Rechner gestartet"
+                    value={String(conv.funnel.find((s) => s.key === "start")?.n ?? 0)}
+                    sub={`in ${conv.zeitraum} Tagen`}
+                  />
+                  <StatCard
+                    icon="euro"
+                    label="Ergebnis gesehen"
+                    value={String(conv.funnel.find((s) => s.key === "ergebnis")?.n ?? 0)}
+                    sub={`${fmtPctDe(conv.funnel.find((s) => s.key === "ergebnis")?.pctVomStart ?? 0)} % der Starts`}
+                  />
+                  <QuellenKachel quelle={conv.quelle} />
+                </div>
+
+                <div className="grid gap-8 lg:grid-cols-[3fr_2fr]">
+                  <div>
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
+                      <Icon name="trend" size={16} className="text-accent" /> Funnel · {conv.zeitraum} Tage
+                    </h3>
+                    <ConversionFunnel funnel={conv.funnel} />
+                  </div>
+                  <div>
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
+                      <Icon name="chart" size={16} className="text-accent" /> PDF-Anforderungen je Tag
+                    </h3>
+                    <PdfSparkline serie={conv.serie} />
+                    <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold text-muted">
+                      <Icon name="pin" size={16} className="text-accent" /> Meistgeklickte Bereiche
+                    </h3>
+                    <TopBereiche bereiche={conv.bereiche} />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
+                    <Icon name="layers" size={16} className="text-accent" /> Klick-Heatmap
+                  </h3>
+                  <KlickHeatmap punkte={conv.heatmap} limitErreicht={conv.klickLimitErreicht} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -2142,6 +2331,300 @@ export function InternDashboard() {
       </Container>
       {akte && <AktePanel akte={akte} onClose={closeAkte} />}
     </section>
+  );
+}
+
+/* ─────────────── Conversion-Tab: Funnel, Heatmap, Sparkline ───────────────
+ * Alle Bausteine arbeiten auf den fertig aggregierten Zahlen aus
+ * /api/intern/conversion — hier wird nur noch gezeichnet. */
+
+/** Prozentwert deutsch (Komma, ohne überflüssige „,0"). */
+const fmtPctDe = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
+
+/**
+ * Funnel als horizontale Balken. Die Balkenlänge ist der Anteil an den
+ * Rechner-Starts; markiert wird die Stufe mit der SCHLECHTESTEN Konversion
+ * gegenüber ihrer Vorstufe — genau dort liegt der Hebel für „mehr Leute, die
+ * das PDF holen".
+ */
+function ConversionFunnel({ funnel }: { funnel: ConvStufe[] }) {
+  const schwaechste = useMemo(() => {
+    let idx = -1;
+    let min = Infinity;
+    funnel.forEach((s, i) => {
+      // Nur Stufen mit echter Vorstufe UND echtem Absprung (< 100 %) zählen —
+      // sonst markiert die Anzeige bei perfektem Durchlauf willkürlich etwas.
+      if (s.konversion != null && s.konversion < 100 && s.konversion < min) {
+        min = s.konversion;
+        idx = i;
+      }
+    });
+    return idx;
+  }, [funnel]);
+
+  return (
+    <div className="space-y-2">
+      {funnel.map((s, i) => {
+        const drop = i === schwaechste;
+        return (
+          <div
+            key={s.key}
+            className={`rounded-xl border px-3.5 py-3 transition-colors ${
+              drop ? "border-[#f87171]/40 bg-[#f87171]/5" : "border-border bg-surface"
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="truncate text-sm text-fg">{s.label}</span>
+              <span className="shrink-0 text-sm tabular-nums text-muted">
+                <span className="font-medium text-fg">{s.n}</span> · {fmtPctDe(s.pctVomStart)} %
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-2">
+              {/* Mindestbreite 1,5 %, damit eine Stufe mit wenigen Treffern
+                  sichtbar bleibt statt als „nichts" zu erscheinen. */}
+              <div
+                className={`h-full rounded-full ${drop ? "bg-[#f87171]" : "bg-accent"}`}
+                style={{
+                  width: `${s.n > 0 ? Math.max(1.5, s.pctVomStart) : 0}%`,
+                  transition: "width var(--duration-slow) var(--ease-smooth-out)",
+                }}
+              />
+            </div>
+            {s.konversion != null && (
+              <p className={`mt-1.5 text-xs ${drop ? "text-[#f87171]" : "text-faint"}`}>
+                {drop ? "Größter Absprung — " : ""}
+                {fmtPctDe(s.konversion)} % kommen von „{funnel[i - 1]?.label}&ldquo; hierher
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Kachel „Wie wird das PDF-Formular geöffnet?" — CTA unter dem Ergebnis vs.
+ * Badge am Wertkorridor. Sagt Alex, welcher Einstieg das PDF wirklich zieht.
+ */
+function QuellenKachel({ quelle }: { quelle: { cta: number; badge: number } }) {
+  const summe = quelle.cta + quelle.badge;
+  const ctaPct = summe > 0 ? Math.round((quelle.cta / summe) * 100) : 0;
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-5">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-faint">
+        <Icon name="sparkle" size={15} className="text-muted" /> Formular geöffnet über
+      </div>
+      {summe === 0 ? (
+        <div className="mt-3 text-sm text-muted">Noch keine Öffnungen im Zeitraum.</div>
+      ) : (
+        <>
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full bg-accent"
+              style={{ width: `${ctaPct}%`, transition: "width var(--duration-slow) var(--ease-smooth-out)" }}
+            />
+            <div className="h-full flex-1 bg-accent/30" />
+          </div>
+          <div className="mt-2 flex justify-between text-xs">
+            <span className="text-accent">CTA {quelle.cta} · {ctaPct} %</span>
+            <span className="text-muted">Badge {quelle.badge} · {100 - ctaPct} %</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Klick-Heatmap als 20×20-CSS-Raster über die gesamte Seite (x = Breite,
+ * y = Scrolltiefe). Die Rohdaten liegen als 5 %-Buckets 0–100 vor, das sind
+ * 21 Werte je Achse — der 100 %-Rand fällt bewusst mit der 95 %-Zelle
+ * zusammen, damit ein sauberes 20×20-Raster entsteht (Randklicks sind ohnehin
+ * dieselbe Region).
+ */
+function KlickHeatmap({
+  punkte,
+  limitErreicht,
+}: {
+  punkte: { x: number; y: number; n: number; bereich: string }[];
+  limitErreicht: boolean;
+}) {
+  const RASTER = 20;
+  const zellen = useMemo(() => {
+    const map = new Map<number, { n: number; bereich: string }>();
+    for (const p of punkte) {
+      const cx = Math.min(RASTER - 1, Math.max(0, Math.floor(p.x / 5)));
+      const cy = Math.min(RASTER - 1, Math.max(0, Math.floor(p.y / 5)));
+      const idx = cy * RASTER + cx;
+      const cur = map.get(idx);
+      // Bei Kollision (100 % faltet auf 95 %) Klicks addieren und den Bereich
+      // des größeren Anteils behalten.
+      if (!cur) map.set(idx, { n: p.n, bereich: p.bereich });
+      else map.set(idx, { n: cur.n + p.n, bereich: p.n > cur.n ? p.bereich : cur.bereich });
+    }
+    return map;
+  }, [punkte]);
+
+  const max = Math.max(1, ...[...zellen.values()].map((z) => z.n));
+  const gesamt = [...zellen.values()].reduce((a, z) => a + z.n, 0);
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
+      <div className="mb-2 flex items-center justify-between text-xs text-faint">
+        <span>← Seitenbreite →</span>
+        <span className="tabular-nums">{gesamt} Klicks</span>
+      </div>
+      <div className="flex gap-2">
+        <div className="flex w-4 shrink-0 flex-col justify-between py-0.5 text-[0.6rem] leading-none text-faint">
+          <span>oben</span>
+          <span className="[writing-mode:vertical-rl]">Scrolltiefe</span>
+          <span>unten</span>
+        </div>
+        <div
+          className="grid flex-1 gap-px"
+          style={{ gridTemplateColumns: `repeat(${RASTER}, minmax(0, 1fr))` }}
+        >
+          {Array.from({ length: RASTER * RASTER }, (_, i) => {
+            const z = zellen.get(i);
+            if (!z) return <div key={i} className="aspect-square rounded-[2px] bg-surface-2/50" />;
+            const x = (i % RASTER) * 5;
+            const y = Math.floor(i / RASTER) * 5;
+            // Wurzel-Skala: sonst verschluckt ein einzelner Hotspot (z. B. der
+            // „Weiter"-Button) alle übrigen Zellen optisch komplett.
+            const dichte = 0.12 + 0.88 * Math.sqrt(z.n / max);
+            return (
+              <div
+                key={i}
+                title={`${x}–${x + 5} % Breite · ${y}–${y + 5} % Tiefe · ${z.n} Klick${
+                  z.n === 1 ? "" : "s"
+                } · ${z.bereich}`}
+                className="aspect-square rounded-[2px] bg-accent"
+                style={{ opacity: dichte, transition: "opacity var(--duration-fast) var(--ease-smooth-out)" }}
+              />
+            );
+          })}
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-faint">
+        <span className="inline-flex items-center gap-2">
+          wenig
+          <span className="h-2 w-24 rounded-full bg-gradient-to-r from-accent/10 to-accent" />
+          viel (max. {max} Klicks je Feld)
+        </span>
+        <span>Zelle anfahren für Details</span>
+      </div>
+      {limitErreicht && (
+        <p className="mt-2 text-xs text-faint">
+          Hinweis: Es werden die neuesten 20.000 Klicks des Zeitraums ausgewertet.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Meistgeklickte Seitenbereiche (data-track-bereich) als Balkenliste. */
+function TopBereiche({ bereiche }: { bereiche: { bereich: string; n: number }[] }) {
+  if (bereiche.length === 0) {
+    return (
+      <p className="rounded-2xl border border-border bg-surface px-4 py-6 text-center text-sm text-muted">
+        Noch keine Klicks erfasst.
+      </p>
+    );
+  }
+  const max = Math.max(...bereiche.map((b) => b.n));
+  return (
+    <div className="space-y-2 rounded-2xl border border-border bg-surface p-4">
+      {bereiche.map((b) => (
+        <div key={b.bereich}>
+          <div className="flex justify-between text-xs">
+            <span className="truncate text-fg">{b.bereich}</span>
+            <span className="shrink-0 tabular-nums text-faint">{b.n}</span>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{
+                width: `${(b.n / max) * 100}%`,
+                transition: "width var(--duration-slow) var(--ease-smooth-out)",
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Tages-Sparkline der PDF-Anforderungen. Optik und Draw-in-Technik bewusst
+ * identisch zur Preis-Sparkline im Preisatlas (components/preisatlas/
+ * markt-panel.tsx): Polyline auf var(--color-accent), dasharray/-offset auf
+ * die reale Pfadlänge, Reflow zwischen Setzen und Animieren.
+ */
+function PdfSparkline({ serie }: { serie: { tag: string; n: number }[] }) {
+  const lineRef = useRef<SVGPolylineElement>(null);
+  const summe = serie.reduce((a, p) => a + p.n, 0);
+
+  useEffect(() => {
+    const line = lineRef.current;
+    if (!line) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const len = Math.ceil(line.getTotalLength()) + 1;
+    line.style.transition = "none";
+    line.style.strokeDasharray = `${len}`;
+    line.style.strokeDashoffset = `${len}`;
+    void line.getBoundingClientRect(); // Reflow erzwingen, sonst spielt die Animation nicht neu
+    line.style.transition = reduce ? "none" : "stroke-dashoffset var(--duration-very-slow) var(--ease-smooth-out)";
+    line.style.strokeDashoffset = "0";
+  }, [serie]);
+
+  if (serie.length < 2) {
+    return (
+      <p className="rounded-2xl border border-border bg-surface px-4 py-6 text-center text-sm text-muted">
+        Zu wenig Tage für eine Kurve.
+      </p>
+    );
+  }
+
+  const W = 240;
+  const H = 60;
+  const PAD = 5;
+  const max = Math.max(1, ...serie.map((p) => p.n));
+  const coords = serie.map((p, i) => {
+    const x = PAD + (i / (serie.length - 1)) * (W - PAD * 2);
+    const y = PAD + (1 - p.n / max) * (H - PAD * 2);
+    return [x, y] as const;
+  });
+  const pointsAttr = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const last = coords[coords.length - 1];
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs uppercase tracking-widest text-faint">PDF angefordert</span>
+        <span key={summe} className="t-num-d text-sm font-semibold tabular-nums text-fg">
+          {summe}
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 h-16 w-full overflow-visible" aria-hidden>
+        <polyline
+          ref={lineRef}
+          points={pointsAttr}
+          fill="none"
+          stroke="var(--color-accent)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx={last[0]} cy={last[1]} r={3} fill="var(--color-accent)" />
+      </svg>
+      <div className="mt-1 flex justify-between text-[0.65rem] text-faint">
+        <span>{fmtWvDate(serie[0].tag)}</span>
+        <span>Spitze: {max}/Tag</span>
+        <span>{fmtWvDate(serie[serie.length - 1].tag)}</span>
+      </div>
+    </div>
   );
 }
 
