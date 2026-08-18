@@ -89,6 +89,67 @@ const BORIS_EMPTY: BorisState = { loading: false, data: null, attribution: null 
 
 const nfDE = new Intl.NumberFormat("de-DE");
 
+/**
+ * Demo-Modus für interne Live-Tests (Wunsch Alex 18.08.2026: „damit ich die
+ * Endseite testen kann, ohne alles 100 Mal einzutippen"): /rechner?demo=wohnung
+ * |haus|mfh füllt ein realistisches Objekt komplett aus und startet die
+ * Analyse automatisch → landet direkt auf der Ergebnis-Seite. Bewusst ohne
+ * Auth (rechnet nur, was jeder auch manuell eintippen könnte); das Tracking
+ * ignoriert Demo-Aufrufe (s. track.ts), damit Tests die Funnel-Zahlen im
+ * /intern-Conversion-Tab nicht verfälschen. Links dazu: /intern → Übersicht.
+ */
+const DEMO_ADRESSE: GeoResult = {
+  label: "Maximilianstraße 100, 67346 Speyer",
+  city: "Speyer",
+  postcode: "67346",
+  lat: 49.31797,
+  lng: 8.43705,
+};
+const DEMO_PRESETS: Record<string, Partial<FormState>> = {
+  wohnung: {
+    objektart: "wohnung",
+    address: DEMO_ADRESSE,
+    addressQuery: DEMO_ADRESSE.label,
+    wohnflaeche: "92",
+    zimmer: "3",
+    badezimmer: "1",
+    baujahr: "1996",
+    zustand: "gepflegt",
+    qualitaet: "normal",
+    energieklasse: "C",
+    hausgeld: "290",
+    ausstattung: ["Balkon / Terrasse", "Keller"],
+  },
+  haus: {
+    objektart: "haus",
+    address: DEMO_ADRESSE,
+    addressQuery: DEMO_ADRESSE.label,
+    wohnflaeche: "160",
+    grundflaeche: "520",
+    zimmer: "5",
+    badezimmer: "2",
+    baujahr: "1988",
+    zustand: "gepflegt",
+    qualitaet: "normal",
+    energieklasse: "D",
+    ausstattung: ["Garage / Stellplatz", "Keller"],
+  },
+  mfh: {
+    objektart: "mehrfamilienhaus",
+    address: DEMO_ADRESSE,
+    addressQuery: DEMO_ADRESSE.label,
+    wohnflaeche: "420",
+    grundflaeche: "600",
+    wohneinheiten: "6",
+    jahresnettokaltmiete: "42000",
+    vermietungsstand: "vermietet",
+    baujahr: "1972",
+    zustand: "gepflegt",
+    qualitaet: "normal",
+    ausstattung: [],
+  },
+};
+
 /** Textstufe der Nachfrage aus dem 1–10-Score in marktdaten.ts. */
 function nachfrageLabel(score: number): string {
   if (score >= 8) return "sehr hohe Nachfrage";
@@ -529,9 +590,21 @@ export function Calculator() {
     );
   }, [boris.data, stats]);
 
+  // Demo-Modus: merkt sich, dass nach dem URL-Prefill genau EINMAL automatisch
+  // die Analyse starten soll (Effect dazu steht NACH startAnalysis, s. dort).
+  const demoStart = useRef(false);
+
   // Adresse aus der URL übernehmen (Hero-Schnelleinstieg → direkt mit Satellit).
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
+    // Interner Demo-Einstieg (s. DEMO_PRESETS): komplettes Objekt + Autostart.
+    const demo = p.get("demo");
+    if (demo && DEMO_PRESETS[demo]) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliger URL-Prefill beim Mount (gleiches Muster wie unten)
+      setF((s) => ({ ...s, ...DEMO_PRESETS[demo] }));
+      demoStart.current = true;
+      return;
+    }
     const lat = parseFloat(p.get("lat") || "");
     const lng = parseFloat(p.get("lng") || "");
     const label = p.get("address") || "";
@@ -546,7 +619,7 @@ export function Calculator() {
         city: p.get("city") || ortAusLabel(label),
         postcode: p.get("plz") || "",
       };
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliger URL-Prefill beim Mount
+       
       setF((s) => ({ ...s, address: geo, addressQuery: label }));
       // Bewusst KEIN Sprung auf den Standort-Schritt: die Objektart ist mit
       // "wohnung" vorbelegt, ein Überspringen würde ein über den Hero
@@ -783,6 +856,16 @@ export function Calculator() {
       setBoris(BORIS_EMPTY);
     }
   }
+
+  // Demo-Autostart (s. demoStart beim URL-Prefill): sobald der Preset-State
+  // committed ist, genau einmal die Analyse starten — direkt zur Endseite.
+  useEffect(() => {
+    if (demoStart.current && f.address) {
+      demoStart.current = false;
+      startAnalysis();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startAnalysis ist bewusst kein Dep (bei jedem Render neu erzeugt)
+  }, [f.address]);
 
   useEffect(() => {
     if (phase !== "analyzing") return;

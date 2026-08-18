@@ -1096,3 +1096,14 @@ Battery, tsc, eslint, Build (151 Seiten, `/api/track` + `/api/intern/conversion`
 - **Diagnose „Farbstrahl fehlt":** Produktion verifiziert aktuell (EnergieStrahl im
   Live-Chunk, alle neuen CSS-Klassen im Live-CSS) — Alex' offener Rechner-Tab lief als
   SPA weiter auf altem JS. Lösung: Tab neu laden.
+
+## Update — Demo-Modus für interne Endseiten-Tests (18.08.2026, Wunsch Alex) ✅
+
+- **`/rechner?demo=wohnung|haus|mfh`**: füllt ein realistisches Speyer-Demo-Objekt komplett
+  aus und startet die Analyse automatisch — landet ohne Tipparbeit direkt auf der
+  Ergebnis-Seite (inkl. Satellit, BORIS, Report-Block). Presets: `DEMO_PRESETS`
+  in `calculator.tsx`.
+- **Test-Links im /intern → Übersicht** (oben): Wohnung / Haus / Mehrfamilienhaus,
+  öffnen in neuem Tab.
+- **Kein Statistik-Müll:** `track.ts` ignoriert alle Events, wenn `?demo=` in der URL
+  steht — Tests verfälschen die Funnel-/Heatmap-Zahlen im Conversion-Tab nicht.

@@ -44,6 +44,9 @@ function neueId(): string {
 }
 
 const pageloadId = neueId();
+/** Interne Demo-Aufrufe (/rechner?demo=…) NICHT zählen — sonst verfälscht
+ * jeder Test von Alex/Team die Funnel-Zahlen im /intern-Conversion-Tab. */
+const demoModus = typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
 let queue: TrackItem[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 /** Ein Event-Name wird je Seitenaufruf nur EINMAL gezählt (außer Klicks) —
@@ -71,6 +74,7 @@ if (typeof document !== "undefined") {
 /** Event melden — fail-soft, dedupliziert je Seitenaufruf (außer Klicks). */
 export function track(event: TrackEventName, detail?: Record<string, string | number | boolean>): void {
   try {
+    if (demoModus) return;
     if (event !== "rechner_klick") {
       const key = event === "rechner_step" ? `${event}:${detail?.step}` : event;
       if (gesendet.has(key)) return;

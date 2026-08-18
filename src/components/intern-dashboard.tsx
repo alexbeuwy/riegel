@@ -1260,6 +1260,31 @@ export function InternDashboard() {
         {/* ── Übersicht ── */}
         {tab === "overview" && stats && (
           <div className="space-y-10">
+            {/* Interne Test-Einstiege (Wunsch Alex 18.08.2026): öffnen den
+                Rechner mit fertig ausgefülltem Demo-Objekt und springen direkt
+                auf die Ergebnis-Seite — ohne 100-mal-Eintippen. Demo-Aufrufe
+                werden vom Conversion-Tracking ignoriert (track.ts). */}
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3">
+              <span className="flex items-center gap-2 text-sm font-semibold text-muted">
+                <Icon name="bolt" size={15} className="text-accent" /> Rechner-Endseite testen:
+              </span>
+              {[
+                { key: "wohnung", label: "Wohnung" },
+                { key: "haus", label: "Haus" },
+                { key: "mfh", label: "Mehrfamilienhaus" },
+              ].map((d) => (
+                <a
+                  key={d.key}
+                  href={`/rechner?demo=${d.key}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="press rounded-full border border-accent/40 px-3 py-1 text-xs text-accent transition-colors hover:border-accent hover:bg-accent/10"
+                >
+                  {d.label} ↗
+                </a>
+              ))}
+              <span className="text-xs text-faint">zählt nicht ins Conversion-Tracking</span>
+            </div>
             <div>
               <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
                 <Icon name="calendar" size={16} className="text-accent" /> Wiedervorlagen
