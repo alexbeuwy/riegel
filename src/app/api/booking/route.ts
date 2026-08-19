@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendMail, emailLayout, emailRows } from "@/lib/email";
+import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -126,6 +126,9 @@ export async function POST(req: Request) {
 
   await sendMail({
     to: email,
+    // Reply-To aufs echte Postfach: sonst liefe eine Kundenantwort an die
+    // Versand-Subdomain (MX = Resend-Eingang) statt nach Speyer.
+    replyTo: emailTargets.TO,
     subject: "Ihr Wunschtermin bei RIEGEL Immobilien",
     html: emailLayout({
       heading: "Terminanfrage erhalten",

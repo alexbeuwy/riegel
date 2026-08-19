@@ -1236,3 +1236,22 @@ Quelle: github.com/mattpocock/skills (skills/productivity/grilling + grill-me), 
 Zweck: Pläne/Entscheidungen als Entscheidungsbaum runden-weise durchfragen, statt
 Annahmen still zu treffen — passt zur roten Liste (nie raten) und zu Migrations-
 Entscheidungen. `/grill-me` ist der Auslöser, `grilling` die Substanz.
+
+## Update — Reply-To: Kundenantworten kamen nirgends an (19.08.2026, Frage Sissy) ✅
+
+**Frage Sissy zur neuen Objekt-Mail: „wenn Kunden darauf antworten, wo landet das?"**
+Antwort nach Prüfung: bis eben **nirgends**. `sendMail` setzt Reply-To nur, wenn der
+Aufrufer es übergibt — die Matching-Mail tat das nicht. Ohne Reply-To geht eine Antwort
+an die Absenderadresse auf der Versand-Subdomain; deren MX zeigt (DNS-geprüft) auf
+`inbound-smtp.eu-west-1.amazonaws.com` (Resend-Eingang), während die echten Postfächer
+am MX der Hauptdomain hängen (`mail.protection.outlook.com`). Antworten wären also im
+Resend-Eingang versickert statt in Speyer anzukommen.
+
+Betroffen waren VIER Kunden-Mails, nicht nur die neue: Matching-Objekt-Mail
+(`matching.ts:469`), Kontakt-Bestätigung (`contact/route.ts`), Objektanfrage-Bestätigung
+(`inquiry/route.ts`) und Termin-Bestätigung (`booking/route.ts`). Alle setzen jetzt
+`replyTo: emailTargets.TO` (= EMAIL_TO, Hauptdomain-Postfach). Die Report-Kundenmail
+hatte es bereits korrekt (`report/route.ts:394`) — daran war das Muster erkennbar.
+
+White-Label-Merker: Bei jedem Klon prüfen, dass EMAIL_TO auf ein Postfach der
+HAUPTdomain zeigt (MX beim Mailanbieter), nicht auf die Resend-Versand-Subdomain.

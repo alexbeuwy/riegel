@@ -468,6 +468,13 @@ export async function runMatching(opts?: { dry?: boolean }): Promise<MatchingSum
       const { subject, html } = buildMatchingMail(zuSenden, zins, aehnlicheObjekte(aktive, zuSenden), abmeldeUrl);
       const res = await sendMail({
         to: email,
+        // ANTWORTEN MÜSSEN ANKOMMEN (Frage Sissy 19.08.2026): Ohne Reply-To
+        // geht eine Kundenantwort an die Absenderadresse auf der Versand-
+        // Subdomain — deren MX zeigt auf den Resend-Eingang, nicht auf ein
+        // RIEGEL-Postfach; die Antwort wäre praktisch verloren. Reply-To auf
+        // das echte Postfach (EMAIL_TO, MX auf Microsoft 365) macht aus jeder
+        // Objekt-Mail einen funktionierenden Rückkanal.
+        replyTo: emailTargets.TO,
         subject,
         html,
         // RFC 8058 One-Click-Unsubscribe: Gmail/Outlook/Apple Mail zeigen bei
