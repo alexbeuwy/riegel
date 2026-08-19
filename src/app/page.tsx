@@ -152,11 +152,14 @@ export default async function HomePage() {
               className="reveal-lcp order-3 mt-5 max-w-xl text-base text-muted sm:mt-8 sm:text-lg"
               style={{ animationDelay: "380ms" }}
             >
-              Ihr <strong className="font-medium text-fg">Familienunternehmen</strong> für Immobilien:
-              seit über 20 Jahren regional verwurzelt, bundesweit vernetzt und mit{" "}
-              <strong className="font-medium text-fg">über 40 Jahren Immobilienerfahrung</strong> im Team.
-              Ihr führender Makler mit großer Reichweite:{" "}
-              <strong className="font-medium text-fg">12,5 Millionen Aufrufe</strong> auf ImmoScout24.
+              {/* Wortlaut 19.08.2026 von Sissy freigegeben (Anregung Manfred: „Jahrzehnte"
+                  statt einer konkreten Jahreszahl, und „erfahren" statt „führend" —
+                  Letzteres ist als Alleinstellungsbehauptung ohnehin angreifbar). */}
+              Ihr <strong className="font-medium text-fg">Familienunternehmen</strong> für Immobilien —
+              Jahrzehnte regional verwurzelt, bundesweit vernetzt und mit{" "}
+              <strong className="font-medium text-fg">über 40 Jahren gebündelter Immobilienerfahrung</strong> im Team.
+              Als erfahrener Makler mit großer Reichweite erreichen wir auf ImmoScout24{" "}
+              <strong className="font-medium text-fg">über 12,5 Millionen Aufrufe</strong>.
             </p>
             <p
               className="reveal-lcp order-6 mt-8 max-w-xl text-xs text-faint sm:order-4 sm:mt-3"
@@ -464,7 +467,7 @@ export default async function HomePage() {
                   {/* Vertrauens-Badge, überlappt die Foto-Ecke — verbindet Bild und Botschaft. */}
                   <span className="pointer-events-none absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full border border-border bg-bg/60 px-3.5 py-1.5 text-xs text-fg backdrop-blur">
                     <Icon name="calendar" size={13} className="text-accent" />
-                    Familienunternehmen seit über 20 Jahren
+                    Familienunternehmen seit Jahrzehnten
                   </span>
                 </div>
               </Reveal>
