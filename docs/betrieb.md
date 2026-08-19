@@ -98,3 +98,27 @@ Client-Seite mit zwei Blöcken:
 
 Fehlt Supabase-Konfiguration oder ist der Nutzer nicht eingeloggt, funktioniert alles rein
 lokal im Browser (kein Crash, Hinweis im Intro-Text der Seite).
+
+## PageSpeed: „Veraltetes JavaScript" (14 KiB) — geprüft und bewusst NICHT umgesetzt
+
+Lighthouse meldet auf der Startseite ~13,7 KiB Polyfills (Array.at, flat, flatMap,
+Object.fromEntries, Object.hasOwn, String.trimStart/trimEnd) und schätzt eine Einsparung
+von 14 KiB durch modernere Build-Ziele. **Nachgemessen am 19.08.2026 — die Rechnung geht
+in diesem Projekt nicht auf:**
+
+| Konfiguration | JS der Startseite (Summe der referenzierten Chunks) |
+|---|---|
+| ohne `browserslist` (Ist-Zustand) | **974.602 B** |
+| `browserslist` modern (Chrome ≥ 93 / Safari ≥ 15.4) | 982.087 B (**+7,3 KiB**) |
+| `browserslist` mild (Chrome ≥ 73 / Safari ≥ 12.1) | Gesamt-Chunks sogar +55 KiB |
+
+Eine explizite `browserslist` macht das Bundle also GRÖSSER, nicht kleiner — Next 16 wählt
+seine Transpilations-Ziele offenbar bereits günstiger, als eine gesetzte Liste erzwingt.
+Zusätzlich hätte sie laut caniuse 6,0–6,4 % der deutschen Nutzer ausgeschlossen (dominiert
+von einem unplausiblen „Chrome < 93"-Rattenschwanz, der bei jeder Zielsetzung gleich groß
+bleibt — also ein Datenartefakt, kein echter Bruchpunkt).
+
+**Konsequenz:** kein `browserslist` im Projekt. Wer den Lighthouse-Punkt erneut sieht:
+hier nachlesen, nicht erneut ausprobieren. Der Polyfill-Chunk wird zwar von allen Browsern
+geladen (kein `nomodule`-Gate, live geprüft), ist aber `async` und damit nicht
+render-blockierend.
