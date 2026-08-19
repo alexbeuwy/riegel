@@ -113,6 +113,12 @@ export default async function HomePage() {
             alt="Immobilienberatung mit iPad in der Küche, blaues Licht — RIEGEL Immobilien"
             fill
             priority
+            // fetchPriority explizit: `priority` erzeugt in Next 16 zwar den
+            // Preload-Link im <head> (mit imageSrcSet — live verifiziert), setzt
+            // aber KEIN fetchpriority. Lighthouse bemängelt genau das am
+            // LCP-Bild; das Attribut hebt die Priorität innerhalb der
+            // Preload-Warteschlange und kostet sonst nichts.
+            fetchPriority="high"
             sizes="100vw"
             className="object-cover object-center"
           />
