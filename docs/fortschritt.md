@@ -1255,3 +1255,21 @@ hatte es bereits korrekt (`report/route.ts:394`) — daran war das Muster erkenn
 
 White-Label-Merker: Bei jedem Klon prüfen, dass EMAIL_TO auf ein Postfach der
 HAUPTdomain zeigt (MX beim Mailanbieter), nicht auf die Resend-Versand-Subdomain.
+
+## Update — PageSpeed Mobil: render-blockierendes CSS entfernt (19.08.2026) ✅
+
+Ausgangslage (PageSpeed Mobil 60, Desktop 98, Core Web Vitals im FELD 3/3 bestanden —
+echte Nutzer sind also nicht betroffen, die 60 ist ein Laborwert auf gedrosseltem Gerät).
+
+- **LCP-Bild:** `priority` war gesetzt und erzeugt in Next 16 korrekt den Preload-Link im
+  `<head>` (mit imageSrcSet, live nachgemessen) — aber KEIN `fetchpriority`. Genau das
+  bemängelte der Bericht. Ergänzt (`fetchPriority="high"`, lokal verifiziert).
+- **Render-blockierendes CSS (~270 ms):** `experimental.inlineCss` aktiviert. Messung
+  statt Vermutung: der inline `<style>`-Block gzippt auf **23.374 B** — die separaten
+  Dateien kosteten laut Bericht 23,3 + 1,2 KiB. Also praktisch byte-neutral, dafür **zwei
+  render-blockierende Anfragen weniger**. Bewusst NICHT gemacht: CSS-Split in seiten-
+  lokale Dateien (Umbau mit Regressionsrisiko, hätte die Anfrage nur verkleinert statt
+  entfernt) und `browserslist`-Verschärfung (14 KiB Polyfills, aber Risiko, alte Geräte
+  auszusperren — Entscheidung liegt bei Alex).
+- Offen/bewusst liegen gelassen: „erzwungener Umbruch" 307 ms — Lighthouse ordnet ihn
+  selbst keiner Quelle zu; blind zu jagen wäre teurer als der Gewinn.

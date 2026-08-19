@@ -9,6 +9,19 @@ import type { NextConfig } from "next";
 const BUNNY_CDN_HOST = process.env.NEXT_PUBLIC_BUNNY_CDN_HOST || "riegel.b-cdn.net";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Kritisches CSS direkt ins HTML legen statt als eigene <link>-Datei.
+    // Anlass: PageSpeed Mobil meldete die beiden CSS-Chunks als
+    // render-blockierend (~270 ms auf dem simulierten Mittelklasse-Handy) —
+    // bei nur 24 KiB Nutzlast steckt der Aufwand fast komplett in der
+    // ZUSÄTZLICHEN Anfrage, nicht in der Größe. Inlining entfernt die Anfrage
+    // ganz, statt sie zu verkleinern; Next liefert dabei nur das CSS der
+    // jeweiligen Route aus.
+    // Preis: Das HTML wächst um die CSS-Größe und die Datei wird nicht mehr
+    // seitenübergreifend gecacht. Für eine SEO-/Lead-Seite mit überwiegend
+    // Erstbesuchern ist das der bessere Tausch. Umkehrbar: Flag entfernen.
+    inlineCss: true,
+  },
   images: {
     // Nur WebP: AVIF-Encoding ist beim ersten (uncachten) Transform um ein
     // Vielfaches langsamer — bei Multi-MB-OnOffice-Originalen war genau das
