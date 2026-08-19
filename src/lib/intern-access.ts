@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { checkAdminPassword } from "@/lib/admin-auth";
 import { supabaseServer } from "@/lib/supabase-server";
 import { INTERN_INVITED_KEY } from "@/lib/site-settings-keys";
+import { site } from "@/lib/site";
 
 /**
  * Zugangsprüfung für das interne Dashboard (/intern).
@@ -46,14 +47,45 @@ export function internFixedEmails(): Set<string> {
   if (fromEnv.length) return new Set(fromEnv);
 
   if (process.env.NODE_ENV === "production") {
+    // VORFALL 19.08.2026: Hier stand vorher `return new Set()` — mit dem
+    // Ergebnis, dass Sissy in der Produktion ohne gesetztes INTERN_EMAILS
+    // ausgesperrt war ("Dieses Konto ist nicht für /intern freigeschaltet").
+    // Die feste Liste bleibt leer (kein fremder Personen-Default, s. o.), aber
+    // greifen tut stattdessen die Domain-Notfallregel in `eigeneDomainErlaubt`:
+    // Adressen der EIGENEN Seiten-Domain kommen rein. Das ist bei jedem Klon
+    // genau der richtige Personenkreis und leakt niemanden.
     console.error(
-      "[intern-access] INTERN_EMAILS nicht gesetzt — Session-Login deaktiviert (White-Label-Schutz).",
+      "[intern-access] INTERN_EMAILS nicht gesetzt — es gilt die Notfallregel " +
+        `(nur Adressen auf @${internEigeneDomain()}). Bitte INTERN_EMAILS in den Env-Variablen setzen.`,
     );
     return new Set();
   }
 
   const defaults = ["sissy.riegel@riegel-immobilien.de", "alex@beuwy.com"];
   return new Set(defaults);
+}
+
+/** Host der eigenen Seite (ohne www.) — Basis der Notfallregel unten. */
+function internEigeneDomain(): string {
+  try {
+    return new URL(site.url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Notfallregel, wenn INTERN_EMAILS NICHT gesetzt ist: Adressen auf der eigenen
+ * Seiten-Domain dürfen ins Dashboard. Damit ist ein vergessenes Env kein
+ * Aussperren mehr (Vorfall 19.08.2026), ohne den White-Label-Schutz aufzugeben —
+ * ein Klon lässt dadurch SEIN Team rein, nie RIEGEL/beuwy. Sobald INTERN_EMAILS
+ * gesetzt ist, gilt ausschließlich diese Liste und die Regel greift nicht mehr.
+ */
+function eigeneDomainErlaubt(email: string): boolean {
+  const envGesetzt = (process.env.INTERN_EMAILS ?? "").trim().length > 0;
+  if (envGesetzt) return false;
+  const domain = internEigeneDomain();
+  return domain.length > 0 && email.toLowerCase().endsWith(`@${domain}`);
 }
 
 /** Dynamisch über /intern eingeladene E-Mail-Adressen (site_settings-Tabelle,
@@ -111,7 +143,7 @@ export async function verifyInternAccess(input: {
     // steht (Vereinigung). internInvitedEmails() ist fail-soft, ein DB-Fehler
     // fällt also nie auf "kein Zugang" zurück, wenn die feste Liste greift.
     const invited = await internInvitedEmails();
-    if (!internFixedEmails().has(email) && !invited.includes(email)) {
+    if (!internFixedEmails().has(email) && !invited.includes(email) && !eigeneDomainErlaubt(email)) {
       return { ok: false, status: 403, error: "Dieses Konto ist nicht für /intern freigeschaltet." };
     }
     return { ok: true, via: "email", email };
