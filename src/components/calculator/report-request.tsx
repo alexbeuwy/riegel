@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { burstConfetti } from "@/lib/confetti";
-import { track } from "@/lib/track";
+import { track, setAnsicht } from "@/lib/track";
 import type { GeoResult } from "@/lib/geocode";
 import type { ValuationResult, Objektart, Zustand, Qualitaet, Vermietungsstand } from "@/lib/valuation";
 import { site } from "@/lib/site";
@@ -102,6 +102,15 @@ export function ReportRequest({
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  // Aufgeklapptes Report-Formular ist für die Heatmap eine EIGENE Ansicht:
+  // Das Aufklappen verlängert die Seite deutlich, und y wird relativ zur
+  // Dokumenthöhe gemessen — ohne die Trennung verrutschen alle Klicks der
+  // Ergebnisseite gegeneinander. Genau hier passiert die Conversion, das ist
+  // die wichtigste Ansicht überhaupt (Betreiber-Hinweis 20.08.2026).
+  useEffect(() => {
+    setAnsicht(open ? "ergebnis-formular" : "ergebnis");
+  }, [open]);
 
   useEffect(() => {
     if (open || done) return;

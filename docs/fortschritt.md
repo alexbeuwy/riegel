@@ -1329,3 +1329,60 @@ läuft ab jetzt in CI (`.github/workflows/ci.yml`).
 **Merker White-Label:** Ob beuwy dauerhaft Support-Zugang zum Dashboard eines
 Klons hat, ist eine Entscheidung, die mit dem jeweiligen Makler zu klären ist —
 steht als Punkt in der Go-Live-Checkliste (§5) und in der Env-Tabelle (§4).
+
+## Heatmap neu gebaut + Feedback-Reiter als Betreiber-Werkzeug (20.08.2026) ✅
+
+Betreiber-Feedback, wörtlich: „Wie macht diese Heatmap Sinn ohne die einzelnen
+Steps zu haben und viel zu grob — exakte Punkte oder Heatmap wie bei Hotjar viel
+besser." Nachtrag: „Conversion-mäßig ist nur die letzte Seite relevant,
+PDF-Report-Anfragen etc."
+
+**Warum die alte Heatmap nichts aussagte — beides gemessen, nicht vermutet:**
+
+1. **Keine Trennung nach Ansicht.** x/y werden relativ zur DOKUMENTHÖHE
+   gemessen. Die ist je Schritt eine völlig andere: Objektart 2.247 px,
+   Standort 2.405 px, Eckdaten 2.473 px, Ergebnis 3.880 px, Ergebnis mit
+   offenem Report-Formular 4.146 px (Desktop, gemessen beim Erzeugen der
+   Referenzbilder). Alle Klicks lagen trotzdem auf EINEM Bild übereinander —
+   „60 % Scrolltiefe" bedeutete in jedem Schritt etwas anderes.
+2. **Zu grob.** 5-%-Buckets sind auf dem Desktop ~70 px breit, also breiter als
+   der Abstand zwischen zwei Buttons.
+3. **Mobil auf Desktop projiziert.** Mobil ist die Ergebnisseite 5.824 px lang
+   statt 3.880 px und einspaltig — dieselbe Prozentangabe zeigt auf etwas
+   anderes.
+
+**Was jetzt drin ist:**
+
+- **Erfassung** (`src/lib/track.ts`): 0,5-%-Raster (200 Stufen je Achse, ~7 px
+  statt ~70 px) plus zwei neue Angaben je Klick — `ansicht`
+  (objektart | standort | eckdaten | analyse | ergebnis | ergebnis-formular |
+  seite) und `geraet` (desktop | mobil, aus der Viewport-Breite, KEIN
+  User-Agent). Es bleiben Buckets statt Pixel, die Datenschutz-Zusage der
+  Tabelle gilt unverändert.
+- **Eigene Ansicht fürs offene Report-Formular**, weil das Aufklappen die Seite
+  um 266 px verlängert — und weil genau dort die Conversion passiert.
+- **Referenzbilder je Ansicht × Gerät** (10 Stück, `public/intern/heatmap/`),
+  erzeugt von `scripts/heatmap-referenz.mts` gegen einen lokalen Prod-Server.
+  Dafür kennt der Demo-Einstieg jetzt `&halt=objektart|standort|eckdaten`.
+- **Darstellung** (`KlickHeatmap`): Canvas statt 20×20-Kachelraster. Zwei-Pass-
+  Verfahren wie heatmap.js — radiale Alpha-Verläufe aufaddieren, dann über eine
+  Farbrampe blau→cyan→grün→gelb→rot einfärben. Dazu ein Punkt-Modus mit den
+  exakten Buckets (Größe nach Klickzahl) und Umschaltern für Ansicht und Gerät.
+  Vorausgewählt ist „Ergebnis + Report-Formular", sonst „Ergebnis".
+- **Altdaten** (vor dem 20.08.) laufen als eigene Auswahl „Altdaten ohne
+  Ansicht" mit — ohne Referenzbild, mit Erklärung. Sie einem beliebigen Bild
+  unterzuschieben wäre eine erfundene Genauigkeit.
+
+**Feedback-Reiter:** ausgeblendet für Makler-Konten (Wunsch Alex). Er ist ein
+Betreiber-Werkzeug — On-Page-Kommentare plus fertige Arbeitsauftrags-Prompts —
+und für das RIEGEL-Team nur Werkstattkram im Weg. `istBetreiber()` in
+`intern-access.ts` entscheidet (Passwort-Login oder Adresse auf der
+Betreiber-Domain). Der Server schickt die Feedback-Daten dann gar nicht erst
+mit, und `/api/intern/feedback` weist Makler-Konten mit 403 ab — ein Reiter,
+dessen Inhalt trotzdem im Netzwerk-Tab liegt, wäre nur halb ausgeblendet.
+
+**⚠️ Migration nötig:** `supabase/migrations/20260820120000_heatmap_ansicht_geraet.sql`
+(zwei neue Spalten + Umrechnung der Altdaten auf die feinere Skala). Solange sie
+fehlt, fällt `/api/track` auf einen zweiten Insert OHNE die neuen Felder zurück —
+der Funnel zählt also weiter, nur die Ansichts-Trennung fehlt. Ohne diesen
+Fallback hätte der abgewiesene Batch ALLE Zahlen mitgerissen.

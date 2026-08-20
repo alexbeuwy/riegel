@@ -35,6 +35,9 @@ const STUFEN: { key: string; event: string; step?: number; label: string }[] = [
 
 /** Deckel für die Klick-Rohdaten der Heatmap (neueste zuerst). */
 const KLICK_LIMIT = 20_000;
+/** Auflösung der Klick-Koordinaten: 0…200 = 0,5-%-Buckets. Muss zu
+ *  KLICK_STUFEN in src/lib/track.ts passen (dort wird gerundet). */
+const KLICK_STUFEN = 200;
 /** Deckel für die Funnel-Rohdaten im Zeitraum. */
 const FUNNEL_LIMIT = 50_000;
 
@@ -113,7 +116,7 @@ export async function POST(req: Request) {
       .limit(FUNNEL_LIMIT),
     admin
       .from("rechner_events")
-      .select("x_pct, y_pct, bereich")
+      .select("x_pct, y_pct, bereich, ansicht, geraet")
       .eq("event", "rechner_klick")
       .gte("created_at", seit)
       .order("created_at", { ascending: false })
@@ -135,6 +138,8 @@ export async function POST(req: Request) {
       pdfQuote: 0,
       quelle: { cta: 0, badge: 0 },
       heatmap: [],
+      ansichten: [],
+      stufen: KLICK_STUFEN,
       bereiche: [],
       serie: [],
       klickLimitErreicht: false,
@@ -189,21 +194,44 @@ export async function POST(req: Request) {
   const pdfN = proStufe.get("pdf")?.size ?? 0;
   const pdfQuote = startN > 0 ? Math.round((pdfN / startN) * 1000) / 10 : 0;
 
-  // ── Heatmap: Klicks je (x_pct, y_pct)-Bucket, dazu der dominante Bereich
-  // (häufigster Bereichs-Slug in dieser Zelle) für den Tooltip.
-  const zellen = new Map<string, { x: number; y: number; n: number; bereiche: Map<string, number> }>();
+  // ── Heatmap: Klicks je (Ansicht, Gerät, x_pct, y_pct)-Bucket, dazu der
+  // dominante Bereich (häufigster Bereichs-Slug) für den Tooltip.
+  //
+  // Ansicht UND Gerät gehören in den Schlüssel, nicht nur x/y: y_pct ist
+  // relativ zur Dokumenthöhe, und die unterscheidet sich zwischen Schritt 1
+  // und Ergebnisseite um ein Vielfaches — ohne die Trennung liegen die
+  // Klicks auf demselben Bild übereinander (Betreiber-Feedback 20.08.2026).
+  // Die Aggregation hier statt roher Punkte hält die Antwort klein: 20.000
+  // Klicks fallen auf höchstens die Zahl der tatsächlich getroffenen Buckets
+  // zusammen, und das Dashboard filtert lokal ohne neuen Request.
+  interface Zelle {
+    x: number;
+    y: number;
+    ansicht: string;
+    geraet: string;
+    n: number;
+    bereiche: Map<string, number>;
+  }
+  const zellen = new Map<string, Zelle>();
   const bereichZaehler = new Map<string, number>();
+  const ansichtZaehler = new Map<string, number>();
   for (const row of klickRows) {
     const x = Number(row.x_pct);
     const y = Number(row.y_pct);
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    const key = `${x}:${y}`;
-    const zelle = zellen.get(key) ?? { x, y, n: 0, bereiche: new Map<string, number>() };
+    // Altdaten vor dem 20.08.2026 haben weder Ansicht noch Gerät (s. Migration
+    // 20260820120000): sie laufen als "alt"/"unbekannt" mit, statt eine
+    // Zuordnung zu erfinden, die es nie gab.
+    const ansicht = String(row.ansicht ?? "alt");
+    const geraet = String(row.geraet ?? "unbekannt");
+    const key = `${ansicht}|${geraet}|${x}:${y}`;
+    const zelle = zellen.get(key) ?? { x, y, ansicht, geraet, n: 0, bereiche: new Map<string, number>() };
     zelle.n += 1;
     const bereich = String(row.bereich ?? "seite");
     zelle.bereiche.set(bereich, (zelle.bereiche.get(bereich) ?? 0) + 1);
     zellen.set(key, zelle);
     bereichZaehler.set(bereich, (bereichZaehler.get(bereich) ?? 0) + 1);
+    ansichtZaehler.set(ansicht, (ansichtZaehler.get(ansicht) ?? 0) + 1);
   }
 
   const heatmap = [...zellen.values()].map((z) => {
@@ -215,8 +243,14 @@ export async function POST(req: Request) {
         topN = n;
       }
     }
-    return { x: z.x, y: z.y, n: z.n, bereich: top };
+    return { x: z.x, y: z.y, n: z.n, bereich: top, ansicht: z.ansicht, geraet: z.geraet };
   });
+
+  // Wie viele Klicks je Ansicht — das Dashboard baut daraus die Auswahl und
+  // zeigt leere Ansichten gar nicht erst als anklickbare Option an.
+  const ansichten = [...ansichtZaehler.entries()]
+    .map(([ansicht, n]) => ({ ansicht, n }))
+    .sort((a, b) => b.n - a.n);
 
   const bereiche = [...bereichZaehler.entries()]
     .map(([bereich, n]) => ({ bereich, n }))
@@ -240,6 +274,11 @@ export async function POST(req: Request) {
     pdfQuote,
     quelle: quelleZaehler,
     heatmap,
+    ansichten,
+    // Auflösung der Heatmap-Koordinaten: x/y laufen 0…KLICK_STUFEN. Wird die
+    // Skala je verfeinert, muss das Dashboard nichts wissen — es rechnet mit
+    // diesem Wert statt mit einer eigenen Konstanten.
+    stufen: KLICK_STUFEN,
     bereiche,
     serie,
     // Signal fürs Dashboard, dass die Heatmap nur die neuesten Klicks zeigt.

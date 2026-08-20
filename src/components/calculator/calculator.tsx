@@ -7,7 +7,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { MapConsentGate } from "@/components/consent";
 import { formatEUR } from "@/lib/format";
 import { ortAusLabel, searchAddress, type GeoResult } from "@/lib/geocode";
-import { track, trackKlick } from "@/lib/track";
+import { track, trackKlick, setAnsicht, type Ansicht } from "@/lib/track";
 import {
   estimateValue,
   AUSSTATTUNG_HAUS,
@@ -116,6 +116,9 @@ const DEMO_ADRESSE: GeoResult = {
   lat: 49.31797,
   lng: 8.43705,
 };
+/** Haltepunkte für `/rechner?demo=…&halt=…` — Reihenfolge = Schritt-Index. */
+const DEMO_HALT: readonly string[] = ["objektart", "standort", "eckdaten"];
+
 const DEMO_PRESETS: Record<string, Partial<FormState>> = {
   wohnung: {
     objektart: "wohnung",
@@ -732,6 +735,21 @@ export function Calculator() {
   // die Analyse starten soll (Effect dazu steht NACH startAnalysis, s. dort).
   const demoStart = useRef(false);
 
+  // Aktuelle Ansicht an das Tracking melden. Ohne diese Angabe ist die
+  // Klick-Heatmap in /intern wertlos: x/y werden relativ zur DOKUMENTHÖHE
+  // gemessen, und die ist in Schritt 1 eine völlig andere als auf der
+  // Ergebnisseite — alle Klicks landeten vorher übereinander auf EINEM
+  // Referenzbild (Betreiber-Feedback 20.08.2026).
+  useEffect(() => {
+    const ansicht: Ansicht =
+      phase === "analyzing"
+        ? "analyse"
+        : phase === "result"
+          ? "ergebnis"
+          : (["objektart", "standort", "eckdaten"] as const)[step] ?? "seite";
+    setAnsicht(ansicht);
+  }, [phase, step]);
+
   // Adresse aus der URL übernehmen (Hero-Schnelleinstieg → direkt mit Satellit).
   // Danach — und NUR wenn die URL nichts vorgibt — den gespeicherten Stand aus
   // dem sessionStorage wiederherstellen: ein frischer Hero-Einstieg mit neuer
@@ -739,11 +757,22 @@ export function Calculator() {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     // Interner Demo-Einstieg (s. DEMO_PRESETS): komplettes Objekt + Autostart.
+    // Optional `&halt=objektart|standort|eckdaten`: dann NICHT durchstarten,
+    // sondern bei diesem Schritt stehen bleiben. Gebaut für die Referenzbilder
+    // der Klick-Heatmap (scripts/heatmap-referenz.mts braucht jede Ansicht
+    // einzeln) — und praktisch, um einen bestimmten Schritt anzuschauen, ohne
+    // sich durchzuklicken.
     const demo = p.get("demo");
     if (demo && DEMO_PRESETS[demo]) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliger URL-Prefill beim Mount (gleiches Muster wie unten)
       setF((s) => ({ ...s, ...DEMO_PRESETS[demo] }));
-      demoStart.current = true;
+      const halt = DEMO_HALT.indexOf(p.get("halt") ?? "");
+      if (halt >= 0) {
+        setStep(halt);
+        tiefeRef.current = halt;
+      } else {
+        demoStart.current = true;
+      }
       return;
     }
     const lat = parseFloat(p.get("lat") || "");

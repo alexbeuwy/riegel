@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { verifyInternAccess } from "@/lib/intern-access";
+import { verifyInternAccess, istBetreiber } from "@/lib/intern-access";
 import {
   FEEDBACK_STATUS_ROW_ID,
   FEEDBACK_STATUS_MARKER,
@@ -38,6 +38,12 @@ export async function POST(req: Request) {
 
   const auth = await verifyInternAccess({ password: b.password, accessToken: b.accessToken });
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  // Der Feedback-Bereich ist ein Betreiber-Werkzeug und für Makler-Konten
+  // ausgeblendet (s. api/intern/route.ts) — dann darf er auch nicht über
+  // einen direkten Request bedienbar bleiben.
+  if (!istBetreiber(auth)) {
+    return NextResponse.json({ ok: false, error: "Nicht freigeschaltet." }, { status: 403 });
+  }
 
   const id = String(b.id ?? "").trim();
   if (!id || id === FEEDBACK_STATUS_ROW_ID) {

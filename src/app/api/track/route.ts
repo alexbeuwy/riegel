@@ -40,6 +40,29 @@ const ERLAUBTE_EVENTS = new Set([
  *  vs. Badge am Wertkorridor) — genau diese zwei Einstiege gibt es. */
 const ERLAUBTE_QUELLEN = new Set(["cta", "badge"]);
 
+/** Erlaubte Ansichten des Rechners (Vertrag: `Ansicht` in src/lib/track.ts).
+ *  Die Heatmap wertet je Ansicht getrennt aus — ohne diese Trennung liegen
+ *  Klicks aus Schritt 1 und aus der Ergebnisseite auf demselben Bild
+ *  übereinander (Betreiber-Feedback 20.08.2026). */
+const ERLAUBTE_ANSICHTEN = new Set([
+  "objektart",
+  "standort",
+  "eckdaten",
+  "analyse",
+  "ergebnis",
+  "ergebnis-formular",
+  "seite",
+]);
+
+/** Geräteklassen. Bewusst nur zwei grobe Klassen aus der Viewport-Breite
+ *  (KEIN User-Agent, kein Gerätemodell) — genau so viel, wie nötig ist, um
+ *  Mobil-Klicks nicht auf ein Desktop-Referenzbild zu projizieren. */
+const ERLAUBTE_GERAETE = new Set(["desktop", "mobil"]);
+
+/** Auflösung der Heatmap: 200 Stufen je Achse (0,5-%-Buckets). Muss zu
+ *  KLICK_STUFEN in src/lib/track.ts passen. */
+const KLICK_STUFEN = 200;
+
 /** Ein Batch-Request darf höchstens so viele Events tragen; der Client flusht
  *  bei 12 (track.ts), 25 ist der großzügige Sicherheitsdeckel gegen Müll. */
 const MAX_ITEMS = 25;
@@ -51,6 +74,8 @@ interface EventZeile {
   x_pct: number | null;
   y_pct: number | null;
   bereich: string | null;
+  ansicht: string | null;
+  geraet: string | null;
   pageload_id: string;
 }
 
@@ -87,6 +112,8 @@ function normalisiere(raw: unknown): EventZeile | null {
     x_pct: null,
     y_pct: null,
     bereich: null,
+    ansicht: null,
+    geraet: null,
     pageload_id: pageloadId,
   };
 
@@ -100,16 +127,24 @@ function normalisiere(raw: unknown): EventZeile | null {
     // Funnel-Stufe „Formular geöffnet" soll nicht an einem Tippfehler hängen.
     zeile.quelle = ERLAUBTE_QUELLEN.has(quelle) ? quelle : null;
   } else if (event === "rechner_klick") {
-    const x = ganzzahl(detail.xPct, 0, 100);
-    const y = ganzzahl(detail.yPct, 0, 100);
+    // 0–200 = 0,5-%-Buckets (s. KLICK_STUFEN). Weiterhin Buckets statt Pixel,
+    // nur 10× feiner als die ursprünglichen 5 % — mit 5 % war eine Zelle auf
+    // dem Desktop ~70 px breit und damit breiter als der Abstand zwischen zwei
+    // Buttons (Betreiber-Feedback 20.08.2026: "viel zu grob").
+    const x = ganzzahl(detail.xPct, 0, KLICK_STUFEN);
+    const y = ganzzahl(detail.yPct, 0, KLICK_STUFEN);
     if (x === null || y === null) return null;
-    // Auf das 5 %-Raster zwingen (der Client rundet bereits so) — grobe
-    // Buckets statt Pixeln, damit aus der Heatmap kein Fingerabdruck wird.
-    zeile.x_pct = Math.round(x / 5) * 5;
-    zeile.y_pct = Math.round(y / 5) * 5;
+    zeile.x_pct = x;
+    zeile.y_pct = y;
     const bereich = typeof detail.bereich === "string" ? detail.bereich.trim().slice(0, 60) : "";
     // Nur ein knapper Slug-Bereichsname (data-track-bereich), kein Freitext.
     zeile.bereich = /^[a-z0-9_-]{1,60}$/i.test(bereich) ? bereich : "seite";
+    const ansicht = typeof detail.ansicht === "string" ? detail.ansicht : "";
+    const geraet = typeof detail.geraet === "string" ? detail.geraet : "";
+    // Unbekannte Werte verwerfen nur das FELD, nicht den Klick — ein neuer
+    // Ansichtsname aus einem älteren Client soll keine Klicks verschlucken.
+    zeile.ansicht = ERLAUBTE_ANSICHTEN.has(ansicht) ? ansicht : "seite";
+    zeile.geraet = ERLAUBTE_GERAETE.has(geraet) ? geraet : null;
   }
 
   return zeile;
@@ -146,9 +181,28 @@ export async function POST(req: Request) {
   if (!supabaseServer) return new NextResponse(null, { status: 204 });
 
   const { error } = await supabaseServer.from("rechner_events").insert(zeilen);
-  // Auch ein DB-Fehler (etwa: Migration noch nicht eingespielt) bleibt still —
-  // nur Log fürs Team, nach außen 204.
-  if (error) console.error("[track] Insert fehlgeschlagen:", error.message);
+
+  // Sonderfall „Migration 20260820120000 noch nicht eingespielt": Dann kennt
+  // die Tabelle die Spalten ansicht/geraet nicht und PostgREST weist den
+  // GANZEN Batch ab — inklusive der Funnel-Events, die damit gar nichts zu tun
+  // haben. Statt in diesem Fenster stillschweigend ALLE Zahlen zu verlieren,
+  // einmal ohne die neuen Felder nachlegen. Ist die Migration da, passiert das
+  // nie; bei einem White-Label-Klon, der sie vergisst, läuft der Funnel weiter
+  // und nur die Ansichts-Trennung der Heatmap fehlt.
+  if (error && /ansicht|geraet|PGRST204/i.test(`${error.code ?? ""} ${error.message}`)) {
+    console.error("[track] Spalten ansicht/geraet fehlen — Migration 20260820120000 einspielen.");
+    const ohneNeue = zeilen.map((z) => {
+      const rest: Partial<EventZeile> = { ...z };
+      delete rest.ansicht;
+      delete rest.geraet;
+      return rest;
+    });
+    const { error: zweiter } = await supabaseServer.from("rechner_events").insert(ohneNeue);
+    if (zweiter) console.error("[track] Insert (Fallback) fehlgeschlagen:", zweiter.message);
+  } else if (error) {
+    // Jeder andere DB-Fehler bleibt still — nur Log fürs Team, nach außen 204.
+    console.error("[track] Insert fehlgeschlagen:", error.message);
+  }
 
   return new NextResponse(null, { status: 204 });
 }

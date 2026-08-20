@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { verifyInternAccess } from "@/lib/intern-access";
+import { verifyInternAccess, istBetreiber } from "@/lib/intern-access";
 import { FEEDBACK_STATUS_ROW_ID, parseFeedbackStatus } from "@/lib/intern-feedback";
 import { getEstateData } from "@/lib/estates";
 import { formatPrice } from "@/lib/format";
@@ -159,12 +159,20 @@ export async function POST(req: Request) {
     console.error("[intern] Objekte-Load-Fehler:", e instanceof Error ? e.message : String(e));
   }
 
+  // Der Feedback-Tab ist ein BETREIBER-Werkzeug (On-Page-Kommentare +
+  // Arbeitsauftrags-Prompts), kein Makler-Werkzeug — für Makler-Konten wird er
+  // im Dashboard ausgeblendet (Wunsch Alex 20.08.2026). Die Daten deshalb hier
+  // gar nicht erst mitschicken: ein ausgeblendeter Reiter, dessen Inhalt
+  // trotzdem im Netzwerk-Tab liegt, wäre nur halb ausgeblendet.
+  const betreiber = istBetreiber(auth);
+
   return NextResponse.json({
     ok: true,
+    betreiber,
     reports: reportsRes.data ?? [],
     leads: leadsRes.data ?? [],
-    feedback: comments,
-    feedbackStatus: parseFeedbackStatus(statusRow?.comment),
+    feedback: betreiber ? comments : [],
+    feedbackStatus: betreiber ? parseFeedbackStatus(statusRow?.comment) : {},
     accounts,
     objekte,
     bearbeitung,

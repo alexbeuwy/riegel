@@ -10,8 +10,21 @@
  *   nur im Modul-Speicher dieses Seitenaufrufs. Der Funnel (Start → Schritt →
  *   Ergebnis → Report) spielt sich beim Rechner ohnehin in EINEM Seitenaufruf
  *   ab — mehr Verknüpfung brauchen wir nicht und wollen wir nicht.
- * - Klick-Heatmap nur als GROBE Prozent-Raster-Buckets (5 %-Schritte) plus
- *   Bereichs-Name — keine Pixel-Koordinaten, kein Fingerprinting-Potenzial.
+ * - Klick-Heatmap nur als Prozent-Raster-Buckets (0,5 %-Schritte, also 200
+ *   Stufen je Achse) plus Bereichs-Name — weiterhin Buckets statt Pixel, kein
+ *   Fingerprinting-Potenzial. Warum feiner als die ursprünglichen 5 %:
+ *   Betreiber-Feedback 20.08.2026 („viel zu grob, exakte Punkte oder Heatmap
+ *   wie bei Hotjar") — mit 5 % war eine Zelle auf dem Desktop ~70 px breit und
+ *   verschluckte den Unterschied zwischen zwei nebeneinander liegenden
+ *   Buttons. 0,5 % sind ~7 px: genau genug, um INNERHALB eines Elements zu
+ *   sehen, wo geklickt wird, und immer noch ein Bucket, kein Pixel.
+ * - Zusätzlich erfasst: welche ANSICHT gerade zu sehen war (Objektart/
+ *   Standort/Eckdaten/Analyse/Ergebnis) und ob Desktop oder Mobil. Ohne
+ *   diese beiden Angaben ist die Heatmap wertlos, weil x/y relativ zur
+ *   Dokumenthöhe gemessen werden — und die ist in jedem Schritt eine andere
+ *   (Betreiber-Feedback 20.08.2026: „wie macht die Heatmap Sinn ohne die
+ *   einzelnen Steps"). Beides ist keine Personen-, sondern Seitenzustands-
+ *   Information.
  * - Kein PII im Payload; die Route verwirft Unbekanntes (Allowlist).
  *
  * Versand: gebatcht über navigator.sendBeacon (überlebt Tab-Schließen),
@@ -25,7 +38,28 @@ export type TrackEventName =
   | "rechner_ergebnis" // Ergebnis sichtbar
   | "report_form_geoeffnet" // Report-Formular geöffnet; detail: { quelle: "cta" | "badge" }
   | "report_angefordert" // Report erfolgreich angefordert (die Ziel-Conversion)
-  | "rechner_klick"; // Heatmap; detail: { xPct, yPct, bereich }
+  | "rechner_klick"; // Heatmap; detail: { xPct, yPct, bereich, ansicht, geraet }
+
+/**
+ * Welche Ansicht des Rechners gerade sichtbar ist. Die Heatmap wertet je
+ * Ansicht getrennt aus und legt je Ansicht ein eigenes Referenzbild darunter —
+ * ein Klick bei „60 % Scrolltiefe" bedeutet in Schritt 1 etwas völlig anderes
+ * als auf der Ergebnisseite. `seite` = außerhalb des Rechners (oder bevor der
+ * Rechner sich gemeldet hat).
+ */
+export type Ansicht =
+  | "objektart"
+  | "standort"
+  | "eckdaten"
+  | "analyse"
+  /** Ergebnisseite, Report-Formular noch zugeklappt. */
+  | "ergebnis"
+  /** Ergebnisseite mit AUFGEKLAPPTEM Report-Formular. Eigene Ansicht, weil das
+   *  Aufklappen die Dokumenthöhe deutlich verändert — und weil genau hier die
+   *  Conversion passiert (Betreiber-Hinweis 20.08.2026: „conversion-mäßig ist
+   *  nur die letzte Seite relevant, PDF-Report-Anfragen etc."). */
+  | "ergebnis-formular"
+  | "seite";
 
 interface TrackItem {
   event: TrackEventName;
@@ -44,6 +78,15 @@ function neueId(): string {
 }
 
 const pageloadId = neueId();
+/** Aktuelle Ansicht — vom Rechner gesetzt (setAnsicht), von trackKlick gelesen.
+ *  Bewusst der SEITENZUSTAND und nicht der geklickte Vorfahr: ein Klick in die
+ *  Kopfzeile, während Schritt 2 offen ist, gehört zur Auswertung von Schritt 2. */
+let aktuelleAnsicht: Ansicht = "seite";
+
+/** Vom Rechner bei jedem Ansichtswechsel aufrufen. Fail-soft, kein Event. */
+export function setAnsicht(a: Ansicht): void {
+  aktuelleAnsicht = a;
+}
 /** Interne Demo-Aufrufe (/rechner?demo=…) NICHT zählen — sonst verfälscht
  * jeder Test von Alex/Team die Funnel-Zahlen im /intern-Conversion-Tab. */
 const demoModus = typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
@@ -91,19 +134,29 @@ export function track(event: TrackEventName, detail?: Record<string, string | nu
   }
 }
 
+/** Auflösung der Heatmap: 200 Stufen je Achse = 0,5-%-Buckets. Der Wert wird
+ *  als Ganzzahl 0–200 übertragen und gespeichert (nicht als Prozentzahl mit
+ *  Komma), damit die Spalten weiter schlanke smallint bleiben. */
+export const KLICK_STUFEN = 200;
+/** Ab dieser Viewport-Breite gilt ein Klick als „desktop" — dieselbe Grenze
+ *  wie Tailwinds md-Breakpoint, an dem der Rechner sein Layout umstellt. */
+const DESKTOP_AB_PX = 768;
+
 /**
- * Klick für die Heatmap melden — 5 %-Raster relativ zum DOKUMENT (x) bzw.
+ * Klick für die Heatmap melden — 0,5-%-Raster relativ zum DOKUMENT (x) bzw.
  * zur Dokumenthöhe (y), plus grober Bereichs-Name (data-track-bereich des
- * nächsten Vorfahren, sonst "seite").
+ * nächsten Vorfahren, sonst "seite"), aktuelle Ansicht und Geräteklasse.
  */
 export function trackKlick(e: { clientX: number; clientY: number; target: EventTarget | null }): void {
   try {
     const doc = document.documentElement;
-    const xPct = Math.round(((e.clientX + window.scrollX) / doc.scrollWidth) * 20) * 5;
-    const yPct = Math.round(((e.clientY + window.scrollY) / doc.scrollHeight) * 20) * 5;
+    const grenze = (v: number) => Math.min(KLICK_STUFEN, Math.max(0, Math.round(v * KLICK_STUFEN)));
+    const xPct = grenze((e.clientX + window.scrollX) / doc.scrollWidth);
+    const yPct = grenze((e.clientY + window.scrollY) / doc.scrollHeight);
     const bereich =
       (e.target instanceof Element ? e.target.closest("[data-track-bereich]")?.getAttribute("data-track-bereich") : null) ??
       "seite";
-    track("rechner_klick", { xPct, yPct, bereich });
+    const geraet = window.innerWidth >= DESKTOP_AB_PX ? "desktop" : "mobil";
+    track("rechner_klick", { xPct, yPct, bereich, ansicht: aktuelleAnsicht, geraet });
   } catch {}
 }

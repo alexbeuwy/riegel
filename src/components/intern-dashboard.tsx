@@ -129,7 +129,15 @@ interface ConvData {
   funnel: ConvStufe[];
   pdfQuote: number;
   quelle: { cta: number; badge: number };
-  heatmap: { x: number; y: number; n: number; bereich: string }[];
+  /** Klick-Buckets. x/y laufen 0…`stufen` (0,5-%-Raster). `ansicht` trennt die
+   *  Rechner-Schritte, `geraet` Desktop/Mobil — ohne beides liegen Klicks
+   *  verschiedener Seitenlängen übereinander (s. KlickHeatmap). */
+  heatmap: { x: number; y: number; n: number; bereich: string; ansicht: string; geraet: string }[];
+  /** Klicks je Ansicht, absteigend — Grundlage der Ansichts-Auswahl. */
+  ansichten: { ansicht: string; n: number }[];
+  /** Auflösung der x/y-Werte (200 = 0,5-%-Schritte). Kommt vom Server, damit
+   *  eine spätere Verfeinerung hier nichts bricht. */
+  stufen: number;
   bereiche: { bereich: string; n: number }[];
   serie: { tag: string; n: number }[];
   klickLimitErreicht: boolean;
@@ -557,6 +565,11 @@ export function InternDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<{ reports: ReportRow[]; leads: LeadRow[] } | null>(null);
+  // Betreiber-Zugang (beuwy) vs. Makler-Zugang. Steuert NUR, was angezeigt
+  // wird — die Rechte hängen davon nicht ab (s. istBetreiber in
+  // lib/intern-access.ts). Startwert false: lieber einen Reiter zu wenig
+  // zeigen, bis der Server geantwortet hat, als kurz zu viel.
+  const [betreiber, setBetreiber] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusMap>({});
   const [fbFilter, setFbFilter] = useState<"all" | "open" | "done">("all");
@@ -733,6 +746,7 @@ export function InternDashboard() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Fehler");
       setData({ reports: json.reports ?? [], leads: json.leads ?? [] });
+      setBetreiber(Boolean(json.betreiber));
       setFeedback(json.feedback ?? []);
       setFeedbackStatus(json.feedbackStatus ?? {});
       setObjekte(json.objekte ?? []);
@@ -1331,7 +1345,13 @@ export function InternDashboard() {
     { key: "leads", label: "Anfragen", icon: "calendar", n: stats?.leads },
     { key: "objekte", label: "Objekte", icon: "building", n: objekte.length },
     { key: "medien", label: "Medien", icon: "layers" },
-    { key: "feedback", label: "Feedback", icon: "sparkle", n: fbOpenCount },
+    // Feedback ist ein Betreiber-Werkzeug (On-Page-Kommentare + fertige
+    // Arbeitsaufträge) — für das Makler-Team nur Werkstattkram im Weg
+    // (Wunsch Alex 20.08.2026). Der Server liefert die Daten dann auch gar
+    // nicht erst mit.
+    ...(betreiber
+      ? [{ key: "feedback" as Tab, label: "Feedback", icon: "sparkle" as IconName, n: fbOpenCount }]
+      : []),
     { key: "konten", label: "Konten", icon: "users", n: accounts.length },
   ];
 
@@ -1632,7 +1652,12 @@ export function InternDashboard() {
                   <h3 className="mb-3 mt-8 flex items-center gap-2 text-sm font-semibold text-muted">
                     <Icon name="layers" size={16} className="text-accent" /> Klick-Heatmap
                   </h3>
-                  <KlickHeatmap punkte={conv.heatmap} limitErreicht={conv.klickLimitErreicht} />
+                  <KlickHeatmap
+                    punkte={conv.heatmap}
+                    ansichten={conv.ansichten ?? []}
+                    stufen={conv.stufen ?? 200}
+                    limitErreicht={conv.klickLimitErreicht}
+                  />
                 </div>
               </>
             )}
@@ -2234,7 +2259,7 @@ export function InternDashboard() {
         )}
 
         {/* ── Feedback (On-Page-Kommentare von Sissy) ── */}
-        {tab === "feedback" && (
+        {tab === "feedback" && betreiber && (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex gap-1.5">
@@ -2677,197 +2702,426 @@ const BEREICH_LABEL: Record<string, string> = {
 };
 const bereichLabel = (slug: string) => BEREICH_LABEL[slug] ?? slug;
 
-/** Pfad des Rechner-Referenzscreenshots (Formular-Ansicht, Desktop), den die
- *  Heatmap als Hintergrund unterlegt — s. KlickHeatmap. Muss manuell/per
- *  Skript unter public/intern/ abgelegt werden; fehlt die Datei, blendet die
- *  Komponente den Hintergrund automatisch aus (onError, kein toter Zustand). */
-const HEATMAP_REFERENZBILD = "/intern/rechner-referenz.jpg";
+/**
+ * Ansichten des Rechners, in Funnel-Reihenfolge. `key` muss exakt dem
+ * `Ansicht`-Vertrag aus src/lib/track.ts entsprechen; zu jeder Ansicht liegt
+ * ein Referenzbild unter public/intern/heatmap/<key>-<geraet>.jpg
+ * (erzeugt von scripts/heatmap-referenz.mts).
+ *
+ * `alt` ist kein echter Zustand der App, sondern der Sammelposten für Klicks
+ * VOR dem 20.08.2026: damals wurde die Ansicht noch gar nicht erfasst, und
+ * die Koordinaten lagen im 5-%-Raster. Sie bekommen bewusst kein Referenzbild
+ * — die Zuordnung ist nicht rekonstruierbar, und das offen zu zeigen ist
+ * ehrlicher, als sie unter ein beliebiges Bild zu legen.
+ */
+const HEATMAP_ANSICHTEN: { key: string; label: string; hatBild: boolean }[] = [
+  { key: "objektart", label: "Schritt 1 · Objektart", hatBild: true },
+  { key: "standort", label: "Schritt 2 · Standort", hatBild: true },
+  { key: "eckdaten", label: "Schritt 3 · Eckdaten", hatBild: true },
+  { key: "analyse", label: "Analyse-Animation", hatBild: false },
+  { key: "ergebnis", label: "Ergebnis", hatBild: true },
+  { key: "ergebnis-formular", label: "Ergebnis + Report-Formular", hatBild: true },
+  { key: "seite", label: "Außerhalb des Rechners", hatBild: false },
+  { key: "alt", label: "Altdaten ohne Ansicht", hatBild: false },
+];
+
+/** Zuerst ausgewählte Ansicht: „conversion-mäßig ist nur die letzte Seite
+ *  relevant, PDF-Report-Anfragen etc." (Betreiber-Vorgabe 20.08.2026). Erst
+ *  das Formular, sonst das Ergebnis — die beiden Ansichten, an denen die
+ *  Ziel-Conversion hängt. */
+const HEATMAP_START_ANSICHTEN = ["ergebnis-formular", "ergebnis"];
+
+function heatmapBild(ansicht: string, geraet: "desktop" | "mobil"): string {
+  return `/intern/heatmap/${ansicht}-${geraet}.jpg`;
+}
 
 /**
- * Klick-Heatmap als 20×20-CSS-Raster über die gesamte Seite (x = Breite,
- * y = Scrolltiefe). Die Rohdaten liegen als 5 %-Buckets 0–100 vor, das sind
- * 21 Werte je Achse — der 100 %-Rand fällt bewusst mit der 95 %-Zelle
- * zusammen, damit ein sauberes 20×20-Raster entsteht (Randklicks sind ohnehin
- * dieselbe Region).
+ * Klick-Heatmap im Stil von Hotjar: kein Kachelraster mehr, sondern eine
+ * echte Dichtekarte auf einem <canvas>.
  *
- * Betreiber-Feedback 18.08.2026: "Heatmap ohne Screenshot — man rafft gar
- * nichts." Das Raster legt sich deshalb standardmäßig über ein Referenzbild
- * der Rechner-Seite (position:relative + absolutes Grid). WICHTIG, ehrlich:
- * x_pct/y_pct kommen von UNTERSCHIEDLICHEN Seitenzuständen (Formular- UND
- * Ergebnis-Ansicht, Desktop UND Mobil) — das Referenzbild zeigt nur die
- * Formular-Ansicht Desktop. Der Hinweistext unter der Karte sagt das offen,
- * statt Präzision vorzutäuschen, die die Daten nicht hergeben.
+ * Warum die Neufassung (Betreiber-Feedback 20.08.2026, wörtlich: „Wie macht
+ * diese Heatmap Sinn ohne die einzelnen Steps zu haben, und viel zu grob —
+ * exakte Punkte oder Heatmap wie bei Hotjar viel besser"):
+ *
+ *  1. GETRENNT NACH ANSICHT. y wird relativ zur DOKUMENTHÖHE gemessen, und
+ *     die reicht je nach Schritt von ~2.250 px (Objektart) bis ~4.150 px
+ *     (Ergebnis mit offenem Formular). Vorher landeten alle Klicks auf EINEM
+ *     Referenzbild — „60 % Scrolltiefe" bedeutete in jedem Schritt etwas
+ *     anderes. Jetzt hat jede Ansicht ihr eigenes Bild in ihrer eigenen Höhe.
+ *  2. GETRENNT NACH GERÄT: Mobil ist die Seite ein Vielfaches länger und
+ *     einspaltig — Mobil-Klicks auf ein Desktop-Bild zu legen, ist Unsinn.
+ *  3. FEINER: die Rohdaten kommen jetzt im 0,5-%-Raster (~7 px statt ~70 px).
+ *
+ * Zwei Darstellungen, umschaltbar:
+ *  - „Heatmap": klassisches Zwei-Pass-Verfahren (wie heatmap.js) — erst je
+ *    Klick ein radialer Alpha-Verlauf in Graustufen aufaddieren, dann jedes
+ *    Pixel über eine Farbrampe (blau → cyan → grün → gelb → rot) einfärben.
+ *    Das ergibt die weichen Übergänge, die man von Hotjar kennt, und ist
+ *    ehrlicher als harte Kacheln: Klicks sind Buckets, keine Punkte.
+ *  - „Punkte": jeder Bucket als kleiner Punkt, Größe nach Klickzahl. Zeigt,
+ *    wie viele Messwerte tatsächlich dahinterstecken — bei kleinen Zahlen
+ *    ist das aussagekräftiger als jede geglättete Fläche.
  */
 function KlickHeatmap({
   punkte,
+  ansichten,
+  stufen,
   limitErreicht,
 }: {
-  punkte: { x: number; y: number; n: number; bereich: string }[];
+  punkte: { x: number; y: number; n: number; bereich: string; ansicht: string; geraet: string }[];
+  ansichten: { ansicht: string; n: number }[];
+  stufen: number;
   limitErreicht: boolean;
 }) {
-  const RASTER = 20;
-  const [bg, setBg] = useState<"seite" | "neutral">("seite");
-  // null = noch nicht versucht, true/false = Ergebnis des Bildladens. Startet
-  // NICHT auf false, damit der Toggle nicht kurz aufblitzt, wenn das Bild da ist.
-  const [bildOk, setBildOk] = useState<boolean | null>(null);
+  const [geraet, setGeraet] = useState<"desktop" | "mobil">("desktop");
+  const [modus, setModus] = useState<"heatmap" | "punkte">("heatmap");
+  // Fehlende Referenzbilder werden PFADWEISE gemerkt statt als Ja/Nein-Flag:
+  // sonst müsste bei jedem Ansichtswechsel ein Effekt den alten Fehlerzustand
+  // zurücksetzen — und ein Bild, das einmal fehlte, gilt weiter als fehlend.
+  const [fehlendeBilder, setFehlendeBilder] = useState<string[]>([]);
 
-  const zellen = useMemo(() => {
-    const map = new Map<number, { n: number; bereich: string }>();
-    for (const p of punkte) {
-      const cx = Math.min(RASTER - 1, Math.max(0, Math.floor(p.x / 5)));
-      const cy = Math.min(RASTER - 1, Math.max(0, Math.floor(p.y / 5)));
-      const idx = cy * RASTER + cx;
-      const cur = map.get(idx);
-      // Bei Kollision (100 % faltet auf 95 %) Klicks addieren und den Bereich
-      // des größeren Anteils behalten.
-      if (!cur) map.set(idx, { n: p.n, bereich: p.bereich });
-      else map.set(idx, { n: cur.n + p.n, bereich: p.n > cur.n ? p.bereich : cur.bereich });
-    }
-    return map;
-  }, [punkte]);
+  // Nur Ansichten anbieten, für die es im Zeitraum überhaupt Klicks gibt —
+  // eine leere Auswahl ist eine Sackgasse.
+  const verfuegbar = useMemo(() => {
+    const mitKlicks = new Set(ansichten.filter((a) => a.n > 0).map((a) => a.ansicht));
+    return HEATMAP_ANSICHTEN.filter((a) => mitKlicks.has(a.key));
+  }, [ansichten]);
 
-  const max = Math.max(1, ...[...zellen.values()].map((z) => z.n));
-  const gesamt = [...zellen.values()].reduce((a, z) => a + z.n, 0);
-  // Bild nur zeigen, wenn "Seite" gewählt UND das Laden nicht bereits als
-  // fehlgeschlagen bekannt ist (kein kaputtes <img> im Layout).
-  const zeigtBild = bg === "seite" && bildOk !== false;
+  // Nur die AUSDRÜCKLICHE Wahl steht im State; die tatsächlich gezeigte
+  // Ansicht wird daraus abgeleitet. So braucht es keinen Effekt, der beim
+  // Eintreffen der Daten nachträglich State setzt (und eine Renderrunde
+  // kostet) — und eine Wahl, die im neuen Zeitraum keine Klicks mehr hat,
+  // fällt automatisch auf die Startauswahl zurück.
+  const [ansichtWahl, setAnsichtWahl] = useState<string | null>(null);
+  const ansicht =
+    ansichtWahl && verfuegbar.some((a) => a.key === ansichtWahl)
+      ? ansichtWahl
+      : (HEATMAP_START_ANSICHTEN.find((k) => verfuegbar.some((a) => a.key === k)) ??
+        verfuegbar[0]?.key ??
+        "");
 
-  const zellenGrid = (
-    <div
-      className={zeigtBild ? "absolute inset-0 grid gap-px" : "grid flex-1 gap-px"}
-      style={{
-        gridTemplateColumns: `repeat(${RASTER}, minmax(0, 1fr))`,
-        gridTemplateRows: zeigtBild ? `repeat(${RASTER}, minmax(0, 1fr))` : undefined,
-      }}
-    >
-      {Array.from({ length: RASTER * RASTER }, (_, i) => {
-        const z = zellen.get(i);
-        const x = (i % RASTER) * 5;
-        const y = Math.floor(i / RASTER) * 5;
-        if (!z) {
-          // Ohne Bild: leere Zelle dezent sichtbar (Rasterlinie). Mit Bild:
-          // ganz durchsichtig, sonst verdeckt ein Raster aus 400 Kacheln das
-          // Foto komplett.
-          return (
-            <div
-              key={i}
-              className={`aspect-square rounded-[2px] ${zeigtBild ? "" : "bg-surface-2/50"}`}
-            />
-          );
-        }
-        // Wurzel-Skala: sonst verschluckt ein einzelner Hotspot (z. B. der
-        // „Weiter"-Button) alle übrigen Zellen optisch komplett.
-        const dichte = 0.12 + 0.88 * Math.sqrt(z.n / max);
-        return (
-          <div
-            key={i}
-            title={`${x}–${x + 5} % Breite · ${y}–${y + 5} % Tiefe · ${z.n} Klick${
-              z.n === 1 ? "" : "s"
-            } · ${bereichLabel(z.bereich)}`}
-            className={`rounded-[2px] bg-accent ${zeigtBild ? "" : "aspect-square"}`}
-            style={{ opacity: dichte, transition: "opacity var(--duration-fast) var(--ease-smooth-out)" }}
-          />
-        );
-      })}
-    </div>
+  const meta = HEATMAP_ANSICHTEN.find((a) => a.key === ansicht);
+  const gefiltert = useMemo(
+    () => punkte.filter((p) => p.ansicht === ansicht && (p.geraet === geraet || p.geraet === "unbekannt")),
+    [punkte, ansicht, geraet],
   );
+  const gesamt = gefiltert.reduce((a, p) => a + p.n, 0);
+  const max = Math.max(1, ...gefiltert.map((p) => p.n));
+
+  // Klicks je Gerät für die beiden Umschalt-Knöpfe (auch 0 anzeigen — „keine
+  // Mobil-Klicks" ist eine Aussage, ein fehlender Knopf wäre keine).
+  const proGeraet = useMemo(() => {
+    let d = 0;
+    let m = 0;
+    for (const p of punkte) {
+      if (p.ansicht !== ansicht) continue;
+      if (p.geraet === "mobil") m += p.n;
+      else d += p.n;
+    }
+    return { desktop: d, mobil: m };
+  }, [punkte, ansicht]);
+
+  const bild = meta?.hatBild ? heatmapBild(ansicht, geraet) : null;
+  const bildFehlt = bild !== null && fehlendeBilder.includes(bild);
+  const zeigtBild = bild !== null && !bildFehlt;
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
+      {/* ── Ansichts-Auswahl: die eigentliche Neuerung ── */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {verfuegbar.map((a) => {
+          const n = ansichten.find((x) => x.ansicht === a.key)?.n ?? 0;
+          const aktiv = a.key === ansicht;
+          return (
+            <button
+              key={a.key}
+              type="button"
+              onClick={() => setAnsichtWahl(a.key)}
+              aria-pressed={aktiv}
+              className={`press rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                aktiv
+                  ? "border-accent bg-accent text-on-accent"
+                  : "border-border text-muted hover:border-accent/40 hover:text-fg"
+              }`}
+            >
+              {a.label}
+              <span className={`ml-1.5 tabular-nums ${aktiv ? "opacity-80" : "text-faint"}`}>{n}</span>
+            </button>
+          );
+        })}
+        {verfuegbar.length === 0 && (
+          <span className="text-sm text-muted">Noch keine Klicks im Zeitraum erfasst.</span>
+        )}
+      </div>
+
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-faint">
-        <span>← Seitenbreite →</span>
-        <div className="flex items-center gap-3">
-          <span className="tabular-nums">{gesamt} Klicks</span>
-          {/* Umschalter nur zeigen, solange nicht feststeht, dass das
-              Referenzbild fehlt — sonst ein Knopf, der nichts umschaltet. */}
-          {bildOk !== false && (
-            <div className="inline-flex rounded-full border border-border p-0.5">
-              {(
-                [
-                  { key: "seite", label: "Seite" },
-                  { key: "neutral", label: "Neutral" },
-                ] as const
-              ).map((o) => (
-                <button
-                  key={o.key}
-                  type="button"
-                  onClick={() => setBg(o.key)}
-                  aria-pressed={bg === o.key}
-                  className={`press rounded-full px-2.5 py-1 text-[0.65rem] transition-colors ${
-                    bg === o.key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          )}
+        <span className="tabular-nums">
+          {gesamt} Klick{gesamt === 1 ? "" : "s"} in dieser Ansicht
+        </span>
+        <div className="flex items-center gap-2">
+          <Umschalter
+            wert={geraet}
+            setzen={(v) => setGeraet(v as "desktop" | "mobil")}
+            optionen={[
+              { key: "desktop", label: `Desktop ${proGeraet.desktop}` },
+              { key: "mobil", label: `Mobil ${proGeraet.mobil}` },
+            ]}
+          />
+          <Umschalter
+            wert={modus}
+            setzen={(v) => setModus(v as "heatmap" | "punkte")}
+            optionen={[
+              { key: "heatmap", label: "Heatmap" },
+              { key: "punkte", label: "Punkte" },
+            ]}
+          />
         </div>
       </div>
-      <div className="flex gap-2">
-        <div className="flex w-4 shrink-0 flex-col justify-between py-0.5 text-[0.6rem] leading-none text-faint">
-          <span>oben</span>
-          <span className="[writing-mode:vertical-rl]">Scrolltiefe</span>
-          <span>unten</span>
-        </div>
-        {zeigtBild ? (
-          // Bild bestimmt die Höhe des Containers (normaler Textfluss), das
-          // Raster legt sich absolut exakt darüber — dieselbe Seitenproportion,
-          // da beide dieselbe Breite (flex-1) nutzen.
-          <div className="relative flex-1 overflow-hidden rounded-lg bg-surface-2">
+
+      <div className="relative overflow-hidden rounded-lg bg-surface-2">
+        {zeigtBild && bild ? (
+          // Das Bild bestimmt die Höhe (normaler Textfluss), die Dichtekarte
+          // liegt absolut exakt darüber — beide in derselben Breite, also
+          // stimmen die Proportionen automatisch.
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- lokales Referenzbild mit unbekannter Größe, next/image brächte hier nichts */}
             <img
-              src={HEATMAP_REFERENZBILD}
+              src={bild}
               alt=""
               aria-hidden
               draggable={false}
-              onLoad={() => setBildOk(true)}
-              onError={() => setBildOk(false)}
-              className="block w-full select-none"
+              onError={() =>
+                setFehlendeBilder((alt) => (alt.includes(bild) ? alt : [...alt, bild]))
+              }
+              className="block w-full select-none opacity-70"
             />
-            {zellenGrid}
-          </div>
+            <DichteKarte punkte={gefiltert} stufen={stufen} modus={modus} max={max} />
+          </>
         ) : (
-          <div className="flex flex-1 items-center">{zellenGrid}</div>
+          <div className="relative aspect-[3/4] w-full">
+            <DichteKarte punkte={gefiltert} stufen={stufen} modus={modus} max={max} />
+            {!meta?.hatBild && gesamt > 0 && (
+              <p className="absolute inset-x-0 bottom-2 text-center text-[0.65rem] text-faint">
+                Für diese Ansicht gibt es kein Referenzbild — Verteilung ohne Hintergrund.
+              </p>
+            )}
+          </div>
         )}
       </div>
+
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-faint">
         <span className="inline-flex items-center gap-2">
           wenig
-          <span className="h-2 w-24 rounded-full bg-gradient-to-r from-accent/10 to-accent" />
-          viel (max. {max} Klicks je Feld)
+          <span
+            className="h-2 w-28 rounded-full"
+            style={{ background: "linear-gradient(90deg,#1d4ed8,#06b6d4,#22c55e,#eab308,#ef4444)" }}
+          />
+          viel (max. {max} Klick{max === 1 ? "" : "s"} auf einem Punkt)
         </span>
-        <span>Zelle anfahren für Details</span>
+        <span>{modus === "punkte" ? "Punkt anfahren für Details" : "Auf „Punkte“ umschalten für Einzelwerte"}</span>
       </div>
+
       {limitErreicht && (
         <p className="mt-2 text-xs text-faint">
           Hinweis: Es werden die neuesten 20.000 Klicks des Zeitraums ausgewertet.
         </p>
       )}
-      {zeigtBild ? (
+      {bildFehlt && (
         <p className="mt-2 text-xs text-faint">
-          Referenzbild = Formular-Ansicht der Rechner-Seite (Desktop). Klicks aus
-          Ergebnis-Ansicht und Mobilgeräten sind näherungsweise projiziert.
+          Referenzbild fehlt ({bild}) — neu erzeugen mit{" "}
+          <code className="rounded bg-surface-2 px-1">npx tsx scripts/heatmap-referenz.mts</code>.
         </p>
-      ) : (
-        bildOk === false && (
-          <p className="mt-2 text-xs text-faint">
-            Kein Referenzbild hinterlegt ({HEATMAP_REFERENZBILD}) — Raster ohne Hintergrund.
-          </p>
-        )
       )}
-      {/* Unsichtbarer Vorab-Test: lädt das Bild einmal, damit der Umschalter
-          in der Kopfzeile von Anfang an korrekt erscheint/verschwindet, auch
-          wenn "Neutral" der zuletzt gewählte Modus war. */}
-      {bg === "neutral" && bildOk === null && (
-        <img
-          src={HEATMAP_REFERENZBILD}
-          alt=""
-          aria-hidden
-          className="hidden"
-          onLoad={() => setBildOk(true)}
-          onError={() => setBildOk(false)}
-        />
+      {ansicht === "alt" && (
+        <p className="mt-2 text-xs text-faint">
+          Klicks von vor dem 20.08.2026: Damals wurde die Ansicht nicht erfasst und
+          nur im 5-%-Raster gemessen. Sie lassen sich keiner Seite mehr zuordnen.
+        </p>
       )}
+    </div>
+  );
+}
+
+/** Kleiner Pillen-Umschalter (Gerät/Darstellung) — bewusst lokal, weil er nur
+ *  in der Heatmap-Kopfzeile vorkommt. */
+function Umschalter({
+  wert,
+  setzen,
+  optionen,
+}: {
+  wert: string;
+  setzen: (v: string) => void;
+  optionen: { key: string; label: string }[];
+}) {
+  return (
+    <div className="inline-flex rounded-full border border-border p-0.5">
+      {optionen.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => setzen(o.key)}
+          aria-pressed={wert === o.key}
+          className={`press rounded-full px-2.5 py-1 text-[0.65rem] transition-colors ${
+            wert === o.key ? "bg-accent text-on-accent" : "text-muted hover:text-fg"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Farbrampe der Heatmap: 256 RGB-Stützstellen von kalt nach heiß. Einmal
+ *  gebaut und wiederverwendet — pro Pixel nachzurechnen wäre Verschwendung. */
+function farbRampe(): Uint8ClampedArray {
+  const stops: [number, number, number, number][] = [
+    [0.0, 29, 78, 216], // blau
+    [0.35, 6, 182, 212], // cyan
+    [0.55, 34, 197, 94], // grün
+    [0.75, 234, 179, 8], // gelb
+    [1.0, 239, 68, 68], // rot
+  ];
+  const out = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    let a = stops[0];
+    let b = stops[stops.length - 1];
+    for (let k = 0; k < stops.length - 1; k++) {
+      if (t >= stops[k][0] && t <= stops[k + 1][0]) {
+        a = stops[k];
+        b = stops[k + 1];
+        break;
+      }
+    }
+    const spanne = b[0] - a[0] || 1;
+    const f = (t - a[0]) / spanne;
+    out[i * 3] = a[1] + (b[1] - a[1]) * f;
+    out[i * 3 + 1] = a[2] + (b[2] - a[2]) * f;
+    out[i * 3 + 2] = a[3] + (b[3] - a[3]) * f;
+  }
+  return out;
+}
+const RAMPE = farbRampe();
+
+/**
+ * Die eigentliche Dichtekarte auf einem <canvas>, das sich per ResizeObserver
+ * an die Breite des Containers hängt (das Referenzbild gibt die Höhe vor).
+ *
+ * Zwei-Pass-Verfahren wie in heatmap.js:
+ *   Pass 1 — je Klick ein radialer Verlauf mit Alpha nach Klickzahl, additiv
+ *            übereinander. Ergebnis: eine Graustufen-Dichte im Alpha-Kanal.
+ *   Pass 2 — jedes Pixel über die Farbrampe einfärben, Alpha als Intensität.
+ * Das ist der Grund für die weichen Übergänge, die harte Kacheln nie hatten.
+ */
+function DichteKarte({
+  punkte,
+  stufen,
+  modus,
+  max,
+}: {
+  punkte: { x: number; y: number; n: number; bereich: string }[];
+  stufen: number;
+  modus: "heatmap" | "punkte";
+  max: number;
+}) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [groesse, setGroesse] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const messen = () => setGroesse({ w: el.clientWidth, h: el.clientHeight });
+    messen();
+    const ro = new ResizeObserver(messen);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const cv = canvasRef.current;
+    const { w, h } = groesse;
+    if (!cv || w === 0 || h === 0) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    if (punkte.length === 0) return;
+
+    // Radius relativ zur Breite: auf breiten Screens dürfen die Flecken größer
+    // sein, sonst wird die Karte zum Nadelkissen. 2,2 % der Breite entspricht
+    // ungefähr einem Fingertipp-Ziel.
+    const radius = Math.max(14, Math.round(w * 0.022));
+
+    if (modus === "punkte") {
+      // Exakte Punkte: Größe nach Klickzahl, damit man Einzelklicks von
+      // Hotspots unterscheidet, ohne etwas zu glätten.
+      for (const p of punkte) {
+        const cx = (p.x / stufen) * w;
+        const cy = (p.y / stufen) * h;
+        const r = 2.5 + 5.5 * Math.sqrt(p.n / max);
+        const t = Math.min(255, Math.round(255 * Math.sqrt(p.n / max)));
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${RAMPE[t * 3]},${RAMPE[t * 3 + 1]},${RAMPE[t * 3 + 2]},0.9)`;
+        ctx.fill();
+      }
+      return;
+    }
+
+    // Pass 1: Alpha-Dichte. Wurzel-Skala, sonst frisst ein einzelner Hotspot
+    // (typisch der „Weiter"-Button) optisch alles andere auf.
+    ctx.globalCompositeOperation = "source-over";
+    for (const p of punkte) {
+      const cx = (p.x / stufen) * w;
+      const cy = (p.y / stufen) * h;
+      const staerke = Math.min(1, 0.18 + 0.82 * Math.sqrt(p.n / max));
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      g.addColorStop(0, `rgba(0,0,0,${staerke})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Pass 2: Alpha → Farbe.
+    const bild = ctx.getImageData(0, 0, cv.width, cv.height);
+    const d = bild.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3];
+      if (a === 0) continue;
+      const t = a * 3;
+      d[i] = RAMPE[t];
+      d[i + 1] = RAMPE[t + 1];
+      d[i + 2] = RAMPE[t + 2];
+      // Deckel bei ~0,82: Das Referenzbild soll durchscheinen, sonst sieht man
+      // nicht mehr, WORAUF geklickt wurde.
+      d[i + 3] = Math.min(210, a);
+    }
+    ctx.putImageData(bild, 0, 0);
+  }, [punkte, stufen, modus, max, groesse]);
+
+  // Tooltip-Punkte nur im Punkte-Modus: im Heatmap-Modus wäre eine unsichtbare
+  // Klickfläche über jedem Bucket eher irreführend als hilfreich.
+  return (
+    <div ref={wrapRef} className="absolute inset-0">
+      <canvas ref={canvasRef} className="h-full w-full" style={{ width: "100%", height: "100%" }} />
+      {modus === "punkte" &&
+        punkte.map((p, i) => (
+          <span
+            key={`${p.x}-${p.y}-${i}`}
+            title={`${p.n} Klick${p.n === 1 ? "" : "s"} · ${bereichLabel(p.bereich)} · ${(
+              (p.x / stufen) * 100
+            ).toFixed(1)} % Breite / ${((p.y / stufen) * 100).toFixed(1)} % Tiefe`}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+            style={{ left: `${(p.x / stufen) * 100}%`, top: `${(p.y / stufen) * 100}%`, width: 16, height: 16 }}
+          />
+        ))}
     </div>
   );
 }

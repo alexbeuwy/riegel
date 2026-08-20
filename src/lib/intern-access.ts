@@ -93,11 +93,7 @@ function internEigeneDomain(): string {
  * Pflichtschritt im Migrations-Playbook §4/§5.
  */
 export function internNotfallDomains(): string[] {
-  const betreiber = (process.env.INTERN_BETREIBER_DOMAIN ?? "beuwy.com")
-    .trim()
-    .toLowerCase()
-    .replace(/^@/, "");
-  return [internEigeneDomain(), betreiber].filter(Boolean);
+  return [internEigeneDomain(), internBetreiberDomain()].filter(Boolean);
 }
 
 /**
@@ -113,6 +109,34 @@ export function internNotfallErlaubt(email: string): boolean {
   if (envGesetzt) return false;
   const adr = email.toLowerCase();
   return internNotfallDomains().some((d) => adr.endsWith(`@${d}`));
+}
+
+/** Domain des Betreibers (beuwy) — Standard `beuwy.com`, über
+ *  INTERN_BETREIBER_DOMAIN überschreibbar, mit "" abschaltbar. */
+export function internBetreiberDomain(): string {
+  return (process.env.INTERN_BETREIBER_DOMAIN ?? "beuwy.com").trim().toLowerCase().replace(/^@/, "");
+}
+
+/**
+ * Ist dieser Zugang ein BETREIBER-Zugang (beuwy) statt eines Makler-Zugangs?
+ *
+ * Wozu die Unterscheidung: Ein Teil von /intern sind Werkzeuge des Betreibers,
+ * nicht des Maklers — allen voran der Feedback-Tab, in dem die On-Page-
+ * Kommentare landen und aus dem heraus daraus Arbeitsaufträge kopiert werden.
+ * Für das Makler-Team ist das Werkstattkram, der das Dashboard zumüllt
+ * (Wunsch Alex 20.08.2026: „Feedback-Reiter bei den riegel-immobilien
+ * Mitarbeitern und Accounts ausblenden").
+ *
+ * Der Passwort-Weg zählt als Betreiber: ADMIN_PASSWORD ist der Zugang, den
+ * Alex nutzt, und der E-Mail-Weg ist der, den das Makler-Team nutzt. Das ist
+ * KEINE Sicherheitsgrenze, sondern eine Aufräum-Regel — es geht darum, was
+ * angezeigt wird, nicht darum, was jemand darf.
+ */
+export function istBetreiber(auth: InternAuth): boolean {
+  if (!auth.ok) return false;
+  if (auth.via === "password") return true;
+  const domain = internBetreiberDomain();
+  return domain.length > 0 && (auth.email ?? "").toLowerCase().endsWith(`@${domain}`);
 }
 
 /** Dynamisch über /intern eingeladene E-Mail-Adressen (site_settings-Tabelle,
