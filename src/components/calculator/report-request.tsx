@@ -267,20 +267,31 @@ export function ReportRequest({
           Runde 3): das Visual hing vorher vertikal zentriert „halb in der
           Headline". Jetzt: Eyebrow + Headline oben, darunter Text links /
           Visual rechts — das Visual richtet sich an den Argumenten aus. */}
-      <div className="text-center md:text-left">
+      {/* @container statt Breakpoints: Die Schriftgröße hängt hier NICHT von der
+          Viewport-Breite ab, sondern von der tatsächlich verfügbaren Spalte —
+          auf Mobil stecken 20 px (Seite) + 24 px (Panel) + 24 px (Karte) je
+          Seite in der Polsterung, von 390 px bleiben also nur ~250 px übrig.
+          Eine vw-Formel kann das nicht treffen (der Abzug ist konstant, nicht
+          proportional), deshalb cqw. */}
+      <div className="@container text-center md:text-left">
         <div className="flex items-center justify-center gap-2 text-sm text-accent-strong md:justify-start">
           <Icon name="doc" size={18} />
           Ihr nächster Schritt
         </div>
         {/* DAS Highlight des Ergebnisses (Wunsch Alex 18.08.2026): große
             AKIRA-Headline in Weiß, animierter Auftritt beim Viewport-
-            Eintritt (.report-headline in globals.css). */}
+            Eintritt (.report-headline in globals.css). AKIRA ist ein
+            Expanded-Schnitt — „MARKTWERT-REPORT" ist bei 24 px schon 377 px
+            breit und lief auf dem Handy rechts aus der Karte (Screenshot Alex
+            20.08.2026). 9cqw hält die Zeile in JEDER Spaltenbreite drin, der
+            normale Bindestrich (vorher U+2011, geschützt!) erlaubt den Umbruch
+            nach „Marktwert-". */}
         <h3
           ref={headRef}
           data-in={headIn ? "1" : undefined}
-          className="report-headline akira mx-auto mt-4 max-w-2xl text-2xl leading-[0.95] text-white sm:text-4xl md:mx-0"
+          className="report-headline akira mx-auto mt-4 max-w-2xl text-[clamp(1rem,9cqw,2.25rem)] leading-[0.95] text-white [text-wrap:balance] md:mx-0"
         >
-          Persönlicher Marktwert&#8209;Report
+          Persönlicher Marktwert-Report
         </h3>
       </div>
 

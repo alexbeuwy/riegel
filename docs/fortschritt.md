@@ -1273,3 +1273,32 @@ echte Nutzer sind also nicht betroffen, die 60 ist ein Laborwert auf gedrosselte
   auszusperren — Entscheidung liegt bei Alex).
 - Offen/bewusst liegen gelassen: „erzwungener Umbruch" 307 ms — Lighthouse ordnet ihn
   selbst keiner Quelle zu; blind zu jagen wäre teurer als der Gewinn.
+
+## Update — Report-Headline lief auf dem Handy aus der Karte (20.08.2026) ✅
+
+Screenshot Alex („Mobil Rechner"): Auf dem Ergebnis-Screen des Rechners stand
+`PERSÖNLICHER MARKTWERT‑REP…` — rechts abgeschnitten.
+
+Reproduziert und gemessen (lokaler Prod-Build, 390 px): Der Kasten hat dort nur
+**250 px** Innenbreite (20 px Seiten- + 24 px Panel- + 24 px Karten-Polsterung je
+Seite), die Zeile war **369 px** breit. Zwei Ursachen zusammen:
+
+- **AKIRA ist ein Expanded-Schnitt.** „MARKTWERT-REPORT" misst bei 24 px 377 px —
+  passt in keine mobile Spalte.
+- **Der Bindestrich war ein geschützter** (U+2011, `&#8209;`). Das Wort konnte
+  deshalb überhaupt nicht umbrechen und lief einfach über den Rand hinaus.
+
+Fix in `src/components/calculator/report-request.tsx`:
+
+- `@container` auf dem Kopfbereich + Schriftgröße `clamp(1rem, 9cqw, 2.25rem)`.
+  Container-Query-Einheiten statt `vw`, weil der Polsterungs-Abzug **konstant** ist
+  (68 px je Seite) und nicht proportional zur Viewport-Breite — eine `vw`-Formel
+  trifft entweder Mobil oder Desktop, nie beides. `sm:text-4xl` entfällt, die
+  Obergrenze der clamp-Formel ist dieselbe 2,25 rem.
+- Geschützter Bindestrich → normaler Bindestrich, damit nach „Marktwert-" umbrochen
+  werden darf. Plus `text-wrap: balance`.
+
+Nachgemessen bei 320/360/375/390/430/640/768/1024/1440 px: `scrollWidth == clientWidth`
+überall, kein Überlauf mehr. Der Fehler betraf auch Tablets bei 640–767 px (dort 36 px
+Schrift in einer 460-px-Spalte). Übrig bleibt auf dem Ergebnis-Screen nur der
+**gewollte** Überstand der Wert-Plakette (`-mx-3`, im Code dokumentiert).
