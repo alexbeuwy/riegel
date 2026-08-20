@@ -1302,3 +1302,30 @@ Nachgemessen bei 320/360/375/390/430/640/768/1024/1440 px: `scrollWidth == clien
 überall, kein Überlauf mehr. Der Fehler betraf auch Tablets bei 640–767 px (dort 36 px
 Schrift in einer 460-px-Spalte). Übrig bleibt auf dem Ergebnis-Screen nur der
 **gewollte** Überstand der Wert-Plakette (`-mx-3`, im Code dokumentiert).
+
+## Vorfall 2 — /intern: diesmal war Alex ausgesperrt (20.08.2026) ✅
+
+Der Fix von gestern war **halb**. Die Notfallregel ließ ohne gesetztes
+`INTERN_EMAILS` nur Adressen der **eigenen Seiten-Domain** durch — Sissy
+(`@riegel-immobilien.de`) kam damit wieder rein, Alex (`@beuwy.com`) nicht.
+Ein Aussperren behoben, das nächste erzeugt.
+
+**Ursache dahinter:** Die Regel modellierte „das Team des Maklers", aber nicht
+den **Betreiber**. Bei einem White-Label-Produkt sind das zwangsläufig zwei
+verschiedene Domains, und der Betreiber ist derjenige, der im Zweifel
+draufschauen muss.
+
+**Fix:** `internNotfallDomains()` — eigene Seiten-Domain **plus**
+Betreiber-Domain (`INTERN_BETREIBER_DOMAIN`, Default `beuwy.com`, mit `""`
+abschaltbar). `INTERN_EMAILS` schlägt weiterhin alles: ist es gesetzt, gilt
+ausschließlich diese Liste.
+
+**Damit es kein drittes Mal passiert:** `scripts/intern-access-check.mts` prüft
+die Zugangs-Matrix als Fälle statt als Implementierung (wer kommt rein, wer
+nicht — inkl. fremder Makler, Suffix-Trickadresse `x@nicht-beuwy.com.evil.de`,
+Groß/Kleinschreibung, abgeschaltete Betreiber-Domain). 11 Prüfungen, offline,
+läuft ab jetzt in CI (`.github/workflows/ci.yml`).
+
+**Merker White-Label:** Ob beuwy dauerhaft Support-Zugang zum Dashboard eines
+Klons hat, ist eine Entscheidung, die mit dem jeweiligen Makler zu klären ist —
+steht als Punkt in der Go-Live-Checkliste (§5) und in der Env-Tabelle (§4).

@@ -51,12 +51,15 @@ export function internFixedEmails(): Set<string> {
     // Ergebnis, dass Sissy in der Produktion ohne gesetztes INTERN_EMAILS
     // ausgesperrt war ("Dieses Konto ist nicht für /intern freigeschaltet").
     // Die feste Liste bleibt leer (kein fremder Personen-Default, s. o.), aber
-    // greifen tut stattdessen die Domain-Notfallregel in `eigeneDomainErlaubt`:
-    // Adressen der EIGENEN Seiten-Domain kommen rein. Das ist bei jedem Klon
-    // genau der richtige Personenkreis und leakt niemanden.
+    // greifen tut stattdessen die Domain-Notfallregel in `internNotfallErlaubt`:
+    // Adressen der eigenen Seiten-Domain UND der Betreiber-Domain kommen rein
+    // (s. internNotfallDomains — die reine Seiten-Domain hat am 19.08.2026
+    // den Betreiber selbst ausgesperrt). Das ist bei jedem Klon genau der
+    // richtige Personenkreis und leakt keine fremden Makler-Adressen.
     console.error(
       "[intern-access] INTERN_EMAILS nicht gesetzt — es gilt die Notfallregel " +
-        `(nur Adressen auf @${internEigeneDomain()}). Bitte INTERN_EMAILS in den Env-Variablen setzen.`,
+        `(nur Adressen auf ${internNotfallDomains().map((d) => `@${d}`).join(" / ")}). ` +
+        "Bitte INTERN_EMAILS in den Env-Variablen setzen.",
     );
     return new Set();
   }
@@ -75,17 +78,41 @@ function internEigeneDomain(): string {
 }
 
 /**
- * Notfallregel, wenn INTERN_EMAILS NICHT gesetzt ist: Adressen auf der eigenen
- * Seiten-Domain dürfen ins Dashboard. Damit ist ein vergessenes Env kein
- * Aussperren mehr (Vorfall 19.08.2026), ohne den White-Label-Schutz aufzugeben —
- * ein Klon lässt dadurch SEIN Team rein, nie RIEGEL/beuwy. Sobald INTERN_EMAILS
- * gesetzt ist, gilt ausschließlich diese Liste und die Regel greift nicht mehr.
+ * Domains, die OHNE gesetztes INTERN_EMAILS ins Dashboard dürfen.
+ *
+ *  1. Die eigene Seiten-Domain — das Team des Maklers selbst.
+ *  2. Die Betreiber-Domain (beuwy als Dienstleister), sonst sperrt sich der
+ *     Betreiber bei jedem Klon selbst aus. Genau das ist am 19.08.2026
+ *     passiert: Die erste Fassung dieser Regel kannte nur (1), Sissy kam
+ *     wieder rein — Alex (@beuwy.com) nicht. Über INTERN_BETREIBER_DOMAIN
+ *     überschreibbar, mit "" komplett abschaltbar.
+ *
+ * Ein Klon, der NIEMANDEN von außen im Dashboard haben will, setzt entweder
+ * INTERN_EMAILS (dann gilt ausschließlich diese Liste und die ganze Regel
+ * greift nicht mehr) oder INTERN_BETREIBER_DOMAIN="" — beides steht als
+ * Pflichtschritt im Migrations-Playbook §4/§5.
  */
-function eigeneDomainErlaubt(email: string): boolean {
+export function internNotfallDomains(): string[] {
+  const betreiber = (process.env.INTERN_BETREIBER_DOMAIN ?? "beuwy.com")
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "");
+  return [internEigeneDomain(), betreiber].filter(Boolean);
+}
+
+/**
+ * Notfallregel, wenn INTERN_EMAILS NICHT gesetzt ist: Adressen auf einer der
+ * Domains aus `internNotfallDomains()` dürfen ins Dashboard. Damit ist ein
+ * vergessenes Env kein Aussperren mehr (Vorfall 19.08.2026), ohne den
+ * White-Label-Schutz aufzugeben: Fremde Makler-Personen kommen nie rein, nur
+ * das Team des Maklers selbst und der Betreiber. Sobald INTERN_EMAILS gesetzt
+ * ist, gilt ausschließlich diese Liste und die Regel greift nicht mehr.
+ */
+export function internNotfallErlaubt(email: string): boolean {
   const envGesetzt = (process.env.INTERN_EMAILS ?? "").trim().length > 0;
   if (envGesetzt) return false;
-  const domain = internEigeneDomain();
-  return domain.length > 0 && email.toLowerCase().endsWith(`@${domain}`);
+  const adr = email.toLowerCase();
+  return internNotfallDomains().some((d) => adr.endsWith(`@${d}`));
 }
 
 /** Dynamisch über /intern eingeladene E-Mail-Adressen (site_settings-Tabelle,
@@ -143,7 +170,7 @@ export async function verifyInternAccess(input: {
     // steht (Vereinigung). internInvitedEmails() ist fail-soft, ein DB-Fehler
     // fällt also nie auf "kein Zugang" zurück, wenn die feste Liste greift.
     const invited = await internInvitedEmails();
-    if (!internFixedEmails().has(email) && !invited.includes(email) && !eigeneDomainErlaubt(email)) {
+    if (!internFixedEmails().has(email) && !invited.includes(email) && !internNotfallErlaubt(email)) {
       return { ok: false, status: 403, error: "Dieses Konto ist nicht für /intern freigeschaltet." };
     }
     return { ok: true, via: "email", email };

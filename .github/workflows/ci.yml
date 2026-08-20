@@ -15,7 +15,11 @@
 #                   offline (keine Netzwerk-/Secret-Abhängigkeit) und ist der
 #                   Regressionsschutz für die Bewertungs-/Marktengine
 #                   (src/lib/valuation.ts) — s. CLAUDE.md.
-#   4. Build     — `next build`. Läuft nachweislich auch OHNE gesetzte Env-
+#   4. Zugangs-Matrix — scripts/intern-access-check.mts. Die /intern-Regel hat
+#                   binnen zwei Tagen zweimal echte Menschen ausgesperrt
+#                   (Sissy 19.08., Alex 20.08.); das Skript prüft die Fälle
+#                   „wer kommt rein, wer nicht" offline durch.
+#   5. Build     — `next build`. Läuft nachweislich auch OHNE gesetzte Env-
 #                   Vars durch (alle Integrationen sind fail-soft: OnOffice
 #                   fällt auf Mock-Daten zurück, Resend/Supabase bleiben
 #                   inaktiv statt zu crashen) — hier also bewusst KEINE
@@ -29,7 +33,7 @@ on:
 
 jobs:
   pruefungen:
-    name: Lint, Typecheck, Bewertungs-Battery, Build
+    name: Lint, Typecheck, Bewertungs-Battery, Zugangs-Matrix, Build
     runs-on: ubuntu-latest
     steps:
       - name: Code auschecken
@@ -52,6 +56,9 @@ jobs:
 
       - name: Bewertungs-Battery (Regressionsschutz Engine)
         run: npx tsx scripts/valuation-battery.mts
+
+      - name: Zugangs-Matrix /intern (Regressionsschutz Aussperrung)
+        run: npx tsx scripts/intern-access-check.mts
 
       - name: Build
         run: npm run build

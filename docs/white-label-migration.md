@@ -102,6 +102,9 @@ Impressum, Datenschutz, Widerruf — komplett aus den echten Daten des neuen Mak
 - [ ] Test-Report über den Rechner anfordern → Mail kommt an, PDF-Anhang korrekt,
       Absender = Makler-Domain, Fußzeile/Logo = Makler.
 - [ ] `INTERN_EMAILS` gesetzt → `/intern` nur für Makler-Team, **nicht** Sissy/Alex.
+      Dann ist auch die Domain-Notfallregel automatisch aus. Wer sie bewusst behalten
+      will (beuwy als Support-Zugang), lässt `INTERN_EMAILS` leer und entscheidet über
+      `INTERN_BETREIBER_DOMAIN` — s. §4. **Beides mit dem Makler ausdrücklich klären.**
 - [ ] anon-Key-Test gegen Supabase-REST: PII-Tabellen liefern 0 Zeilen (RLS, s. §6).
 - [ ] Objektliste zeigt Makler-Objekte aus **dessen** OnOffice, nicht RIEGELs.
 - [ ] Kein „RIEGEL"/„Speyer"/„Ludwigshafen"/`riegel.b-cdn.net`/`#015cff` mehr im Build:
@@ -249,7 +252,8 @@ Neue Infrastruktur, die jeder Klon mitbekommt (18.08.2026): CI-Workflow
 | `EMAIL_TO` | credential | Fallback `info@riegel-immobilien.de` (hartcodiert) → **ohne Setzen laufen Kundenanfragen zu RIEGEL** (Datenschutz!). |
 | `EMAIL_ASSET_BASE` | asset | Nur nötig, wenn Mail-Assets von anderer Domain kommen; sonst = `site.url`. |
 | `NEXT_PUBLIC_SITE_URL` | config | Nur setzen, wenn abweichend von `site.url` — sonst Doppelpflege-Risiko (Env gewinnt über `site.ts`). |
-| `INTERN_EMAILS` | **credential** | ⚠️ Ohne Setzen greift Code-Default `["sissy.riegel@…","alex@beuwy.com"]` → **fremder /intern-Zugriff**. Zwingend setzen. |
+| `INTERN_EMAILS` | **credential** | ⚠️ Zwingend setzen. **Ist sie gesetzt, gilt AUSSCHLIESSLICH diese Liste** — alle Notfallregeln sind dann aus. Ohne Setzen: in Dev/Preview greift der Code-Default (Sissy/Alex), in Produktion die Domain-Notfallregel (nächste Zeile). |
+| `INTERN_BETREIBER_DOMAIN` | config | Nur relevant, solange `INTERN_EMAILS` **nicht** gesetzt ist. Dann dürfen ins Dashboard: Adressen der **eigenen Seiten-Domain** (`site.url`) **und** dieser Betreiber-Domain — Default `beuwy.com`. Grund: Ohne die zweite Domain sperrt sich der Betreiber bei jedem Klon selbst aus (genau das ist am 20.08.2026 passiert). Ein Makler, der beuwy **nicht** im Dashboard haben will, setzt `INTERN_EMAILS` (bevorzugt) oder `INTERN_BETREIBER_DOMAIN=""`. Regressionsschutz: `npx tsx scripts/intern-access-check.mts` (läuft in CI). |
 | `FEEDBACK_TO` / `FEEDBACK_CC` | config | Ohne Setzen CC an `sissy.riegel@riegel-immobilien.de` → **Feedback-Datenleck**. Zwingend setzen. |
 | `ADMIN_PASSWORD` | credential | Neu & eindeutig pro Deployment. |
 | `CRON_SECRET` | credential | Ohne Setzen ist `/api/matching/run` `503` (fail-closed) — aber Cron braucht den Wert, sonst 401. |
