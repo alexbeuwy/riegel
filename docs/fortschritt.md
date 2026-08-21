@@ -1386,3 +1386,46 @@ dessen Inhalt trotzdem im Netzwerk-Tab liegt, wäre nur halb ausgeblendet.
 fehlt, fällt `/api/track` auf einen zweiten Insert OHNE die neuen Felder zurück —
 der Funnel zählt also weiter, nur die Ansichts-Trennung fehlt. Ohne diesen
 Fallback hätte der abgewiesene Batch ALLE Zahlen mitgerissen.
+
+## Formular-Validierung: ein Schema statt zwölf Regex-Kopien (21.08.2026) ✅
+
+Frage Alex: „Validieren wir Name usw.? Gibt es baukastenmäßige Systeme für die
+Validierung?" — Anlass war der BottImmo-Report von Adler Immobilien, dessen
+Anschreiben mit „Guten Tag Hallo Hallo" beginnt.
+
+**Was vorher da war (nachgemessen, nicht geschätzt):** fünf API-Routen mit
+derselben kopierten `clean()`-Funktion, zwölf Dateien mit derselben laxen
+E-Mail-Regex `^[^@\s]+@[^@\s]+\.[^@\s]+$`, und beim Namen nur die Prüfung
+„nicht leer". Durchgekommen sind damit unter anderem `Hallo`/`hallo@hallo.de`,
+`a`/`a@b.c`, `asdf`/`asdf@asdf.asdf` sowie `max@gmial.com` und `max@gmail.con`.
+Telefonnummern wurden gar nicht geprüft, Termindaten nur auf das Zahlenformat —
+`25:99` und der 01.01.1990 waren gültige Terminanfragen.
+
+**Die Leitplanke:** Lieber ein unsauberer Lead als ein abgewiesener echter.
+Deshalb drei Stufen statt einer Mauer:
+
+1. **Abgewiesen** wird nur nachweislich Unbrauchbares: Syntaxfehler, leerer
+   Name, gefüllter Honeypot, Domain ohne DNS-Eintrag.
+2. **Vorgeschlagen** (nie erzwungen) werden Tippfehler: „Meinten Sie
+   max@gmail.com?" unter dem E-Mail-Feld. Das ist der teuerste stille Fehler im
+   Funnel — die Adresse ist syntaktisch korrekt, der Report kommt trotzdem nie an.
+3. **Markiert** (nie blockiert) wird der Rest: Platzhalter-Name, Wegwerf-Adresse,
+   Domain ohne Mailserver, fehlende Telefonnummer. In /intern steht dann ein
+   „prüfen"-Chip am Namen, damit Sissy es vor dem Anruf sieht.
+
+**Neu:** `src/lib/validierung.ts` (Schemas, isomorph),
+`src/lib/validierung-server.ts` (DNS-Prüfung, fail-open bei jedem DNS-Fehler),
+`src/components/mail-vorschlag.tsx`, `scripts/validierung-check.mts` (46 Fälle,
+in CI). Umgestellt: `/api/{report,contact,inquiry,booking}` und die vier
+Formulare — Client und Server prüfen jetzt mit demselben Schema.
+
+**Bundle-Entscheidung, gemessen:** `import { z } from "zod"` kostet **65,0 KB
+gzip** im Client-Bundle, `zod/mini` bei identischer Logik **4,2 KB**. Das ganze
+Validierungsmodul liegt damit bei 6,7 KB statt 66,7 KB. Nach der PageSpeed-
+Arbeit (Mobil 60 → 89) wäre die große Variante ein Rückschritt gewesen. Preis
+ist die funktionale Schreibweise: `z.string().check(z.maxLength(80))`.
+
+Bewusst NICHT gemacht: `libphonenumber-js` (die Vorwahlen-Datenbank kostet mehr,
+als eine formatierte Nummer im Postfach wert ist — eine einfache
+E.164-Normalisierung reicht), gekaufte E-Mail-Verifikation (ZeroBounce & Co.)
+und die vollständige Wegwerf-Domain-Liste mit >100.000 Einträgen.

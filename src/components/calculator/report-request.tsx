@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { burstConfetti } from "@/lib/confetti";
 import { track, setAnsicht } from "@/lib/track";
+import { reportSchema, pruefeFormular } from "@/lib/validierung";
+import { MailVorschlag } from "@/components/mail-vorschlag";
 import type { GeoResult } from "@/lib/geocode";
 import type { ValuationResult, Objektart, Zustand, Qualitaet, Vermietungsstand } from "@/lib/valuation";
 import { site } from "@/lib/site";
@@ -148,11 +150,10 @@ export function ReportRequest({
   };
 
   async function submit() {
-    if (!name.trim()) return fail("Bitte Ihren Namen angeben.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
-    // Telefon ist optional (E-Mail reicht für den Report) — nur prüfen, wenn angegeben.
-    if (phone.trim() && !/\d{5,}/.test(phone.replace(/\s+/g, "")))
-      return fail("Die Telefonnummer scheint unvollständig — bitte prüfen (oder Feld leer lassen).");
+    // Dieselbe Prüfung wie auf dem Server (lib/validierung.ts) — der Nutzer
+    // bekommt die Meldung nur früher. Der Server prüft trotzdem noch einmal.
+    const geprueft = pruefeFormular(reportSchema, { name, email, phone, message, website });
+    if (!geprueft.ok) return fail(geprueft.fehler);
     if (!consent) return fail("Bitte stimmen Sie der Verarbeitung Ihrer Angaben zu.");
     setError(null);
     setBusy(true);
@@ -421,7 +422,10 @@ export function ReportRequest({
           <div className="t-collapse-inner">
             <div className="grid gap-3 sm:grid-cols-2">
               <input className={inputCls} aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" />
-              <input className={inputCls} aria-label="E-Mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
+              <div className="flex flex-col">
+                <input className={`${inputCls} w-full`} aria-label="E-Mail" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="E-Mail" />
+                <MailVorschlag email={email} onUebernehmen={setEmail} />
+              </div>
               <input className={`${inputCls} sm:col-span-2`} aria-label="Telefon / Handy (optional)" type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder="Telefon / Handy (optional)" />
               {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}
               <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" value={website} onChange={(e) => setWebsite(e.target.value)} className="hidden" />

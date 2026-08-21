@@ -5,6 +5,7 @@ import { Container } from "@/components/container";
 import { Icon, type IconName } from "@/components/icon";
 import { useAuth } from "@/components/auth";
 import type { FeedbackStatusMap, FeedbackState } from "@/lib/intern-feedback";
+import { leadQualitaet } from "@/lib/validierung";
 import { buildFeedbackPrompt, buildFeedbackBatchPrompt, encodeFeedbackLocator, parseFeedbackArea, FEEDBACK_PARAM } from "@/lib/feedback-locator";
 import {
   LEAD_STATUS_VALUES,
@@ -55,7 +56,54 @@ interface LeadRow {
   /** jsonb-Spalte — Objektbezug (objektTitel/objektId) schreiben inquiry seit
    * je, booking + contact seit 12.08.2026 (Fall Maik Steinert: Terminanfrage
    * kam ohne Objekt an, weil der Bezug nur Nachrichten-Text war). */
-  detail?: { objektTitel?: string | null; objektId?: string | null } | null;
+  detail?: {
+    objektTitel?: string | null;
+    objektId?: string | null;
+    /** Seit 21.08.2026: Qualitäts-Hinweise, die beim Eingang berechnet wurden
+     *  (u. a. der DNS-Befund, den der Browser nicht nachrechnen kann). */
+    qualitaetPunkte?: number;
+    qualitaetHinweise?: string[];
+  } | null;
+}
+
+/**
+ * Kleiner Warnhinweis am Namen, wenn an einem Lead etwas auffällig ist —
+ * Platzhalter-Name, Wegwerf-Adresse, Domain ohne Mailserver, keine Telefon-
+ * nummer. Zweck (Wunsch 21.08.2026): Sissy soll VOR dem Anruf sehen, was sie
+ * erwartet, statt es beim Wählen zu merken.
+ *
+ * Die Hinweise werden hier LIVE aus Name/E-Mail/Telefon berechnet — dadurch
+ * gelten sie auch für alle Einträge, die vor der Einführung entstanden sind.
+ * Was beim Eingang zusätzlich geprüft wurde (der DNS-Befund) steht in
+ * `detail.qualitaetHinweise` und wird dazugemischt.
+ */
+function QualitaetsHinweis({
+  name,
+  email,
+  telefon,
+  gespeichert,
+}: {
+  name?: string;
+  email?: string;
+  telefon?: string;
+  gespeichert?: string[];
+}) {
+  if (!name && !email) return null;
+  const live = leadQualitaet({ name: name ?? "", email: email ?? "", telefon });
+  const alle = [...new Set([...live.hinweise, ...(gespeichert ?? [])])];
+  if (alle.length === 0) return null;
+  // „Keine Telefonnummer" allein ist normal und keinen Hinweis wert — erst in
+  // Kombination mit etwas anderem wird es interessant.
+  const ernst = alle.filter((h) => h !== "Keine Telefonnummer");
+  if (ernst.length === 0) return null;
+  return (
+    <span
+      title={ernst.join(" · ")}
+      className="ml-1.5 inline-flex shrink-0 items-center rounded-full border border-[#fbbf24]/40 px-1.5 py-0.5 align-middle text-[0.65rem] text-[#fbbf24]"
+    >
+      prüfen
+    </span>
+  );
 }
 
 /**
@@ -1792,7 +1840,10 @@ export function InternDashboard() {
                               {fmtDate(r.created_at).split(", ")[0]}
                               <div className="text-xs text-faint">{fmtDate(r.created_at).split(", ")[1]}</div>
                             </td>
-                            <td className="px-3 py-3 text-fg">{r.name || "–"}</td>
+                            <td className="px-3 py-3 text-fg">
+                              {r.name || "–"}
+                              <QualitaetsHinweis name={r.name} email={r.email} telefon={r.phone} />
+                            </td>
                             <td className="px-3 py-3">
                               {email && (
                                 <div>
@@ -1942,7 +1993,15 @@ export function InternDashboard() {
                                 {l.kind === "booking" ? "Termin" : l.kind === "archiv" ? "Alt-Kontakt" : "Kontakt"}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-fg">{l.name || "–"}</td>
+                            <td className="px-3 py-3 text-fg">
+                              {l.name || "–"}
+                              <QualitaetsHinweis
+                                name={l.name}
+                                email={l.email}
+                                telefon={l.phone}
+                                gespeichert={l.detail?.qualitaetHinweise}
+                              />
+                            </td>
                             <td className="px-3 py-3">
                               {email && (
                                 <div>

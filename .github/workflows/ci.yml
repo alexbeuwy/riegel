@@ -19,7 +19,11 @@
 #                   binnen zwei Tagen zweimal echte Menschen ausgesperrt
 #                   (Sissy 19.08., Alex 20.08.); das Skript prüft die Fälle
 #                   „wer kommt rein, wer nicht" offline durch.
-#   5. Build     — `next build`. Läuft nachweislich auch OHNE gesetzte Env-
+#   5. Formular-Validierung — scripts/validierung-check.mts. Wichtigster Teil:
+#                   die Faelle, die DURCHKOMMEN muessen. Eine zu strenge Regel
+#                   kostet echte Eigentuemer-Leads und faellt sonst niemandem
+#                   auf, weil der Betroffene sich nicht noch einmal meldet.
+#   6. Build     — `next build`. Läuft nachweislich auch OHNE gesetzte Env-
 #                   Vars durch (alle Integrationen sind fail-soft: OnOffice
 #                   fällt auf Mock-Daten zurück, Resend/Supabase bleiben
 #                   inaktiv statt zu crashen) — hier also bewusst KEINE
@@ -33,7 +37,7 @@ on:
 
 jobs:
   pruefungen:
-    name: Lint, Typecheck, Bewertungs-Battery, Zugangs-Matrix, Build
+    name: Lint, Typecheck, Battery, Zugangs-Matrix, Validierung, Build
     runs-on: ubuntu-latest
     steps:
       - name: Code auschecken
@@ -59,6 +63,9 @@ jobs:
 
       - name: Zugangs-Matrix /intern (Regressionsschutz Aussperrung)
         run: npx tsx scripts/intern-access-check.mts
+
+      - name: Formular-Validierung (echte Leads duerfen nie abgewiesen werden)
+        run: npx tsx scripts/validierung-check.mts
 
       - name: Build
         run: npm run build

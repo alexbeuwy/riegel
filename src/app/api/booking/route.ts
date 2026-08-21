@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { terminSchema, pruefeFormular, leadQualitaet, qualitaetDetail } from "@/lib/validierung";
+import { domainZustellbar } from "@/lib/validierung-server";
 
 // Nur beim HTML-Rendern escapen — DB & replyTo bekommen Rohwerte.
 const esc = (s: unknown) =>
@@ -9,8 +11,6 @@ const esc = (s: unknown) =>
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-
-const clean = (s: unknown, max: number) => String(s ?? "").trim().slice(0, max);
 
 /**
  * Duplikat-Schutz (12.08.2026, Fall Maik Steinert): Die Route braucht für
@@ -40,37 +40,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
 
-  // Honeypot: unsichtbares Feld — von Menschen leer, von Bots gefüllt.
-  if (clean(b.website, 200)) {
+  // Honeypot, Pflichtfelder, Formate UND Datums-Plausibilität in einem Schritt
+  // (s. lib/validierung.ts). Neu gegenüber vorher: Ein Termin in der
+  // Vergangenheit oder in fünfzig Jahren wird jetzt abgewiesen, und „25:99"
+  // ist keine gültige Uhrzeit mehr. Objektbezug als echtes Datenfeld
+  // (12.08.2026, Fall Maik Steinert) — Feldnamen wie bei /api/inquiry, damit
+  // /intern alle Anfrage-Arten einheitlich auflösen kann.
+  const geprueft = pruefeFormular(terminSchema, b);
+  if (!geprueft.ok) {
+    return NextResponse.json({ ok: false, error: geprueft.fehler, feld: geprueft.feld }, { status: 422 });
+  }
+  if (geprueft.bot) {
     return NextResponse.json({ ok: true, delivered: false, skipped: true });
   }
+  const {
+    type,
+    mode,
+    location,
+    duration,
+    date,
+    time,
+    name,
+    email,
+    phone,
+    message: messageTxt,
+    objekt: objektTitel,
+    objektId,
+    requestId,
+  } = geprueft.daten;
 
-  const type = clean(b.type, 120);
-  const mode = clean(b.mode, 60);
-  const location = clean(b.location, 160);
-  const duration = clean(b.duration, 10);
-  const date = clean(b.date, 40);
-  const time = clean(b.time, 20);
-  const name = clean(b.name, 200);
-  const email = clean(b.email, 200);
-  const phone = clean(b.phone, 80);
-  const messageTxt = clean(b.message, 2000);
-  // Objektbezug als echtes Datenfeld (12.08.2026, Fall Maik Steinert) — kam
-  // vorher nur als überschreibbarer Nachrichten-Text an und ging verloren.
-  // Feldnamen wie bei /api/inquiry (leads.detail.objektTitel/objektId), damit
-  // /intern alle Anfrage-Arten einheitlich auflösen kann.
-  const objektTitel = clean(b.objekt, 200);
-  const objektId = clean(b.objektId, 80);
-  const requestId = clean(b.requestId, 80);
-
-  if (
-    !name ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    !/^\d{2}:\d{2}$/.test(time) ||
-    !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)
-  ) {
-    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  // Nur eine definitiv nicht existierende Domain wird abgewiesen (fail-open,
+  // s. domainZustellbar) — bei einer Terminanfrage wäre ein verlorener
+  // Interessent besonders teuer.
+  const domain = await domainZustellbar(email);
+  if (domain === "existiert-nicht") {
+    return NextResponse.json(
+      { ok: false, error: "Diese E-Mail-Domain existiert nicht — bitte prüfen.", feld: "email" },
+      { status: 422 },
+    );
   }
+  const qDetail = qualitaetDetail(leadQualitaet({ name, email, telefon: phone, domain }));
 
   // Duplikat-Prüfung VOR jedem Versand (Begründung s. oben am Modul).
   const jetzt = Date.now();
@@ -158,6 +167,7 @@ export async function POST(req: Request) {
         objektTitel: objektTitel || null,
         objektId: objektId || null,
         requestId: requestId || null,
+        ...qDetail,
       },
     });
     if (error) console.error("[booking] leads-Insert fehlgeschlagen:", error.message);

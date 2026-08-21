@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { sendMail, emailLayout, emailRows, emailTargets } from "@/lib/email";
 import { supabaseServer } from "@/lib/supabase-server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { anfrageSchema, pruefeFormular, leadQualitaet, qualitaetDetail } from "@/lib/validierung";
+import { domainZustellbar } from "@/lib/validierung-server";
 import { createLeadAddress } from "@/lib/onoffice";
 
 // Nur beim HTML-Rendern escapen — DB, replyTo & OnOffice bekommen Rohwerte.
@@ -10,8 +12,6 @@ const esc = (s: unknown) =>
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-
-const clean = (s: unknown, max: number) => String(s ?? "").trim().slice(0, max);
 
 // "Max Mustermann" -> Vorname "Max", Name "Mustermann"; "Anna Maria Musterfrau"
 // -> Vorname "Anna Maria", Name "Musterfrau". Einzelnes Wort -> nur Name.
@@ -33,21 +33,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
 
-  // Honeypot: unsichtbares Feld — von Menschen leer, von Bots gefüllt.
-  if (clean(b.website, 200)) {
+  // Honeypot, Pflichtfelder und Formate in einem Schritt (s. lib/validierung.ts).
+  const geprueft = pruefeFormular(anfrageSchema, b);
+  if (!geprueft.ok) {
+    return NextResponse.json({ ok: false, error: geprueft.fehler, feld: geprueft.feld }, { status: 422 });
+  }
+  if (geprueft.bot) {
     return NextResponse.json({ ok: true, delivered: false, skipped: true });
   }
+  const { name, email, telefon: phone, nachricht: message, objektTitel, objektId } = geprueft.daten;
 
-  const name = clean(b.name, 200);
-  const email = clean(b.email, 200);
-  const phone = clean(b.telefon, 80);
-  const message = clean(b.nachricht, 2000);
-  const objektTitel = clean(b.objektTitel, 200);
-  const objektId = clean(b.objektId, 80);
-
-  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  // Nur eine definitiv nicht existierende Domain wird abgewiesen — DNS-Fehler
+  // und fehlende MX-Einträge laufen durch (fail-open, s. domainZustellbar).
+  const domain = await domainZustellbar(email);
+  if (domain === "existiert-nicht") {
+    return NextResponse.json(
+      { ok: false, error: "Diese E-Mail-Domain existiert nicht — bitte prüfen.", feld: "email" },
+      { status: 422 },
+    );
   }
+  const qDetail = qualitaetDetail(leadQualitaet({ name, email, telefon: phone, domain }));
 
   const rows = emailRows([
     { label: "Name", value: esc(name) },
@@ -69,7 +74,7 @@ export async function POST(req: Request) {
       phone: phone || null,
       subject: objektTitel || "Objektanfrage",
       message: message || null,
-      detail: { objektId, objektTitel },
+      detail: { objektId, objektTitel, ...qDetail },
     });
     if (error) console.error("[inquiry] leads-Insert fehlgeschlagen:", error.message);
     logged = !error;

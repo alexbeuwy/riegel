@@ -356,6 +356,15 @@ Persönlichkeitsrechts-/Markenverletzung oder Irreführung.
 - **Selbstkalibrierende Bewertungs-Engine:** `verkauft-stats.ts` + `/api/marktstats` deckeln
   Modellwerte am p75 echter Abschlüsse **des jeweiligen OnOffice-Mandanten** und liefern echte
   Vergleichszahlen — Makler #2 erbt den Mechanismus ohne Datenübernahme (s. §3.3).
+- **Formular-Validierung** (`validierung.ts` + `validierung-server.ts` +
+  `mail-vorschlag.tsx`, 21.08.2026): markenneutral, nichts anzupassen. Ein Klon erbt
+  E-Mail-/Namens-/Telefon-Prüfung, den Tippfehler-Vorschlag („Meinten Sie …?"), die
+  DNS-Prüfung der Mail-Domain und das Qualitätssignal in /intern. Zwei Dinge bewusst
+  merken: Die Prüfung weist NUR nachweislich Unbrauchbares ab (Leitplanke „lieber ein
+  unsauberer Lead als ein abgewiesener echter" — steht so im Modulkopf), und die Schemas
+  nutzen `zod/mini`, nicht `zod`: gemessen 4,2 KB statt 65,0 KB gzip im Client-Bundle.
+  Wer beim Umbrand auf `zod` „aufräumt", verschenkt 60 KB auf jeder Formularseite.
+  Regressionsschutz: `npx tsx scripts/validierung-check.mts` (läuft in CI).
 - **Claude-Skills reisen mit:** `.claude/skills/` + `skills-lock.json` sind versioniert —
   16 Design-/UX-/Frontend-Skills (design-taste-frontend, make-interfaces-feel-better,
   transitions-dev, …) laden in jeder Session automatisch aus dem Repo-Root. Ein Klon

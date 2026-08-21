@@ -7,6 +7,8 @@ import { Icon, type IconName } from "@/components/icon";
 import { Segmented } from "@/components/segmented";
 import { burstConfetti } from "@/lib/confetti";
 import { site } from "@/lib/site";
+import { kontaktSchema, pruefeFormular, istEmail } from "@/lib/validierung";
+import { MailVorschlag } from "@/components/mail-vorschlag";
 
 type Mode = "vor-ort" | "video" | "telefon";
 
@@ -140,14 +142,16 @@ function BookingToolInner() {
         : "Telefonisch";
 
   // Fortschritt der Pflichtangaben (für die dezente Progress-Leiste).
-  const filled = [Boolean(date), Boolean(time), Boolean(name), /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)];
+  const filled = [Boolean(date), Boolean(time), Boolean(name), istEmail(email)];
   const progress = Math.round((filled.filter(Boolean).length / filled.length) * 100);
 
   async function submit() {
     if (busy) return;
     if (!date || !time) return fail("Bitte Datum und Uhrzeit wählen.");
-    if (!name.trim()) return fail("Bitte Ihren Namen angeben.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Bitte eine gültige E-Mail angeben.");
+    // Kontaktfelder gegen dasselbe Schema wie der Server (lib/validierung.ts).
+    // Datum/Zeit prüft die Route ohnehin noch einmal mit Plausibilitätsgrenze.
+    const geprueft = pruefeFormular(kontaktSchema, { name, email, phone });
+    if (!geprueft.ok) return fail(geprueft.fehler);
     if (mode === "telefon" && !phone.trim()) return fail("Für einen Rückruf brauchen wir Ihre Telefonnummer.");
     if (!consent) return fail("Bitte stimmen Sie der Verarbeitung Ihrer Angaben zu.");
     setError(null);
@@ -490,7 +494,10 @@ function BookingToolInner() {
         <Field n={6} icon="users" label="Wie erreichen wir Sie?">
           <div className="grid gap-3 sm:grid-cols-2">
             <input aria-label="Name" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} placeholder="Name" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
-            <input aria-label="E-Mail" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} type="email" placeholder="E-Mail" className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
+            <div className="flex flex-col">
+              <input aria-label="E-Mail" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} type="email" placeholder="E-Mail" className="w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent" />
+              <MailVorschlag email={email} onUebernehmen={setEmail} />
+            </div>
             <input aria-label={mode === "telefon" ? "Telefon (für den Rückruf)" : "Telefon (optional)"} value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} placeholder={mode === "telefon" ? "Telefon (für den Rückruf)" : "Telefon (optional)"} className="rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
             <textarea aria-label="Nachricht (optional)" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Nachricht (optional) — z. B. Objekt, das Sie interessiert" className="resize-none rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent sm:col-span-2" />
             {/* Honeypot — für Menschen unsichtbar, Bots füllen es aus. */}

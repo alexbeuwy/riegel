@@ -10,6 +10,8 @@ import {
   reportPdfTeaser,
   reportPdfCallout,
 } from "@/lib/email";
+import { reportSchema, pruefeFormular, sauber } from "@/lib/validierung";
+import { domainZustellbar } from "@/lib/validierung-server";
 import { buildReportPdf, REFERENZ_MAX } from "@/lib/report-pdf";
 import { buildReportContext } from "@/lib/report-context";
 import { supabaseServer } from "@/lib/supabase-server";
@@ -47,7 +49,8 @@ const esc = (s: unknown) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-const clean = (s: unknown, max: number) => String(s ?? "").trim().slice(0, max);
+// `clean` heißt jetzt `sauber` und steht zentral in lib/validierung.ts.
+const clean = sauber;
 
 const eur = (n: unknown) => {
   const v = Number(n);
@@ -110,17 +113,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad request" }, { status: 400 });
   }
 
-  // Honeypot: unsichtbares Feld — von Menschen leer, von Bots gefüllt.
-  if (clean(b.website, 200)) {
+  // Kontaktfelder + Honeypot über das gemeinsame Schema (s. lib/validierung.ts);
+  // die Objektdaten weiter unten haben eigene Wertebereiche und bleiben
+  // einzeln geprüft.
+  const geprueft = pruefeFormular(reportSchema, b);
+  if (!geprueft.ok) {
+    return NextResponse.json({ ok: false, error: geprueft.fehler, feld: geprueft.feld }, { status: 422 });
+  }
+  if (geprueft.bot) {
     return NextResponse.json({ ok: true, delivered: false, skipped: true });
   }
+  const { name, email, phone, message } = geprueft.daten;
 
-  const name = clean(b.name, 200);
-  const email = clean(b.email, 200);
-  const phone = clean(b.phone, 80);
-  const message = clean(b.message, 2000);
-  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return NextResponse.json({ ok: false, error: "validation" }, { status: 422 });
+  // Der Report GEHT PER MAIL RAUS — hier ist eine tote Domain besonders
+  // teuer: Der Eigentümer wartet auf ein PDF, das nie ankommt, und meldet
+  // sich nicht noch einmal. Nur definitiv nicht existierende Domains werden
+  // abgewiesen (fail-open bei DNS-Fehlern, s. domainZustellbar).
+  const domainBefund = await domainZustellbar(email);
+  if (domainBefund === "existiert-nicht") {
+    return NextResponse.json(
+      { ok: false, error: "Diese E-Mail-Domain existiert nicht — der Report käme nie an.", feld: "email" },
+      { status: 422 },
+    );
   }
 
   const address = clean(b.address, 240);

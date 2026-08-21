@@ -4,6 +4,8 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icon";
+import { kontaktSchema, pruefeFormular } from "@/lib/validierung";
+import { MailVorschlag } from "@/components/mail-vorschlag";
 
 const ANLIEGEN = [
   "Allgemeine Anfrage",
@@ -62,8 +64,9 @@ function ContactFormInner() {
 
   async function submit() {
     if (busy) return;
-    if (!f.name) return fail("Bitte Ihren Namen angeben.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return fail("Bitte eine gültige E-Mail angeben.");
+    // Gleiche Prüfung wie im Server (lib/validierung.ts) — nur früher sichtbar.
+    const geprueft = pruefeFormular(kontaktSchema, f);
+    if (!geprueft.ok) return fail(geprueft.fehler);
     if (!f.message) return fail("Bitte eine Nachricht eingeben.");
     if (!f.consent) return fail("Bitte der Verarbeitung zustimmen.");
     setError(null);
@@ -140,6 +143,7 @@ function ContactFormInner() {
         <label className="block space-y-2">
           <span className="text-sm text-muted">E-Mail</span>
           <input className={inputCls} type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="name@beispiel.de" />
+          <MailVorschlag email={f.email} onUebernehmen={(v) => set("email", v)} />
         </label>
         <label className="block space-y-2">
           <span className="text-sm text-muted">Telefon (optional)</span>

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
+import { anfrageSchema, pruefeFormular } from "@/lib/validierung";
+import { MailVorschlag } from "@/components/mail-vorschlag";
 
 const inputCls =
   "w-full rounded-lg border border-border bg-bg px-4 py-3 text-fg outline-none transition-colors placeholder:text-faint focus:border-accent";
@@ -36,8 +38,9 @@ export function InquiryForm({ objektTitel, objektId }: { objektTitel: string; ob
 
   async function submit() {
     if (busy) return;
-    if (!f.name) return fail("Bitte Ihren Namen angeben.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return fail("Bitte eine gültige E-Mail angeben.");
+    // Gleiche Prüfung wie im Server (lib/validierung.ts) — nur früher sichtbar.
+    const geprueft = pruefeFormular(anfrageSchema, f);
+    if (!geprueft.ok) return fail(geprueft.fehler);
     if (!f.consent) return fail("Bitte der Verarbeitung zustimmen.");
     setError(null);
     // Lokaler Fallback, falls der Versand scheitert (Daten nicht verlieren).
@@ -102,6 +105,7 @@ export function InquiryForm({ objektTitel, objektId }: { objektTitel: string; ob
         <label className="block space-y-2">
           <span className="text-sm text-muted">E-Mail</span>
           <input className={inputCls} type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="name@beispiel.de" />
+          <MailVorschlag email={f.email} onUebernehmen={(v) => set("email", v)} />
         </label>
       </div>
       <label className="block space-y-2">
